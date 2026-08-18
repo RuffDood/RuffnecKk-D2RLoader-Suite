@@ -1,10 +1,9 @@
 # RuffnecKk D2RLoader Suite
 
-Pick the Diablo II: Resurrected improvements you want and leave the rest out.
 
-The Suite contains 17 independent plugins and 18 optional memory-patch
-features for D2RLoader. Ground Item Label Limit has two presets, so each
-release provides 19 patch JSON files. You can install one component, a few
+
+This Suite contains 17 independent plugins and 18 optional memory-patch
+features for D2RLoader. You can install one component, a few
 favorites, or the complete bundles.
 ## Requirements
 
@@ -19,9 +18,8 @@ Open the GitHub **Releases** page and choose one of these options:
 
 - **Individual plugin ZIPs** : recommended when you only want specific
   features.
-- **Individual patch JSON files** : recommended when you only want specific
-  rule changes.
-- **All Plugins** : installs every Suite plugin.
+- **Individual patch JSON files** : same as above.
+- **All Plugins** : downlaods every Suite plugin.
 - **All Patches** : downloads every patch selected for that Suite release.
   It includes both Ground Item Label Limit presets; keep only one active.
 
@@ -66,22 +64,15 @@ D2RLoader 1.1.0.
 All plugins are enabled by default. Install only the features you want, or set
 a plugin's `enabled` option to `false` in its configuration.
 
-### Inventory and convenience
-
 | Plugin | What it does | Main options |
 |---|---|---|
-| Cube Quick Move | Packs quick-moved items into the Cube from the bottom-right. | No extra options. |
+| Cube Quick Move | Ctrl-Click moves items to cube starting from the bottom right. | No extra options. |
 | Equipped Item to Cube | Moves a Ctrl-clicked equipped item directly into the Cube. | No extra options. |
 | Mass Identify | Identifies items by Shift-right-clicking a Tome of Identify. | Free identification and optional Cube or stash coverage. |
 | Potion Auto Pickup | Sends ground potions to matching belt columns or inventory. | Potion priorities, belt columns, and inventory overflow. |
 | Remote Stash | Opens personal and shared stash pages from anywhere. | Hotkey, Inventory button, placement, size, and custom sprites. |
 | Transmute Hotkey | Activates the Cube Transmute button with a keyboard shortcut. | Configurable keyboard hotkey. |
 | Vendor Stock Refresh | Adds a button that refreshes normal vendor stock. | No extra options. |
-
-### Items and character rules
-
-| Plugin | What it does | Main options |
-|---|---|---|
 | Bulk Skill Point Allocation | Uses Ctrl for a batch and Shift for all usable skill points. | Batch size and confirmation text. |
 | Charm Aura Trigger Fix | Restores inventory charm auras after important game transitions. | No extra options. |
 | Ethereal Item Rules | Controls which items can become ethereal and how often. | Chance, excluded item types, Set items, and Indestructible items. |
@@ -89,11 +80,6 @@ a plugin's `enabled` option to `false` in its configuration.
 | Larzuk Sockets | Controls Larzuk's socket reward by difficulty and item quality. | Minimum and maximum sockets by quality. |
 | Progressive Affixes | Controls how many affixes Magic, Rare, and Crafted items receive. | Automatic or progressive item-level rules. |
 | Repair Costs Cap | Limits repair prices and can add permanent durability wear. | Gold cap and wear chance. |
-
-### Combat and display
-
-| Plugin | What it does | Main options |
-|---|---|---|
 | Enhanced Damage Min/Max Fix | Fixes off-weapon Enhanced Damage with flat damage bonuses. | No extra options. |
 | Floating Damage | Shows damage numbers and an optional DPS counter. | Colors, size, animation, layout, font, combining, and hotkey. |
 | Prevent Merc Death in Town | Stops supported lingering damage from killing mercenaries in town (Open wounds, poison). | No extra options. |
@@ -105,8 +91,7 @@ a plugin's `enabled` option to `false` in its configuration.
 - Floating Damage: `Shift+Z`
 
 These hotkeys are configurable. D2RLoader's current Input service supports
-keyboard bindings, but not mouse-button or controller bindings.
-
+keyboard bindings, but not mouse-buttons.
 ## Memory patches
 
 A memory patch is a small optional rule change. Installing its JSON file
@@ -114,8 +99,8 @@ enables the complete behavior; removing the file disables it after a restart.
 
 | Patch | What changes for the player |
 |---|---|
-| Enemy Resistance vs Immunes | -% to enemy res can affect immune monsters. |
-| Gamble Screen Limit | Raises Gamble screen from 14 items to 32 |
+| -% to Enemy Resistance vs Immunes | -% to enemy res can affect immune monsters. |
+| Gamble Screen Limit | Raises Gamble screen from 14 items to 32. |
 | Gold Capacities | Greatly raises carried-gold and stash-gold limits. |
 | Ground Item Label Limit | Raises the simultaneous ground-label limit from 32 to either 64 or 128. Choose one preset. |
 | Ranged Hireling AI | Improves following, activity, and retreat behavior for ranged mercenaries. |
