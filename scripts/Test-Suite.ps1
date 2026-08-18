@@ -34,9 +34,8 @@ $expectedAssets = $distribution.expectedGithubAssets
 if ([int]$expectedAssets.individualPluginArchives -ne 17 -or
     [int]$expectedAssets.individualPatchFiles -ne 19 -or
     [int]$expectedAssets.optionalBundles -ne 2 -or
-    [int]$expectedAssets.checksumFiles -ne 1 -or
-    [int]$expectedAssets.total -ne 39) {
-    throw 'Release allowlist does not declare the approved 17/19/2/1 GitHub asset counts.'
+    [int]$expectedAssets.total -ne 38) {
+    throw 'Release allowlist does not declare the approved 17/19/2 GitHub asset counts.'
 }
 $pluginEntries = @($allowlist.entries | Where-Object { [string]$_.kind -eq 'plugin-dll' })
 $pluginIds = @($pluginEntries | ForEach-Object { [string]$_.componentId })

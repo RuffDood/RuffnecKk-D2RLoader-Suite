@@ -225,9 +225,9 @@ if ($pluginReadmes.Count -ne 1 -or $pluginReadmes[0].ComponentId -ne 'ruffneckk-
 $expectedAssets = $document.distribution.expectedGithubAssets
 if ([int]$expectedAssets.individualPluginArchives -ne $pluginDlls.Count -or
     [int]$expectedAssets.individualPatchFiles -ne [int]$expectedCounts.memoryPatchJson -or
-    [int]$expectedAssets.optionalBundles -ne 2 -or [int]$expectedAssets.checksumFiles -ne 1 -or
-    [int]$expectedAssets.total -ne 39) {
-    throw 'The modular asset counts do not match the approved 17/19/2/1 contract.'
+    [int]$expectedAssets.optionalBundles -ne 2 -or
+    [int]$expectedAssets.total -ne 38) {
+    throw 'The modular asset counts do not match the approved 17/19/2 contract.'
 }
 
 if (Test-Path -LiteralPath $absoluteOutputDirectory) {
@@ -267,23 +267,9 @@ try {
     $patchBundleHash = New-VerifiedZip -Path $patchBundlePath -Items @($validated | Where-Object Kind -eq 'memory-patch-json')
     $generated.Add([pscustomobject]@{ Name = $patchBundleName; Path = $patchBundlePath; SHA256 = $patchBundleHash; Kind = 'patch-bundle' })
 
-    $expectedBeforeChecksums = [int]$expectedAssets.total - [int]$expectedAssets.checksumFiles
-    if ($generated.Count -ne $expectedBeforeChecksums -or @($generated.Name | Sort-Object -Unique).Count -ne $generated.Count) {
-        throw "Expected $expectedBeforeChecksums unique assets before checksums; found $($generated.Count)."
-    }
-    if ([string]$document.distribution.checksumAsset -ne 'SHA256SUMS.txt') {
-        throw 'The approved checksum asset must be SHA256SUMS.txt.'
-    }
-    $checksumPath = Join-Path $absoluteOutputDirectory 'SHA256SUMS.txt'
-    $checksumLines = @($generated | Sort-Object Name | ForEach-Object { "$($_.SHA256)  $($_.Name)" })
-    [IO.File]::WriteAllText($checksumPath, (($checksumLines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
-    $generated.Add([pscustomobject]@{
-        Name = 'SHA256SUMS.txt'; Path = $checksumPath
-        SHA256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $checksumPath).Hash; Kind = 'checksums'
-    })
-
-    if ($generated.Count -ne [int]$expectedAssets.total) {
-        throw "Expected $($expectedAssets.total) generated GitHub assets; found $($generated.Count)."
+    if ($generated.Count -ne [int]$expectedAssets.total -or
+        @($generated.Name | Sort-Object -Unique).Count -ne $generated.Count) {
+        throw "Expected $($expectedAssets.total) unique generated GitHub assets; found $($generated.Count)."
     }
     if (@(Get-ChildItem -LiteralPath $absoluteOutputDirectory -File).Count -ne $generated.Count) {
         throw 'The output directory contains files outside the generated modular catalog.'

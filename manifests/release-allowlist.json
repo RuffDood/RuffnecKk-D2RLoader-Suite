@@ -23,13 +23,11 @@
       "RuffnecKk-All-Plugins-v<suite-version>.zip",
       "RuffnecKk-All-Patches-v<suite-version>.zip"
     ],
-    "checksumAsset": "SHA256SUMS.txt",
     "expectedGithubAssets": {
       "individualPluginArchives": 17,
       "individualPatchFiles": 19,
       "optionalBundles": 2,
-      "checksumFiles": 1,
-      "total": 39
+      "total": 38
     }
   },
   "policy": {
