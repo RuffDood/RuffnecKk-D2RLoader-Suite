@@ -23,8 +23,6 @@ Open the GitHub **Releases** page and choose one of these options:
 - **All Patches** : downloads every patch selected for that Suite release.
   It includes both Ground Item Label Limit presets; keep only one active.
 
-Do not use GitHub's automatic **Source code** archives as installation files.
-
 ## Quick installation
 
 Choose one installation location:
@@ -46,7 +44,7 @@ default TOML configuration the first time they run and do not overwrite your
 existing settings. Larzuk Sockets and Bulk Skill Point Allocation use JSON
 configuration files included in their downloads.
 
-For Remote Stash, please read the README included in the downloaded ZIP. TDLR the setup should now be easier and it's recommended you delete stuff you installed from previous versions
+For Remote Stash, please read the README included in the downloaded ZIP. TDLR the setup should now be easier and it's recommended you delete stuff you installed from previous versions.
 
 ## Important compatibility note
 
@@ -60,7 +58,7 @@ Do not use this Suite together with the old Community Pack files:
 
 Those older combined DLLs are no longer supported.
 
-Feel free to install back Eezstreet's plugin pack :
+Feel free to install back Eezstreet's plugin pack : https://github.com/eezstreet/D2RL-Plugins
 
 ## Plugins
 
@@ -76,8 +74,8 @@ a plugin's `enabled` option to `false` in its configuration.
 | Remote Stash | Opens personal and shared stash pages from anywhere. | Hotkey, Inventory button, placement, size, and custom sprites. |
 | Transmute Hotkey | Activates the Cube Transmute button with a keyboard shortcut. | Configurable keyboard hotkey. |
 | Vendor Stock Refresh | Adds a button that refreshes normal vendor stock. | No extra options. |
-| Bulk Skill Point Allocation | Uses Ctrl for a batch and Shift for all usable skill points. | Batch size and confirmation text. |
-| Charm Aura Trigger Fix | Restores inventory charm auras after important game transitions. | No extra options. |
+| Bulk Skill Point Allocation | Uses Ctrl+Click for a batch and Shift+Click for all usable skill points. | Batch size and confirmation text. |
+| Charm Aura Trigger Fix | Restores inventory charm auras after respawns and zone transitions | No extra options. |
 | Ethereal Item Rules | Controls which items can become ethereal and how often. | Chance, excluded item types, Set items, and Indestructible items. |
 | Item Durability | Adjusts durability loss and can give bows durability. | Loss resistance, ethereal durability, and bow durability. |
 | Larzuk Sockets | Controls Larzuk's socket reward by difficulty and item quality. | Minimum and maximum sockets by quality. |
