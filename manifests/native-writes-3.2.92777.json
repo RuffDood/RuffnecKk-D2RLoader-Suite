@@ -1,0 +1,445 @@
+{
+  "schemaVersion": 1,
+  "target": {
+    "game": "D2R.exe",
+    "version": "3.2",
+    "build": 92777,
+    "canonicalSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715",
+    "analysisSha256": "673E8C0B2E89563E75525B24D137098EFD07B2DB4ED42ADEC56AA1ADDF0E63AB",
+    "pluginSdkCommit": "4933e2c42cb2592958cd0df3b6dc5003102252d1",
+    "loaderArchiveSha256": "923B4933476A8649B7D7C4B50286C0E7FC64CE013B561A446C152A41868C4EDB",
+    "d2rCoreSha256": "013B047612BFF0EB564891037508FD43D03AFDFB20BFEB9B5BC683B36559FFC6"
+  },
+  "policy": {
+    "inlineHookEntryWriteBytes": 5,
+    "inlineHookEntryWriteBasis": "Pinned D2RCore.dll contains MinHook; every declared target has a normal decodable prologue, so the loader-owned target-entry mutation is the five-byte JMP_REL path. Expected-byte arrays are read-only preflight spans and are not counted as writes.",
+    "rangeEnd": "exclusive",
+    "fixedImageWritesOnly": true,
+    "dynamicAllocationsParticipateInRvaOverlap": false,
+    "onlyAllowedFixedOverlap": "The mutually exclusive Ground Item Label Limit 64 and 128 artifacts may overlap each other only.",
+    "missingComponentPolicy": "fail"
+  },
+  "suitePlugins": [
+    {
+      "id": "ruffneckk-item-durability",
+      "source": "plugins/item-durability/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x441B10", "size": 5, "kind": "sdk-inline-hook", "condition": "durability loss rules enabled"},
+        {"rva": "0x2F48C0", "size": 5, "kind": "sdk-inline-hook", "condition": "maximum durability rules enabled"},
+        {"rva": "0x315FD0", "size": 5, "kind": "sdk-inline-hook", "condition": "bow and crossbow durability enabled"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-charm-aura-trigger-fix",
+      "source": "plugins/charm-aura-trigger-fix/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x502D00", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x491960", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x42D2C0", "size": 5, "kind": "sdk-inline-hook"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-enhanced-damage-min-max-fix",
+      "source": "plugins/enhanced-damage-min-max-fix/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x2FA430", "size": 5, "kind": "sdk-inline-hook"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-ethereal-item-rules",
+      "source": "plugins/ethereal-item-rules/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x373890", "size": 5, "kind": "sdk-inline-hook", "condition": "excluded item types configured"},
+        {"rva": "0x46D840", "size": 67, "kind": "sdk-patch-bytes", "condition": "indestructible item rule enabled"},
+        {"rva": "0x4432F4", "size": 5, "kind": "sdk-patch-call-rel32", "condition": "indestructible item rule enabled"},
+        {"rva": "0x443315", "size": 6, "kind": "sdk-patch-nop", "condition": "set item rule enabled"},
+        {"rva": "0x4434DF", "size": 1, "kind": "sdk-patch-write-u8", "condition": "ethereal chance differs from vanilla"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-repair-costs-cap",
+      "source": "plugins/repair-costs-cap/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x36F0C0", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x375330", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x53FF65", "size": 16, "kind": "sdk-patch-bytes"},
+        {"rva": "0x53BB50", "size": 5, "kind": "sdk-inline-hook", "condition": "durability wear enabled"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-vendor-stock-refresh",
+      "source": "plugins/vendor-stock-refresh/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x2411E0", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x502F60", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x4B0470", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x10F520", "size": 5, "kind": "sdk-inline-hook"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-potion-auto-pickup",
+      "source": "plugins/potion-auto-pickup/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x3862D0", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x1D2A798", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7A0", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7A8", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7B0", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7B8", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7C0", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7C8", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7D0", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7D8", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7E0", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7E8", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7F0", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A7F8", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A800", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A808", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A810", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A818", "size": 8, "kind": "sdk-patch-write-u64"},
+        {"rva": "0x1D2A820", "size": 8, "kind": "sdk-patch-write-u64"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-mass-identify",
+      "source": "plugins/mass-identify/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x1C7A30", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x4C6C90", "size": 5, "kind": "sdk-inline-hook"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-cube-quick-move",
+      "source": "plugins/cube-quick-move/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x0FA33D", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x15A25C", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x15E760", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x15F94F", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x2C7306", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x38CC86", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x40FFCB", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x417356", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x42AB9F", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x471D62", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4A90C7", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4AB3B5", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4AD94B", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4B4B5C", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4B88ED", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4BBA73", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4C21D6", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4C4181", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4C78D2", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4F2C8B", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4FBC0E", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x4FC395", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x527DC2", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x528053", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x541230", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x54128F", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x541DA7", "size": 5, "kind": "sdk-patch-call-rel32"}
+      ],
+      "dynamicAllocations": [
+        {"kind": "rel32-relay-page", "allocation": "one system page near the call sites", "usedBytes": 14}
+      ]
+    },
+    {
+      "id": "ruffneckk-equipped-item-to-cube",
+      "source": "plugins/equipped-item-to-cube/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x0EE2A0", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x2CACF0", "size": 5, "kind": "sdk-inline-hook"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-transmute-hotkey",
+      "source": "plugins/transmute-hotkey/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x23ECD0", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x2CDA90", "size": 5, "kind": "sdk-inline-hook"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-prevent-merc-death-in-town",
+      "source": "plugins/prevent-merc-death-in-town/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x448C00", "size": 5, "kind": "sdk-inline-hook"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-remote-stash",
+      "source": "plugins/remote-stash/src/runtime.cpp",
+      "fixedWrites": [
+        {"rva": "0x22BA70", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x4BA617", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x0CE500", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x0C7D30", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x0CD7C0", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x08D540", "size": 5, "kind": "sdk-inline-hook", "condition": "hotkey enabled"},
+        {"rva": "0x08D510", "size": 5, "kind": "sdk-inline-hook", "condition": "hotkey enabled"},
+        {"rva": "0x4BA580", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x43EC10", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x4AA100", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x474700", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x4C5570", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x4C6480", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x4BFF30", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x259132", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x25A11D", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x0FEE36", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x0FF1D7", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x15E382", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x1F6674", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x2A9D68", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x2AAB0D", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x2ABB09", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x2C6055", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x2C6265", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x2C7479", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x102590", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x14F5895", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x0C1F01", "size": 5, "kind": "sdk-patch-call-rel32", "condition": "hotkey enabled"}
+      ],
+      "dynamicAllocations": [
+        {"kind": "absolute-jump-stub", "allocation": "50 bytes outside the D2R image", "usedBytes": 50},
+        {"kind": "rel32-relay-page", "allocation": "one system page near the call sites", "usedBytes": 70}
+      ]
+    },
+    {
+      "id": "ruffneckk-floating-damage",
+      "source": "plugins/floating-damage/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x0B9B90", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x44D093", "size": 5, "kind": "sdk-patch-call-rel32"}
+      ],
+      "dynamicAllocations": [
+        {"kind": "rel32-relay-page", "allocation": "one system page near 0x44D093", "usedBytes": 31},
+        {"kind": "resolved-system-vtable-hooks", "allocation": "MinHook-owned detours outside D2R.exe", "targets": ["ID3D12CommandQueue::ExecuteCommandLists", "IDXGISwapChain::Present", "IDXGISwapChain::ResizeBuffers"]}
+      ]
+    },
+    {
+      "id": "ruffneckk-larzuk-sockets",
+      "source": "plugins/larzuk-sockets/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x375560", "size": 5, "kind": "sdk-inline-hook"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-bulk-skill-point-allocation",
+      "source": "plugins/bulk-skill-point-allocation/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x000EC700", "size": 5, "kind": "sdk-inline-hook", "preflightSize": 29},
+        {"rva": "0x005F4B90", "size": 5, "kind": "sdk-inline-hook", "preflightSize": 29, "condition": "Shift allocation confirmation enabled"}
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-progressive-affixes",
+      "source": "plugins/progressive-affixes/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x442C78", "size": 6, "kind": "sdk-patch-call-rel32-with-padding"},
+        {"rva": "0x442CDC", "size": 6, "kind": "sdk-patch-call-rel32-with-padding"},
+        {"rva": "0x58A21B", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x58A220", "size": 5, "kind": "sdk-patch-nop"},
+        {"rva": "0x58BC65", "size": 2, "kind": "sdk-patch-bytes"},
+        {"rva": "0x58BC90", "size": 30, "kind": "sdk-patch-bytes"}
+      ],
+      "dynamicAllocations": [
+        {"kind": "rel32-relay-page", "allocation": "one system page near the affix generation sites", "usedBytes": 128}
+      ]
+    }
+  ],
+  "memoryPatchArtifacts": [
+    {"artifact": "patches/ruffneckk-enemy-resistance-vs-immunes.json", "behaviorId": "enemy-resistance-affects-immunes", "fixedWrites": [
+      {"rva": "0x44F8F1", "size": 2, "kind": "memory-patch-bytes"}
+    ]},
+    {"artifact": "patches/ruffneckk-extended-gold-pickup.json", "behaviorId": "extended-gold-pickup", "fixedWrites": [
+      {"rva": "0x18B06C", "size": 6, "kind": "memory-patch-nop"},
+      {"rva": "0x18B07F", "size": 6, "kind": "memory-patch-nop"},
+      {"rva": "0x4BA0B3", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x4BA0DA", "size": 1, "kind": "memory-patch-write-u8"}
+    ]},
+    {"artifact": "patches/ruffneckk-gamble-screen-limit.json", "behaviorId": "gamble-screen-limit", "fixedWrites": [
+      {"rva": "0x541A7C", "size": 9, "kind": "memory-patch-bytes"}
+    ]},
+    {"artifact": "patches/ruffneckk-gold-capacities.json", "behaviorId": "gold-capacities", "fixedWrites": [
+      {"rva": "0x34B332", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x133963", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x34B2FB", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x34B311", "size": 4, "kind": "memory-patch-write-u32"}
+    ]},
+    {"artifact": "patches/ruffneckk-ground-item-label-limit-128.json", "behaviorId": "ground-item-label-limit", "selectionGroup": "ground-item-label-limit", "fixedWrites": [
+      {"rva": "0x1516EBE", "size": 4, "kind": "memory-patch-bytes"},
+      {"rva": "0x1516ED1", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x1516F43", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x1519A1B", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x1519A4F", "size": 4, "kind": "memory-patch-bytes"},
+      {"rva": "0x1519AAA", "size": 4, "kind": "memory-patch-bytes"},
+      {"rva": "0x1519AF9", "size": 6, "kind": "memory-patch-bytes"}
+    ]},
+    {"artifact": "patches/ruffneckk-ground-item-label-limit-64.json", "behaviorId": "ground-item-label-limit", "selectionGroup": "ground-item-label-limit", "fixedWrites": [
+      {"rva": "0x1516EC1", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x1516ED1", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x1516F43", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x1519A1B", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x1519A52", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x1519AAD", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x1519AFE", "size": 1, "kind": "memory-patch-write-u8"}
+    ]},
+    {"artifact": "patches/ruffneckk-hireling-ai.json", "behaviorId": "hireling-ai", "fixedWrites": [
+      {"rva": "0x5BEC27", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x5BEC21", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x5BF734", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x5BF732", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x5BF83B", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x5BF7FD", "size": 1, "kind": "memory-patch-write-u8"}
+    ]},
+    {"artifact": "patches/ruffneckk-hit-chance-0-100.json", "behaviorId": "hit-chance-zero-to-one-hundred", "fixedWrites": [
+      {"rva": "0x14E801A", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x44BD57", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x14E8068", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x15149C2", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x44BD45", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x14E8073", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x15149CD", "size": 4, "kind": "memory-patch-write-u32"}
+    ]},
+    {"artifact": "patches/ruffneckk-infinite-quantities.json", "behaviorId": "infinite-quantities", "fixedWrites": [
+      {"rva": "0x43921F", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x5817BD", "size": 6, "kind": "memory-patch-bytes"}
+    ]},
+    {"artifact": "patches/ruffneckk-infinite-quest-rewards.json", "behaviorId": "infinite-quest-rewards", "fixedWrites": [
+      {"rva": "0x547C87", "size": 5, "kind": "memory-patch-nop"},
+      {"rva": "0x547C98", "size": 5, "kind": "memory-patch-nop"},
+      {"rva": "0x5DA20F", "size": 5, "kind": "memory-patch-nop"},
+      {"rva": "0x5DA220", "size": 5, "kind": "memory-patch-nop"},
+      {"rva": "0x4FD1E6", "size": 5, "kind": "memory-patch-nop"},
+      {"rva": "0x4FD598", "size": 5, "kind": "memory-patch-nop"}
+    ]},
+    {"artifact": "patches/ruffneckk-itd-vs-champions-uniques.json", "behaviorId": "itd-vs-champions-and-uniques", "fixedWrites": [
+      {"rva": "0x450410", "size": 2, "kind": "memory-patch-nop"}
+    ]},
+    {"artifact": "patches/ruffneckk-level-100-plus.json", "behaviorId": "character-levels-100-plus", "fixedWrites": [
+      {"rva": "0x404D50", "size": 6, "kind": "memory-patch-nop"}
+    ]},
+    {"artifact": "patches/ruffneckk-linear-magic-find.json", "behaviorId": "linear-magic-find", "fixedWrites": [
+      {"rva": "0x4423CD", "size": 2, "kind": "memory-patch-nop"},
+      {"rva": "0x44246A", "size": 2, "kind": "memory-patch-nop"},
+      {"rva": "0x4424F7", "size": 2, "kind": "memory-patch-nop"}
+    ]},
+    {"artifact": "patches/ruffneckk-maximum-staffmods.json", "behaviorId": "maximum-staffmods", "fixedWrites": [
+      {"rva": "0x58AFCA", "size": 2, "kind": "memory-patch-nop"}
+    ]},
+    {"artifact": "patches/ruffneckk-no-run-penalties.json", "behaviorId": "no-run-penalties", "fixedWrites": [
+      {"rva": "0x44B7E1", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x44B9B9", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x14E5F3E", "size": 1, "kind": "memory-patch-write-u8"}
+    ]},
+    {"artifact": "patches/ruffneckk-normal-area-scaling.json", "behaviorId": "normal-area-scaling", "fixedWrites": [
+      {"rva": "0x543D32", "size": 5, "kind": "memory-patch-bytes"}
+    ]},
+    {"artifact": "patches/ruffneckk-player-difficulty-overrides.json", "behaviorId": "player-difficulty-overrides", "fixedWrites": [
+      {"rva": "0x425A69", "size": 3, "kind": "memory-patch-bytes"},
+      {"rva": "0x188860", "size": 20, "kind": "memory-patch-bytes"},
+      {"rva": "0x346ED", "size": 17, "kind": "memory-patch-bytes"},
+      {"rva": "0x3474E", "size": 5, "kind": "memory-patch-bytes"},
+      {"rva": "0xE1A09", "size": 21, "kind": "memory-patch-bytes"},
+      {"rva": "0xE1A57", "size": 5, "kind": "memory-patch-bytes"}
+    ]},
+    {"artifact": "patches/ruffneckk-preserve-terror-zone-music.json", "behaviorId": "preserve-terror-zone-area-music", "fixedWrites": [
+      {"rva": "0x20C4EF", "size": 6, "kind": "memory-patch-nop"}
+    ]},
+    {"artifact": "patches/ruffneckk-quantity-display-fix.json", "behaviorId": "quantity-display-fix", "fixedWrites": [
+      {"rva": "0x2BE103", "size": 33, "kind": "memory-patch-bytes"}
+    ]},
+    {"artifact": "patches/ruffneckk-thorns-burn-kill-credit.json", "behaviorId": "thorns-and-burn-kill-credit", "fixedWrites": [
+      {"rva": "0x43975A", "size": 5, "kind": "memory-patch-bytes"},
+      {"rva": "0x448DCA", "size": 8, "kind": "memory-patch-bytes"},
+      {"rva": "0x448DE5", "size": 24, "kind": "memory-patch-bytes"}
+    ]}
+  ],
+  "selectionGroups": [
+    {
+      "id": "ground-item-label-limit",
+      "selectionRule": "exactly-one-at-runtime",
+      "artifacts": [
+        "patches/ruffneckk-ground-item-label-limit-64.json",
+        "patches/ruffneckk-ground-item-label-limit-128.json"
+      ]
+    }
+  ],
+  "externalPlugins": [
+    {
+      "id": "bindandsummon",
+      "sha256": "AEEABBE6371510859E2CA1117BBE116B98691FA3F45FC4A9BF616B43F7A6EB7A",
+      "fixedWrites": [
+        {"rva": "0x349860", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x432B70", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x4350E0", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x483B20", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x485350", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x492CF0", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x4FF1A0", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x501550", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x531510", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x533AE0", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x55A5D0", "size": 5, "kind": "external-inline-hook"}
+      ]
+    },
+    {
+      "id": "cube-output-quantity",
+      "sha256": "105482DE46732DA5FC8A0C9245CC059D3E406AE18028439625EC602D00A74B30",
+      "fixedWrites": [
+        {"rva": "0x36CFE0", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x472590", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x5269C0", "size": 5, "kind": "external-inline-hook"}
+      ],
+      "validatedCallThroughRvas": ["0x314110", "0x34A360", "0x388C10", "0x38ABA0"]
+    },
+    {
+      "id": "monsterdisplay",
+      "sha256": "0E66049A6E359A58CD926A00B8316401B04F4C7756DA3655053C1278173E5AA0",
+      "fixedWrites": [
+        {"rva": "0x12C190", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x47C570", "size": 5, "kind": "external-inline-hook"},
+        {"rva": "0x59CC90", "size": 5, "kind": "external-inline-hook"}
+      ]
+    }
+  ],
+  "composableCallThroughs": [
+    {
+      "entryRva": "0x0EE2A0",
+      "ownerPluginId": "ruffneckk-equipped-item-to-cube",
+      "consumerPluginIds": ["ruffneckk-mass-identify", "ruffneckk-remote-stash"],
+      "consumerContract": "call-current-live-entry",
+      "requiresVanillaEntry": false
+    },
+    {
+      "entryRva": "0x373890",
+      "ownerPluginId": "ruffneckk-ethereal-item-rules",
+      "consumerPluginIds": ["ruffneckk-charm-aura-trigger-fix", "ruffneckk-enhanced-damage-min-max-fix", "ruffneckk-progressive-affixes"],
+      "consumerContract": "call-current-live-entry",
+      "requiresVanillaEntry": false
+    },
+    {
+      "entryRva": "0x2F48C0",
+      "ownerPluginId": "ruffneckk-item-durability",
+      "consumerPluginIds": ["ruffneckk-repair-costs-cap", "ruffneckk-prevent-merc-death-in-town"],
+      "consumerContract": "call-current-live-entry",
+      "requiresVanillaEntry": false
+    }
+  ]
+}

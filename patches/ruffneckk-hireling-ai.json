@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "name": "Hireling AI Tuning",
+  "description": "Adjusts ranged-hireling follow distances, activity, and retreat behavior. Coupled values are documented in the central README.",
+  "patches": [
+    {
+      "description": "Shorten moving-owner follow distance from 16 to 8",
+      "op": "write-u32",
+      "rva": "0x5BEC27",
+      "value": "0x00000008",
+      "expected": "10 00 00 00"
+    },
+    {
+      "description": "Shorten forced catch-up distance from 24 to 16",
+      "op": "write-u32",
+      "rva": "0x5BEC21",
+      "value": "0x00000010",
+      "expected": "18 00 00 00"
+    },
+    {
+      "description": "Raise ranged-hireling activity cap from 95 to 98",
+      "op": "write-u32",
+      "rva": "0x5BF734",
+      "value": "0x00000062",
+      "expected": "5F 00 00 00"
+    },
+    {
+      "description": "Port the legacy formula offset 49 after the 3.2 compiler-folded x2, changing 40 to 98",
+      "op": "write-u8",
+      "rva": "0x5BF732",
+      "value": "0x62",
+      "expected": "28"
+    },
+    {
+      "description": "Raise ranged-hireling retreat chance from 50 to 80",
+      "op": "write-u8",
+      "rva": "0x5BF83B",
+      "value": "0x50",
+      "expected": "32"
+    },
+    {
+      "description": "Raise ranged-hireling retreat distance from 4 to 6",
+      "op": "write-u8",
+      "rva": "0x5BF7FD",
+      "value": "0x06",
+      "expected": "04"
+    }
+  ]
+}

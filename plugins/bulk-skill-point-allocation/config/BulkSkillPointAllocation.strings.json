@@ -1,0 +1,8 @@
+{
+    // Diablo resolves this key in the language currently selected by the player.
+    // Add the key to the active mod's data/local/lng/strings/ui.json file.
+    "shiftConfirmationKey": "shiftConfirmation",
+
+    // English text used only when the localization key is missing or unresolved.
+    "shiftConfirmationFallback": "Invest all currently usable skill points in this skill?"
+}

@@ -1,0 +1,141 @@
+# Floating Damage
+# Shows visual-only combat numbers and an optional rolling DPS counter.
+# Changes take effect after restarting D2R unless you use the plugin console commands.
+
+[general]
+# Master switch. Set to false and restart D2R to load no renderer or combat hook.
+enabled = true
+
+# Safety limit for active and queued numbers. Valid range: 1 to 4096.
+max_numbers_on_screen = 160
+
+# Windows font index:
+# 0 Segoe UI, 1 Arial, 2 Calibri, 3 Georgia, 4 Verdana, 5 Tahoma,
+# 6 Trebuchet MS, 7 Consolas, 8 Times New Roman, 9 Courier New,
+# 10 Comic Sans MS, 11 Impact, 12 Kodia.
+# Kodia is read from the active mod at data/hd/ui/fonts/kodia.ttf and is not
+# bundled. If it cannot be loaded, index 12 safely falls back to index 0.
+font_index = 0
+
+# false uses the normal/critical colors for every hit. true uses the physical,
+# fire, lightning, cold, poison, and magic colors below.
+color_by_damage_type = false
+
+[hotkey]
+# Lets the shortcut hide or show the numbers for the current game session.
+# The key is not consumed, so D2R still receives the same input.
+toggle_hotkey_enabled = true
+
+# Main keys: A-Z, 0-9, F1-F24, Space, Tab, navigation keys, punctuation,
+# or Mouse3-Mouse5. Ctrl, Shift, and Alt modifiers are supported.
+# Examples: "SHIFT+Z", "CTRL+F5", "MOUSE4".
+toggle_hotkey = "SHIFT+Z"
+
+[appearance]
+# Text sizes use 2160p reference pixels and scale automatically with display
+# height (1080p = 0.5x, 1440p = 0.667x, 2160p = 1x; minimum scale is 720p).
+# Valid size range: 1 to 512.
+text_size = 38.0
+critical_hit_size = 48.0
+
+# Outline width: 0 disables the outline; valid range is 0 to 16.
+text_outline_width = 1
+
+# Shadow offsets use reference pixels. Zero keeps the shipped compact shadow.
+# Valid range for each offset: -512 to 512.
+shadow_left_right_offset = 0.0
+shadow_up_down_offset = 0.0
+
+[animation]
+# Total lifetime in seconds for normal and critical numbers: 0.01 to 60.
+display_time_seconds = 0.85
+critical_display_time_seconds = 0.95
+
+# Fraction of the lifetime at which fading begins: 0.0 to 1.0.
+fade_out_start = 0.75
+
+# Pop animation scale: 0.001 to 16, where 1.0 is full size.
+# Pop-in and settle times accept 0 to 10 seconds.
+spawn_size = 0.01
+pop_bounce_size = 1.75
+pop_in_time_seconds = 0.08
+settle_time_seconds = 0.12
+
+# Motion values are screen pixels per second or screen-pixel offsets; unlike
+# text size, they do not scale automatically with resolution.
+# Valid range for each motion value: -4096 to 4096.
+upward_drift_speed = 45.0
+sideways_spread = 0.0
+spawn_height_offset = 0.0
+
+[combining]
+# Combines rapid hits against the same monster into one running total.
+# The maximum total accepts any whole number from 1 to 2,147,483,647.
+enable_hit_combining = true
+max_combined_hit_size = 999999
+
+# Hits arriving inside this window, in milliseconds, are combined: 0 to 60000.
+combine_window_ms = 500
+
+# Extends and pulses the combined number after another hit is added.
+# Extension: 0 to 60 seconds. Pulse size: 0.001 to 16.
+# Pulse time: 0 to 10 seconds.
+extend_display_on_hit_seconds = 0.52
+hit_pulse_size = 1.24
+hit_pulse_time_seconds = 0.13
+
+# Shows each added hit as a smaller travelling number beside the combined total.
+# Time: 0.01 to 60 seconds. Size: 0.001 to 16.
+# Travel and height offset: -4096 to 4096.
+show_tick_popups = true
+tick_popup_time_seconds = 0.70
+tick_popup_size = 0.60
+tick_popup_travel = 64.0
+tick_popup_height_offset = -28.0
+
+[layout]
+# Spreads simultaneous targets across columns to reduce overlapping numbers.
+# Columns: 1 to 64. Spacing and stack step: -4096 to 4096.
+# Reuse time: 0 to 60 seconds. Maximum stack height: 0 to 4096.
+spread_numbers_horizontally = true
+number_of_columns = 7
+column_spacing = 40.0
+stack_height_step = 24.0
+column_reuse_time_seconds = 0.60
+max_stack_height = 96.0
+
+[dps]
+# The DPS counter is visible only while in a game, never in the lobby.
+show_dps_counter = true
+
+# Screen position in percent: 0 is left/top and 100 is right/bottom.
+horizontal_position_percent = 2.0
+vertical_position_percent = 98.0
+
+# Rolling DPS sample duration in seconds. Valid range: 0.01 to 600.
+dps_sample_time_seconds = 5.0
+
+[preview]
+# Used by the settings preview and the "floating-damage preview" command.
+# Number count: 1 to 1024. Spread: 0 to 4096 reference pixels.
+preview_number_count = 8
+preview_spread = 32.0
+
+[diagnostics]
+# Logs bounded renderer, projection, and first-hit details for troubleshooting.
+# Errors, warnings, startup messages, and the status command remain available
+# when this is false. Leave disabled for normal play.
+enabled = false
+
+[colors]
+# RGBA values: [red, green, blue, opacity], each from 0.0 to 1.0.
+normal = [0.92, 0.92, 0.88, 1.0]
+critical = [1.0, 0.84, 0.27, 1.0]
+physical = [0.92, 0.92, 0.88, 1.0]
+fire = [1.0, 0.45, 0.12, 1.0]
+lightning = [1.0, 0.95, 0.35, 1.0]
+cold = [0.45, 0.78, 1.0, 1.0]
+poison = [0.35, 0.90, 0.30, 1.0]
+magic = [0.72, 0.45, 1.0, 1.0]
+outline = [0.16, 0.11, 0.03, 1.0]
+shadow = [0.16, 0.11, 0.02, 1.0]

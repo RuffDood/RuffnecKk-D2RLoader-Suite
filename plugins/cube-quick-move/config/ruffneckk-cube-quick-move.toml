@@ -1,0 +1,13 @@
+# Cube Quick Move
+# Makes quick-moved items fill the Horadric Cube from the bottom-right instead
+# of using the normal top-left placement order.
+
+[plugin]
+# Changes are read when the plugin loads. Restart D2R after editing this file.
+# Master switch. Set to false to load the DLL without installing game hooks.
+enabled = true
+
+[diagnostics]
+# Logs the first few successful bottom-right Cube placements. Safe fallbacks
+# remain visible in the plugin's status counters without adding log spam.
+enabled = false

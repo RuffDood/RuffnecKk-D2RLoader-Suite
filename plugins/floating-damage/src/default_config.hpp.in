@@ -1,0 +1,7 @@
+#pragma once
+
+namespace RuffnecKk::FloatingDamage {
+
+inline constexpr char DefaultConfigToml[] = R"fd_toml(@FLOATING_DAMAGE_DEFAULT_TOML@)fd_toml";
+
+} // namespace RuffnecKk::FloatingDamage

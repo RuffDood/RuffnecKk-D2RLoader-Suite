@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "name": "Infinite Quest Rewards",
+  "description": "Prevents Anya personalization, Charsi imbue, and Larzuk socketing rewards from consuming their quest-state charges.",
+  "patches": [
+    {
+      "description": "Skip Anya personalization quest-state set",
+      "op": "nop",
+      "rva": "0x547C87",
+      "size": 5,
+      "expected": "E8 74 DF DD FF"
+    },
+    {
+      "description": "Skip Anya personalization quest-state clear",
+      "op": "nop",
+      "rva": "0x547C98",
+      "size": 5,
+      "expected": "E8 F3 DC DD FF"
+    },
+    {
+      "description": "Skip Charsi imbue quest-state set",
+      "op": "nop",
+      "rva": "0x5DA20F",
+      "size": 5,
+      "expected": "E8 EC B9 D4 FF"
+    },
+    {
+      "description": "Skip Charsi imbue quest-state clear",
+      "op": "nop",
+      "rva": "0x5DA220",
+      "size": 5,
+      "expected": "E8 6B B7 D4 FF"
+    },
+    {
+      "description": "Skip Larzuk quest 35 completion in the first socket-reward path",
+      "op": "nop",
+      "rva": "0x4FD1E6",
+      "size": 5,
+      "expected": "E8 75 B9 04 00"
+    },
+    {
+      "description": "Skip Larzuk quest 35 completion in the second socket-reward path",
+      "op": "nop",
+      "rva": "0x4FD598",
+      "size": 5,
+      "expected": "E8 C3 B5 04 00"
+    }
+  ]
+}

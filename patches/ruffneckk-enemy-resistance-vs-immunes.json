@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "Enemy Resistance Reduction Affects Immunes",
+  "description": "Allows item and skill -Enemy Resistance effects to run against monsters whose resistance is at least 100.",
+  "patches": [
+    {
+      "description": "Always enter the enemy-resistance reduction path",
+      "op": "bytes",
+      "rva": "0x44F8F1",
+      "expected": "7C 0A",
+      "bytes": "EB 0A"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "Preserve Area Music in Terror Zones",
+  "description": "Keeps each area's normal music when it becomes terrorized.",
+  "patches": [
+    {
+      "description": "Keep the inherited base environment song instead of music_desecrated",
+      "op": "nop",
+      "rva": "0x20C4EF",
+      "size": 6,
+      "expected": "89 05 1F B5 88 02"
+    }
+  ]
+}

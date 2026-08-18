@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "targetGameBuild": 92777,
+  "status": "required-full-suite-runtime-qualification-pending",
+  "policy": {
+    "requiredTogether": true,
+    "disableForGreenRunAllowed": false,
+    "staticNoOverlapRequired": true,
+    "coldStartRequired": true,
+    "gameplayRequired": true,
+    "networkCasesRequiredWhenAuthoritativeStateIsAffected": true
+  },
+  "plugins": [
+    {
+      "id": "bindandsummon",
+      "name": "Bind And Summon",
+      "author": "yinyin333333",
+      "version": "1.2.3",
+      "apiVersion": 2,
+      "flagsHex": "0x0000000E",
+      "sha256": "AEEABBE6371510859E2CA1117BBE116B98691FA3F45FC4A9BF616B43F7A6EB7A",
+      "size": 196096,
+      "file": "BindAndSummon.dll",
+      "scope": "global",
+      "inlineHookRvas": [
+        "0x349860",
+        "0x432B70",
+        "0x4350E0",
+        "0x483B20",
+        "0x485350",
+        "0x492CF0",
+        "0x4FF1A0",
+        "0x501550",
+        "0x531510",
+        "0x533AE0",
+        "0x55A5D0"
+      ],
+      "evidence": "D2RLoader 1.1 runtime log plus byte-identical live and isolated DLLs on 2026-08-15"
+    },
+    {
+      "id": "cube-output-quantity",
+      "name": "Cube Output Quantity",
+      "author": "yinyin333333",
+      "version": "1.0.2",
+      "apiVersion": 2,
+      "flagsHex": "0x0000000E",
+      "sha256": "105482DE46732DA5FC8A0C9245CC059D3E406AE18028439625EC602D00A74B30",
+      "size": 16384,
+      "file": "CubeOutputQuantity.dll",
+      "scope": "global",
+      "inlineHookRvas": [
+        "0x36CFE0",
+        "0x472590",
+        "0x5269C0"
+      ],
+      "validatedCallThroughRvas": [
+        "0x314110",
+        "0x34A360",
+        "0x388C10",
+        "0x38ABA0"
+      ],
+      "evidence": "D2RLoader 1.1 load log, governed MassID and Item Durability coexistence missions, and static disassembly of the pinned DLL"
+    },
+    {
+      "id": "monsterdisplay",
+      "name": "Monster Display",
+      "author": "yinyin333333",
+      "version": "1.5.8-altf4-teardown-fix",
+      "apiVersion": 2,
+      "flagsHex": "0x0000000E",
+      "sha256": "0E66049A6E359A58CD926A00B8316401B04F4C7756DA3655053C1278173E5AA0",
+      "size": 214016,
+      "file": "monsterdisplay.dll",
+      "scope": "global",
+      "inlineHookRvas": [
+        "0x12C190",
+        "0x47C570",
+        "0x59CC90"
+      ],
+      "evidence": "D2RLoader 1.1 runtime log plus byte-identical live and isolated DLLs on 2026-08-15"
+    }
+  ],
+  "requiredRuntimeCases": [
+    "All Suite DLLs and selected memory patches load with all three pinned yinyin plugins active.",
+    "Bind And Summon binding and summoning behavior remains usable, including Larzuk Sockets coexistence.",
+    "Cube Output Quantity still produces configured cube quantities while Mass Identify and Item Durability remain active.",
+    "Monster Display renders and shuts down normally while Floating Damage and other UI plugins remain active.",
+    "No Suite component requires vanilla bytes at a yinyin-owned entry or silently skips an enabled feature."
+  ]
+}

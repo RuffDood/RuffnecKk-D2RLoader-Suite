@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "name": "Linear Magic Find",
+  "description": "Removes diminishing returns from positive Magic Find for unique, set, and rare items.",
+  "patches": [
+    {
+      "description": "Remove diminishing returns for unique items",
+      "op": "nop",
+      "rva": "0x4423CD",
+      "size": 2,
+      "expected": "7F 04"
+    },
+    {
+      "description": "Remove diminishing returns for set items",
+      "op": "nop",
+      "rva": "0x44246A",
+      "size": 2,
+      "expected": "7F 04"
+    },
+    {
+      "description": "Remove diminishing returns for rare items",
+      "op": "nop",
+      "rva": "0x4424F7",
+      "size": 2,
+      "expected": "7F 04"
+    }
+  ]
+}

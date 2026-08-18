@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "Normal Area Level Scaling",
+  "description": "Uses Normal area levels when a positive room LevelId is available.",
+  "patches": [
+    {
+      "description": "Use area scaling for positive LevelIds and the base monster level otherwise",
+      "op": "bytes",
+      "rva": "0x543D32",
+      "expected": "45 85 FF 74 19",
+      "bytes": "45 85 F6 7E 19"
+    }
+  ]
+}

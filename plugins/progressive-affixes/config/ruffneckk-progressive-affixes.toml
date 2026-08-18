@@ -1,0 +1,47 @@
+# Progressive Affixes
+# Increases the number of affixes generated as an item's hidden item level
+# (ilvl) rises. It does not change which affixes are eligible to roll.
+# Restart D2R after editing this file.
+
+[plugin]
+# Master switch. false keeps vanilla affix-count generation and installs no patch.
+enabled = true
+
+[magic]
+# At or above each ilvl, Magic items in that group are forced to roll both one
+# prefix and one suffix. Below the threshold, D2R keeps its vanilla roll.
+# Valid ilvl values are 1 to 255.
+weapons_and_armor = 65
+jewels_rings_and_amulets = 85
+charms = 90
+
+[rare_jewels]
+# Each row starts at the ilvl written in its name and remains active until the
+# next row. Values are [chance for 3 affixes, chance for 4 affixes].
+# Percentages may use up to two decimals and every row must total exactly 100.
+from_level_1  = [50,   50]
+from_level_45 = [37.5, 62.5]
+from_level_65 = [25,   75]
+from_level_85 = [0,    100]
+
+[regular_rare_items]
+# Applies to every Rare item except Rare Jewels.
+# Values are [chance for 3, 4, 5, and 6 affixes] and must total exactly 100.
+from_level_1  = [12.5, 37.5, 37.5, 12.5]
+from_level_45 = [0,    25,   50,   25]
+from_level_65 = [0,    0,    50,   50]
+from_level_85 = [0,    0,    0,    100]
+
+[crafted]
+# Controls only the random affixes added beside a recipe's fixed properties.
+# Values are [chance for 1, 2, 3, and 4 random affixes] and must total 100.
+from_level_1  = [40, 20, 20, 20]
+from_level_31 = [0,  60, 20, 20]
+from_level_51 = [0,  0,  80, 20]
+from_level_71 = [0,  0,  0,  100]
+
+[diagnostics]
+# Logs one bounded sample for type resolution and each quality selection.
+# Errors, warnings, startup messages, and the status command remain available
+# when this is false. Leave disabled for normal play.
+enabled = false

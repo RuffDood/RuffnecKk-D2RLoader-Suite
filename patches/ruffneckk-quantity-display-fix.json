@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "Quantity Display Fix",
+  "description": "Keeps quantity visible on socketed stackable items such as throwing weapons.",
+  "patches": [
+    {
+      "description": "Remove only the socketed-item quantity suppression branch",
+      "op": "bytes",
+      "rva": "0x2BE103",
+      "expected": "BA 00 08 00 00 41 B8 2F 07 00 00 48 8B CB E8 BA 01 0B 00 85 C0 75 0F 4C 8B C7 48 8D 55 D0 48 8B CB",
+      "bytes": "BA 00 08 00 00 41 B8 2F 07 00 00 48 8B CB E8 BA 01 0B 00 85 C0 90 90 4C 8B C7 48 8D 55 D0 48 8B CB"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "Gold Capacities",
+  "description": "Sets character gold to level x 100000 and stash capacity to 25000000. The three stash values must match when customized.",
+  "patches": [
+    {
+      "description": "Set the per-level character gold multiplier to 100000",
+      "op": "write-u32",
+      "rva": "0x34B332",
+      "value": "0x000186A0",
+      "expected": "10 27 00 00"
+    },
+    {
+      "description": "Set stash gold comparison cap to 25000000",
+      "op": "write-u32",
+      "rva": "0x133963",
+      "value": "0x017D7840",
+      "expected": "A0 25 26 00"
+    },
+    {
+      "description": "Set stash gold multiplication cap to 25000000",
+      "op": "write-u32",
+      "rva": "0x34B2FB",
+      "value": "0x017D7840",
+      "expected": "A0 25 26 00"
+    },
+    {
+      "description": "Set stash gold returned cap to 25000000",
+      "op": "write-u32",
+      "rva": "0x34B311",
+      "value": "0x017D7840",
+      "expected": "A0 25 26 00"
+    }
+  ]
+}

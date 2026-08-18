@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "Force Maximum Staffmods",
+  "description": "Forces applicable items to roll three staffmods while preserving the vanilla +1 to +3 bonus roll for each randomly selected skill.",
+  "patches": [
+    {
+      "description": "Force the maximum staffmod count of three",
+      "op": "nop",
+      "rva": "0x58AFCA",
+      "size": 2,
+      "expected": "7E 0B"
+    }
+  ]
+}

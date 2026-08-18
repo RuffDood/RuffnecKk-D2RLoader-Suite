@@ -1,0 +1,13 @@
+# Charm Aura Trigger Fix
+# Reactivates aura effects granted by identified charms after zone changes,
+# corpse recovery, and town respawns.
+
+[plugin]
+# Changes are read when the plugin loads. Restart D2R after editing this file.
+# Master switch. Set to false to load the DLL without installing game hooks.
+enabled = true
+
+[diagnostics]
+# Logs a short summary for the first few charm-aura refreshes of the session.
+# Keep this false for normal play; errors and the status command remain available.
+enabled = false

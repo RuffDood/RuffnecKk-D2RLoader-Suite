@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "name": "Hit Chance Bounds",
+  "description": "Replaces vanilla's 5%-95% hit-chance caps with 0%-100%. Lower values and upper values must respectively match when customized.",
+  "patches": [
+    {
+      "description": "Allow the Character Screen to reach the patched 0% display lower bound",
+      "op": "write-u8",
+      "rva": "0x14E801A",
+      "value": "0xEB",
+      "expected": "75"
+    },
+    {
+      "description": "Set gameplay lower bound path 1 to 0",
+      "op": "write-u32",
+      "rva": "0x44BD57",
+      "value": "0x00000000",
+      "expected": "05 00 00 00"
+    },
+    {
+      "description": "Set display lower bound path to 0",
+      "op": "write-u8",
+      "rva": "0x14E8068",
+      "value": "0x00",
+      "expected": "05"
+    },
+    {
+      "description": "Set gameplay lower bound path 2 to 0",
+      "op": "write-u8",
+      "rva": "0x15149C2",
+      "value": "0x00",
+      "expected": "05"
+    },
+    {
+      "description": "Set gameplay upper bound path 1 to 100",
+      "op": "write-u32",
+      "rva": "0x44BD45",
+      "value": "0x00000064",
+      "expected": "5F 00 00 00"
+    },
+    {
+      "description": "Set display upper bound path to 100",
+      "op": "write-u32",
+      "rva": "0x14E8073",
+      "value": "0x00000064",
+      "expected": "5F 00 00 00"
+    },
+    {
+      "description": "Set gameplay upper bound path 2 to 100",
+      "op": "write-u32",
+      "rva": "0x15149CD",
+      "value": "0x00000064",
+      "expected": "5F 00 00 00"
+    }
+  ]
+}

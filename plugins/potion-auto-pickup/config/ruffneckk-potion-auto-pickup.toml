@@ -1,0 +1,52 @@
+# Potion Auto Pickup
+# Automatically picks up only the exact potion codes and destinations below.
+# Potion codes are the values from the code column in misc.txt.
+# Changes take effect after fully closing and restarting Diablo II: Resurrected.
+
+# Master switch. Set to false to install no hooks or patches.
+enabled = true
+# Maximum native D2R grid-distance cost from the player, inclusive.
+# Accepted range: 1 through 4. Vanilla automatic gold pickup uses 4.
+pickup_range = 4
+# When several potion families are eligible, entries are checked left to right.
+# Valid names: "health", "mana", "rejuvenation".
+pickup_family_order = []
+
+[health_potions]
+enabled = false
+# Exact misc.txt potion codes, ordered from highest to lowest pickup priority.
+# Valid codes: hp1, hp2, hp3, hp4, hp5.
+potion_codes = []
+# Preferred belt columns, ordered from first choice to last choice.
+# Valid columns: 1 (leftmost) through 4 (rightmost).
+belt_columns = []
+# Codes allowed into character inventory only when no configured belt column
+# has room. Every code here must also be listed in potion_codes.
+inventory_fallback_potion_codes = []
+
+[mana_potions]
+enabled = false
+# Valid codes: mp1, mp2, mp3, mp4, mp5.
+potion_codes = []
+belt_columns = []
+inventory_fallback_potion_codes = []
+
+[rejuvenation_potions]
+enabled = false
+# Valid codes: rvs (Rejuvenation), rvl (Full Rejuvenation).
+potion_codes = []
+belt_columns = []
+inventory_fallback_potion_codes = []
+
+[advanced]
+# Scan once per this many supported player actions. Accepted range: 1 to 25.
+# Use 1 for the most responsive pickup; higher values reduce scan frequency.
+scan_every_player_actions = 1
+
+[diagnostics]
+# Log rate-limited selected-route details. Startup, warnings, errors, and the
+# "potion-auto-pickup" status command remain available when this is false.
+enabled = false
+# Also log rate-limited scan summaries, including scans selecting no potion.
+# This option has no effect unless diagnostics.enabled is true.
+log_scans = false

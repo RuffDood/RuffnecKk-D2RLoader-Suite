@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "Extended Automatic Gold Pickup Range",
+  "description": "Greatly increases automatic gold pickup range. When customized, both 0x14 value fields must remain identical; see the central README.",
+  "patches": [
+    {
+      "description": "Skip the first autogold distance rejection",
+      "op": "nop",
+      "rva": "0x18B06C",
+      "size": 6,
+      "expected": "0F 87 3D 01 00 00"
+    },
+    {
+      "description": "Skip the second autogold distance rejection",
+      "op": "nop",
+      "rva": "0x18B07F",
+      "size": 6,
+      "expected": "0F 87 2A 01 00 00"
+    },
+    {
+      "description": "Raise the server distance-cost limit from 4 to 20",
+      "op": "write-u8",
+      "rva": "0x4BA0B3",
+      "value": "0x14",
+      "expected": "04"
+    },
+    {
+      "description": "Pass a distance-cost limit of 20 to the pickup function",
+      "op": "write-u8",
+      "rva": "0x4BA0DA",
+      "value": "0x14",
+      "expected": "04"
+    }
+  ]
+}

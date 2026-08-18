@@ -1,0 +1,64 @@
+# Remote Stash
+# Opens the native personal and shared stash outside town.
+# Restart D2R after editing this file.
+
+# Master switch. false disables the complete plugin and installs no hook,
+# input action, or inventory-button listener.
+enabled = true
+
+# Creates the physical Inventory button. The plugin injects its own layout and
+# sprite, so no active-mod layout edit is required. Set this to false if you
+# use only the hotkey.
+inventory_button_enabled = true
+
+# Enables the configurable shortcut independently from the Inventory button.
+hotkey_enabled = true
+
+# Main keys: A-Z, 0-9, F1-F24, Space, Tab, Insert, Delete, Home, End,
+# PageUp, PageDown, semicolon, or Mouse3-Mouse5. Ctrl, Shift, and Alt are
+# optional. Examples: "SHIFT+R", ";", "CTRL+SHIFT+F5", "ALT+MOUSE4".
+hotkey = "SHIFT+R"
+
+# "remoteOnly" toggles only Remote Stash and preserves the Inventory state
+# that existed before opening it. The physical button always uses this mode.
+# "remoteAndInventory" makes the hotkey open and close both panels together.
+hotkey_mode = "remoteOnly"
+
+[button]
+# "auto" finds a safe desktop position from the active Inventory layout.
+# "custom" uses anchor and offsets exactly, including intentional overlaps.
+placement = "auto"
+
+# Anchor used by custom placement and as the fallback when automatic layout
+# anchors are unavailable: topLeft, topRight, bottomLeft, or bottomRight.
+anchor = "bottomLeft"
+
+# Signed local Inventory-layout offsets from the selected position or anchor.
+offset_x = 0
+offset_y = 0
+
+# Button hitbox and rendered size in Inventory-layout units.
+width = 176
+height = 112
+
+# Empty paths use the RuffnecKk chest sprites embedded in the DLL.
+# A relative path is resolved beside this TOML. Absolute paths are also valid.
+# Use forward slashes, escaped backslashes, or TOML literal strings.
+# Example: sprite_file = "sprites/my-remote-stash.sprite"
+sprite_file = ""
+
+# Optional low-end variant. When empty with a custom main sprite, the main
+# sprite is reused so the custom art remains available in low-end mode.
+lowend_sprite_file = ""
+
+# Zero-based sprite frames. Every configured frame must exist in the sprite.
+normal_frame = 0
+pressed_frame = 2
+disabled_frame = 1
+hovered_frame = 3
+
+[diagnostics]
+# Logs a bounded first-use trace and a final counter summary for troubleshooting.
+# Errors, warnings, startup messages, and the status command remain available
+# when this is false. Leave disabled for normal play.
+enabled = false

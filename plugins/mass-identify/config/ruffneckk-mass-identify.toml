@@ -1,0 +1,23 @@
+# Mass Identify
+# Hold Shift and right-click a Tome of Identify to identify eligible items.
+# Changes take effect after fully closing and restarting Diablo II: Resurrected.
+
+[mass_identify]
+# Master switch for this plugin. Set to false to install no hooks or listeners.
+enabled = true
+# When false, each newly identified item consumes one Tome charge. When true,
+# identification is free and works even when the Tome has no remaining charges.
+freeIdentification = false
+# Character inventory is always included. Enable any additional containers below.
+# The Cube is included even when its panel is closed.
+includeCube = false
+# Includes the current character's personal stash pages.
+includePersonalStash = false
+# Includes the shared stash pages available to the current game session.
+includeSharedStash = false
+
+[diagnostics]
+# Log rate-limited gesture, request, and identification-result details.
+# Startup, warnings, errors, and the "mass-id" status command remain available
+# even when this option is false.
+enabled = false

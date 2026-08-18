@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "name": "Increase Ground Item Label Cap to 128",
+  "description": "Raises both synchronized ground-item label collections from 32 to 128 entries.",
+  "patches": [
+    {
+      "description": "Compare the label-record count with 128 using a 16-bit immediate",
+      "op": "bytes",
+      "rva": "0x1516EBE",
+      "bytes": "66 3D 80 00",
+      "expected": "48 83 F8 20"
+    },
+    {
+      "description": "Move the 0x144-byte label-record truncation endpoint from 32 entries to 128 entries",
+      "op": "write-u32",
+      "rva": "0x1516ED1",
+      "value": "0x0000A200",
+      "expected": "80 28 00 00"
+    },
+    {
+      "description": "Grow the label-record collection to 128 entries instead of 32",
+      "op": "write-u32",
+      "rva": "0x1516F43",
+      "value": "0x00000080",
+      "expected": "20 00 00 00"
+    },
+    {
+      "description": "Enter layout-list normalization for source counts of 128 or more",
+      "op": "write-u8",
+      "rva": "0x1519A1B",
+      "value": "0x7F",
+      "expected": "20"
+    },
+    {
+      "description": "Compare the current layout-list count with 128 using a 16-bit immediate",
+      "op": "bytes",
+      "rva": "0x1519A4F",
+      "bytes": "66 3D 80 00",
+      "expected": "48 83 F8 20"
+    },
+    {
+      "description": "Stop growing the layout list when it reaches 128 entries",
+      "op": "bytes",
+      "rva": "0x1519AAA",
+      "bytes": "66 3D 80 00",
+      "expected": "48 83 F8 20"
+    },
+    {
+      "description": "Stop shrinking the bounded layout list when it reaches 128 entries",
+      "op": "bytes",
+      "rva": "0x1519AF9",
+      "bytes": "41 80 7C 24 10 80",
+      "expected": "49 83 7C 24 10 20"
+    }
+  ]
+}

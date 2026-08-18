@@ -1,0 +1,13 @@
+# Enhanced Damage Min/Max Fix
+# Restores off-weapon Enhanced Damage when the same item also adds minimum or
+# maximum damage. This fixes the classic ED + min/max damage interaction.
+
+[plugin]
+# Changes are read when the plugin loads. Restart D2R after editing this file.
+# Master switch. Set to false to load the DLL without installing game hooks.
+enabled = true
+
+[diagnostics]
+# Logs the first few suppressed Enhanced Damage updates restored by the fix.
+# Leave this false unless you are verifying an affected item.
+enabled = false

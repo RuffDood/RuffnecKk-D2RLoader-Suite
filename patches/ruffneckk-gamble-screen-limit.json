@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "Gamble Screen Limit",
+  "description": "Raises the number of items generated in a gamble screen from 14 to 32.",
+  "patches": [
+    {
+      "description": "Raise the gamble item loop limit while preserving its branch target",
+      "op": "bytes",
+      "rva": "0x541A7C",
+      "expected": "83 FD 0E 0F 8C DB FE FF FF",
+      "bytes": "83 FD 20 0F 8C DB FE FF FF"
+    }
+  ]
+}

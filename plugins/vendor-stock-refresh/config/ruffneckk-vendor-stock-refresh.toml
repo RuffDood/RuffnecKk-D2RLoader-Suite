@@ -1,0 +1,13 @@
+# Vendor Stock Refresh
+# Reuses the vendor refresh button to reroll normal shop stock without leaving
+# the vendor screen. Gambling keeps its original refresh behavior.
+
+[plugin]
+# Changes are read when the plugin loads. Restart D2R after editing this file.
+# Master switch. Set to false to load the DLL without installing game hooks.
+enabled = true
+
+[diagnostics]
+# Logs a bounded sample of button placement and normal-stock refresh requests.
+# Leave this false for normal play; failures are always reported.
+enabled = false

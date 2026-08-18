@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Infinite Item Quantity and Tomes",
+  "description": "Prevents arrows, bolts, throwing weapons, Town Portal tomes, and Identify tomes from consuming quantity.",
+  "patches": [
+    {
+      "description": "Change the weapon quantity delta from -1 to 0",
+      "op": "write-u8",
+      "rva": "0x43921F",
+      "value": "0x00",
+      "expected": "FF"
+    },
+    {
+      "description": "Change the Book quantity delta from -1 to 0 before the central item and bound-skill synchronization",
+      "op": "bytes",
+      "rva": "0x5817BD",
+      "expected": "41 B9 FF FF FF FF",
+      "bytes": "41 B9 00 00 00 00"
+    }
+  ]
+}

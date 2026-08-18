@@ -1,0 +1,32 @@
+# Build systems and IDE state
+/build/
+/plugins/*/build/
+/plugins/*/build-*/
+/out/
+/dist/
+/.deps/
+/.vs/
+/.vscode/
+/.idea/
+CMakeUserPresets.json
+*.user
+*.suo
+
+# Native build products
+*.dll
+*.exe
+*.exp
+*.ilk
+*.lib
+*.obj
+*.pdb
+
+# Generated release products
+*.zip
+*.sha256
+SHA256SUMS
+
+# Runtime evidence stays outside the public repository
+/logs/
+/runtime/
+/validation/

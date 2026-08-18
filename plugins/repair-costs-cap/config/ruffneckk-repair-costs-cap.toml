@@ -1,0 +1,30 @@
+# Repair Costs Cap
+# Limits NPC repair prices and can add permanent durability wear after repairs.
+# Changes take effect after fully closing and restarting Diablo II: Resurrected.
+
+[plugin]
+# Master switch for this plugin. Set to false to install no hooks or patches.
+enabled = true
+
+[repair_costs]
+# Enables the repair-price cap and the optional durability-wear rule below.
+# Leave this false to preserve all vanilla repair behavior.
+enabled = false
+# Maximum gold charged for one repaired item and for the final Repair All total.
+# Accepted range: 0 through 2147483647. The default effectively keeps vanilla
+# prices. Example: 50000 caps each quote and Repair All at 50,000 gold.
+maximum_gold = 2147483647
+
+[durability_wear]
+# Each successful physical repair may permanently remove one maximum durability.
+# This rule is active only when repair_costs.enabled is also true.
+enabled = false
+# Probability per physically repaired item. Accepted range: 0.0 through 1.0.
+# Examples: 0.05 = 5%, 0.25 = 25%, 1.0 = every eligible repair.
+chance = 0.0
+
+[diagnostics]
+# Log rate-limited price-cap and durability-wear decisions.
+# Startup, warnings, errors, and the "repair-costs-cap" status command remain
+# available even when this option is false.
+enabled = false

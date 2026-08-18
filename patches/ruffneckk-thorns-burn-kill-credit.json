@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "name": "Thorns and Burn Kill Credit",
+  "description": "Restores kill credit, experience, and death-trigger events for Thorns kills, and attributes lethal Burning damage to the unit that applied it.",
+  "patches": [
+    {
+      "description": "Remove the Thorns-only result flag that suppresses killed/kill events and their kill-credit path.",
+      "op": "bytes",
+      "rva": "0x43975A",
+      "expected": "B8 21 40 00 00",
+      "bytes": "B8 01 40 00 00"
+    },
+    {
+      "description": "Pack Poison, Open Wounds, and Burning state IDs into the lethal periodic-damage owner lookup table.",
+      "op": "bytes",
+      "rva": "0x448DCA",
+      "expected": "C7 44 24 40 02 00 00 00",
+      "bytes": "C7 44 24 40 02 3E 73 00"
+    },
+    {
+      "description": "Read the packed state IDs as bytes and scan all three states when resolving the owner of a periodic-damage kill.",
+      "op": "bytes",
+      "rva": "0x448DE5",
+      "expected": "8B 54 9C 40 48 8B CF E8 4F CB EA FF 48 FF C3 48 8B F0 48 83 FB 02 7C E3",
+      "bytes": "0F B6 54 1C 40 48 8B CF E8 4E CB EA FF FF C3 48 8B F0 48 83 FB 03 7C E3"
+    }
+  ]
+}

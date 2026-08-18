@@ -1,0 +1,37 @@
+# Item Durability
+# Controls durability loss, ethereal maximum durability, and ranged durability.
+# Changes take effect after fully closing and restarting Diablo II: Resurrected.
+
+[plugin]
+# Master switch for this plugin. Set to false to install no hooks.
+enabled = true
+
+[durability_loss]
+# Enables the two durability-loss resistance percentages below.
+# Leave this false to preserve the vanilla loss frequency.
+enabled = false
+# Chance to prevent each normal-item durability loss event.
+# Accepted range: 0 through 100. Examples: 0 = vanilla, 50 = half as
+# frequent on average, 100 = normal items never lose durability.
+normal_resistance_percent = 0
+# The same resistance rule for ethereal items. Accepted range: 0 through 100.
+ethereal_resistance_percent = 0
+
+[ethereal]
+# Ethereal maximum durability as a percentage of the normal item's maximum.
+# Accepted range: 1 through 200. Vanilla value: 50. The result is capped at 255.
+max_durability_percent = 50
+# Force ethereal items to 255 maximum durability. When true, this overrides
+# max_durability_percent.
+force_maximum_durability = false
+
+[ranged_weapons]
+# Give bows, crossbows, and Amazon bows the durability already defined for
+# them in weapons.txt, making them repairable. Vanilla behavior: false.
+bows_and_crossbows_have_durability = false
+
+[diagnostics]
+# Log rate-limited compiled-table updates and durability-prevention milestones.
+# Startup, warnings, errors, and the "item-durability" status command remain
+# available even when this option is false.
+enabled = false

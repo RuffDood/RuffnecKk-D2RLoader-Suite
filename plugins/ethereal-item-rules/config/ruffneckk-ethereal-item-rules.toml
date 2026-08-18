@@ -1,0 +1,35 @@
+# Ethereal Item Rules
+# Controls which eligible items may become ethereal and how often they do.
+# Changes take effect after fully closing and restarting Diablo II: Resurrected.
+
+[plugin]
+# Master switch for this plugin. Set to false to install no hooks or patches.
+enabled = true
+
+[exclusions]
+# Set to true to prevent the item types listed below from spawning ethereal.
+# This switch does nothing while item_types is empty.
+enabled = false
+# Use codes from the Code column in itemtypes.txt (1 to 4 characters each).
+# Parent codes include their descendants. For example, "armo" covers the whole
+# armor family; a narrower example is ["tors", "helm", "belt"].
+# Codes are case-insensitive, duplicates are ignored, and at most 64 are allowed.
+item_types = []
+
+[generation]
+# Set to true to apply chance_percent and the two eligibility options below.
+# Leave this false to preserve vanilla ethereal generation.
+enabled = false
+# Percentage chance that an otherwise eligible item becomes ethereal.
+# Accepted range: 0 through 100. Vanilla value: 5.
+chance_percent = 5
+# Allow Set items to roll ethereal using chance_percent. Vanilla: false.
+allow_set_items = false
+# Allow indestructible items to roll ethereal using chance_percent. Vanilla: false.
+allow_indestructible_items = false
+
+[diagnostics]
+# Log rate-limited exclusion and item-type resolution details.
+# Startup, warnings, errors, and the "ethereal-item-rules" status command remain
+# available even when this option is false.
+enabled = false

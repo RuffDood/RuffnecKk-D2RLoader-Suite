@@ -1,0 +1,18 @@
+{
+    // Restart D2R after editing this file.
+
+    // Master switch. Set this to false to keep the plugin installed but inactive.
+    "enabled": true,
+
+    // Ctrl + click invests up to this many points without confirmation.
+    // Accepted range: 1 through 1000. Native allocation rules can stop earlier.
+    "skillPointsPerCtrlClick": 5,
+
+    // Shift + click instantly invests all usable points by default.
+    // Set this to true to show a confirmation first.
+    "confirmShiftAllocation": false,
+
+    // Write extra allocation details to the D2RLoader log. Leave this disabled
+    // during normal play; startup messages and errors are always logged.
+    "diagnostics": false
+}

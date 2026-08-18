@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "Ignore Target Defense Applies to Champions and Uniques",
+  "description": "Allows Ignore Target Defense to apply to Champion and Unique monsters.",
+  "patches": [
+    {
+      "description": "Bypass the Champion and Unique exclusion",
+      "op": "nop",
+      "rva": "0x450410",
+      "size": 2,
+      "expected": "75 1D"
+    }
+  ]
+}

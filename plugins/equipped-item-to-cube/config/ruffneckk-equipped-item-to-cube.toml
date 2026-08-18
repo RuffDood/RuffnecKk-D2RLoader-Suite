@@ -1,0 +1,13 @@
+# Equipped Item to Cube
+# Lets the normal Ctrl-click quick-move action send an equipped item directly
+# to the open Horadric Cube.
+
+[plugin]
+# Changes are read when the plugin loads. Restart D2R after editing this file.
+# Master switch. Set to false to load the DLL without installing game hooks.
+enabled = true
+
+[diagnostics]
+# Logs the first few equipped-item transfers rewritten for the Cube.
+# Leave this false for normal play.
+enabled = false

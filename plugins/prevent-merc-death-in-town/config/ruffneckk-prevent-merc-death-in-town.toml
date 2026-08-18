@@ -1,0 +1,13 @@
+# Prevent Merc Death in Town
+# Stops lingering negative regeneration from delivering a lethal tick to your
+# mercenary while the mercenary is in town.
+
+[plugin]
+# Changes are read when the plugin loads. Restart D2R after editing this file.
+# Master switch. Set to false to load the DLL without installing game hooks.
+enabled = true
+
+[diagnostics]
+# Logs the first few lethal town damage ticks prevented for hirelings.
+# Leave this false for normal play.
+enabled = false

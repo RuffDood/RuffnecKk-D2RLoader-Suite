@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "Allow Character Levels 100 Plus",
+  "description": "Allows characters at level 100 or higher to pass the D2R 3.2 game-join validation.",
+  "patches": [
+    {
+      "description": "Bypass the rewritten invalid-level rejection branch",
+      "op": "nop",
+      "rva": "0x404D50",
+      "size": 6,
+      "expected": "0F 86 0F FE FF FF"
+    }
+  ]
+}

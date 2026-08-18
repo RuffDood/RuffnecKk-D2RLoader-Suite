@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "name": "Player Difficulty Overrides",
+  "description": "Lets the player choose /players 1 through 65535 instead of being capped at 8. Do not combine it with the PluginPack playersCommandLimit feature.",
+  "patches": [
+    {
+      "description": "Use the requested server difficulty without clamping it to 8",
+      "op": "bytes",
+      "rva": "0x425A69",
+      "expected": "0F 46 C1",
+      "bytes": "89 C8 90"
+    },
+    {
+      "description": "Move the parsed /players value directly into R12D and remove its min/max clamp",
+      "op": "bytes",
+      "rva": "0x188860",
+      "expected": "41 BF 01 00 00 00 41 3B C7 44 0F 4F F8 45 3B FC 45 0F 4C E7",
+      "bytes": "41 89 C4 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90"
+    },
+    {
+      "description": "Set the primary initialized Offline Difficulty Scaling range to 1 through 65535",
+      "op": "bytes",
+      "rva": "0x346ED",
+      "expected": "BA 01 00 00 00 48 8B CF 44 8D 42 07 E8 92 A6 CF 00",
+      "bytes": "6A 01 5A 48 8B CF 41 B8 FF FF 00 00 E8 92 A6 CF 00"
+    },
+    {
+      "description": "Set the primary fallback Offline Difficulty Scaling maximum to 65535",
+      "op": "bytes",
+      "rva": "0x3474E",
+      "expected": "BA 08 00 00 00",
+      "bytes": "BA FF FF 00 00"
+    },
+    {
+      "description": "Set the secondary initialized Offline Difficulty Scaling range to 1 through 65535",
+      "op": "bytes",
+      "rva": "0xE1A09",
+      "expected": "BA 01 00 00 00 48 8D 0D 5B 1E 95 02 44 8D 42 07 E8 72 D3 C4 00",
+      "bytes": "6A 01 5A 41 B8 FF FF 00 00 48 8D 0D 57 1E 95 02 E8 72 D3 C4 00"
+    },
+    {
+      "description": "Set the secondary fallback Offline Difficulty Scaling maximum to 65535",
+      "op": "bytes",
+      "rva": "0xE1A57",
+      "expected": "BA 08 00 00 00",
+      "bytes": "BA FF FF 00 00"
+    }
+  ]
+}
