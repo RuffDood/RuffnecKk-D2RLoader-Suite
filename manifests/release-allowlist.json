@@ -162,7 +162,7 @@
       "source": "plugins/d2rl-ruffneckk-progressive-affixes.dll",
       "destination": "plugins/d2rl-ruffneckk-progressive-affixes.dll",
       "sha256": "FDB236AEE21FCEA01A6B8140B83DD149B03948C57C841D13237A4DAC6F6BAEA8",
-      "qualification": "post-fix global reproducible build and hash pin passed; exact runtime hash match pending"
+      "qualification": "post-fix global reproducible build, hash pin, and exact runtime hash match passed"
     },
     {
       "kind": "plugin-dll",

@@ -134,7 +134,7 @@ Three earlier standalone DLLs are now simpler JSON patches:
 - `GroundItemLabelLimit.dll` became
   `ruffneckk-ground-item-label-limit-64.json` and
   `ruffneckk-ground-item-label-limit-128.json`; **install only one**.
-- `QtyDisplayIssue.dll` became `ruffneckk-quantity-display-fix.json
+- `QtyDisplayIssue.dll` became `ruffneckk-quantity-display-fix.json`.
 
 ## Changing or removing features
 
