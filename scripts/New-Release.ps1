@@ -122,8 +122,9 @@ if ([string]$document.suite.version -notmatch '^\d+\.\d+\.\d+$') {
 if ([string]$document.distribution.model -ne 'modular-catalog' -or [string]$document.distribution.primaryDownloads -ne 'individual-components') {
     throw 'The release manifest must use the approved modular catalog model.'
 }
-if ([bool]$document.policy.readmeIncluded -or [string]$document.policy.readmeLocation -ne 'beside-zip') {
-    throw 'README files must remain beside generated ZIPs and outside them.'
+if (-not [bool]$document.policy.readmeIncluded -or
+    [string]$document.policy.readmeLocation -ne 'selected-individual-plugin-archives') {
+    throw 'README files are only approved inside selected individual plugin archives.'
 }
 if (-not [bool]$document.policy.requireSha256) { throw 'Every public release entry must have a pinned SHA-256.' }
 
@@ -134,6 +135,7 @@ if ($entries.Count -ne [int]$expectedCounts.total) {
 }
 $kindCounts = @{
     'plugin-dll' = [int]$expectedCounts.pluginDlls
+    'plugin-readme' = [int]$expectedCounts.pluginReadmes
     'loose-config-json' = [int]$expectedCounts.looseConfigJson
     'memory-patch-json' = [int]$expectedCounts.memoryPatchJson
 }
@@ -148,19 +150,26 @@ foreach ($entry in $entries) {
     $destination = Normalize-ReleasePath ([string]$entry.destination)
     Assert-RelativeReleasePath -Path $source -Label 'Source path'
     Assert-RelativeReleasePath -Path $destination -Label 'Archive destination'
-    if (-not $source.Equals($destination, [StringComparison]::Ordinal)) {
+    if ($kind -ne 'plugin-readme' -and -not $source.Equals($destination, [StringComparison]::Ordinal)) {
         throw "Source and destination must match: '$source' vs '$destination'."
     }
     if (-not $seen.Add($destination)) { throw "Duplicate archive destination '$destination'." }
     $basename = [IO.Path]::GetFileName($destination)
     if ($deniedBasenames -contains $basename.ToLowerInvariant()) { throw "Release entry '$destination' is forbidden." }
-    if ($destination -match '(?i)(^|/)readme(?:\.[^/]+)?$') { throw "README must not be included: '$destination'." }
+    if ($kind -ne 'plugin-readme' -and $destination -match '(?i)(^|/)readme(?:\.[^/]+)?$') {
+        throw "README requires the plugin-readme release kind: '$destination'."
+    }
 
     $extension = [IO.Path]::GetExtension($destination)
     switch ($kind) {
         'plugin-dll' {
             if ($extension -ine '.dll' -or $basename -notmatch '^d2rl-ruffneckk-[a-z0-9-]+\.dll$') {
                 throw "Invalid plugin release path '$destination'."
+            }
+        }
+        'plugin-readme' {
+            if ($destination -cne 'README.md' -or [IO.Path]::GetFileName($source) -cne 'README.md') {
+                throw "Invalid plugin README release path '$source' -> '$destination'."
             }
         }
         { $_ -in 'loose-config-json', 'memory-patch-json' } {
@@ -208,6 +217,10 @@ foreach ($entry in @($validated | Where-Object Kind -ne 'memory-patch-json')) {
         throw "Entry '$($entry.Destination)' references unknown plugin '$($entry.ComponentId)'."
     }
 }
+$pluginReadmes = @($validated | Where-Object Kind -eq 'plugin-readme')
+if ($pluginReadmes.Count -ne 1 -or $pluginReadmes[0].ComponentId -ne 'ruffneckk-remote-stash') {
+    throw 'Remote Stash must be the one plugin with an approved README in its individual archive.'
+}
 
 $expectedAssets = $document.distribution.expectedGithubAssets
 if ([int]$expectedAssets.individualPluginArchives -ne $pluginDlls.Count -or
@@ -244,7 +257,9 @@ try {
     $suiteVersion = [string]$document.suite.version
     $pluginBundleName = "RuffnecKk-All-Plugins-v$suiteVersion.zip"
     $pluginBundlePath = Join-Path $absoluteOutputDirectory $pluginBundleName
-    $pluginBundleHash = New-VerifiedZip -Path $pluginBundlePath -Items @($validated | Where-Object Kind -ne 'memory-patch-json')
+    $pluginBundleHash = New-VerifiedZip -Path $pluginBundlePath -Items @(
+        $validated | Where-Object { $_.Kind -ne 'memory-patch-json' -and $_.Kind -ne 'plugin-readme' }
+    )
     $generated.Add([pscustomobject]@{ Name = $pluginBundleName; Path = $pluginBundlePath; SHA256 = $pluginBundleHash; Kind = 'plugin-bundle' })
 
     $patchBundleName = "RuffnecKk-All-Patches-v$suiteVersion.zip"

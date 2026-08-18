@@ -46,6 +46,8 @@ default TOML configuration the first time they run and do not overwrite your
 existing settings. Larzuk Sockets and Bulk Skill Point Allocation use JSON
 configuration files included in their downloads.
 
+For Remote Stash, please read the README included in the downloaded ZIP. TDLR the setup should now be easier and it's recommanded you delete stuff you installed from previous versions.
+
 ## Important compatibility note
 
 Do not use this Suite together with the old Community Pack files:

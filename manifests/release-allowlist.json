@@ -35,15 +35,16 @@
   "policy": {
     "expectedCounts": {
       "pluginDlls": 17,
+      "pluginReadmes": 1,
       "looseConfigJson": 3,
       "memoryPatchJson": 19,
-      "total": 39
+      "total": 40
     },
     "selectedGroundItemLabelVariant": 64,
-    "readmeIncluded": false,
-    "readmeLocation": "beside-zip",
+    "readmeIncluded": true,
+    "readmeLocation": "selected-individual-plugin-archives",
     "requireSha256": true,
-    "stagingContract": "Each source path is relative to SourceRoot and equals its canonical destination inside component and optional bundle archives.",
+    "stagingContract": "Each source path is relative to SourceRoot. Canonical install files keep the same archive destination; approved individual-plugin documentation may use a player-facing destination.",
     "deniedBasenames": [
       "plugin-items.dll",
       "plugin-levels.dll",
@@ -172,6 +173,13 @@
       "source": "plugins/d2rl-ruffneckk-remote-stash.dll",
       "destination": "plugins/d2rl-ruffneckk-remote-stash.dll",
       "sha256": "D21E80D45398356604CAED4DD724A182AB117F62BC527F0BE964FCEE8A82AB1A"
+    },
+    {
+      "kind": "plugin-readme",
+      "componentId": "ruffneckk-remote-stash",
+      "source": "plugins/remote-stash/README.md",
+      "destination": "README.md",
+      "sha256": "614D795193D4662B641D716E7209CB17CB41F4A8F5751FE858F9F5AA77DD940B"
     },
     {
       "kind": "plugin-dll",

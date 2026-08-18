@@ -114,7 +114,7 @@ longer carry dead integration data.
 
 ## Credits
 
-Remote Stash and the embedded chest artwork are by RuffnecKk.
+
 
 D2MOO provided semantic reference material for historical Diablo II engine
 behavior; all D2R 3.2 addresses and runtime contracts were verified separately.
