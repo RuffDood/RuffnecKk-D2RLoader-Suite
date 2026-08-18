@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "suite": {
     "id": "ruffneckk-d2rloader-suite",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "targetGameBuild": 92777,
     "targetLoader": "D2RLoader 1.1.0-beta",
     "targetPluginSdk": "v3"
@@ -54,8 +54,7 @@
       "ProgressiveAffixesPlugin.dll",
       "MeleeSplash.dll",
       "d2rl-ruffneckk-melee-splash.dll",
-      "GroundItemLabelLimit.dll",
-      "ruffneckk-ground-item-label-limit-128.json"
+      "GroundItemLabelLimit.dll"
     ]
   },
   "entries": [
@@ -78,10 +77,10 @@
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-cube-quick-move",
-      "version": "0.1.4",
+      "version": "1.0.0",
       "source": "plugins/d2rl-ruffneckk-cube-quick-move.dll",
       "destination": "plugins/d2rl-ruffneckk-cube-quick-move.dll",
-      "sha256": "D22A1CF73F31BD258C165FCEE018BD16306D70FF0E97733FA16CA1A16510C269"
+      "sha256": "47D6E117AEC086BB38E3B5AD19EA993112ABCD5F85A74A8919576D50EFE2D772"
     },
     {
       "kind": "plugin-dll",
@@ -94,18 +93,18 @@
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-equipped-item-to-cube",
-      "version": "0.2.1",
+      "version": "1.0.0",
       "source": "plugins/d2rl-ruffneckk-equipped-item-to-cube.dll",
       "destination": "plugins/d2rl-ruffneckk-equipped-item-to-cube.dll",
-      "sha256": "F23D409CBECD772CC19B35F3AAF0FE361B8AC2CE32BCFD66E7B624FF861327C3"
+      "sha256": "45D57CE3BF314346E112C36EF3B1068A74E97A2883C0D8AEEDDBBCE39B9BF2F8"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-ethereal-item-rules",
-      "version": "0.1.1",
+      "version": "1.0.0",
       "source": "plugins/d2rl-ruffneckk-ethereal-item-rules.dll",
       "destination": "plugins/d2rl-ruffneckk-ethereal-item-rules.dll",
-      "sha256": "F46114937ABA67445AAD46F13D29362BA51F47B646F0D767A53F23643BFCFD3E"
+      "sha256": "74401A1E35E4D9C5F810EC7079A2000661E8D52718745AF95EF83146310DC521"
     },
     {
       "kind": "plugin-dll",
@@ -152,10 +151,10 @@
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-prevent-merc-death-in-town",
-      "version": "0.1.1",
+      "version": "1.0.0",
       "source": "plugins/d2rl-ruffneckk-prevent-merc-death-in-town.dll",
       "destination": "plugins/d2rl-ruffneckk-prevent-merc-death-in-town.dll",
-      "sha256": "FFDB32CC00F66C0168BE6666B558653F11C89A0A4FBCA84A8F68A554DA3DEADF"
+      "sha256": "EF3CDB79191364E5A615A549BED552E31F8C051315B55BD548CC462EEB002136"
     },
     {
       "kind": "plugin-dll",
@@ -185,19 +184,19 @@
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-transmute-hotkey",
-      "version": "0.3.3",
+      "version": "1.0.0",
       "source": "plugins/d2rl-ruffneckk-transmute-hotkey.dll",
       "destination": "plugins/d2rl-ruffneckk-transmute-hotkey.dll",
-      "sha256": "A1995D1A00827F94A242401357D75FBBA1B184EFD93D7DE9E20B8015E0B33E25",
+      "sha256": "30CC31BEBBFEF2D26F86C7B304FA0E487994DBE29CD5D2CE3DFE4DA0A0683F1C",
       "qualification": "SDK v3 keyboard pass-through build, Suite 25/25 tests, exact runtime hash match, full-stack cold start, and SHIFT+T Cube gameplay passed; zero-plugin A/B excludes plugin DLLs from C/Q/T panel unavailability, while Loader/core/native attribution is intentionally deferred"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-vendor-stock-refresh",
-      "version": "0.1.6",
+      "version": "0.2.0",
       "source": "plugins/d2rl-ruffneckk-vendor-stock-refresh.dll",
       "destination": "plugins/d2rl-ruffneckk-vendor-stock-refresh.dll",
-      "sha256": "F350F72A9F38592F6B996150BB96273CB81BEFA506E9B79261CA00A9FBFF848E"
+      "sha256": "81A9346B1FEEB55901DEF39BE871BD37509A006321D63553DD61A8A8F277B48D"
     },
     {
       "kind": "loose-config-json",
@@ -228,12 +227,6 @@
     },
     {
       "kind": "memory-patch-json",
-      "source": "patches/ruffneckk-extended-gold-pickup.json",
-      "destination": "patches/ruffneckk-extended-gold-pickup.json",
-      "sha256": "FC3CC7CE7C5A179B7DCEE9DD81F8E1E2C4C75F08F74E5E11961BBCBC1371633E"
-    },
-    {
-      "kind": "memory-patch-json",
       "source": "patches/ruffneckk-gamble-screen-limit.json",
       "destination": "patches/ruffneckk-gamble-screen-limit.json",
       "sha256": "C87D6D1AA5061401758E0C9B155D145250FD72D7806E1770231493AEFCC74411"
@@ -249,6 +242,12 @@
       "source": "patches/ruffneckk-ground-item-label-limit-64.json",
       "destination": "patches/ruffneckk-ground-item-label-limit-64.json",
       "sha256": "8FC72134172A6E4093C12F5C3DCCAEBAFFC4E8D82DE312F35B2F3F0053F22C62"
+    },
+    {
+      "kind": "memory-patch-json",
+      "source": "patches/ruffneckk-ground-item-label-limit-128.json",
+      "destination": "patches/ruffneckk-ground-item-label-limit-128.json",
+      "sha256": "A82436F403DF79B3D031CC84422573A7F0C72F44D82541D1B38E64FFBEEE3849"
     },
     {
       "kind": "memory-patch-json",

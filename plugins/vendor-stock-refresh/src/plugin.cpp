@@ -165,7 +165,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-vendor-stock-refresh",
     .name = "Vendor Stock Refresh",
-    .version = "0.1.6",
+    .version = "0.2.0",
     .author = "RuffnecKk",
     .description = "Refreshes a vendor's stock with one click.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -535,7 +535,7 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
     std::snprintf(
         message,
         sizeof(message),
-        "Vendor Stock Refresh 0.1.6: %s; diagnostics=%s; placed=%llu; "
+        "Vendor Stock Refresh 0.2.0: %s; diagnostics=%s; placed=%llu; "
         "placementFailures=%llu; sent=%llu; received=%llu; armed=%llu; rejected=%llu.",
         Settings.enabled ? "active" : "disabled",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
@@ -580,7 +580,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "VendorStockRefresh 0.1.6 by RuffnecKk loaded disabled; no hook or service registered.");
+            "VendorStockRefresh 0.2.0 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 
@@ -663,7 +663,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
 
     context->LogInfo(
-        "VendorStockRefresh 0.1.6 by RuffnecKk active; native button uses the runtime gold anchor.");
+        "VendorStockRefresh 0.2.0 by RuffnecKk active; native button uses the runtime gold anchor.");
     return true;
 }
 

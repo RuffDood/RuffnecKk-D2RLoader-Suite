@@ -148,7 +148,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-cube-quick-move",
     .name = "Cube Quick Move",
-    .version = "0.1.4",
+    .version = "1.0.0",
     .author = "RuffnecKk",
     .description = "Places quick-moved Cube items from the bottom-right.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -441,7 +441,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Cube Quick Move 0.1.4: %s; diagnostics=%s; callSites=%llu; calls=%llu; "
+        "Cube Quick Move 1.0.0: %s; diagnostics=%s; callSites=%llu; calls=%llu; "
         "page3=%llu; redirected=%llu; vanilla=%llu; safeFallbacks=%llu; "
         "lastCallSite=0x%llX; lastPage3CallSite=0x%llX.",
         Settings.enabled ? "active" : "disabled",
@@ -494,7 +494,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "CubeQuickMove 0.1.4 by RuffnecKk loaded disabled; no patch or service registered.");
+            "CubeQuickMove 1.0.0 by RuffnecKk loaded disabled; no patch or service registered.");
         return true;
     }
 
@@ -539,7 +539,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "CubeQuickMove 0.1.4 by RuffnecKk active; %llu Cube-capable call-sites redirect through relay RVA 0x%llX.",
+        "CubeQuickMove 1.0.0 by RuffnecKk active; %llu Cube-capable call-sites redirect through relay RVA 0x%llX.",
         static_cast<unsigned long long>(CubeCallSites.size()),
         static_cast<unsigned long long>(RelayRva)
     );

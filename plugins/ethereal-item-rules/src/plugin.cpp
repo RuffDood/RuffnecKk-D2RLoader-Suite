@@ -100,7 +100,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-ethereal-item-rules",
     .name = "Ethereal Item Rules",
-    .version = "0.1.1",
+    .version = "1.0.0",
     .author = "RuffnecKk",
     .description = "Controls ethereal item chance and eligibility.",
     .flags = D2RL::PluginFlags::Server | D2RL::PluginFlags::NativeHooks,
@@ -431,7 +431,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Ethereal Item Rules 0.1.1: enabled=%s; exclusions=%s types=[%s] "
+        "Ethereal Item Rules 1.0.0: enabled=%s; exclusions=%s types=[%s] "
         "resolved=%u unresolved=%u prevented=%llu; generation=%s "
         "chance=%u%% set=%s indestructible=%s; diagnostics=%s.",
         Settings.enabled ? "true" : "false",
@@ -498,7 +498,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Ethereal Item Rules 0.1.1 by RuffnecKk loaded: enabled=%s; exclusions=%s "
+        "Ethereal Item Rules 1.0.0 by RuffnecKk loaded: enabled=%s; exclusions=%s "
         "(%zu types); generation=%s; chance=%u%%; set=%s; "
         "indestructible=%s; diagnostics=%s.",
         Settings.enabled ? "true" : "false",

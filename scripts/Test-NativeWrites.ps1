@@ -298,8 +298,8 @@ function Test-RuntimePatchSelection {
     $behaviors = @($Manifest.memoryPatchArtifacts | Where-Object {
         $selected -contains (Normalize-RelativePath -Path ([string]$_.artifact))
     } | ForEach-Object { [string]$_.behaviorId } | Sort-Object -Unique)
-    if ($selected.Count -ne 19 -or $behaviors.Count -ne 19) {
-        throw "RuntimeSelection must contain 19 artifacts implementing 19 behaviors; found $($selected.Count) artifact(s) and $($behaviors.Count) behavior(s)."
+    if ($selected.Count -ne 18 -or $behaviors.Count -ne 18) {
+        throw "RuntimeSelection must contain 18 artifacts implementing 18 behaviors; found $($selected.Count) artifact(s) and $($behaviors.Count) behavior(s)."
     }
 }
 
@@ -385,14 +385,14 @@ function Invoke-NativeWriteValidation {
         -Expected $expectedPatchArtifacts `
         -Actual $manifestPatchNames `
         -Label 'Memory patch artifacts'
-    if ($manifestPatchArtifacts.Count -ne 20) {
-        throw "Native-write manifest must contain 20 memory patch artifacts; found $($manifestPatchArtifacts.Count)."
+    if ($manifestPatchArtifacts.Count -ne 19) {
+        throw "Native-write manifest must contain 19 memory patch artifacts; found $($manifestPatchArtifacts.Count)."
     }
     $behaviorIds = @($manifestPatchArtifacts | ForEach-Object {
         [string]$_.behaviorId
     } | Sort-Object -Unique)
-    if ($behaviorIds.Count -ne 19) {
-        throw "Native-write manifest must contain 19 memory patch behaviors; found $($behaviorIds.Count)."
+    if ($behaviorIds.Count -ne 18) {
+        throw "Native-write manifest must contain 18 memory patch behaviors; found $($behaviorIds.Count)."
     }
 
     $patchRanges = [System.Collections.Generic.List[object]]::new()
@@ -431,8 +431,8 @@ function Invoke-NativeWriteValidation {
             $patchOperationCount++
         }
     }
-    if ($patchOperationCount -ne 66) {
-        throw "Expected 66 memory patch operations; found $patchOperationCount."
+    if ($patchOperationCount -ne 62) {
+        throw "Expected 62 memory patch operations; found $patchOperationCount."
     }
 
     $expectedExternalIds = @($ExternalCompatibility.plugins | ForEach-Object { [string]$_.id })

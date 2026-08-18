@@ -267,12 +267,6 @@
     {"artifact": "patches/ruffneckk-enemy-resistance-vs-immunes.json", "behaviorId": "enemy-resistance-affects-immunes", "fixedWrites": [
       {"rva": "0x44F8F1", "size": 2, "kind": "memory-patch-bytes"}
     ]},
-    {"artifact": "patches/ruffneckk-extended-gold-pickup.json", "behaviorId": "extended-gold-pickup", "fixedWrites": [
-      {"rva": "0x18B06C", "size": 6, "kind": "memory-patch-nop"},
-      {"rva": "0x18B07F", "size": 6, "kind": "memory-patch-nop"},
-      {"rva": "0x4BA0B3", "size": 1, "kind": "memory-patch-write-u8"},
-      {"rva": "0x4BA0DA", "size": 1, "kind": "memory-patch-write-u8"}
-    ]},
     {"artifact": "patches/ruffneckk-gamble-screen-limit.json", "behaviorId": "gamble-screen-limit", "fixedWrites": [
       {"rva": "0x541A7C", "size": 9, "kind": "memory-patch-bytes"}
     ]},

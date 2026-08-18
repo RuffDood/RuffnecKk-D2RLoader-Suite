@@ -211,15 +211,6 @@ if ($RuntimeSelection -and ($ground64 + $ground128) -gt 1) {
     throw 'Runtime selection contains both Ground Item Label Limit variants; install exactly one.'
 }
 
-if ($manifestsByName.ContainsKey('Extended Automatic Gold Pickup Range')) {
-    $manifest = $manifestsByName['Extended Automatic Gold Pickup Range']
-    $first = Get-WriteValueAtRva -Manifest $manifest -Rva 0x4BA0B3 -ManifestName 'Extended Gold Pickup'
-    $second = Get-WriteValueAtRva -Manifest $manifest -Rva 0x4BA0DA -ManifestName 'Extended Gold Pickup'
-    if ($first -ne $second -or $first -lt 1 -or $first -gt 0xFF) {
-        throw 'Extended Gold Pickup values must match and remain between 0x01 and 0xFF.'
-    }
-}
-
 if ($manifestsByName.ContainsKey('Gold Capacities')) {
     $manifest = $manifestsByName['Gold Capacities']
     $characterMultiplier = Get-WriteValueAtRva -Manifest $manifest -Rva 0x34B332 -ManifestName 'Gold Capacities'

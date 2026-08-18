@@ -76,7 +76,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-transmute-hotkey",
     .name = "Transmute Hotkey",
-    .version = "0.3.3",
+    .version = "1.0.0",
     .author = "RuffnecKk",
     .description =
         "Triggers the Horadric Cube transmute action from a configurable hotkey.",
@@ -397,7 +397,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Transmute Hotkey 0.3.3: enabled=%s; diagnostics=%s; configured=%s; input=SDK v3 action (service ABI v1); modifier-limit=one; mouse=unsupported; controller=unsupported; pass-through=always; accepted=%llu; dispatched=%llu; refused=%llu; failed=%llu.",
+        "Transmute Hotkey 1.0.0: enabled=%s; diagnostics=%s; configured=%s; input=SDK v3 action (service ABI v1); modifier-limit=one; mouse=unsupported; controller=unsupported; pass-through=always; accepted=%llu; dispatched=%llu; refused=%llu; failed=%llu.",
         Settings.enabled ? "true" : "false",
         Settings.diagnostics ? "true" : "false",
         Settings.hotkeyText.c_str(),
@@ -466,7 +466,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
 
     if (!Settings.enabled) {
         context->LogInfo(
-            "Transmute Hotkey 0.3.3 by RuffnecKk disabled; no hook or input action was registered.");
+            "Transmute Hotkey 1.0.0 by RuffnecKk disabled; no hook or input action was registered.");
     } else {
         if (!QueryServices() || !ValidateRuntime()) {
             context->LogError(
@@ -476,7 +476,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         FindWidget = At<FindWidgetFn>(FindWidgetRva);
         if (!RegisterInputAction() || !InstallObservationHooks()) return false;
         context->LogInfo(
-            "Transmute Hotkey 0.3.3 by RuffnecKk active through SDK v3 Input, Thread, and Widget service ABI v1; keyboard input always passes through to D2R.");
+            "Transmute Hotkey 1.0.0 by RuffnecKk active through SDK v3 Input, Thread, and Widget service ABI v1; keyboard input always passes through to D2R.");
     }
 
     if (!context->RegisterConsoleCommand(

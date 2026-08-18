@@ -117,7 +117,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-prevent-merc-death-in-town",
     .name = "Prevent Merc Death in Town",
-    .version = "0.1.1",
+    .version = "1.0.0",
     .author = "RuffnecKk",
     .description = "Prevents mercenaries from dying to lingering damage while in town.",
     .flags = D2RL::PluginFlags::Server | D2RL::PluginFlags::NativeHooks,
@@ -312,7 +312,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Prevent Merc Death in Town 0.1.1: %s; diagnostics=%s; "
+        "Prevent Merc Death in Town 1.0.0: %s; diagnostics=%s; "
         "prevented lethal ticks=%llu.",
         Settings.enabled ? "active" : "disabled",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
@@ -345,7 +345,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "Prevent Merc Death in Town 0.1.1 by RuffnecKk loaded disabled; no hook or service registered.");
+            "Prevent Merc Death in Town 1.0.0 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 
@@ -393,7 +393,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "PreventMercDeathInTown: status command could not be registered.");
     }
     context->LogInfo(
-        "Prevent Merc Death in Town 0.1.1 by RuffnecKk active for D2R 3.2.92777.");
+        "Prevent Merc Death in Town 1.0.0 by RuffnecKk active for D2R 3.2.92777.");
     return true;
 }
 

@@ -3,8 +3,7 @@
 This file records third-party software, documentation, and prior work used by
 the RuffnecKk D2RLoader Suite. It does not replace or broaden any upstream
 license or permission. The repository `LICENSE` applies only where RuffnecKk
-has the right to apply it; the D2RHUD-derived portions identified below are
-used under locbones' separate permission and are not presented as MIT code.
+has the right to apply it.
 
 ## D2RLoader PluginSDK v3
 
@@ -29,8 +28,6 @@ use the PluginSDK ABI; the complete MIT text is retained at
 Floating Damage contains a reduced and adapted derivative of
 [locbones/D2RHUD-2.4](https://github.com/locbones/D2RHUD-2.4) at commit
 `b9373f8508282948ceb3e2b56f892d9eba475744`.
-
-
 
 The derivative is contained in these Suite paths:
 
