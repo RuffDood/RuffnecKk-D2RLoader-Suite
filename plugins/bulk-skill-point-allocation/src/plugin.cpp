@@ -63,12 +63,15 @@ alignas(16) std::array<std::uint8_t,
 thread_local bool OpeningSkillConfirmation{};
 thread_local std::array<char, LocalizedBufferSize> ConfirmationPrompt{};
 thread_local std::array<char, LocalizedBufferSize> MissingString{};
+thread_local std::array<char, LocalizedBufferSize> PrimaryLocaleProbe{};
+thread_local std::array<char, LocalizedBufferSize> SecondaryLocaleProbe{};
 
 std::atomic<std::uint64_t> SingleClicks{};
 std::atomic<std::uint64_t> CtrlBatches{};
 std::atomic<std::uint64_t> ShiftAccepted{};
 std::atomic<std::uint64_t> ShiftCancelled{};
 std::atomic<std::uint64_t> NativeBulkPacketsSent{};
+std::atomic_bool LocalizationFallbackLogged{};
 
 enum ModifierMask : std::uint32_t {
     NativeCtrl = 1U << 0,
@@ -85,7 +88,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-bulk-skill-point-allocation",
     .name = "Bulk Skill Point Allocation",
-    .version = "1.3.1",
+    .version = "1.3.2",
     .author = "RuffnecKk",
     .description =
         "Allocates configurable skill-point batches with Ctrl or all points with Shift.",
@@ -229,25 +232,53 @@ auto FetchLocalizedString(
     };
 }
 
-void ResolveConfirmationPrompt() noexcept {
-    const auto localized = FetchLocalizedString(
-        ActiveSettings.shiftConfirmationKey.c_str(),
-        ConfirmationPrompt);
-    const auto missing = FetchLocalizedString(
-        MissingStringKey,
-        MissingString);
-    if (IsUsableLocalizedString(
-            localized,
-            ActiveSettings.shiftConfirmationKey,
-            missing)) {
+void CopyConfirmationPrompt(std::string_view prompt) noexcept {
+    ConfirmationPrompt.fill('\0');
+    const auto size = (std::min)(
+        prompt.size(),
+        ConfirmationPrompt.size() - 1);
+    std::memcpy(ConfirmationPrompt.data(), prompt.data(), size);
+}
+
+void LogLocalizationFallbackOnce() noexcept {
+    if (Context == nullptr
+        || LocalizationFallbackLogged.exchange(
+            true, std::memory_order_relaxed)) {
         return;
     }
-    ConfirmationPrompt.fill('\0');
-    const auto& fallback = ActiveSettings.shiftConfirmationFallback;
-    std::memcpy(
-        ConfirmationPrompt.data(),
-        fallback.data(),
-        fallback.size());
+    Context->LogWarn(
+        "BulkSkillPointAllocation: active D2R locale could not be identified; using the configured English fallback.");
+}
+
+void ResolveConfirmationPrompt() noexcept {
+    if (!ActiveSettings.shiftConfirmationKey.empty()) {
+        const auto localized = FetchLocalizedString(
+            ActiveSettings.shiftConfirmationKey.c_str(),
+            ConfirmationPrompt);
+        const auto missing = FetchLocalizedString(
+            MissingStringKey,
+            MissingString);
+        if (IsUsableLocalizedString(
+                localized,
+                ActiveSettings.shiftConfirmationKey,
+                missing)) {
+            return;
+        }
+    }
+
+    const auto primary = FetchLocalizedString(
+        PrimaryLocaleProbeKey,
+        PrimaryLocaleProbe);
+    const auto secondary = FetchLocalizedString(
+        SecondaryLocaleProbeKey,
+        SecondaryLocaleProbe);
+    if (const auto locale = DetectLocale(primary, secondary)) {
+        CopyConfirmationPrompt(ActiveSettings.shiftConfirmations[*locale]);
+        return;
+    }
+
+    CopyConfirmationPrompt(ActiveSettings.shiftConfirmationFallback);
+    LogLocalizationFallbackOnce();
 }
 
 auto __fastcall HookGetLocalizedStringByKey(
@@ -521,6 +552,8 @@ void ResetState() noexcept {
     OpeningSkillConfirmation = false;
     ConfirmationPrompt.fill('\0');
     MissingString.fill('\0');
+    PrimaryLocaleProbe.fill('\0');
+    SecondaryLocaleProbe.fill('\0');
     GameplaySource.reset();
     StringsSource.reset();
     ActiveSettings.skillPointsPerCtrlClick =
@@ -529,6 +562,10 @@ void ResetState() noexcept {
     ActiveSettings.diagnostics = false;
     ActiveSettings.shiftConfirmationKey.clear();
     ActiveSettings.shiftConfirmationFallback.clear();
+    for (auto& confirmation : ActiveSettings.shiftConfirmations) {
+        confirmation.clear();
+    }
+    LocalizationFallbackLogged.store(false, std::memory_order_relaxed);
     LocalizationService = nullptr;
     SharedEventService = nullptr;
     UiListenerHandle = D2RL::SharedEvents::InvalidHandle;
@@ -599,12 +636,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ActiveSettings.enabled) {
         try {
             const auto message = std::string(
-                "BulkSkillPointAllocation 1.3.1 by RuffnecKk loaded disabled; no service or hook registered; gameplayConfig=")
+                "BulkSkillPointAllocation 1.3.2 by RuffnecKk loaded disabled; no service or hook registered; gameplayConfig=")
                 + PathForLog(GameplaySource) + ".";
             context->LogInfo(message.c_str());
         } catch (...) {
             context->LogInfo(
-                "BulkSkillPointAllocation 1.3.1 by RuffnecKk loaded disabled; no service or hook registered.");
+                "BulkSkillPointAllocation 1.3.2 by RuffnecKk loaded disabled; no service or hook registered.");
         }
         return true;
     }
@@ -629,7 +666,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
 
     try {
         const auto message = std::string(
-            "BulkSkillPointAllocation 1.3.1 by RuffnecKk loaded; role=Client; ctrl=")
+            "BulkSkillPointAllocation 1.3.2 by RuffnecKk loaded; role=Client; ctrl=")
             + std::to_string(ActiveSettings.skillPointsPerCtrlClick)
             + "; shiftConfirmation="
             + (ActiveSettings.confirmShiftAllocation ? "enabled" : "disabled")
@@ -638,7 +675,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         context->LogInfo(message.c_str());
     } catch (...) {
         context->LogInfo(
-            "BulkSkillPointAllocation 1.3.1 by RuffnecKk loaded.");
+            "BulkSkillPointAllocation 1.3.2 by RuffnecKk loaded.");
     }
     return true;
 }

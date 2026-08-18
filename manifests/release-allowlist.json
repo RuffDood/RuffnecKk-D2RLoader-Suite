@@ -61,10 +61,10 @@
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-bulk-skill-point-allocation",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "source": "plugins/d2rl-ruffneckk-bulk-skill-point-allocation.dll",
       "destination": "plugins/d2rl-ruffneckk-bulk-skill-point-allocation.dll",
-      "sha256": "89D77CA039DCD291A88B98333DA26F642B1B9F434FC6BA09046697E96C4BA151"
+      "sha256": "DE2CA66BA50E87D964053CCE5EF420D5DC47E56A84AD9B5C3F61C9E30C74453E"
     },
     {
       "kind": "plugin-dll",
@@ -210,7 +210,7 @@
       "componentId": "ruffneckk-bulk-skill-point-allocation",
       "source": "config/BulkSkillPointAllocation.strings.json",
       "destination": "config/BulkSkillPointAllocation.strings.json",
-      "sha256": "83DC58FF8E13E65EE15CA0B133452CB38C386D974C6D8165C9801491119EDD0E"
+      "sha256": "DFF579156A37D46B26D32A3AE825C554E91177B00B37D47A34A1DDCF9D7D04BC"
     },
     {
       "kind": "loose-config-json",

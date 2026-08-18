@@ -1,8 +1,17 @@
 {
-    // Diablo resolves this key in the language currently selected by the player.
-    // Add the key to the active mod's data/local/lng/strings/ui.json file.
-    "shiftConfirmationKey": "shiftConfirmation",
-
-    // English text used only when the localization key is missing or unresolved.
-    "shiftConfirmationFallback": "Invest all currently usable skill points in this skill?"
+    // The plugin selects one of these texts from D2R's active language.
+    // No localization file needs to be added to the active mod.
+    "enUS": "Invest all currently usable skill points in this skill?",
+    "zhTW": "要將目前可用的所有技能點數投入此技能嗎？",
+    "deDE": "Möchtest du alle derzeit verfügbaren Fertigkeitspunkte in diese Fertigkeit investieren?",
+    "esES": "¿Quieres invertir en esta habilidad todos los puntos de habilidad disponibles?",
+    "frFR": "Investir tous les points de compétence actuellement utilisables dans cette compétence ?",
+    "itIT": "Vuoi investire in questa abilità tutti i punti abilità attualmente disponibili?",
+    "koKR": "이 스킬에 현재 사용할 수 있는 모든 스킬 포인트를 투자하시겠습니까?",
+    "plPL": "Czy zainwestować wszystkie obecnie dostępne punkty umiejętności w tę umiejętność?",
+    "esMX": "¿Quieres invertir todos los puntos de habilidad disponibles en esta habilidad?",
+    "jaJP": "現在使用可能なすべてのスキルポイントをこのスキルに割り振りますか？",
+    "ptBR": "Deseja investir nesta habilidade todos os pontos de habilidade disponíveis?",
+    "ruRU": "Вложить все доступные сейчас очки навыков в этот навык?",
+    "zhCN": "要将当前可用的所有技能点投入此技能吗？"
 }

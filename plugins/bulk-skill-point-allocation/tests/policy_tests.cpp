@@ -82,9 +82,28 @@ int main(int argc, char** argv) {
     REQUIRE(shipped.settings.skillPointsPerCtrlClick == 5);
     REQUIRE(!shipped.settings.confirmShiftAllocation);
     REQUIRE(!shipped.settings.diagnostics);
-    REQUIRE(shipped.settings.shiftConfirmationKey == "shiftConfirmation");
+    REQUIRE(shipped.settings.shiftConfirmationKey.empty());
     REQUIRE(shipped.settings.shiftConfirmationFallback
         == "Invest all currently usable skill points in this skill?");
+    for (std::size_t index = 0; index < SupportedLocaleCount; ++index) {
+        REQUIRE(shipped.settings.shiftConfirmations[index]
+            == LocaleDefinitions[index].defaultConfirmation);
+        REQUIRE(FindLocaleByCode(LocaleDefinitions[index].code) == index);
+        REQUIRE(DetectLocale(
+            LocaleDefinitions[index].primaryProbe,
+            LocaleDefinitions[index].secondaryProbe) == index);
+        REQUIRE(DetectLocale(
+            LocaleDefinitions[index].primaryProbe,
+            "mod-overrode-secondary-probe") == index);
+    }
+    REQUIRE(!DetectLocale("unknown-primary", "unknown-secondary"));
+    REQUIRE(!DetectLocale(
+        LocaleDefinitions[0].primaryProbe,
+        LocaleDefinitions[6].secondaryProbe));
+    REQUIRE(!DetectLocale(
+        {}, LocaleDefinitions[3].secondaryProbe));
+    REQUIRE(DetectLocale(
+        {}, LocaleDefinitions[0].secondaryProbe) == 0);
 
     Settings custom;
     ApplyGameplayConfig(Json::ParseObject(R"json({
@@ -96,7 +115,8 @@ int main(int argc, char** argv) {
     })json"), custom);
     ApplyStringsConfig(Json::ParseObject(R"json({
         "shiftConfirmationKey": "custom\u004bey",
-        "shiftConfirmationFallback": "Tout investir? \uD83D\uDC4D"
+        "shiftConfirmationFallback": "Tout investir? \uD83D\uDC4D",
+        "frFR": "Texte français personnalisé"
     })json"), custom);
     REQUIRE(custom.enabled);
     REQUIRE(custom.skillPointsPerCtrlClick == 25);
@@ -104,6 +124,11 @@ int main(int argc, char** argv) {
     REQUIRE(custom.diagnostics);
     REQUIRE(custom.shiftConfirmationKey == "customKey");
     REQUIRE(custom.shiftConfirmationFallback == "Tout investir? 👍");
+    REQUIRE(custom.shiftConfirmations[*FindLocaleByCode("frFR")]
+        == "Texte français personnalisé");
+    REQUIRE(custom.shiftConfirmations[*FindLocaleByCode("koKR")]
+        == LocaleDefinitions[*FindLocaleByCode("koKR")]
+            .defaultConfirmation);
 
     REQUIRE(IsUsableLocalizedString(
         "Invest all points?", "shiftConfirmation", "Missing string"));
@@ -161,7 +186,21 @@ int main(int argc, char** argv) {
     REQUIRE(Throws([] {
         Settings settings;
         ApplyStringsConfig(
-            Json::ParseObject("{\"shiftConfirmationKey\":\"\"}"),
+            Json::ParseObject(
+                std::string("{\"shiftConfirmationKey\":\"")
+                + std::string(256, 'x') + "\"}"),
+            settings);
+    }));
+    REQUIRE(Throws([] {
+        Settings settings;
+        ApplyStringsConfig(
+            Json::ParseObject("{\"koKR\":\"\"}"),
+            settings);
+    }));
+    REQUIRE(Throws([] {
+        Settings settings;
+        ApplyStringsConfig(
+            Json::ParseObject("{\"notALocale\":\"text\"}"),
             settings);
     }));
 
@@ -238,7 +277,10 @@ int main(int argc, char** argv) {
     REQUIRE(!defaults.gameplaySource);
     REQUIRE(!defaults.stringsSource);
     REQUIRE(defaults.settings.skillPointsPerCtrlClick == 5);
-    REQUIRE(defaults.settings.shiftConfirmationKey == "shiftConfirmation");
+    REQUIRE(defaults.settings.shiftConfirmationKey.empty());
+    REQUIRE(defaults.settings.shiftConfirmations[*FindLocaleByCode("zhCN")]
+        == LocaleDefinitions[*FindLocaleByCode("zhCN")]
+            .defaultConfirmation);
 
     WriteFile(
         globalGameplay,

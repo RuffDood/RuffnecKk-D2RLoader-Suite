@@ -30,6 +30,12 @@ target_include_directories(
     ruffneckk_bulk_skill_point_allocation
     PRIVATE src
 )
+if(MSVC)
+    target_compile_options(
+        ruffneckk_bulk_skill_point_allocation
+        PRIVATE /utf-8
+    )
+endif()
 set_target_properties(
     ruffneckk_bulk_skill_point_allocation
     PROPERTIES
@@ -54,6 +60,12 @@ if(BUILD_TESTING)
         ruffneckk_bulk_skill_point_allocation_tests
         PRIVATE src
     )
+    if(MSVC)
+        target_compile_options(
+            ruffneckk_bulk_skill_point_allocation_tests
+            PRIVATE /utf-8
+        )
+    endif()
     add_test(
         NAME ruffneckk.bulk-skill-point-allocation.policy
         COMMAND ruffneckk_bulk_skill_point_allocation_tests

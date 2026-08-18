@@ -2,6 +2,8 @@
 
 #include <D2RLPlugin/context.h>
 
+#include "localization.hpp"
+
 #include <algorithm>
 #include <charconv>
 #include <cstddef>
@@ -28,8 +30,6 @@ inline constexpr std::uintmax_t MaximumConfigBytes = 64U * 1024U;
 inline constexpr std::uint32_t DefaultSkillPointsPerCtrlClick = 5;
 inline constexpr std::uint32_t MaximumSkillPointsPerCtrlClick = 1'000;
 inline constexpr std::uint16_t AssignAllSkillPointsExtra = 0xFFFF;
-inline constexpr char DefaultShiftConfirmationLocalizationKey[] =
-    "shiftConfirmation";
 inline constexpr char DefaultShiftConfirmation[] =
     "Invest all currently usable skill points in this skill?";
 
@@ -47,9 +47,10 @@ struct Settings {
         DefaultSkillPointsPerCtrlClick};
     bool confirmShiftAllocation{};
     bool diagnostics{};
-    std::string shiftConfirmationKey{
-        DefaultShiftConfirmationLocalizationKey};
+    std::string shiftConfirmationKey;
     std::string shiftConfirmationFallback{DefaultShiftConfirmation};
+    std::array<std::string, SupportedLocaleCount> shiftConfirmations{
+        DefaultShiftConfirmations()};
 };
 
 struct LoadedSettings {
@@ -479,20 +480,30 @@ inline void ApplyStringsConfig(
         } else if (key == "shiftConfirmationFallback") {
             settings.shiftConfirmationFallback =
                 Json::RequireString(value, key);
+        } else if (const auto locale = FindLocaleByCode(key)) {
+            settings.shiftConfirmations[*locale] =
+                Json::RequireString(value, key);
         } else {
             throw std::invalid_argument(
                 "strings configuration contains unknown key '" + key + "'");
         }
     }
-    if (settings.shiftConfirmationKey.empty()
-        || settings.shiftConfirmationKey.size() > 255) {
+    if (settings.shiftConfirmationKey.size() > 255) {
         throw std::invalid_argument(
-            "shiftConfirmationKey must contain 1 through 255 UTF-8 bytes");
+            "shiftConfirmationKey must contain at most 255 UTF-8 bytes");
     }
     if (settings.shiftConfirmationFallback.empty()
         || settings.shiftConfirmationFallback.size() > 1024) {
         throw std::invalid_argument(
             "shiftConfirmationFallback must contain 1 through 1024 UTF-8 bytes");
+    }
+    for (std::size_t index = 0; index < SupportedLocaleCount; ++index) {
+        const auto& confirmation = settings.shiftConfirmations[index];
+        if (confirmation.empty() || confirmation.size() > 1024) {
+            throw std::invalid_argument(
+                std::string(LocaleDefinitions[index].code)
+                + " must contain 1 through 1024 UTF-8 bytes");
+        }
     }
 }
 
