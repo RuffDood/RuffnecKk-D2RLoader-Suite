@@ -19,9 +19,8 @@ Open the GitHub **Releases** page and choose one of these options:
 - **Individual plugin ZIPs** : recommended when you only want specific
   features.
 - **Individual patch JSON files** : same as above.
-- **All Plugins** : downlaods every Suite plugin.
+- **All Plugins** : downloads every Suite plugin.
 - **All Patches** : downloads every patch selected for that Suite release.
-  It includes both Ground Item Label Limit presets; keep only one active.
 
 ## Quick installation
 
