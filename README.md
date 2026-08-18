@@ -46,7 +46,7 @@ default TOML configuration the first time they run and do not overwrite your
 existing settings. Larzuk Sockets and Bulk Skill Point Allocation use JSON
 configuration files included in their downloads.
 
-For Remote Stash, please read the README included in the downloaded ZIP. TDLR the setup should now be easier and it's recommanded you delete stuff you installed from previous versions.
+For Remote Stash, please read the README included in the downloaded ZIP. TDLR the setup should now be easier and it's recommended you delete stuff you installed from previous versions
 
 ## Important compatibility note
 
@@ -58,8 +58,9 @@ Do not use this Suite together with the old Community Pack files:
 - `plugin-quests.dll`
 - `plugin-skills.dll`
 
-Those older combined DLLs are no longer supported with this Suite and
-D2RLoader 1.1.0.
+Those older combined DLLs are no longer supported.
+
+Feel free to install back Eezstreet's plugin pack :
 
 ## Plugins
 
