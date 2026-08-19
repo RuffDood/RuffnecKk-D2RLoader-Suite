@@ -15,7 +15,6 @@
 namespace RuffnecKk::PreventMercDeathInTown {
 namespace {
 
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::uintptr_t ApplyMonsterStatRegenRva = 0x448C00;
 constexpr std::uintptr_t GetUnitStatRva = 0x2F5020;
 constexpr std::uintptr_t GetUnitBaseStatRva = 0x2F48C0;
@@ -117,7 +116,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-prevent-merc-death-in-town",
     .name = "Prevent Merc Death in Town",
-    .version = "1.0.0",
+    .version = "1.0.1",
     .author = "RuffnecKk",
     .description = "Prevents mercenaries from dying to lingering damage while in town.",
     .flags = D2RL::PluginFlags::Server | D2RL::PluginFlags::NativeHooks,
@@ -356,10 +355,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "PreventMercDeathInTown: D2R executable base is unavailable.");
         return false;
     }
-    if (context->modDataVersionBuild != 0
-        && context->modDataVersionBuild != SupportedBuild) {
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
         context->LogError(
-            "PreventMercDeathInTown: only D2R build 92777 is supported.");
+            "PreventMercDeathInTown: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
     if (!ValidateRuntime()) {

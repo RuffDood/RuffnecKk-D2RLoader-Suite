@@ -4,8 +4,8 @@
 D2RL_PLUGIN_MANIFEST_RESOURCE_ID RCDATA { D2RL_PLUGIN_RESOURCE_DWORD(D2RL_PLUGIN_API_VERSION) }
 
 1 VERSIONINFO
-FILEVERSION 0,2,0,0
-PRODUCTVERSION 0,2,0,0
+FILEVERSION 0,2,1,0
+PRODUCTVERSION 0,2,1,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -13,11 +13,11 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "RuffnecKk"
       VALUE "FileDescription", "Refreshes a vendor's stock with one click."
-      VALUE "FileVersion", "0.2.0"
+      VALUE "FileVersion", "0.2.1"
       VALUE "InternalName", "ruffneckk-vendor-stock-refresh"
       VALUE "OriginalFilename", "d2rl-ruffneckk-vendor-stock-refresh.dll"
       VALUE "ProductName", "Vendor Stock Refresh"
-      VALUE "ProductVersion", "0.2.0"
+      VALUE "ProductVersion", "0.2.1"
     END
   END
   BLOCK "VarFileInfo"

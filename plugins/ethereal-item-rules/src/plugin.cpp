@@ -9,13 +9,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <string_view>
 
 namespace RuffnecKk::EtherealItemRules {
 namespace {
 
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::uintptr_t CheckItemTypeRva = 0x373890;
 constexpr std::uintptr_t GetItemContextRva = 0x34A0E0;
 constexpr std::uintptr_t GetDataTablesRva = 0x300A90;
@@ -100,7 +100,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-ethereal-item-rules",
     .name = "Ethereal Item Rules",
-    .version = "1.0.0",
+    .version = "1.0.1",
     .author = "RuffnecKk",
     .description = "Controls ethereal item chance and eligibility.",
     .flags = D2RL::PluginFlags::Server | D2RL::PluginFlags::NativeHooks,
@@ -477,10 +477,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     if (!ReadConfiguration()) return false;
-    if (context->modDataVersionBuild != 0
-        && context->modDataVersionBuild != SupportedBuild) {
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
         context->LogError(
-            "EtherealItemRules: only D2R build 92777 is supported.");
+            "EtherealItemRules: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
     if (!ValidateRuntime()) return false;

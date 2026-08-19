@@ -86,6 +86,16 @@ std::atomic<std::uint64_t> RendererInitFailures{};
 std::atomic<std::uint64_t> RenderedFrames{};
 std::atomic<std::uint32_t> LastInitFailureStage{};
 std::atomic<std::uint32_t> DiagnosticMessages{};
+std::atomic<bool> ExternalOverlaysAvailable{};
+constexpr std::size_t MaximumNamedOverlays = 8;
+
+struct NamedOverlayEntry {
+    std::array<char, 64> owner{};
+    RuffnecKk::FloatingDamageOverlay::OverlayCallback callback{};
+};
+
+std::mutex NamedOverlayMutex;
+std::array<NamedOverlayEntry, MaximumNamedOverlays> NamedOverlays{};
 
 enum DiagnosticMessage : std::uint32_t {
     PresentInterceptedMessage = 1u << 0,
@@ -384,6 +394,22 @@ HRESULT STDMETHODCALLTYPE HookPresent(IDXGISwapChain3* swapChain, UINT syncInter
     DisplayHeight.store(io.DisplaySize.y, std::memory_order_relaxed);
     FloatingDamage::Update(delta);
     FloatingDamage::Render(ImGui::GetBackgroundDrawList(), io.DisplaySize);
+    std::array<RuffnecKk::FloatingDamageOverlay::OverlayCallback,
+        MaximumNamedOverlays> externalCallbacks{};
+    {
+        std::scoped_lock registryLock(NamedOverlayMutex);
+        for (std::size_t index = 0; index < NamedOverlays.size(); ++index)
+            externalCallbacks[index] = NamedOverlays[index].callback;
+    }
+    for (const auto callback : externalCallbacks) {
+        if (callback) {
+            callback(
+                ImGui::GetForegroundDrawList(),
+                io.DisplaySize.x,
+                io.DisplaySize.y,
+                Window);
+        }
+    }
     ImGui::Render();
 
     if (FAILED(frame.allocator->Reset())) return OriginalPresent(swapChain, syncInterval, flags);
@@ -559,6 +585,96 @@ void SetOptionalKodiaFontPath(const wchar_t* path) noexcept {
 
 void SetDiagnosticLogCallback(DiagnosticLogCallback callback) noexcept {
     DiagnosticLogger.store(callback, std::memory_order_release);
+}
+
+void SetExternalOverlayAvailability(bool available) noexcept {
+    ExternalOverlaysAvailable.store(available, std::memory_order_release);
+    if (!available) ClearNamedExternalOverlays();
+}
+
+bool RegisterNamedExternalOverlay(
+    const char* owner,
+    RuffnecKk::FloatingDamageOverlay::OverlayCallback callback) noexcept {
+    if (!owner || owner[0] == '\0') return false;
+    if (callback
+        && !ExternalOverlaysAvailable.load(std::memory_order_acquire)) {
+        return false;
+    }
+
+    // Present owns RenderMutex while invoking callbacks. Taking it here makes
+    // unregister a synchronization point so a callback DLL may safely unload.
+    std::scoped_lock renderLock(RenderMutex);
+    std::scoped_lock registryLock(NamedOverlayMutex);
+
+    NamedOverlayEntry* empty{};
+    for (auto& entry : NamedOverlays) {
+        if (entry.callback && std::strcmp(entry.owner.data(), owner) == 0) {
+            if (callback) entry.callback = callback;
+            else entry = {};
+            return true;
+        }
+        if (!entry.callback && !empty) empty = &entry;
+    }
+    if (!callback) return true;
+    if (!empty) return false;
+
+    strncpy_s(empty->owner.data(), empty->owner.size(), owner, _TRUNCATE);
+    empty->callback = callback;
+    return true;
+}
+
+void ClearNamedExternalOverlays() noexcept {
+    std::scoped_lock renderLock(RenderMutex);
+    std::scoped_lock registryLock(NamedOverlayMutex);
+    NamedOverlays = {};
+}
+
+namespace {
+ImU32 OverlayColor(
+    float red,
+    float green,
+    float blue,
+    float alpha) noexcept {
+    return ImGui::ColorConvertFloat4ToU32(ImVec4(
+        std::clamp(red, 0.0f, 1.0f),
+        std::clamp(green, 0.0f, 1.0f),
+        std::clamp(blue, 0.0f, 1.0f),
+        std::clamp(alpha, 0.0f, 1.0f)));
+}
+} // namespace
+
+void OverlayAddRect(
+    void* drawList,
+    float left,
+    float top,
+    float right,
+    float bottom,
+    float red,
+    float green,
+    float blue,
+    float alpha,
+    float thickness) noexcept {
+    if (!drawList || right <= left || bottom <= top) return;
+    static_cast<ImDrawList*>(drawList)->AddRect(
+        ImVec2(left, top), ImVec2(right, bottom),
+        OverlayColor(red, green, blue, alpha),
+        0.0f, 0, std::max(thickness, 1.0f));
+}
+
+void OverlayAddRectFilled(
+    void* drawList,
+    float left,
+    float top,
+    float right,
+    float bottom,
+    float red,
+    float green,
+    float blue,
+    float alpha) noexcept {
+    if (!drawList || right <= left || bottom <= top) return;
+    static_cast<ImDrawList*>(drawList)->AddRectFilled(
+        ImVec2(left, top), ImVec2(right, bottom),
+        OverlayColor(red, green, blue, alpha));
 }
 
 bool InstallHooks() noexcept {

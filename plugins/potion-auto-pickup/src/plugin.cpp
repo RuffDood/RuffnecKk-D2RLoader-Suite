@@ -10,13 +10,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <string_view>
 
 namespace RuffnecKk::PotionAutoPickup {
 namespace {
 
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::size_t MaximumConfigBytes = 65'536;
 
 constexpr std::uintptr_t GetGameRva = 0x34B440;
@@ -182,7 +182,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-potion-auto-pickup",
     .name = "Potion Auto Pickup",
-    .version = "1.3.0",
+    .version = "1.3.1",
     .author = "RuffnecKk",
     .description =
         "Picks up configured potions into preferred belt columns or inventory.",
@@ -790,10 +790,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     if (!ReadConfiguration()) return false;
-    if (context->modDataVersionBuild != 0
-        && context->modDataVersionBuild != SupportedBuild) {
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
         context->LogError(
-            "PotionAutoPickup: only D2R build 92777 is supported.");
+            "PotionAutoPickup: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
 

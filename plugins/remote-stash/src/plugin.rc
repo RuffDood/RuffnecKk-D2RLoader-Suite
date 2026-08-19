@@ -7,8 +7,8 @@ REMOTE_STASH_DEFAULT_SPRITE_RESOURCE_ID RCDATA "../assets/mod-data/data/hd/globa
 REMOTE_STASH_DEFAULT_LOWEND_SPRITE_RESOURCE_ID RCDATA "../assets/mod-data/data/hd/global/ui/panel/inventory/remotestashbutton.lowend.sprite"
 
 1 VERSIONINFO
-FILEVERSION 2,0,0,0
-PRODUCTVERSION 2,0,0,0
+FILEVERSION 2,0,1,0
+PRODUCTVERSION 2,0,1,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -16,11 +16,11 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "RuffnecKk"
       VALUE "FileDescription", "Opens the native personal and shared stash from anywhere."
-      VALUE "FileVersion", "2.0.0"
+      VALUE "FileVersion", "2.0.1"
       VALUE "InternalName", "ruffneckk-remote-stash"
       VALUE "OriginalFilename", "d2rl-ruffneckk-remote-stash.dll"
       VALUE "ProductName", "Remote Stash"
-      VALUE "ProductVersion", "2.0.0"
+      VALUE "ProductVersion", "2.0.1"
     END
   END
   BLOCK "VarFileInfo"

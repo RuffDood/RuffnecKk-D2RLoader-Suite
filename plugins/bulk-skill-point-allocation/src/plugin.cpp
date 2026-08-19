@@ -88,7 +88,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-bulk-skill-point-allocation",
     .name = "Bulk Skill Point Allocation",
-    .version = "1.3.2",
+    .version = "1.3.3",
     .author = "RuffnecKk",
     .description =
         "Allocates configurable skill-point batches with Ctrl or all points with Shift.",
@@ -606,10 +606,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         ResetState();
         return false;
     }
-    if (context->modDataVersionBuild != 0
-        && context->modDataVersionBuild != NativeContract::SupportedBuild) {
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
         context->LogError(
-            "BulkSkillPointAllocation: only D2R build 92777 is supported.");
+            "BulkSkillPointAllocation: only D2R builds 92777 and 93847 are supported.");
         ResetState();
         return false;
     }

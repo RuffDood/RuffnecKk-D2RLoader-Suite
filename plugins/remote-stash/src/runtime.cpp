@@ -69,7 +69,6 @@ using ruffneckk::remote_stash::ToggleSource;
 using ruffneckk::remote_stash::UnionRect;
 using ruffneckk::remote_stash::WidgetRect;
 
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::size_t MaximumConfigBytes = 65'536;
 constexpr std::uint64_t MaximumCustomSpriteBytes = 64ULL * 1024ULL * 1024ULL;
 
@@ -456,7 +455,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-remote-stash",
     .name = "Remote Stash",
-    .version = "2.0.0",
+    .version = "2.0.1",
     .author = "RuffnecKk",
     .description =
         "Opens the native personal and shared stash from anywhere.",
@@ -3422,9 +3421,12 @@ bool Load(
             "Remote Stash 2.0.0 by RuffnecKk disabled; no hook, input action, listener, resource, or child layout was registered.");
         return true;
     }
-    if (context->modDataVersionBuild != 0
-        && context->modDataVersionBuild != SupportedBuild) {
-        context->LogError("RemoteStash: only D2R build 92777 is supported.");
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
+        context->LogError(
+            "RemoteStash: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
     if (!QuerySdkServices() || !ValidateRuntime()) {

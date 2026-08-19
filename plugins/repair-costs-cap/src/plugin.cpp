@@ -7,13 +7,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <string_view>
 
 namespace RuffnecKk::RepairCostsCap {
 namespace {
 
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::uintptr_t TransactionCostBodyRva = 0x36F0C0;
 constexpr std::uintptr_t RepairAllCostRva = 0x375330;
 constexpr std::uintptr_t RepairAllZeroCostBranchSignatureRva = 0x53FF65;
@@ -152,7 +152,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-repair-costs-cap",
     .name = "Repair Costs Cap",
-    .version = "1.4.1",
+    .version = "1.4.2",
     .author = "RuffnecKk",
     .description = "Controls NPC repair prices and optional permanent durability wear.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -583,10 +583,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     if (!ReadConfiguration()) return false;
-    if (context->modDataVersionBuild != 0
-        && context->modDataVersionBuild != SupportedBuild) {
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
         context->LogError(
-            "RepairCostsCap: only D2R build 92777 is supported.");
+            "RepairCostsCap: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
     if (!ValidateRuntime()) return false;

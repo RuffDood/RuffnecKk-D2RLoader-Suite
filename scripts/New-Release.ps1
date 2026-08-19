@@ -108,6 +108,7 @@ Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $resolvedSourceRoot = (Resolve-Path -LiteralPath $SourceRoot).Path
 $resolvedAllowlist = (Resolve-Path -LiteralPath $AllowlistPath).Path
+$repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $absoluteOutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 
 try { $document = Get-Content -LiteralPath $resolvedAllowlist -Raw | ConvertFrom-Json }
@@ -137,6 +138,7 @@ $kindCounts = @{
     'plugin-dll' = [int]$expectedCounts.pluginDlls
     'plugin-readme' = [int]$expectedCounts.pluginReadmes
     'loose-config-json' = [int]$expectedCounts.looseConfigJson
+    'plugin-config-toml' = [int]$expectedCounts.pluginConfigToml
     'memory-patch-json' = [int]$expectedCounts.memoryPatchJson
 }
 $deniedBasenames = @($document.policy.deniedBasenames | ForEach-Object { ([string]$_).ToLowerInvariant() })
@@ -150,7 +152,8 @@ foreach ($entry in $entries) {
     $destination = Normalize-ReleasePath ([string]$entry.destination)
     Assert-RelativeReleasePath -Path $source -Label 'Source path'
     Assert-RelativeReleasePath -Path $destination -Label 'Archive destination'
-    if ($kind -ne 'plugin-readme' -and -not $source.Equals($destination, [StringComparison]::Ordinal)) {
+    if ($kind -notin 'plugin-readme', 'plugin-config-toml' -and
+        -not $source.Equals($destination, [StringComparison]::Ordinal)) {
         throw "Source and destination must match: '$source' vs '$destination'."
     }
     if (-not $seen.Add($destination)) { throw "Duplicate archive destination '$destination'." }
@@ -158,6 +161,14 @@ foreach ($entry in $entries) {
     if ($deniedBasenames -contains $basename.ToLowerInvariant()) { throw "Release entry '$destination' is forbidden." }
     if ($kind -ne 'plugin-readme' -and $destination -match '(?i)(^|/)readme(?:\.[^/]+)?$') {
         throw "README requires the plugin-readme release kind: '$destination'."
+    }
+
+    $componentId = ''
+    if ($kind -ne 'memory-patch-json') {
+        $componentId = [string]$entry.componentId
+        if ($componentId -notmatch '^ruffneckk-[a-z0-9-]+$') {
+            throw "Entry '$destination' requires a valid plugin componentId."
+        }
     }
 
     $extension = [IO.Path]::GetExtension($destination)
@@ -172,18 +183,20 @@ foreach ($entry in $entries) {
                 throw "Invalid plugin README release path '$source' -> '$destination'."
             }
         }
+        'plugin-config-toml' {
+            if ($extension -ine '.toml' -or $destination -cne "config/$componentId.toml") {
+                throw "Invalid plugin TOML release destination '$destination'."
+            }
+            $expectedSource = "plugins/$($componentId.Substring('ruffneckk-'.Length))/config/$componentId.toml"
+            if ($source -cne $expectedSource) {
+                throw "Invalid plugin TOML source '$source'; expected '$expectedSource'."
+            }
+        }
         { $_ -in 'loose-config-json', 'memory-patch-json' } {
             if ($extension -ine '.json') { throw "Invalid JSON release path '$destination'." }
         }
     }
 
-    $componentId = ''
-    if ($kind -ne 'memory-patch-json') {
-        $componentId = [string]$entry.componentId
-        if ($componentId -notmatch '^ruffneckk-[a-z0-9-]+$') {
-            throw "Entry '$destination' requires a valid plugin componentId."
-        }
-    }
     $version = ''
     if ($kind -eq 'plugin-dll') {
         $version = [string]$entry.version
@@ -192,7 +205,13 @@ foreach ($entry in $entries) {
 
     $expectedHash = ([string]$entry.sha256).Trim().ToUpperInvariant()
     if ($expectedHash -notmatch '^[0-9A-F]{64}$') { throw "Entry '$destination' requires a valid SHA-256." }
-    $absoluteSource = Resolve-ReleaseSource -Root $resolvedSourceRoot -RelativePath $source
+    $sourceBase = if ($kind -in 'plugin-readme', 'plugin-config-toml') {
+        $repositoryRoot
+    }
+    else {
+        $resolvedSourceRoot
+    }
+    $absoluteSource = Resolve-ReleaseSource -Root $sourceBase -RelativePath $source
     $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $absoluteSource).Hash
     if ($actualHash -ne $expectedHash) {
         throw "SHA-256 mismatch for '$source': expected $expectedHash, found $actualHash."
@@ -220,6 +239,16 @@ foreach ($entry in @($validated | Where-Object Kind -ne 'memory-patch-json')) {
 $pluginReadmes = @($validated | Where-Object Kind -eq 'plugin-readme')
 if ($pluginReadmes.Count -ne 1 -or $pluginReadmes[0].ComponentId -ne 'ruffneckk-remote-stash') {
     throw 'Remote Stash must be the one plugin with an approved README in its individual archive.'
+}
+$pluginConfigs = @($validated | Where-Object Kind -in 'plugin-config-toml', 'loose-config-json')
+if ($pluginConfigs.Count -ne $pluginDlls.Count) {
+    throw "Every plugin archive requires exactly one configuration; found $($pluginConfigs.Count) for $($pluginDlls.Count) plugins."
+}
+foreach ($pluginId in $pluginIds) {
+    $ownedConfigs = @($pluginConfigs | Where-Object ComponentId -eq $pluginId)
+    if ($ownedConfigs.Count -ne 1) {
+        throw "Plugin '$pluginId' requires exactly one configuration entry; found $($ownedConfigs.Count)."
+    }
 }
 
 $expectedAssets = $document.distribution.expectedGithubAssets

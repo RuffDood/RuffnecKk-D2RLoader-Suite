@@ -23,7 +23,6 @@
 namespace RuffnecKk::MassIdentify {
 namespace {
 
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::size_t MaximumConfigBytes = 65'536;
 constexpr std::int32_t SharedStashProxyState = 0xBA;
 constexpr std::uint64_t HoverLifetimeMilliseconds = 1'500;
@@ -293,7 +292,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-mass-identify",
     .name = "MassID",
-    .version = "2.0.1",
+    .version = "2.0.2",
     .author = "RuffnecKk",
     .description = "Identifies selected item containers from an Identify Tome.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -1291,9 +1290,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     // The SDK-owned TOML is parsed before any service registration or hook.
     if (!ReadConfiguration()) return false;
-    if (context->modDataVersionBuild != 0
-        && context->modDataVersionBuild != SupportedBuild) {
-        context->LogError("MassID: only D2R build 92777 is supported.");
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
+        context->LogError(
+            "MassID: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
 

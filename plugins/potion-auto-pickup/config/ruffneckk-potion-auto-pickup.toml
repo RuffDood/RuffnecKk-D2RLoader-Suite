@@ -1,6 +1,8 @@
 # Potion Auto Pickup
-# Automatically picks up only the exact potion codes and destinations below.
-# Potion codes are the values from the code column in misc.txt.
+# Example setup: Rejuvenation potions use belt column 4, Health uses columns
+# 1 and 2, and Mana uses column 3. Edit the lists to match your own belt.
+# Potion codes are the exact values from the code column in misc.txt.
+# The order of each list is also its pickup priority.
 # Changes take effect after fully closing and restarting Diablo II: Resurrected.
 
 # Master switch. Set to false to install no hooks or patches.
@@ -10,33 +12,33 @@ enabled = true
 pickup_range = 4
 # When several potion families are eligible, entries are checked left to right.
 # Valid names: "health", "mana", "rejuvenation".
-pickup_family_order = []
+pickup_family_order = ["rejuvenation", "health", "mana"]
 
 [health_potions]
-enabled = false
+enabled = true
 # Exact misc.txt potion codes, ordered from highest to lowest pickup priority.
 # Valid codes: hp1, hp2, hp3, hp4, hp5.
-potion_codes = []
+potion_codes = ["hp5", "hp4", "hp3", "hp2"]
 # Preferred belt columns, ordered from first choice to last choice.
 # Valid columns: 1 (leftmost) through 4 (rightmost).
-belt_columns = []
+belt_columns = [1, 2]
 # Codes allowed into character inventory only when no configured belt column
 # has room. Every code here must also be listed in potion_codes.
-inventory_fallback_potion_codes = []
+inventory_fallback_potion_codes = ["hp5"]
 
 [mana_potions]
-enabled = false
+enabled = true
 # Valid codes: mp1, mp2, mp3, mp4, mp5.
-potion_codes = []
-belt_columns = []
-inventory_fallback_potion_codes = []
+potion_codes = ["mp5", "mp4", "mp3"]
+belt_columns = [3]
+inventory_fallback_potion_codes = ["mp5"]
 
 [rejuvenation_potions]
-enabled = false
+enabled = true
 # Valid codes: rvs (Rejuvenation), rvl (Full Rejuvenation).
-potion_codes = []
-belt_columns = []
-inventory_fallback_potion_codes = []
+potion_codes = ["rvl", "rvs"]
+belt_columns = [4]
+inventory_fallback_potion_codes = ["rvl", "rvs"]
 
 [advanced]
 # Scan once per this many supported player actions. Accepted range: 1 to 25.

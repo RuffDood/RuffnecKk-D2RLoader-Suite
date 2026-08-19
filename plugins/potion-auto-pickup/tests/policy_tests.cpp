@@ -32,13 +32,28 @@ int main(int argc, char** argv) {
     REQUIRE(config.enabled);
     REQUIRE(config.distance == 4);
     REQUIRE(config.interval == 1);
-    REQUIRE(config.familyPriorityCount == 0);
-    REQUIRE(!config.healing.policy.enabled);
-    REQUIRE(!config.mana.policy.enabled);
-    REQUIRE(!config.rejuvenation.policy.enabled);
-    REQUIRE(config.healing.policy.columnCount == 0);
-    REQUIRE(config.mana.policy.columnCount == 0);
-    REQUIRE(config.rejuvenation.policy.columnCount == 0);
+    REQUIRE(config.familyPriorityCount == 3);
+    REQUIRE(config.familyPriority[0] == Family::Rejuvenation);
+    REQUIRE(config.familyPriority[1] == Family::Healing);
+    REQUIRE(config.familyPriority[2] == Family::Mana);
+    REQUIRE(config.healing.policy.enabled);
+    REQUIRE(config.mana.policy.enabled);
+    REQUIRE(config.rejuvenation.policy.enabled);
+    REQUIRE(config.healing.policy.columnCount == 2);
+    REQUIRE(config.healing.policy.columns[0] == 1);
+    REQUIRE(config.healing.policy.columns[1] == 2);
+    REQUIRE(config.mana.policy.columnCount == 1);
+    REQUIRE(config.mana.policy.columns[0] == 3);
+    REQUIRE(config.rejuvenation.policy.columnCount == 1);
+    REQUIRE(config.rejuvenation.policy.columns[0] == 4);
+    REQUIRE(config.healing.policy.Accepts(Classify("hp2")));
+    REQUIRE(!config.healing.policy.Accepts(Classify("hp1")));
+    REQUIRE(config.mana.policy.Accepts(Classify("mp3")));
+    REQUIRE(!config.mana.policy.Accepts(Classify("mp2")));
+    REQUIRE(config.rejuvenation.policy.Accepts(Classify("rvl")));
+    REQUIRE(config.healing.policy.AllowsOverflow(Classify("hp5")));
+    REQUIRE(config.mana.policy.AllowsOverflow(Classify("mp5")));
+    REQUIRE(config.rejuvenation.policy.AllowsOverflow(Classify("rvs")));
     REQUIRE(!config.diagnosticsEnabled);
     REQUIRE(!config.logScans);
 
@@ -62,16 +77,16 @@ int main(int argc, char** argv) {
         "enabled = true\npickup_distance = 5\n", config, error));
 
     auto duplicateColumn = stream.str();
-    const auto columns = duplicateColumn.find("belt_columns = []");
+    const auto columns = duplicateColumn.find("belt_columns = [1, 2]");
     REQUIRE(columns != std::string::npos);
-    duplicateColumn.replace(columns, std::string("belt_columns = []").size(),
+    duplicateColumn.replace(columns, std::string("belt_columns = [1, 2]").size(),
         "belt_columns = [1, 1]");
     REQUIRE(!ParseConfig(duplicateColumn, config, error));
 
     auto wrongCode = stream.str();
-    const auto code = wrongCode.find("potion_codes = []");
+    const auto code = wrongCode.find("potion_codes = [\"hp5\", \"hp4\", \"hp3\", \"hp2\"]");
     REQUIRE(code != std::string::npos);
-    wrongCode.replace(code, std::string("potion_codes = []").size(),
+    wrongCode.replace(code, std::string("potion_codes = [\"hp5\", \"hp4\", \"hp3\", \"hp2\"]").size(),
         "potion_codes = [\"mp2\"]");
     REQUIRE(!ParseConfig(wrongCode, config, error));
 

@@ -15,7 +15,6 @@
 namespace RuffnecKk::VendorStockRefresh {
 namespace {
 
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::size_t MaximumConfigBytes = 65'536;
 constexpr std::uint64_t MaximumDiagnosticLogs = 12;
 constexpr std::uintptr_t SendVendorRefreshRva = 0x10F520;
@@ -165,7 +164,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-vendor-stock-refresh",
     .name = "Vendor Stock Refresh",
-    .version = "0.2.0",
+    .version = "0.2.1",
     .author = "RuffnecKk",
     .description = "Refreshes a vendor's stock with one click.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -590,9 +589,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         context->LogError("VendorStockRefresh: D2R executable base is unavailable.");
         return false;
     }
-    if (context->modDataVersionBuild != 0 && context->modDataVersionBuild != SupportedBuild) {
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
         context->LogError(
-            "VendorStockRefresh: only D2R build 92777 is supported.");
+            "VendorStockRefresh: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
 

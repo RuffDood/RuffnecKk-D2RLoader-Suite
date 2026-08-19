@@ -7,7 +7,7 @@ features for D2RLoader. You can install one component, a few
 favorites, or the complete bundles.
 ## Requirements
 
-- Diablo II: Resurrected build **3.2.92777**
+- Diablo II: Resurrected build **3.2.92777** or **3.3.93847**
 - **D2RLoader 1.1.0-beta**
 
 Download D2RLoader from [D2RLoader.net](https://d2rloader.net/).
@@ -38,10 +38,10 @@ Then:
 
 Never install the same plugin globally and inside a mod at the same time.
 
-Most plugin settings are stored in `d2rloader/config/`. Plugins create their
-default TOML configuration the first time they run and do not overwrite your
-existing settings. Larzuk Sockets and Bulk Skill Point Allocation use JSON
-configuration files included in their downloads.
+Every plugin download includes its configuration. Copy both the `plugins/` and
+`config/` folders into the same D2RLoader installation. Existing configuration
+files are never overwritten when a plugin starts. If a TOML file is missing,
+the plugin can still recreate its default configuration as a fallback.
 
 For Remote Stash, please read the README included in the downloaded ZIP. TDLR the setup should now be easier and it's recommended you delete stuff you installed from previous versions.
 

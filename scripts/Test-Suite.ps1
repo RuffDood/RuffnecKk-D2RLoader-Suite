@@ -43,6 +43,11 @@ if ($pluginEntries.Count -ne 17 -or @($pluginIds | Sort-Object -Unique).Count -n
     throw "Expected 17 unique plugin DLL entries in the release allowlist; found $($pluginEntries.Count)."
 }
 $ownedEntries = @($allowlist.entries | Where-Object { [string]$_.kind -ne 'memory-patch-json' })
+$tomlConfigEntries = @($allowlist.entries | Where-Object { [string]$_.kind -eq 'plugin-config-toml' })
+$jsonConfigEntries = @($allowlist.entries | Where-Object { [string]$_.kind -eq 'loose-config-json' })
+if ($tomlConfigEntries.Count -ne 15 -or $jsonConfigEntries.Count -ne 2) {
+    throw "Expected 15 TOML and 2 JSON plugin configuration entries; found $($tomlConfigEntries.Count) and $($jsonConfigEntries.Count)."
+}
 foreach ($entry in $ownedEntries) {
     if ([string]$entry.componentId -notin $pluginIds) {
         throw "Release entry '$($entry.destination)' is not assigned to an approved plugin archive."
@@ -135,6 +140,13 @@ foreach ($entry in $pluginEntries) {
 
     $tomlFiles = @(Get-ChildItem -LiteralPath $pluginDirectory -Filter '*.toml' -File -Recurse)
     $jsonFiles = @(Get-ChildItem -LiteralPath $pluginDirectory -Filter '*.json' -File -Recurse)
+    $manifestConfigs = @($allowlist.entries | Where-Object {
+        [string]$_.kind -in 'plugin-config-toml', 'loose-config-json' -and
+        [string]$_.componentId -eq $pluginId
+    })
+    if ($manifestConfigs.Count -ne 1) {
+        $errors.Add("$slug must have exactly one public configuration entry in the release allowlist.")
+    }
     if ($tomlFiles.Count -gt 0) {
         if ($tomlFiles.Count -ne 1 -or $tomlFiles[0].Name -ne "$pluginId.toml") {
             $errors.Add("$slug must contain exactly config/$pluginId.toml when it uses TOML.")
@@ -142,10 +154,25 @@ foreach ($entry in $pluginEntries) {
         if ($cmakeText -notmatch 'd2rlplugin_embed_config') {
             $errors.Add("$slug does not embed its TOML through the SDK helper.")
         }
+        if ($manifestConfigs.Count -eq 1) {
+            $manifestConfig = $manifestConfigs[0]
+            $expectedSource = "plugins/$slug/config/$pluginId.toml"
+            $expectedDestination = "config/$pluginId.toml"
+            $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $tomlFiles[0].FullName).Hash
+            if ([string]$manifestConfig.kind -ne 'plugin-config-toml' -or
+                [string]$manifestConfig.source -cne $expectedSource -or
+                [string]$manifestConfig.destination -cne $expectedDestination -or
+                ([string]$manifestConfig.sha256).ToUpperInvariant() -cne $actualHash) {
+                $errors.Add("$slug TOML is not pinned to its canonical source, destination, and current SHA-256.")
+            }
+        }
     }
     elseif ($jsonFiles.Count -gt 0) {
         if ($cmakeText -match 'd2rlplugin_embed_config') {
             $errors.Add("$slug uses JSON but also invokes the TOML embed helper.")
+        }
+        if ($manifestConfigs.Count -eq 1 -and [string]$manifestConfigs[0].kind -ne 'loose-config-json') {
+            $errors.Add("$slug JSON configuration is not declared as loose-config-json.")
         }
     }
     else {

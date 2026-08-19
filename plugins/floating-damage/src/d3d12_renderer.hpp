@@ -9,6 +9,8 @@
 
 #include <cstdint>
 
+#include "external_overlay_api.hpp"
+
 struct ImFont;
 
 namespace D3D12 {
@@ -31,6 +33,32 @@ struct OverlayDiagnostics {
 void SetDllModule(HMODULE module) noexcept;
 void SetOptionalKodiaFontPath(const wchar_t* path) noexcept;
 void SetDiagnosticLogCallback(DiagnosticLogCallback callback) noexcept;
+void SetExternalOverlayAvailability(bool available) noexcept;
+bool RegisterNamedExternalOverlay(
+    const char* owner,
+    RuffnecKk::FloatingDamageOverlay::OverlayCallback callback) noexcept;
+void ClearNamedExternalOverlays() noexcept;
+void OverlayAddRect(
+    void* drawList,
+    float left,
+    float top,
+    float right,
+    float bottom,
+    float red,
+    float green,
+    float blue,
+    float alpha,
+    float thickness) noexcept;
+void OverlayAddRectFilled(
+    void* drawList,
+    float left,
+    float top,
+    float right,
+    float bottom,
+    float red,
+    float green,
+    float blue,
+    float alpha) noexcept;
 bool InstallHooks() noexcept;
 void RemoveHooks() noexcept;
 OverlayDiagnostics GetOverlayDiagnostics() noexcept;

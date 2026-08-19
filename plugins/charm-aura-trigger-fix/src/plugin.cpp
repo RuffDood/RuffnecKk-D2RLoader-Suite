@@ -9,12 +9,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 namespace RuffnecKk::CharmAuraTriggerFix {
 namespace {
 
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::uintptr_t ActTransitionRva = 0x502D00;
 constexpr std::uintptr_t ZoneTransitionCallRva = 0x486AE0;
 constexpr std::uintptr_t ZoneTransitionReturnRva = 0x486AE5;
@@ -30,6 +30,7 @@ constexpr std::uintptr_t CheckItemTypeRva = 0x373890;
 constexpr std::uintptr_t GetFirstItemRva = 0x388C10;
 constexpr std::uintptr_t GetNextItemRva = 0x38ABA0;
 constexpr std::uintptr_t MergeStatListsRva = 0x2F81A0;
+constexpr std::uintptr_t IsCharmUsableRva = 0x36AE00;
 constexpr std::uintptr_t RefreshPlayerItemsRva = 0x46F220;
 constexpr std::uintptr_t GetSkillListRva = 0x34B6E0;
 constexpr std::uintptr_t SetLeftActiveSkillRva = 0x33EC70;
@@ -124,6 +125,16 @@ constexpr std::array<std::uint8_t, 15> ExpectedMergeStatLists{
     0x48, 0x89, 0x6C, 0x24, 0x20,
     0x57, 0x48, 0x83, 0xEC, 0x20
 };
+constexpr std::array<std::uint8_t, 32> ExpectedIsCharmUsableEntry{
+    0x48, 0x89, 0x5C, 0x24, 0x08, 0x57, 0x48, 0x83,
+    0xEC, 0x40, 0x48, 0x8B, 0xFA, 0x48, 0x8B, 0xD9,
+    0xE8, 0x0B, 0xFF, 0xFF, 0xFF, 0x85, 0xC0, 0x74,
+    0x69, 0xBA, 0x0D, 0x00, 0x00, 0x00, 0x48, 0x8B,
+};
+constexpr std::array<std::uint8_t, 12> ExpectedIsCharmUsableBody{
+    0xE8, 0x6A, 0x8A, 0x00, 0x00, 0x85,
+    0xC0, 0x74, 0x58, 0x48, 0x85, 0xDB,
+};
 constexpr std::array<std::uint8_t, 14> ExpectedRefreshPlayerItems{
     0x48, 0x85, 0xD2,
     0x0F, 0x84, 0xD9, 0x00, 0x00, 0x00,
@@ -190,6 +201,7 @@ using CheckItemTypeFn = std::int32_t(__fastcall*)(void*, std::int32_t) noexcept;
 using GetFirstItemFn = void*(__fastcall*)(void*) noexcept;
 using GetNextItemFn = void*(__fastcall*)(void*) noexcept;
 using MergeStatListsFn = void(__fastcall*)(void*, void*, std::int32_t) noexcept;
+using IsCharmUsableFn = std::int32_t(__fastcall*)(void*, void*) noexcept;
 using RefreshPlayerItemsFn = void(__fastcall*)(void*, void*) noexcept;
 using GetSkillListFn = std::uint8_t*(__fastcall*)(void*) noexcept;
 using SetActiveSkillFn = void(__fastcall*)(
@@ -208,6 +220,7 @@ CheckItemTypeFn CheckItemType{};
 GetFirstItemFn GetFirstItem{};
 GetNextItemFn GetNextItem{};
 MergeStatListsFn MergeStatLists{};
+IsCharmUsableFn IsCharmUsable{};
 RefreshPlayerItemsFn RefreshPlayerItems{};
 GetSkillListFn GetSkillList{};
 SetActiveSkillFn SetLeftActiveSkill{};
@@ -220,6 +233,7 @@ std::atomic<std::uint64_t> NativeTownRespawnRefreshes{};
 std::atomic<std::uint64_t> ScannedItems{};
 std::atomic<std::uint64_t> RefreshedCharms{};
 std::atomic<std::uint64_t> SkippedWithoutAura{};
+std::atomic<std::uint64_t> SkippedInactiveCharms{};
 std::atomic<std::uint64_t> RestoredActiveSkills{};
 std::atomic<std::uint64_t> FailedActiveSkillRestores{};
 std::atomic<std::uint64_t> InvalidStatArrays{};
@@ -232,7 +246,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-charm-aura-trigger-fix",
     .name = "Charm Aura Trigger Fix",
-    .version = "1.6.1",
+    .version = "1.6.2",
     .author = "RuffnecKk",
     .description = "Reactivates inventory charm auras after death, corpse recovery, and zone changes.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -278,6 +292,7 @@ void ResetTelemetry() noexcept {
     ScannedItems.store(0, std::memory_order_relaxed);
     RefreshedCharms.store(0, std::memory_order_relaxed);
     SkippedWithoutAura.store(0, std::memory_order_relaxed);
+    SkippedInactiveCharms.store(0, std::memory_order_relaxed);
     RestoredActiveSkills.store(0, std::memory_order_relaxed);
     FailedActiveSkillRestores.store(0, std::memory_order_relaxed);
     InvalidStatArrays.store(0, std::memory_order_relaxed);
@@ -361,6 +376,10 @@ void RefreshCharmAuras(void* player) noexcept {
         const auto nodePosition = itemData[InventoryNodePositionOffset];
         const bool matchesCharm = CheckItemType(item, CharmItemTypeId) != 0;
         if (!IsEligible(matchesCharm, nodePosition, itemFlags)) continue;
+        if (!IsCharmUsable(item, player)) {
+            SkippedInactiveCharms.fetch_add(1, std::memory_order_relaxed);
+            continue;
+        }
 
         const auto* statList = GetStatList(item);
         if (!statList) continue;
@@ -480,10 +499,10 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Charm Aura Trigger Fix 1.6.1: %s; diagnostics=%s; transitions=%llu; "
+        "Charm Aura Trigger Fix 1.6.2: %s; diagnostics=%s; transitions=%llu; "
         "corpse recoveries=%llu; native corpse refreshes=%llu; town respawns=%llu; "
         "native town refreshes=%llu; items scanned=%llu; aura charms refreshed=%llu; "
-        "non-aura charms skipped=%llu; active skills restored=%llu; active skill "
+        "non-aura charms skipped=%llu; inactive charms skipped=%llu; active skills restored=%llu; active skill "
         "restore failures=%llu; invalid stat arrays=%llu; over-cap charms=%llu; "
         "traversal guards=%llu.",
         Settings.enabled ? "active" : "disabled",
@@ -504,6 +523,8 @@ auto Status(
             RefreshedCharms.load(std::memory_order_relaxed)),
         static_cast<unsigned long long>(
             SkippedWithoutAura.load(std::memory_order_relaxed)),
+        static_cast<unsigned long long>(
+            SkippedInactiveCharms.load(std::memory_order_relaxed)),
         static_cast<unsigned long long>(
             RestoredActiveSkills.load(std::memory_order_relaxed)),
         static_cast<unsigned long long>(
@@ -548,7 +569,6 @@ auto ValidateComposableInlineEntry(
     const char* label
 ) noexcept -> bool {
     if (!Check(bodyRva, bodyExpected, bodyExpectedSize, label)) return false;
-    if (Context->CheckExpectedBytes(rva, expected, expectedSize)) return true;
 
     const D2RL::DiagnosticsServiceV1* diagnostics{};
     if (Context->QueryService(
@@ -559,9 +579,7 @@ auto ValidateComposableInlineEntry(
             diagnostics,
             D2RL::DiagnosticsServiceV1RequiredSize)
         || !diagnostics->queryHookStatus) {
-        Context->LogError(
-            "CharmAuraTriggerFix: Diagnostics v1 is required to validate the shared item-type entry.");
-        return false;
+        return Check(rva, expected, expectedSize, label);
     }
 
     D2RL::Diagnostics::HookQuery query{
@@ -574,12 +592,23 @@ auto ValidateComposableInlineEntry(
         .structSize = D2RL::Diagnostics::HookStatusSize,
     };
     if (diagnostics->queryHookStatus(Context, &query, &status)
-            != D2RL::Diagnostics::Result::Success
-        || status.state != D2RL::Diagnostics::ModificationState::Tracked
+            != D2RL::Diagnostics::Result::Success) {
+        Context->LogError(
+            "CharmAuraTriggerFix: Diagnostics v1 could not inspect a shared native entry.");
+        return false;
+    }
+    if (status.state == D2RL::Diagnostics::ModificationState::Unchanged)
+        return true;
+    if (status.state != D2RL::Diagnostics::ModificationState::Tracked
         || status.kind != D2RL::Diagnostics::ModificationKind::InlineHook
         || status.ownerCount == 0) {
-        Context->LogError(
-            "CharmAuraTriggerFix: item-type entry has an untracked or non-composable modification.");
+        char message[224]{};
+        std::snprintf(
+            message,
+            sizeof(message),
+            "CharmAuraTriggerFix: %s entry has an untracked or non-composable modification.",
+            label);
+        Context->LogError(message);
         return false;
     }
 
@@ -587,7 +616,8 @@ auto ValidateComposableInlineEntry(
     std::snprintf(
         message,
         sizeof(message),
-        "CharmAuraTriggerFix: composing through loader-owned item-type hook (%.*s).",
+        "CharmAuraTriggerFix: composing through loader-owned %s hook (%.*s).",
+        label,
         63,
         status.ownerPluginId);
     Context->LogInfo(message);
@@ -665,6 +695,14 @@ auto ValidateRuntime() noexcept -> bool {
             ExpectedMergeStatLists.data(),
             ExpectedMergeStatLists.size(),
             "merge-stat-lists helper")
+        && ValidateComposableInlineEntry(
+            IsCharmUsableRva,
+            ExpectedIsCharmUsableEntry.data(),
+            static_cast<std::uint32_t>(ExpectedIsCharmUsableEntry.size()),
+            IsCharmUsableRva + 0x21,
+            ExpectedIsCharmUsableBody.data(),
+            static_cast<std::uint32_t>(ExpectedIsCharmUsableBody.size()),
+            "charm-eligibility")
         && Check(
             RefreshPlayerItemsRva,
             ExpectedRefreshPlayerItems.data(),
@@ -758,7 +796,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "Charm Aura Trigger Fix 1.6.1 by RuffnecKk loaded disabled; no hook or service registered.");
+            "Charm Aura Trigger Fix 1.6.2 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 
@@ -769,10 +807,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "CharmAuraTriggerFix: D2R executable base is unavailable.");
         return false;
     }
-    if (context->modDataVersionBuild != 0
-        && context->modDataVersionBuild != SupportedBuild) {
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
         context->LogError(
-            "CharmAuraTriggerFix: only D2R build 92777 is supported.");
+            "CharmAuraTriggerFix: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
     if (!ValidateRuntime()) {
@@ -788,6 +828,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     GetFirstItem = At<GetFirstItemFn>(GetFirstItemRva);
     GetNextItem = At<GetNextItemFn>(GetNextItemRva);
     MergeStatLists = At<MergeStatListsFn>(MergeStatListsRva);
+    IsCharmUsable = At<IsCharmUsableFn>(IsCharmUsableRva);
     RefreshPlayerItems = At<RefreshPlayerItemsFn>(RefreshPlayerItemsRva);
     GetSkillList = At<GetSkillListFn>(GetSkillListRva);
     SetLeftActiveSkill = At<SetActiveSkillFn>(SetLeftActiveSkillRva);
@@ -803,7 +844,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "CharmAuraTriggerFix: status command could not be registered.");
     }
     context->LogInfo(
-        "Charm Aura Trigger Fix 1.6.1 by RuffnecKk active for D2R 3.2.92777.");
+        "Charm Aura Trigger Fix 1.6.2 by RuffnecKk active for D2R 3.2.92777 and respects canonical charm eligibility supplied by compatible zone plugins.");
     return true;
 }
 
@@ -816,6 +857,7 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     GetSkillList = nullptr;
     RefreshPlayerItems = nullptr;
     MergeStatLists = nullptr;
+    IsCharmUsable = nullptr;
     GetNextItem = nullptr;
     GetFirstItem = nullptr;
     CheckItemType = nullptr;

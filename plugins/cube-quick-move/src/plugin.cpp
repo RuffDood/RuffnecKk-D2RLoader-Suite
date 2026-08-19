@@ -17,7 +17,6 @@
 namespace RuffnecKk::CubeQuickMove {
 namespace {
 
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::size_t MaximumConfigBytes = 65'536;
 constexpr std::uint64_t MaximumDiagnosticLogs = 8;
 constexpr std::uintptr_t FindFreePositionRva = 0x3865B0;
@@ -148,7 +147,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-cube-quick-move",
     .name = "Cube Quick Move",
-    .version = "1.0.0",
+    .version = "1.0.1",
     .author = "RuffnecKk",
     .description = "Places quick-moved Cube items from the bottom-right.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -504,9 +503,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         context->LogError("CubeQuickMove: D2R executable base is unavailable.");
         return false;
     }
-    if (context->modDataVersionBuild != 0
-        && context->modDataVersionBuild != SupportedBuild) {
-        context->LogError("CubeQuickMove: only D2R build 92777 is supported.");
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
+        context->LogError(
+            "CubeQuickMove: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
     if (!ValidateRuntime()) {

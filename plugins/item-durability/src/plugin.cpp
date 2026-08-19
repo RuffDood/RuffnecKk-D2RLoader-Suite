@@ -9,12 +9,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 namespace RuffnecKk::ItemDurability {
 namespace {
 
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::uintptr_t UpdateDurabilityRva = 0x441B10;
 constexpr std::uintptr_t GetBaseStatRva = 0x2F48C0;
 constexpr std::uintptr_t GetDataTablesRva = 0x300A90;
@@ -106,7 +106,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-item-durability",
     .name = "Item Durability",
-    .version = "1.2.2",
+    .version = "1.2.3",
     .author = "RuffnecKk",
     .description = "Controls durability loss, ethereal durability, and bow durability.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -474,9 +474,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     if (!ReadConfiguration()) return false;
-    if (context->modDataVersionBuild != 0
-        && context->modDataVersionBuild != SupportedBuild) {
-        context->LogError("ItemDurability: only D2R build 92777 is supported.");
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
+        context->LogError(
+            "ItemDurability: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
     if (!ValidateRuntime() || !InstallHooks()) return false;

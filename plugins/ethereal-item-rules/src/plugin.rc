@@ -4,8 +4,8 @@
 D2RL_PLUGIN_MANIFEST_RESOURCE_ID RCDATA { D2RL_PLUGIN_RESOURCE_DWORD(D2RL_PLUGIN_API_VERSION) }
 
 1 VERSIONINFO
-FILEVERSION 1,0,0,0
-PRODUCTVERSION 1,0,0,0
+FILEVERSION 1,0,1,0
+PRODUCTVERSION 1,0,1,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -13,11 +13,11 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "RuffnecKk"
       VALUE "FileDescription", "Controls ethereal item chance and eligibility."
-      VALUE "FileVersion", "1.0.0"
+      VALUE "FileVersion", "1.0.1"
       VALUE "InternalName", "ruffneckk-ethereal-item-rules"
       VALUE "OriginalFilename", "d2rl-ruffneckk-ethereal-item-rules.dll"
       VALUE "ProductName", "Ethereal Item Rules"
-      VALUE "ProductVersion", "1.0.0"
+      VALUE "ProductVersion", "1.0.1"
     END
   END
   BLOCK "VarFileInfo"

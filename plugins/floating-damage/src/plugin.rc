@@ -4,8 +4,8 @@
 D2RL_PLUGIN_MANIFEST_RESOURCE_ID RCDATA { D2RL_PLUGIN_RESOURCE_DWORD(D2RL_PLUGIN_API_VERSION) }
 
 1 VERSIONINFO
-FILEVERSION 1,3,4,0
-PRODUCTVERSION 1,3,4,0
+FILEVERSION 1,3,5,0
+PRODUCTVERSION 1,3,5,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -13,11 +13,11 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "RuffnecKk"
       VALUE "FileDescription", "Shows floating combat numbers and rolling damage per second."
-      VALUE "FileVersion", "1.3.4"
+      VALUE "FileVersion", "1.3.5"
       VALUE "InternalName", "ruffneckk-floating-damage"
       VALUE "OriginalFilename", "d2rl-ruffneckk-floating-damage.dll"
       VALUE "ProductName", "Floating Damage"
-      VALUE "ProductVersion", "1.3.4"
+      VALUE "ProductVersion", "1.3.5"
     END
   END
   BLOCK "VarFileInfo"

@@ -26,7 +26,7 @@ int main() {
         info->id,
         "ruffneckk-bulk-skill-point-allocation") == 0);
     REQUIRE(std::strcmp(info->name, "Bulk Skill Point Allocation") == 0);
-    REQUIRE(std::strcmp(info->version, "1.3.2") == 0);
+    REQUIRE(std::strcmp(info->version, "1.3.3") == 0);
     REQUIRE(std::strcmp(info->author, "RuffnecKk") == 0);
     REQUIRE(D2RL::HasFlag(info->flags, D2RL::PluginFlags::Client));
     REQUIRE(D2RL::HasFlag(info->flags, D2RL::PluginFlags::NativeHooks));

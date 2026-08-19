@@ -7,12 +7,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 namespace RuffnecKk::EnhancedDamageMinMaxFix {
 namespace {
 
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::uintptr_t EvaluateAndUpdateStatRva = 0x2FA430;
 constexpr std::uintptr_t GetTotalStatRva = 0x2F9B10;
 constexpr std::uintptr_t UpdateUnitStatRva = 0x2F9DB0;
@@ -87,7 +87,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-enhanced-damage-min-max-fix",
     .name = "Enhanced Damage Min/Max Fix",
-    .version = "1.2.1",
+    .version = "1.2.2",
     .author = "RuffnecKk",
     .description = "Restores off-weapon Enhanced Damage when an item also adds minimum or maximum damage.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -407,10 +407,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "EnhancedDamageMinMaxFix: D2R executable base is unavailable.");
         return false;
     }
-    if (context->modDataVersionBuild != 0
-        && context->modDataVersionBuild != SupportedBuild) {
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
         context->LogError(
-            "EnhancedDamageMinMaxFix: only D2R build 92777 is supported.");
+            "EnhancedDamageMinMaxFix: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
     if (!ValidateRuntime()) {

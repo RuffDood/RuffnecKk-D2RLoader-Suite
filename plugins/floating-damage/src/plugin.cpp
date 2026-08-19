@@ -31,7 +31,6 @@
 #include <vector>
 
 namespace {
-constexpr std::uint32_t SupportedBuild = 92777;
 constexpr std::uintptr_t HitpointsCommitContextRva = 0x44D083;
 constexpr std::uintptr_t HitpointsCommitCallRva = 0x44D093;
 constexpr std::uintptr_t GetUnitStatRva = 0x2F5020;
@@ -160,7 +159,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-floating-damage",
     .name = "Floating Damage",
-    .version = "1.3.4",
+    .version = "1.3.5",
     .author = "RuffnecKk",
     .description = "Shows floating combat numbers and rolling damage per second.",
     .flags = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
@@ -1180,13 +1179,17 @@ bool StartOverlayWorker() noexcept {
     OverlayStopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (!OverlayStopEvent) return false;
     OverlayWorker = CreateThread(nullptr, 0, OverlayWorkerMain, nullptr, 0, nullptr);
-    if (OverlayWorker) return true;
+    if (OverlayWorker) {
+        D3D12::SetExternalOverlayAvailability(true);
+        return true;
+    }
     CloseHandle(OverlayStopEvent);
     OverlayStopEvent = nullptr;
     return false;
 }
 
 void StopOverlayWorker() noexcept {
+    D3D12::SetExternalOverlayAvailability(false);
     if (OverlayStopEvent) SetEvent(OverlayStopEvent);
     if (OverlayWorker) {
         WaitForSingleObject(OverlayWorker, 3000);
@@ -1221,7 +1224,7 @@ auto ConsoleCommand(
         std::snprintf(
             message,
             sizeof(message),
-            "FloatingDamage 1.3.4: enabled=%s; runtime=%s; diagnostics=%s; in_game=%s; hotkey=%s (%s); overlay_hooks=%s; presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; queued=%llu; projected=%llu; rejected=%llu; forced=%llu; missed=%llu; request_drops=%llu; active=%zu; pending=%zu; font=%d; display=%.0fx%.0f; scale=%.3f.",
+            "FloatingDamage 1.3.5: enabled=%s; runtime=%s; diagnostics=%s; in_game=%s; hotkey=%s (%s); overlay_hooks=%s; presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; queued=%llu; projected=%llu; rejected=%llu; forced=%llu; missed=%llu; request_drops=%llu; active=%zu; pending=%zu; font=%d; display=%.0fx%.0f; scale=%.3f.",
             enabled ? "true" : "false",
             RuntimeActive.load(std::memory_order_acquire) ? "active" : "not installed",
             config.diagnosticsEnabled ? "true" : "false",
@@ -1312,6 +1315,25 @@ auto ConsoleCommand(
 }
 } // namespace
 
+extern "C" __declspec(dllexport)
+const RuffnecKk::FloatingDamageOverlay::ExternalOverlayApiV1* __cdecl
+RuffnecKkFloatingDamageGetOverlayApi(
+    std::uint32_t requestedVersion,
+    std::uint32_t callerStructSize) noexcept {
+    static const RuffnecKk::FloatingDamageOverlay::ExternalOverlayApiV1 api{
+        .structSize = RuffnecKk::FloatingDamageOverlay::ExternalOverlayApiV1Size,
+        .version = RuffnecKk::FloatingDamageOverlay::ApiVersion1,
+        .registerNamedOverlay = D3D12::RegisterNamedExternalOverlay,
+        .addRect = D3D12::OverlayAddRect,
+        .addRectFilled = D3D12::OverlayAddRectFilled,
+    };
+    if (requestedVersion != api.version
+        || callerStructSize < api.structSize) {
+        return nullptr;
+    }
+    return &api;
+}
+
 D2RL_PLUGIN_EXPORT auto D2RLoaderGetPluginInfo() noexcept -> const D2RL::PluginInfo* {
     return &Info;
 }
@@ -1337,8 +1359,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
         Module = nullptr;
     }
     if (!Base || !Module) return false;
-    if (context->modDataVersionBuild != 0 && context->modDataVersionBuild != SupportedBuild) {
-        context->LogError("FloatingDamage: only D2R build 92777 is supported.");
+    const auto* runtimeBuild = D2RL::GetBuildName(context);
+    if (runtimeBuild == nullptr
+        || (std::strcmp(runtimeBuild, "92777") != 0
+            && std::strcmp(runtimeBuild, "93847") != 0)) {
+        context->LogError(
+            "FloatingDamage: only D2R builds 92777 and 93847 are supported.");
         return false;
     }
     if (!context->EnsureConfig(
@@ -1357,7 +1383,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     if (!FloatingDamage::GetConfig().enabled) {
         D3D12::SetDiagnosticLogCallback(nullptr);
         context->LogInfo(
-            "Floating Damage 1.3.4 by RuffnecKk disabled; no renderer or combat hook was installed.");
+            "Floating Damage 1.3.5 by RuffnecKk disabled; no renderer or combat hook was installed.");
         return true;
     }
     if (!RegisterLifecycleListeners())
@@ -1389,7 +1415,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     }
     FloatingDamage::SetTargetScreenPositionProvider(TryProjectTargetToScreen);
     RuntimeActive.store(true, std::memory_order_release);
-    context->LogInfo("FloatingDamage 1.3.4 active for D2R 3.2.92777 with Lifecycle v1 gameplay gating, persistent Kodia font index 12, DPS hotkey hint and per-frame camera-thread multi-target projection.");
+    context->LogInfo("FloatingDamage 1.3.5 active for D2R 3.2.92777 with Lifecycle v1 gameplay gating, persistent Kodia font index 12, DPS hotkey hint, shared overlay API v1 and per-frame camera-thread multi-target projection.");
     return true;
 }
 

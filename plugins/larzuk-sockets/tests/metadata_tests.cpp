@@ -24,7 +24,7 @@ int main() {
     REQUIRE(info->apiVersion == D2RL_PLUGIN_API_VERSION);
     REQUIRE(std::strcmp(info->id, "ruffneckk-larzuk-sockets") == 0);
     REQUIRE(std::strcmp(info->name, "Larzuk Sockets") == 0);
-    REQUIRE(std::strcmp(info->version, "1.0.1") == 0);
+    REQUIRE(std::strcmp(info->version, "1.0.2") == 0);
     REQUIRE(std::strcmp(info->author, "RuffnecKk") == 0);
     REQUIRE(D2RL::HasFlag(info->flags, D2RL::PluginFlags::Server));
     REQUIRE(D2RL::HasFlag(info->flags, D2RL::PluginFlags::NativeHooks));
