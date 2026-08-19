@@ -149,7 +149,8 @@ Three earlier standalone DLLs are now simpler JSON patches:
 - **RuffnecKk** — Suite integration, D2R 3.2 ports, configuration, and testing.
 - **eezstreet** — [D2R data documentation](https://eezstreet.github.io/d2rdoc/).
 - **D2RLoader contributors** — D2RLoader and PluginSDK v3.
-- **D2RLAN / D2RHUD** — original Floating Damage renderer and behavioral reference.
+- **Fr4nsson** — original [D2R Damage Numbers](https://github.com/Fr4nsson/D2RDamageNumbers) project and feature design.
+- **locbones / D2RHUD-2.4** — direct implementation source used for the Suite's D3D12/ImGui port
 - **D2MOO contributors** — semantic reference for applicable historical Diablo II behavior.
 
 See `THIRD_PARTY_NOTICES.md` for complete component-level credits and licenses.

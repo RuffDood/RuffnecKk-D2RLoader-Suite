@@ -1,8 +1,10 @@
 #include "floating_damage.hpp"
 
-// Damage-number queuing, combining, animation, layout, DPS aggregation,
-// preview, and ImGui drawing remain direct derivatives of D2RHUD-2.4, used,
-// modified, and redistributed with locbones' permission obtained 2026-08-16.
+// The original player-facing feature design is credited to Fr4nsson's D2R
+// Damage Numbers project (MIT). This implementation's queuing, combining,
+// animation, layout, DPS aggregation, preview, and ImGui drawing are direct
+// derivatives of D2RHUD-2.4, used, modified, and redistributed with locbones'
+// permission obtained 2026-08-16.
 
 #include <algorithm>
 #include <atomic>

@@ -1,9 +1,10 @@
 #include <D2RLPlugin/api.h>
 
-// This SDK-v3 lifecycle, governed 92777 hook, and native projection cache are
-// RuffnecKk adaptations, but they drive D2RHUD-derived rendering and damage
-// presentation code. locbones authorized its use, modification, and
-// redistribution on 2026-08-16; no upstream license is claimed here.
+// The player-facing feature design originates from Fr4nsson's D2R Damage
+// Numbers project (MIT). This SDK-v3 lifecycle, governed 92777 hook, and native
+// projection cache are RuffnecKk adaptations around D2RHUD-derived rendering
+// and presentation code. locbones authorized that code's use, modification,
+// and redistribution on 2026-08-16.
 
 #include "config_parser.hpp"
 #include "d3d12_renderer.hpp"

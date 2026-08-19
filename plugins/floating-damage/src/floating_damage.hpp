@@ -1,9 +1,9 @@
 #pragma once
 
-// Directly derived from locbones/D2RHUD-2.4 at
+// Original player-facing feature design: Fr4nsson/D2RDamageNumbers (MIT).
+// This implementation is directly derived from locbones/D2RHUD-2.4 at
 // b9373f8508282948ceb3e2b56f892d9eba475744. locbones authorized its use,
-// modification, and redistribution on 2026-08-16. No upstream license is
-// claimed or applied to this derivative notice.
+// modification, and redistribution on 2026-08-16.
 
 #include <imgui.h>
 #include <cstdint>

@@ -23,9 +23,14 @@ RuffnecKk integration adapter, not an upstream PluginSDK file. All Suite DLLs
 use the PluginSDK ABI; the complete MIT text is retained at
 `third_party/PluginSDK/LICENSE`.
 
-## D2RHUD-2.4 / Floating Damage
+## D2R Damage Numbers and D2RHUD-2.4 / Floating Damage
 
-Floating Damage contains a reduced and adapted derivative of
+The original player-facing project and feature design is
+[Fr4nsson/D2RDamageNumbers](https://github.com/Fr4nsson/D2RDamageNumbers),
+published under the MIT License, copyright 2026 Fr4nsson. Its complete license
+text is retained at `third_party/notices/D2R-DAMAGE-NUMBERS-LICENSE.txt`.
+
+The Suite's direct implementation source is a reduced and adapted derivative of
 [locbones/D2RHUD-2.4](https://github.com/locbones/D2RHUD-2.4) at commit
 `b9373f8508282948ceb3e2b56f892d9eba475744`.
 
