@@ -1,11 +1,13 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.0] - 2026-08-19
 
 ### Compatibility
 
-- Added explicit Diablo II: Resurrected 3.3.93847 support to all 17 plugins.
-- Retained Diablo II: Resurrected 3.2.92777 support.
+- Added explicit D2R 3.3 support to all 17 plugin while retaining 3.2 support.
+- If my plugins still loaded correctly on your setup after the update, you
+ can ignore the updated files (except maybe for the specific
+ Charm Aura trigger fix, look below)
 - Updated every plugin to validate the actual running D2R build instead of
   relying on the mod's `DataVersionBuild` value.
 - Verified the complete Suite on D2R 3.3, including all plugins and memory
@@ -23,12 +25,13 @@
 
 ### Fixed
 
-- Charm Aura Trigger Fix now preserves the game's canonical charm eligibility
-  rules instead of reactivating charms that should remain inactive.
+- Charm Aura Trigger Fix now preserves the game's charm eligibility
+  rules instead of reactivating charms that should remain inactive
+  (for inventories with Charm Zones)
 
 ### Documentation
 
-- Updated the requirements for D2R 3.2.92777 and 3.3.93847.
+- Updated the requirements for D2R 3.2 and 3.3
 - Corrected the Floating Damage credits and third-party notices.
 - Credited Fr4nsson and D2R Damage Numbers for the original feature design.
 - Credited locbones / D2RHUD-2.4 as the direct D3D12/ImGui implementation

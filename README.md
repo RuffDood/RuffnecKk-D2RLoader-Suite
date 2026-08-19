@@ -7,7 +7,7 @@ features for D2RLoader. You can install one component, a few
 favorites, or the complete bundles.
 ## Requirements
 
-- Diablo II: Resurrected build **3.2.92777** or **3.3.93847**
+- Diablo II: Resurrected build **3.2** or **3.3**
 - **D2RLoader 1.1.0-beta**
 
 Download D2RLoader from [D2RLoader.net](https://d2rloader.net/).
@@ -20,7 +20,7 @@ Open the GitHub **Releases** page and choose one of these options:
   features.
 - **Individual patch JSON files** : same as above.
 - **All Plugins** : downloads every Suite plugin.
-- **All Patches** : downloads every patch selected for that Suite release.
+- **All Patches** : downlaods every Suite patch
 
 ## Quick installation
 
