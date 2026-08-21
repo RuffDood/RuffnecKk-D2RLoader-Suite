@@ -43,7 +43,24 @@ Every plugin download includes its configuration. Copy both the `plugins/` and
 files are never overwritten when a plugin starts. If a TOML file is missing,
 the plugin can still recreate its default configuration as a fallback.
 
-For Remote Stash, please read the README included in the downloaded ZIP. TDLR the setup should now be easier and it's recommended you delete stuff you installed from previous versions.
+### Upgrading from Suite 1.1.x
+
+D2RLoader now includes its own `Transmute Horadric Cube` Controls action. The
+RuffnecKk Transmute Hotkey plugin was therefore retired. An archive cannot
+remove files left by an older installation, so delete both legacy files when
+upgrading:
+
+```text
+d2rloader/plugins/d2rl-ruffneckk-transmute-hotkey.dll
+d2rloader/config/ruffneckk-transmute-hotkey.toml
+```
+
+Floating Damage 1.4.0 moves its toggle to D2RLoader Controls. Existing 1.3.x
+TOML files remain accepted, but their legacy `[hotkey]` table is ignored. Set
+or clear `Toggle Floating Damage` in the Controls menu instead.
+
+Release downloads contain only the files needed by the game. Usage changes are
+summarized in the GitHub release notes.
 
 ## Important compatibility note
 
@@ -67,11 +84,11 @@ a plugin's `enabled` option to `false` in its configuration.
 | Plugin | What it does | Main options |
 |---|---|---|
 | Cube Quick Move | Ctrl-Click moves items to cube starting from the bottom right. | No extra options. |
+| Bulk Currency Deposit | Transfers supported stackable currency items from inventory to their assigned stash slots. | Controls hotkey, optional Inventory button, position, and item filters. |
 | Equipped Item to Cube | Moves a Ctrl-clicked equipped item directly into the Cube. | No extra options. |
 | Mass Identify | Identifies items by Shift-right-clicking a Tome of Identify. | Free identification and optional Cube or stash coverage. |
 | Potion Auto Pickup | Sends ground potions to matching belt columns or inventory. | Potion priorities, belt columns, and inventory overflow. |
 | Remote Stash | Opens personal and shared stash pages from anywhere. | Hotkey, Inventory button, placement, size, and custom sprites. |
-| Transmute Hotkey | Activates the Cube Transmute button with a keyboard shortcut. | Configurable keyboard hotkey. |
 | Vendor Stock Refresh | Adds a button that refreshes normal vendor stock. | No extra options. |
 | Bulk Skill Point Allocation | Uses Ctrl+Click for a batch and Shift+Click for all usable skill points. | Batch size and confirmation text. |
 | Charm Aura Trigger Fix | Restores inventory charm auras after respawns and zone transitions | No extra options. |
@@ -81,17 +98,18 @@ a plugin's `enabled` option to `false` in its configuration.
 | Progressive Affixes | Controls how many affixes Magic, Rare, and Crafted items receive. | Automatic or progressive item-level rules. |
 | Repair Costs Cap | Limits repair prices and can add permanent durability wear. | Gold cap and wear chance. |
 | Enhanced Damage Min/Max Fix | Fixes off-weapon Enhanced Damage with flat damage bonuses. | No extra options. |
-| Floating Damage | Shows damage numbers and an optional DPS counter. | Colors, size, animation, layout, font, combining, and hotkey. |
+| Floating Damage | Shows damage numbers and an optional DPS counter. | Colors, size, animation, layout, font, combining, and Controls binding. |
 | Prevent Merc Death in Town | Stops supported lingering damage from killing mercenaries in town (Open wounds, poison). | No extra options. |
 
 ### Default hotkeys
 
-- Transmute Hotkey: `Shift+T`
 - Remote Stash: `Shift+R`
 - Floating Damage: `Shift+Z`
+- Bulk Currency Deposit: `Shift+D`
 
-These hotkeys are configurable. D2RLoader's current Input service supports
-keyboard bindings, but not mouse-buttons.
+These bindings are configurable in D2RLoader Controls. D2RLoader's current
+Input service supports keyboard bindings, but not mouse buttons.
+
 ## Memory patches
 
 A memory patch is a small optional rule change. Installing its JSON file

@@ -123,9 +123,9 @@ if ([string]$document.suite.version -notmatch '^\d+\.\d+\.\d+$') {
 if ([string]$document.distribution.model -ne 'modular-catalog' -or [string]$document.distribution.primaryDownloads -ne 'individual-components') {
     throw 'The release manifest must use the approved modular catalog model.'
 }
-if (-not [bool]$document.policy.readmeIncluded -or
-    [string]$document.policy.readmeLocation -ne 'selected-individual-plugin-archives') {
-    throw 'README files are only approved inside selected individual plugin archives.'
+if ([bool]$document.policy.readmeIncluded -or
+    [string]$document.policy.readmeLocation -ne 'repository-only') {
+    throw 'README files must remain repository-only and must not be release assets.'
 }
 if (-not [bool]$document.policy.requireSha256) { throw 'Every public release entry must have a pinned SHA-256.' }
 
@@ -237,8 +237,8 @@ foreach ($entry in @($validated | Where-Object Kind -ne 'memory-patch-json')) {
     }
 }
 $pluginReadmes = @($validated | Where-Object Kind -eq 'plugin-readme')
-if ($pluginReadmes.Count -ne 1 -or $pluginReadmes[0].ComponentId -ne 'ruffneckk-remote-stash') {
-    throw 'Remote Stash must be the one plugin with an approved README in its individual archive.'
+if ($pluginReadmes.Count -ne 0) {
+    throw 'README files must not be release assets.'
 }
 $pluginConfigs = @($validated | Where-Object Kind -in 'plugin-config-toml', 'loose-config-json')
 if ($pluginConfigs.Count -ne $pluginDlls.Count) {

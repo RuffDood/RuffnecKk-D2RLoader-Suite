@@ -7,7 +7,6 @@
 
 #include <imgui.h>
 #include <cstdint>
-#include <string>
 
 namespace FloatingDamage {
 
@@ -25,19 +24,9 @@ enum class Element {
     Magic
 };
 
-struct HotkeyBinding {
-    std::uint32_t virtualKey = 'Z';
-    bool control = false;
-    bool shift = true;
-    bool alt = false;
-};
-
 struct Config {
     bool enabled = true;
     bool diagnosticsEnabled = false;
-    bool toggleHotkeyEnabled = true;
-    std::string toggleHotkeyText = "SHIFT+Z";
-    HotkeyBinding toggleHotkey{};
 
     float textSize = 38.0f;
     float criticalHitSize = 48.0f;
@@ -104,10 +93,9 @@ bool IsEnabled() noexcept;
 void SetEnabled(bool enabled);
 bool IsGameplayActive() noexcept;
 void SetGameplayActive(bool active) noexcept;
+void RequestToggle() noexcept;
 void ResetToDefaults();
 float GetResolutionScale(float displayHeight) noexcept;
-void PollToggleHotkey(void* gameWindow) noexcept;
-
 using TargetScreenPositionProvider = bool(*)(
     std::uint32_t unitType,
     std::uint32_t unitId,

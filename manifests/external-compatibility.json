@@ -78,13 +78,25 @@
         "0x59CC90"
       ],
       "evidence": "D2RLoader 1.1 runtime log plus byte-identical live and isolated DLLs on 2026-08-15"
+    },
+    {
+      "id": "poison-energy-shield",
+      "name": "Poison Energy Shield",
+      "author": "yinyin333333",
+      "version": "0.2.0",
+      "sha256": "0522EE90F84AEBCF0BCBF9F78E5F7D2A427E22502A0D2AE36C854D99E27C8094",
+      "inlineHookRvas": [
+        "0x2F7D10"
+      ],
+      "evidence": "D2R 3.3.93847 load report plus governed Floating Damage 1.3.6 audit of the pinned public DLL"
     }
   ],
   "requiredRuntimeCases": [
-    "All Suite DLLs and selected memory patches load with all three pinned yinyin plugins active.",
+    "All Suite DLLs and selected memory patches load with all four pinned yinyin plugins active.",
     "Bind And Summon binding and summoning behavior remains usable, including Larzuk Sockets coexistence.",
     "Cube Output Quantity still produces configured cube quantities while Mass Identify and Item Durability remain active.",
     "Monster Display renders and shuts down normally while Floating Damage and other UI plugins remain active.",
+    "Poison Energy Shield and Floating Damage load in both relevant orders; poison absorption and Floating Damage HP-loss popups remain functional.",
     "No Suite component requires vanilla bytes at a yinyin-owned entry or silently skips an enabled feature."
   ]
 }

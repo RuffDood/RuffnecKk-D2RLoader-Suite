@@ -38,6 +38,20 @@ bool RejectWithoutMutation(std::string_view text) {
         && SameColor(output.normalColor, ImVec4(0.1f, 0.2f, 0.3f, 0.4f));
 }
 
+bool AcceptLegacyHotkeyWithoutApplying(std::string_view text) {
+    FloatingDamage::Config output{};
+    output.enabled = false;
+    output.maxNumbersOnScreen = 777;
+    output.fontIndex = 9;
+    std::string error;
+    if (!FloatingDamage::ParseConfigToml(text, output, error)) return false;
+    const FloatingDamage::Config defaults{};
+    return error.empty()
+        && output.enabled == defaults.enabled
+        && output.maxNumbersOnScreen == defaults.maxNumbersOnScreen
+        && output.fontIndex == defaults.fontIndex;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -64,11 +78,27 @@ int main(int argc, char** argv) {
     ok &= Expect(config.maxNumbersOnScreen == 160, "max_numbers mismatch");
     ok &= Expect(config.fontIndex == 0, "default font_index mismatch");
     ok &= Expect(!config.colorByDamageType, "color_by_damage_type mismatch");
-    ok &= Expect(config.toggleHotkeyEnabled, "hotkey enabled mismatch");
-    ok &= Expect(config.toggleHotkeyText == "SHIFT+Z", "hotkey text mismatch");
-    ok &= Expect(config.toggleHotkey.virtualKey == 'Z'
-        && !config.toggleHotkey.control && config.toggleHotkey.shift
-        && !config.toggleHotkey.alt, "hotkey binding mismatch");
+
+    auto legacyShipped = shipped;
+    const auto appearanceTable = legacyShipped.find("[appearance]");
+    ok &= Expect(appearanceTable != std::string::npos,
+        "appearance table missing for legacy migration test");
+    if (appearanceTable != std::string::npos) {
+        legacyShipped.insert(
+            appearanceTable,
+            "[hotkey]\n"
+            "toggle_hotkey_enabled = false\n"
+            "toggle_hotkey = \"MOUSE4\"\n\n");
+        FloatingDamage::Config legacy{};
+        std::string legacyError;
+        ok &= Expect(FloatingDamage::ParseConfigToml(
+            legacyShipped, legacy, legacyError), legacyError.c_str());
+        ok &= Expect(legacy.enabled == config.enabled
+            && legacy.maxNumbersOnScreen == config.maxNumbersOnScreen
+            && legacy.fontIndex == config.fontIndex
+            && Same(legacy.textSize, config.textSize),
+            "legacy hotkey values changed the effective configuration");
+    }
 
     auto kodiaConfig = shipped;
     const auto defaultFont = kodiaConfig.find("font_index = 0");
@@ -143,7 +173,14 @@ int main(int argc, char** argv) {
     ok &= Expect(RejectWithoutMutation("[animation]\nspawn_size = nan\n"), "non-finite number accepted");
     ok &= Expect(RejectWithoutMutation("[general]\nfont_index = 13\n"), "out-of-range font accepted");
     ok &= Expect(RejectWithoutMutation("[colors]\nnormal = [1.1, 0, 0, 1]\n"), "out-of-range color accepted");
-    ok &= Expect(RejectWithoutMutation("[hotkey]\ntoggle_hotkey = \"CTRL+CTRL+D\"\n"), "duplicate modifier accepted");
+    ok &= Expect(AcceptLegacyHotkeyWithoutApplying(
+        "[hotkey]\n"
+        "toggle_hotkey_enabled = false\n"
+        "toggle_hotkey = \"MOUSE4\"\n"),
+        "legacy hotkey settings were rejected or applied");
+    ok &= Expect(RejectWithoutMutation(
+        "[hotkey]\nunknown_hotkey = \"SHIFT+Z\"\n"),
+        "unknown legacy hotkey key accepted");
     ok &= Expect(RejectWithoutMutation("enabled = true\n"), "setting before table accepted");
     ok &= Expect(RejectWithoutMutation("[general\nenabled = true\n"), "malformed table accepted");
 

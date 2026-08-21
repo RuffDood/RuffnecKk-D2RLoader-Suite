@@ -2,8 +2,6 @@
 
 #include "d3d12_renderer.hpp"
 
-#include <Windows.h>
-
 #include <algorithm>
 #include <array>
 #include <cerrno>
@@ -34,13 +32,6 @@ std::string Trim(std::string_view value) {
         --last;
     }
     return std::string(value.substr(first, last - first));
-}
-
-std::string Upper(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
-        return static_cast<char>(std::toupper(c));
-    });
-    return value;
 }
 
 bool StripComment(std::string& line) {
@@ -136,125 +127,6 @@ bool ParseColor(std::string_view value, ImVec4& output) {
     return true;
 }
 
-bool ParseTomlString(std::string_view value, std::string& output) {
-    const std::string text = Trim(value);
-    if (text.size() < 2
-            || (text.front() != '"' && text.front() != '\'')
-            || text.back() != text.front()) {
-        return false;
-    }
-    output = text.substr(1, text.size() - 2);
-    return !output.empty() && output.size() <= 64
-        && output.find(text.front()) == std::string::npos;
-}
-
-bool ParseMainHotkey(const std::string& token, std::uint32_t& virtualKey) {
-    if (token.size() == 1) {
-        const auto character = static_cast<unsigned char>(token.front());
-        if ((character >= 'A' && character <= 'Z')
-                || (character >= '0' && character <= '9')) {
-            virtualKey = character;
-            return true;
-        }
-        struct PunctuationKey {
-            char character;
-            std::uint32_t virtualKey;
-        };
-        constexpr PunctuationKey punctuationKeys[] = {
-            {';', VK_OEM_1}, {'=', VK_OEM_PLUS}, {',', VK_OEM_COMMA},
-            {'-', VK_OEM_MINUS}, {'.', VK_OEM_PERIOD}, {'/', VK_OEM_2},
-            {'`', VK_OEM_3}, {'[', VK_OEM_4}, {'\\', VK_OEM_5},
-            {']', VK_OEM_6}, {'\'', VK_OEM_7},
-        };
-        for (const auto& key : punctuationKeys) {
-            if (character == static_cast<unsigned char>(key.character)) {
-                virtualKey = key.virtualKey;
-                return true;
-            }
-        }
-    }
-
-    if (token.size() >= 2 && token.front() == 'F') {
-        unsigned functionKey{};
-        for (std::size_t index = 1; index < token.size(); ++index) {
-            if (token[index] < '0' || token[index] > '9') return false;
-            functionKey = functionKey * 10U
-                + static_cast<unsigned>(token[index] - '0');
-        }
-        if (functionKey >= 1 && functionKey <= 24) {
-            virtualKey = VK_F1 + functionKey - 1;
-            return true;
-        }
-    }
-
-    struct NamedKey {
-        std::string_view name;
-        std::uint32_t virtualKey;
-    };
-    constexpr NamedKey namedKeys[] = {
-        {"SPACE", VK_SPACE}, {"TAB", VK_TAB}, {"INSERT", VK_INSERT},
-        {"DELETE", VK_DELETE}, {"HOME", VK_HOME}, {"END", VK_END},
-        {"PAGEUP", VK_PRIOR}, {"PAGEDOWN", VK_NEXT},
-        {"ENTER", VK_RETURN}, {"BACKSPACE", VK_BACK},
-        {"ESCAPE", VK_ESCAPE}, {"UP", VK_UP}, {"DOWN", VK_DOWN},
-        {"LEFT", VK_LEFT}, {"RIGHT", VK_RIGHT},
-        {"SEMICOLON", VK_OEM_1}, {"EQUALS", VK_OEM_PLUS},
-        {"COMMA", VK_OEM_COMMA}, {"MINUS", VK_OEM_MINUS},
-        {"PERIOD", VK_OEM_PERIOD}, {"SLASH", VK_OEM_2},
-        {"BACKTICK", VK_OEM_3}, {"LBRACKET", VK_OEM_4},
-        {"BACKSLASH", VK_OEM_5}, {"RBRACKET", VK_OEM_6},
-        {"APOSTROPHE", VK_OEM_7}, {"MOUSE3", VK_MBUTTON},
-        {"MIDDLE", VK_MBUTTON}, {"MOUSE4", VK_XBUTTON1},
-        {"MOUSE5", VK_XBUTTON2},
-    };
-    for (const auto& key : namedKeys) {
-        if (token == key.name) {
-            virtualKey = key.virtualKey;
-            return true;
-        }
-    }
-    return false;
-}
-
-bool ParseHotkey(std::string_view text, HotkeyBinding& output) {
-    HotkeyBinding parsed{};
-    parsed.virtualKey = 0;
-    parsed.control = false;
-    parsed.shift = false;
-    parsed.alt = false;
-    bool hasMainKey{};
-
-    std::size_t begin{};
-    while (begin <= text.size()) {
-        const std::size_t separator = text.find('+', begin);
-        const std::string token = Upper(Trim(text.substr(
-            begin,
-            separator == std::string_view::npos
-                ? text.size() - begin
-                : separator - begin)));
-        if (token.empty()) return false;
-        if (token == "CTRL" || token == "CONTROL") {
-            if (parsed.control) return false;
-            parsed.control = true;
-        } else if (token == "SHIFT") {
-            if (parsed.shift) return false;
-            parsed.shift = true;
-        } else if (token == "ALT") {
-            if (parsed.alt) return false;
-            parsed.alt = true;
-        } else {
-            if (hasMainKey || !ParseMainHotkey(token, parsed.virtualKey))
-                return false;
-            hasMainKey = true;
-        }
-        if (separator == std::string_view::npos) break;
-        begin = separator + 1;
-    }
-    if (!hasMainKey) return false;
-    output = parsed;
-    return true;
-}
-
 bool IsKnownTable(std::string_view table) {
     constexpr std::array<std::string_view, 10> tables{
         "general", "hotkey", "appearance", "animation", "combining",
@@ -288,17 +160,10 @@ bool ApplySetting(
         if (key == "color_by_damage_type")
             return boolean(config.colorByDamageType);
     } else if (table == "hotkey") {
-        if (key == "toggle_hotkey_enabled")
-            return boolean(config.toggleHotkeyEnabled);
-        if (key == "toggle_hotkey") {
-            std::string text;
-            HotkeyBinding binding{};
-            if (!ParseTomlString(value, text) || !ParseHotkey(text, binding))
-                return false;
-            config.toggleHotkeyText = text;
-            config.toggleHotkey = binding;
-            return true;
-        }
+        // Compatibility-only migration shim for 1.3.x configurations.
+        // D2RLoader owns the binding in 1.4.0; these values are intentionally
+        // neither parsed nor applied.
+        return key == "toggle_hotkey_enabled" || key == "toggle_hotkey";
     } else if (table == "appearance") {
         if (key == "text_size") return number(1.0f, 512.0f, config.textSize);
         if (key == "critical_hit_size")

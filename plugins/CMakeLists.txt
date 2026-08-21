@@ -9,8 +9,8 @@ set(RUFFNECKK_SUITE_PLUGIN_DIRECTORIES
     mass-identify
     cube-quick-move
     equipped-item-to-cube
-    transmute-hotkey
     prevent-merc-death-in-town
+    bulk-currency-deposit
     remote-stash
     floating-damage
     larzuk-sockets

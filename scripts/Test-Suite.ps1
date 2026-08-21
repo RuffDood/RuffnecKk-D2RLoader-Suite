@@ -37,6 +37,11 @@ if ([int]$expectedAssets.individualPluginArchives -ne 17 -or
     [int]$expectedAssets.total -ne 38) {
     throw 'Release allowlist does not declare the approved 17/19/2 GitHub asset counts.'
 }
+if ([bool]$allowlist.policy.readmeIncluded -or
+    [string]$allowlist.policy.readmeLocation -ne 'repository-only' -or
+    @($allowlist.entries | Where-Object { [string]$_.kind -eq 'plugin-readme' }).Count -ne 0) {
+    throw 'README files must remain repository-only and must not be release assets.'
+}
 $pluginEntries = @($allowlist.entries | Where-Object { [string]$_.kind -eq 'plugin-dll' })
 $pluginIds = @($pluginEntries | ForEach-Object { [string]$_.componentId })
 if ($pluginEntries.Count -ne 17 -or @($pluginIds | Sort-Object -Unique).Count -ne 17) {
@@ -128,8 +133,18 @@ foreach ($entry in $pluginEntries) {
     elseif ($getProcAddressMatches.Count -ne 0) {
         $errors.Add("$slug contains forbidden dependency marker 'GetProcAddress'.")
     }
-    if ($sourceText -notmatch [regex]::Escape(".id = `"$pluginId`"")) {
-        $errors.Add("$slug does not expose PluginInfo id $pluginId.")
+    $pluginEntry = @($pluginEntries | Where-Object { [string]$_.componentId -eq $pluginId })[0]
+    $expectedPluginInfoId = if ($null -ne $pluginEntry.PSObject.Properties['pluginInfoId']) {
+        [string]$pluginEntry.pluginInfoId
+    }
+    else {
+        $pluginId
+    }
+    if ($expectedPluginInfoId -notmatch '^[a-z0-9-]+$') {
+        $errors.Add("$slug declares invalid PluginInfo id $expectedPluginInfoId in the release allowlist.")
+    }
+    elseif ($sourceText -notmatch [regex]::Escape(".id = `"$expectedPluginInfoId`"")) {
+        $errors.Add("$slug does not expose PluginInfo id $expectedPluginInfoId.")
     }
     if ($sourceText -notmatch '\.author\s*=\s*"RuffnecKk"') {
         $errors.Add("$slug does not expose author RuffnecKk.")

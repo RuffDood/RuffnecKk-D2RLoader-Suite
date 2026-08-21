@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "suite": {
     "id": "ruffneckk-d2rloader-suite",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "targetGameBuild": 92777,
     "validatedGameBuilds": [
       92777,
@@ -37,17 +37,17 @@
   "policy": {
     "expectedCounts": {
       "pluginDlls": 17,
-      "pluginReadmes": 1,
+      "pluginReadmes": 0,
       "looseConfigJson": 2,
       "pluginConfigToml": 15,
       "memoryPatchJson": 19,
-      "total": 54
+      "total": 53
     },
     "selectedGroundItemLabelVariant": 64,
-    "readmeIncluded": true,
-    "readmeLocation": "selected-individual-plugin-archives",
+    "readmeIncluded": false,
+    "readmeLocation": "repository-only",
     "requireSha256": true,
-    "stagingContract": "Build outputs and loose JSON files are relative to SourceRoot. Plugin TOML files and approved documentation are read from their governed repository paths. Archive destinations always use the canonical D2RLoader install layout.",
+    "stagingContract": "Build outputs and loose JSON files are relative to SourceRoot. Plugin TOML files are read from their governed repository paths. README files remain repository-only and are never release assets. Archive destinations always use the canonical D2RLoader install layout.",
     "deniedBasenames": [
       "plugin-items.dll",
       "plugin-levels.dll",
@@ -88,6 +88,16 @@
     },
     {
       "kind": "plugin-dll",
+      "componentId": "ruffneckk-bulk-currency-deposit",
+      "pluginInfoId": "bulk-currency-deposit",
+      "version": "1.0.0",
+      "source": "plugins/d2rl-ruffneckk-bulk-currency-deposit.dll",
+      "destination": "plugins/d2rl-ruffneckk-bulk-currency-deposit.dll",
+      "sha256": "52B54990773485F98F04F7EC50711F18075D7B5A87785A602E30C400232A2EC5",
+      "qualification": "User-validated native and mod-specific currency routing, Controls Shift+D and optional button, interrupted deposits, save, and reload"
+    },
+    {
+      "kind": "plugin-dll",
       "componentId": "ruffneckk-enhanced-damage-min-max-fix",
       "version": "1.2.2",
       "source": "plugins/d2rl-ruffneckk-enhanced-damage-min-max-fix.dll",
@@ -113,11 +123,11 @@
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-floating-damage",
-      "version": "1.3.5",
+      "version": "1.4.0",
       "source": "plugins/d2rl-ruffneckk-floating-damage.dll",
       "destination": "plugins/d2rl-ruffneckk-floating-damage.dll",
-      "sha256": "2B3BFCF5DF161C911A45CE653C932CE46E1610E846CDAF6CB8E7EB13E208F8B1",
-      "qualification": "Shared overlay API v1 build; runtime and full-stack visual qualification pending",
+      "sha256": "E7A04F3C33CFCC4A983E0247B4CB30AEAADF55405737C14DA1227A926A59EE83",
+      "qualification": "Native Input v1 Shift+Z action and composable stat-setter build; runtime Controls, full-stack, and Poison Energy Shield qualification pending",
       "redistributionPermission": "obtained from locbones; confirmed by Vincent on 2026-08-16"
     },
     {
@@ -178,28 +188,12 @@
       "sha256": "AD2EE7CF252841CD6F3D56E1773872BE9ACEF1DA34D3763D4D9865659AF784DE"
     },
     {
-      "kind": "plugin-readme",
-      "componentId": "ruffneckk-remote-stash",
-      "source": "plugins/remote-stash/README.md",
-      "destination": "README.md",
-      "sha256": "614D795193D4662B641D716E7209CB17CB41F4A8F5751FE858F9F5AA77DD940B"
-    },
-    {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-repair-costs-cap",
       "version": "1.4.2",
       "source": "plugins/d2rl-ruffneckk-repair-costs-cap.dll",
       "destination": "plugins/d2rl-ruffneckk-repair-costs-cap.dll",
       "sha256": "75CCA8BAEE06B8263D285DF9C46CDA43EFC7C25425D58B6F4E053F5909D0F288"
-    },
-    {
-      "kind": "plugin-dll",
-      "componentId": "ruffneckk-transmute-hotkey",
-      "version": "1.0.1",
-      "source": "plugins/d2rl-ruffneckk-transmute-hotkey.dll",
-      "destination": "plugins/d2rl-ruffneckk-transmute-hotkey.dll",
-      "sha256": "8636E9E0446AB5E0BEB38816AE680A8195E823005A94CDA56820E3C8E0268EAF",
-      "qualification": "SDK v3 keyboard pass-through build, Suite 25/25 tests, exact runtime hash match, full-stack cold start, and SHIFT+T Cube gameplay passed; zero-plugin A/B excludes plugin DLLs from C/Q/T panel unavailability, while Loader/core/native attribution is intentionally deferred"
     },
     {
       "kind": "plugin-dll",
@@ -239,6 +233,13 @@
     },
     {
       "kind": "plugin-config-toml",
+      "componentId": "ruffneckk-bulk-currency-deposit",
+      "source": "plugins/bulk-currency-deposit/config/ruffneckk-bulk-currency-deposit.toml",
+      "destination": "config/ruffneckk-bulk-currency-deposit.toml",
+      "sha256": "747DEA10790FA5F403B81DE74DA9693ECB72C41235FB5E764DADEF90042FBE2A"
+    },
+    {
+      "kind": "plugin-config-toml",
       "componentId": "ruffneckk-enhanced-damage-min-max-fix",
       "source": "plugins/enhanced-damage-min-max-fix/config/ruffneckk-enhanced-damage-min-max-fix.toml",
       "destination": "config/ruffneckk-enhanced-damage-min-max-fix.toml",
@@ -263,7 +264,7 @@
       "componentId": "ruffneckk-floating-damage",
       "source": "plugins/floating-damage/config/ruffneckk-floating-damage.toml",
       "destination": "config/ruffneckk-floating-damage.toml",
-      "sha256": "802D9BBA596CB22B81D126B7A84C727F5F7725296F6A29D30C1B5E985BA1FE91"
+      "sha256": "D8CA12D35E7DDED7E26E8566A01C7FBAEE52E17AE294981385C962F0E7F82D40"
     },
     {
       "kind": "plugin-config-toml",
@@ -313,13 +314,6 @@
       "source": "plugins/repair-costs-cap/config/ruffneckk-repair-costs-cap.toml",
       "destination": "config/ruffneckk-repair-costs-cap.toml",
       "sha256": "09BBA80A7774B182C73306D0DE40D30C7F664C9251B83496C1E90A87629E3454"
-    },
-    {
-      "kind": "plugin-config-toml",
-      "componentId": "ruffneckk-transmute-hotkey",
-      "source": "plugins/transmute-hotkey/config/ruffneckk-transmute-hotkey.toml",
-      "destination": "config/ruffneckk-transmute-hotkey.toml",
-      "sha256": "DDF161646A0DA86BDD0F05172E859596231B4B428C1E958034DB153245F576F9"
     },
     {
       "kind": "plugin-config-toml",

@@ -21,16 +21,6 @@ font_index = 0
 # fire, lightning, cold, poison, and magic colors below.
 color_by_damage_type = false
 
-[hotkey]
-# Lets the shortcut hide or show the numbers for the current game session.
-# The key is not consumed, so D2R still receives the same input.
-toggle_hotkey_enabled = true
-
-# Main keys: A-Z, 0-9, F1-F24, Space, Tab, navigation keys, punctuation,
-# or Mouse3-Mouse5. Ctrl, Shift, and Alt modifiers are supported.
-# Examples: "SHIFT+Z", "CTRL+F5", "MOUSE4".
-toggle_hotkey = "SHIFT+Z"
-
 [appearance]
 # Text sizes use 2160p reference pixels and scale automatically with display
 # height (1080p = 0.5x, 1440p = 0.667x, 2160p = 1x; minimum scale is 720p).

@@ -356,7 +356,13 @@ function Invoke-NativeWriteValidation {
         }
         $writes = @($plugin.fixedWrites)
         if ($writes.Count -eq 0) {
-            throw "Suite component '$id' has no audited fixed writes."
+            if (-not (Has-Property -Object $plugin -Name 'noFixedWritesReason') -or
+                [string]::IsNullOrWhiteSpace([string]$plugin.noFixedWritesReason)) {
+                throw "Suite component '$id' has no audited fixed writes and no explicit no-write rationale."
+            }
+        }
+        elseif (Has-Property -Object $plugin -Name 'noFixedWritesReason') {
+            throw "Suite component '$id' declares fixed writes and a contradictory no-write rationale."
         }
         foreach ($write in $writes) {
             $range = New-OwnershipRange -Domain 'suite' -Owner $id -Write $write
@@ -438,8 +444,8 @@ function Invoke-NativeWriteValidation {
     $expectedExternalIds = @($ExternalCompatibility.plugins | ForEach-Object { [string]$_.id })
     $manifestExternalIds = @($Manifest.externalPlugins | ForEach-Object { [string]$_.id })
     Assert-SameStringSet -Expected $expectedExternalIds -Actual $manifestExternalIds -Label 'External plugin IDs'
-    if ($manifestExternalIds.Count -ne 3) {
-        throw "Native-write manifest must contain three pinned external plugins; found $($manifestExternalIds.Count)."
+    if ($manifestExternalIds.Count -ne 4) {
+        throw "Native-write manifest must contain four pinned external plugins; found $($manifestExternalIds.Count)."
     }
 
     $externalRanges = [System.Collections.Generic.List[object]]::new()
@@ -507,7 +513,12 @@ function Invoke-NativeWriteValidation {
             'ruffneckk-repair-costs-cap',
             'ruffneckk-prevent-merc-death-in-town'
         )
+        '2F7D10' = @(
+            'poison-energy-shield',
+            'ruffneckk-floating-damage'
+        )
     }
+    $allHookRanges = @($suiteRanges) + @($externalRanges)
     $callThroughs = @($Manifest.composableCallThroughs)
     if ($callThroughs.Count -ne $requiredCallThroughs.Count) {
         throw "Expected $($requiredCallThroughs.Count) composable call-through entries; found $($callThroughs.Count)."
@@ -536,14 +547,15 @@ function Invoke-NativeWriteValidation {
         }
         $consumers = @($contract.consumerPluginIds | ForEach-Object { [string]$_ })
         Assert-SameStringSet -Expected @($required[1..($required.Count - 1)]) -Actual $consumers -Label "0x$key consumers"
-        $ownerWrites = @($suiteRanges | Where-Object {
-            $_.Owner -eq $owner -and $_.Rva -eq $entry -and $_.Kind -eq 'sdk-inline-hook'
+        $ownerWrites = @($allHookRanges | Where-Object {
+            $_.Owner -eq $owner -and $_.Rva -eq $entry -and
+            ($_.Kind -eq 'sdk-inline-hook' -or $_.Kind -eq 'external-inline-hook')
         })
         if ($ownerWrites.Count -ne 1) {
             throw "Composable call-through owner '$owner' must own exactly one inline-hook entry at 0x$key."
         }
         foreach ($consumer in $consumers) {
-            $consumerWrites = @($suiteRanges | Where-Object {
+            $consumerWrites = @($allHookRanges | Where-Object {
                 $_.Owner -eq $consumer -and $_.Rva -le $entry -and $_.End -gt $entry
             })
             if ($consumerWrites.Count -ne 0) {
@@ -551,12 +563,17 @@ function Invoke-NativeWriteValidation {
             }
         }
         foreach ($participant in @($owner) + $consumers) {
-            if (-not $pluginsById.ContainsKey($participant)) {
-                throw "Composable participant '$participant' is not a Suite component."
+            if ($pluginsById.ContainsKey($participant)) {
+                $sourceRelative = Normalize-RelativePath -Path ([string]$pluginsById[$participant].source)
+                $sourcePath = Join-Path $Root ($sourceRelative.Replace('/', '\'))
+                Assert-SourceMentionsRva -SourcePath $sourcePath -Rva $entry -Context $participant
+                continue
             }
-            $sourceRelative = Normalize-RelativePath -Path ([string]$pluginsById[$participant].source)
-            $sourcePath = Join-Path $Root ($sourceRelative.Replace('/', '\'))
-            Assert-SourceMentionsRva -SourcePath $sourcePath -Rva $entry -Context $participant
+            if ($participant -eq $owner -and
+                $manifestExternalIds -contains $participant) {
+                continue
+            }
+            throw "Composable participant '$participant' is neither a governed Suite consumer nor its pinned external owner."
         }
     }
 
@@ -665,6 +682,13 @@ if ($SelfTest) {
     $vanillaDependency.composableCallThroughs[0].requiresVanillaEntry = $true
     Assert-Throws -Label 'call-through requiring vanilla entry' -Action {
         Invoke-NativeWriteValidation -Manifest $vanillaDependency -Allowlist $allowlist -ExternalCompatibility $externalCompatibility -Root $RepositoryRoot
+    }
+    $selfTestCount++
+
+    $externalOwnerDrift = Copy-JsonObject -Object $manifest
+    $externalOwnerDrift.composableCallThroughs[3].ownerPluginId = 'monsterdisplay'
+    Assert-Throws -Label 'external composable owner drift' -Action {
+        Invoke-NativeWriteValidation -Manifest $externalOwnerDrift -Allowlist $allowlist -ExternalCompatibility $externalCompatibility -Root $RepositoryRoot
     }
     $selfTestCount++
 

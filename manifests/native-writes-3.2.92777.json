@@ -154,20 +154,18 @@
       ]
     },
     {
+      "id": "ruffneckk-bulk-currency-deposit",
+      "source": "plugins/bulk-currency-deposit/src/plugin.cpp",
+      "fixedWrites": [],
+      "noFixedWritesReason": "Calls governed CLIENT/UI routing helpers but installs no hook and patches no image bytes.",
+      "dynamicAllocations": []
+    },
+    {
       "id": "ruffneckk-equipped-item-to-cube",
       "source": "plugins/equipped-item-to-cube/src/plugin.cpp",
       "fixedWrites": [
         {"rva": "0x0EE2A0", "size": 5, "kind": "sdk-inline-hook"},
         {"rva": "0x2CACF0", "size": 5, "kind": "sdk-inline-hook"}
-      ],
-      "dynamicAllocations": []
-    },
-    {
-      "id": "ruffneckk-transmute-hotkey",
-      "source": "plugins/transmute-hotkey/src/plugin.cpp",
-      "fixedWrites": [
-        {"rva": "0x23ECD0", "size": 5, "kind": "sdk-inline-hook"},
-        {"rva": "0x2CDA90", "size": 5, "kind": "sdk-inline-hook"}
       ],
       "dynamicAllocations": []
     },
@@ -411,6 +409,13 @@
         {"rva": "0x47C570", "size": 5, "kind": "external-inline-hook"},
         {"rva": "0x59CC90", "size": 5, "kind": "external-inline-hook"}
       ]
+    },
+    {
+      "id": "poison-energy-shield",
+      "sha256": "0522EE90F84AEBCF0BCBF9F78E5F7D2A427E22502A0D2AE36C854D99E27C8094",
+      "fixedWrites": [
+        {"rva": "0x2F7D10", "size": 5, "kind": "external-inline-hook"}
+      ]
     }
   ],
   "composableCallThroughs": [
@@ -432,6 +437,13 @@
       "entryRva": "0x2F48C0",
       "ownerPluginId": "ruffneckk-item-durability",
       "consumerPluginIds": ["ruffneckk-repair-costs-cap", "ruffneckk-prevent-merc-death-in-town"],
+      "consumerContract": "call-current-live-entry",
+      "requiresVanillaEntry": false
+    },
+    {
+      "entryRva": "0x2F7D10",
+      "ownerPluginId": "poison-energy-shield",
+      "consumerPluginIds": ["ruffneckk-floating-damage"],
       "consumerContract": "call-current-live-entry",
       "requiresVanillaEntry": false
     }

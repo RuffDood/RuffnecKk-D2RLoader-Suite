@@ -388,7 +388,6 @@ HRESULT STDMETHODCALLTYPE HookPresent(IDXGISwapChain3* swapChain, UINT syncInter
     ImGui_ImplDX12_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
-    FloatingDamage::PollToggleHotkey(Window);
     const ImGuiIO& io = ImGui::GetIO();
     DisplayWidth.store(io.DisplaySize.x, std::memory_order_relaxed);
     DisplayHeight.store(io.DisplaySize.y, std::memory_order_relaxed);

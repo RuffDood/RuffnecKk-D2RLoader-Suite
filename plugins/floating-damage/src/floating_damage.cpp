@@ -14,6 +14,7 @@
 #include <deque>
 #include <mutex>
 #include <random>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -119,8 +120,8 @@ long long g_rollingDamage = 0;
 std::mt19937 g_rng{ 0xD2F10A7u };
 std::mutex g_queueMutex;
 std::atomic_bool g_clearDisplayRequested = false;
+std::atomic_bool g_toggleRequested = false;
 std::atomic<TargetScreenPositionProvider> g_targetScreenPositionProvider{ nullptr };
-bool g_toggleHotkeyWasDown = false;
 
 int ClampInt(int value, int minValue, int maxValue)
 {
@@ -696,10 +697,6 @@ void RenderDpsNumber(ImDrawList* drawList, ImFont* font, const ImVec2& displaySi
     const long long dps = CurrentDps();
     const std::string text = "DPS " + FormatDpsAmount(dps);
     const float fontSize = ClampFloat(g_config.textSize - 6.0f, 20.0f, 40.0f) * resolutionScale;
-    const bool showHotkey = g_config.toggleHotkeyEnabled
-        && !g_config.toggleHotkeyText.empty();
-    const float hotkeyFontSize = fontSize * (2.0f / 3.0f);
-    const float lineGap = showHotkey ? 2.0f * resolutionScale : 0.0f;
 
     const float xPercent = ClampFloat(g_config.horizontalPositionPercent, 0.0f, 100.0f);
     const float yPercent = ClampFloat(g_config.verticalPositionPercent, 0.0f, 100.0f);
@@ -708,17 +705,7 @@ void RenderDpsNumber(ImDrawList* drawList, ImFont* font, const ImVec2& displaySi
 
     const ImVec2 textSize = font->CalcTextSizeA(
         fontSize, FLT_MAX, 0.0f, text.c_str());
-    const ImVec2 hotkeySize = showHotkey
-        ? font->CalcTextSizeA(
-            hotkeyFontSize,
-            FLT_MAX,
-            0.0f,
-            g_config.toggleHotkeyText.c_str())
-        : ImVec2{};
-    const ImVec2 blockSize{
-        std::max(textSize.x, hotkeySize.x),
-        textSize.y + lineGap + hotkeySize.y,
-    };
+    const ImVec2 blockSize{textSize};
     ImVec2 blockCenter{anchorX, anchorY};
 
     if (xPercent <= 10.0f)
@@ -771,23 +758,6 @@ void RenderDpsNumber(ImDrawList* drawList, ImFont* font, const ImVec2& displaySi
         g_config.normalColor,
         1.0f,
         resolutionScale);
-
-    if (showHotkey)
-    {
-        const ImVec2 hotkeyCenter{
-            blockCenter.x,
-            blockTop + textSize.y + lineGap + (hotkeySize.y * 0.5f),
-        };
-        DrawStyledText(
-            drawList,
-            font,
-            hotkeyFontSize,
-            hotkeyCenter,
-            g_config.toggleHotkeyText.c_str(),
-            g_config.normalColor,
-            1.0f,
-            resolutionScale);
-    }
 }
 
 int GeneratePreviewAmount(Kind kind)
@@ -852,41 +822,17 @@ void SetGameplayActive(bool active) noexcept
     g_clearDisplayRequested.store(true, std::memory_order_release);
 }
 
+void RequestToggle() noexcept
+{
+    g_toggleRequested.store(true, std::memory_order_release);
+}
+
 float GetResolutionScale(float displayHeight) noexcept
 {
     if (!std::isfinite(displayHeight) || displayHeight <= 0.0f)
         return 1.0f;
 
     return CalculateResolutionScale(displayHeight);
-}
-
-void PollToggleHotkey(void* gameWindow) noexcept
-{
-    if (!IsGameplayActive())
-    {
-        g_toggleHotkeyWasDown = false;
-        return;
-    }
-
-    const auto& binding = g_config.toggleHotkey;
-    const bool mainKeyDown = binding.virtualKey != 0
-        && (GetAsyncKeyState(static_cast<int>(binding.virtualKey)) & 0x8000) != 0;
-    const bool controlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
-    const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-    const bool altDown = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
-    const bool modifiersMatch = binding.control == controlDown
-        && binding.shift == shiftDown
-        && binding.alt == altDown;
-    const bool gameHasFocus = gameWindow != nullptr
-        && GetForegroundWindow() == static_cast<HWND>(gameWindow);
-    const bool physicalChordDown = mainKeyDown && modifiersMatch;
-    const bool chordDown = g_config.toggleHotkeyEnabled && gameHasFocus && physicalChordDown;
-
-    const bool pressed = chordDown && !g_toggleHotkeyWasDown;
-    g_toggleHotkeyWasDown = gameHasFocus ? chordDown : physicalChordDown;
-
-    if (pressed)
-        SetEnabled(!IsEnabled());
 }
 
 void SetTargetScreenPositionProvider(TargetScreenPositionProvider provider) noexcept
@@ -1000,6 +946,9 @@ bool HasDisplayActivity()
 
 void Update(float dt)
 {
+    if (g_toggleRequested.exchange(false, std::memory_order_acq_rel))
+        SetEnabled(!IsEnabled());
+
     if (g_clearDisplayRequested.exchange(false, std::memory_order_acq_rel))
     {
         std::lock_guard<std::mutex> lock(g_queueMutex);

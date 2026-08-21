@@ -88,6 +88,9 @@ target_include_directories(ruffneckk_floating_damage PRIVATE
     src
     "${FLOATING_DAMAGE_GENERATED_DIR}"
 )
+if(MSVC)
+    target_compile_options(ruffneckk_floating_damage PRIVATE /EHsc)
+endif()
 set_target_properties(ruffneckk_floating_damage PROPERTIES
     OUTPUT_NAME "d2rl-ruffneckk-floating-damage"
     PREFIX ""
@@ -113,6 +116,9 @@ if(BUILD_TESTING)
         src
         "${FLOATING_DAMAGE_GENERATED_DIR}"
     )
+    if(MSVC)
+        target_compile_options(ruffneckk_floating_damage_tests PRIVATE /EHsc)
+    endif()
     add_test(
         NAME ruffneckk.floating-damage.config
         COMMAND ruffneckk_floating_damage_tests "${FLOATING_DAMAGE_CONFIG}"

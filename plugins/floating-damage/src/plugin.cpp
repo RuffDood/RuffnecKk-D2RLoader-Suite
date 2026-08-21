@@ -54,6 +54,8 @@ constexpr std::size_t DamagePoisonOffset = 0x038;
 
 const D2RL::PluginContext* Context{};
 const D2RL::LifecycleServiceV1* LifecycleService{};
+const D2RL::InputServiceV1* InputService{};
+D2RL::Input::ActionHandle ToggleAction{D2RL::Input::InvalidHandle};
 D2RL::Lifecycle::ListenerHandle GameJoinedListener{
     D2RL::Lifecycle::InvalidHandle};
 D2RL::Lifecycle::ListenerHandle GameLeftListener{
@@ -159,7 +161,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-floating-damage",
     .name = "Floating Damage",
-    .version = "1.3.5",
+    .version = "1.4.0",
     .author = "RuffnecKk",
     .description = "Shows floating combat numbers and rolling damage per second.",
     .flags = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
@@ -218,6 +220,79 @@ bool LoadConfig() {
     D3D12::SetDiagnosticLogCallback(
         parsed.diagnosticsEnabled ? LogOverlayDiagnostic : nullptr);
     return true;
+}
+
+auto __cdecl OnToggleInputAction(
+    const D2RL::PluginContext*,
+    const D2RL::Input::ActionEvent* event,
+    void*
+) noexcept -> D2RL::Input::ActionResult {
+    if (D2RL::Input::HasActionEventField(
+            event, D2RL::Input::ActionEventRequiredSize)
+            && event->kind == D2RL::Input::ActionEventKind::Pressed) {
+        FloatingDamage::RequestToggle();
+    }
+    return D2RL::Input::ActionResult::Ignored;
+}
+
+void UnregisterInputAction() noexcept {
+    if (InputService && Context
+            && ToggleAction != D2RL::Input::InvalidHandle) {
+        (void)InputService->unregisterAction(Context, ToggleAction);
+    }
+    ToggleAction = D2RL::Input::InvalidHandle;
+    InputService = nullptr;
+}
+
+bool RegisterInputAction() noexcept {
+    if (Context->QueryService(
+            D2RL::ServiceId::Input,
+            D2RL::InputServiceV1Version,
+            &InputService) != D2RL::ServiceQueryResult::Success
+            || !D2RL::HasInputServiceV1Field(
+                InputService, D2RL::InputServiceV1RequiredSize)
+            || InputService->registerAction == nullptr
+            || InputService->unregisterAction == nullptr) {
+        Context->LogError(
+            "FloatingDamage: D2RLoader Input service v1 is unavailable.");
+        InputService = nullptr;
+        return false;
+    }
+
+    const D2RL::Input::ActionRegistration registration{
+        .structSize = D2RL::Input::ActionRegistrationSize,
+        .flags = 0,
+        .logicalId = "toggle-floating-damage",
+        .displayName = "Toggle Floating Damage",
+        .category = "RuffnecKk Suite",
+        .defaultPrimary = {
+            D2RL::Input::Key::Z,
+            D2RL::Input::Modifier::Shift,
+        },
+        .defaultSecondary = {
+            D2RL::Input::Key::None,
+            D2RL::Input::Modifier::None,
+        },
+        .callback = OnToggleInputAction,
+        .userData = nullptr,
+    };
+    const auto result = InputService->registerAction(
+        Context, &registration, &ToggleAction);
+    if (result == D2RL::Input::Result::Success
+            && ToggleAction != D2RL::Input::InvalidHandle) {
+        return true;
+    }
+
+    char message[192]{};
+    std::snprintf(
+        message,
+        sizeof(message),
+        "FloatingDamage: Input v1 action registration failed with result %u.",
+        static_cast<unsigned>(result));
+    Context->LogError(message);
+    ToggleAction = D2RL::Input::InvalidHandle;
+    InputService = nullptr;
+    return false;
 }
 
 void __cdecl OnGameplayLifecycle(
@@ -940,6 +1015,66 @@ bool MatchesSignature(
         static_cast<std::uint32_t>(expected.size()));
 }
 
+template <std::size_t Size>
+bool ValidateComposableSetUnitStatEntry(
+    const std::array<std::uint8_t, Size>& expected) noexcept {
+    const D2RL::DiagnosticsServiceV1* diagnostics{};
+    if (!Context
+            || Context->QueryService(
+                D2RL::ServiceId::Diagnostics,
+                D2RL::DiagnosticsServiceV1Version,
+                &diagnostics) != D2RL::ServiceQueryResult::Success
+            || !D2RL::HasDiagnosticsServiceV1Field(
+                diagnostics,
+                D2RL::DiagnosticsServiceV1RequiredSize)
+            || !diagnostics->queryHookStatus) {
+        return MatchesSignature(SetUnitStatRva, expected);
+    }
+
+    D2RL::Diagnostics::HookQuery query{
+        .structSize = D2RL::Diagnostics::HookQuerySize,
+        .rva = SetUnitStatRva,
+        .expected = expected.data(),
+        .expectedSize = static_cast<std::uint32_t>(expected.size()),
+    };
+    D2RL::Diagnostics::HookStatus status{
+        .structSize = D2RL::Diagnostics::HookStatusSize,
+    };
+    if (diagnostics->queryHookStatus(Context, &query, &status)
+            != D2RL::Diagnostics::Result::Success) {
+        Context->LogError(
+            "FloatingDamage: Diagnostics v1 could not inspect the shared STATLIST_SetUnitStat entry.");
+        return false;
+    }
+    if (status.state == D2RL::Diagnostics::ModificationState::Unchanged)
+        return true;
+    if (status.state != D2RL::Diagnostics::ModificationState::Tracked
+            || status.kind != D2RL::Diagnostics::ModificationKind::InlineHook
+            || status.ownerCount != 1
+            || status.ownerPluginId[0] == '\0') {
+        char message[256]{};
+        std::snprintf(
+            message,
+            sizeof(message),
+            "FloatingDamage: shared STATLIST_SetUnitStat entry is not composable (state=%u; kind=%u; owners=%u).",
+            static_cast<unsigned>(status.state),
+            static_cast<unsigned>(status.kind),
+            status.ownerCount);
+        Context->LogError(message);
+        return false;
+    }
+
+    char message[256]{};
+    std::snprintf(
+        message,
+        sizeof(message),
+        "FloatingDamage: composing through loader-owned STATLIST_SetUnitStat inline hook (%.*s).",
+        63,
+        status.ownerPluginId);
+    Context->LogInfo(message);
+    return true;
+}
+
 void* AllocateRelayPageNear(void* hint) noexcept {
     SYSTEM_INFO systemInfo{};
     GetSystemInfo(&systemInfo);
@@ -1068,7 +1203,6 @@ bool InstallDamageHook() noexcept {
         0xE8,0x78,0xAC,0xEA,0xFF,
     };
     if (!MatchesSignature(GetUnitStatRva, getUnitStatExpected)
-            || !MatchesSignature(SetUnitStatRva, setUnitStatExpected)
             || !MatchesSignature(
                 GetClientUnitRva,
                 getClientUnitExpected)
@@ -1092,6 +1226,7 @@ bool InstallDamageHook() noexcept {
                 hitpointsCommitContextExpected)) {
         return false;
     }
+    if (!ValidateComposableSetUnitStatEntry(setUnitStatExpected)) return false;
     GetUnitStat = reinterpret_cast<GetUnitStatFn>(Base + GetUnitStatRva);
     SetUnitStat = reinterpret_cast<SetUnitStatFn>(Base + SetUnitStatRva);
     GetClientUnit = reinterpret_cast<GetClientUnitFn>(
@@ -1224,13 +1359,14 @@ auto ConsoleCommand(
         std::snprintf(
             message,
             sizeof(message),
-            "FloatingDamage 1.3.5: enabled=%s; runtime=%s; diagnostics=%s; in_game=%s; hotkey=%s (%s); overlay_hooks=%s; presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; queued=%llu; projected=%llu; rejected=%llu; forced=%llu; missed=%llu; request_drops=%llu; active=%zu; pending=%zu; font=%d; display=%.0fx%.0f; scale=%.3f.",
+            "FloatingDamage 1.4.0: enabled=%s; runtime=%s; diagnostics=%s; in_game=%s; input_action=%s; overlay_hooks=%s; presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; queued=%llu; projected=%llu; rejected=%llu; forced=%llu; missed=%llu; request_drops=%llu; active=%zu; pending=%zu; font=%d; display=%.0fx%.0f; scale=%.3f.",
             enabled ? "true" : "false",
             RuntimeActive.load(std::memory_order_acquire) ? "active" : "not installed",
             config.diagnosticsEnabled ? "true" : "false",
             FloatingDamage::IsGameplayActive() ? "true" : "false",
-            config.toggleHotkeyText.c_str(),
-            config.toggleHotkeyEnabled ? "enabled" : "disabled",
+            ToggleAction != D2RL::Input::InvalidHandle
+                ? "registered"
+                : "not registered",
             OverlayReady.load(std::memory_order_acquire) ? "ready" : "waiting",
             static_cast<unsigned long long>(overlay.presentCalls),
             static_cast<unsigned long long>(overlay.directQueueCaptures),
@@ -1345,6 +1481,8 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     }
     Context = context;
     LifecycleService = nullptr;
+    InputService = nullptr;
+    ToggleAction = D2RL::Input::InvalidHandle;
     GameJoinedListener = D2RL::Lifecycle::InvalidHandle;
     GameLeftListener = D2RL::Lifecycle::InvalidHandle;
     LocalPlayerReadyListener = D2RL::Lifecycle::InvalidHandle;
@@ -1383,11 +1521,15 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     if (!FloatingDamage::GetConfig().enabled) {
         D3D12::SetDiagnosticLogCallback(nullptr);
         context->LogInfo(
-            "Floating Damage 1.3.5 by RuffnecKk disabled; no renderer or combat hook was installed.");
+            "Floating Damage 1.4.0 by RuffnecKk disabled; no input action, renderer or combat hook was installed.");
         return true;
     }
-    if (!RegisterLifecycleListeners())
+    if (!RegisterInputAction())
         return false;
+    if (!RegisterLifecycleListeners()) {
+        UnregisterInputAction();
+        return false;
+    }
     D3D12::SetDllModule(Module);
     const auto kodiaFont = FindOptionalKodiaFont(context);
     D3D12::SetOptionalKodiaFontPath(
@@ -1401,6 +1543,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
         D3D12::SetDiagnosticLogCallback(nullptr);
         UnregisterLifecycleListeners();
         LifecycleService = nullptr;
+        UnregisterInputAction();
         context->LogError("FloatingDamage: DirectX 12 overlay worker could not be started.");
         return false;
     }
@@ -1410,17 +1553,19 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
         D3D12::SetDiagnosticLogCallback(nullptr);
         UnregisterLifecycleListeners();
         LifecycleService = nullptr;
-        context->LogError("FloatingDamage: D2R 3.2.92777 HP commit, client-unit lookup, camera-frame or native projection signatures could not be installed; plugin refused.");
+        UnregisterInputAction();
+        context->LogError("FloatingDamage: D2R builds 92777/93847 HP commit, composable stat setter, client-unit lookup, camera-frame or native projection guards could not be installed; plugin refused.");
         return false;
     }
     FloatingDamage::SetTargetScreenPositionProvider(TryProjectTargetToScreen);
     RuntimeActive.store(true, std::memory_order_release);
-    context->LogInfo("FloatingDamage 1.3.5 active for D2R 3.2.92777 with Lifecycle v1 gameplay gating, persistent Kodia font index 12, DPS hotkey hint, shared overlay API v1 and per-frame camera-thread multi-target projection.");
+    context->LogInfo("FloatingDamage 1.4.0 active for D2R builds 92777/93847 with native Input v1 rebinding, a composable stat setter, Lifecycle v1 gameplay gating, persistent Kodia font index 12, shared overlay API v1 and per-frame camera-thread multi-target projection.");
     return true;
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     FloatingDamage::SetGameplayActive(false);
+    UnregisterInputAction();
     UnregisterLifecycleListeners();
     FloatingDamage::SetTargetScreenPositionProvider(nullptr);
     if (Context && FloatingDamage::GetConfig().diagnosticsEnabled
@@ -1466,5 +1611,6 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     Module = nullptr;
     Base = nullptr;
     LifecycleService = nullptr;
+    InputService = nullptr;
     Context = nullptr;
 }

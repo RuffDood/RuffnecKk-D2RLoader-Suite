@@ -1,0 +1,32 @@
+# Bulk Currency Deposit
+# Auto transfers stackable currency items through the active mod's native Advanced Stash routing.
+
+[deposit]
+# Master switch. false disables the Controls action, button, resources and deposit logic.
+enabled = true
+
+# Adds an optional button to the Inventory panel. Disabled by default
+# so the plugin does not add a control to layouts unless the player requests it.
+inventory_button_enabled = false
+
+# Delay between native transfers. Keep the default unless troubleshooting.
+# Values from 50 to 1000 milliseconds are accepted; higher values only make
+# the batch slower. The tested player-friendly default is 100 milliseconds.
+item_delay_ms = 100
+
+# Empty means every item accepted by the native Advanced Stash registry.
+# A non-empty list narrows the candidates to these one-to-four-character item
+# codes. Examples: ["r01", "r33"] for El and Zod, or ["gpv", "gpy"] for
+# perfect amethyst and perfect topaz. Codes are case-sensitive.
+include_item_codes = []
+
+# Exclusions are applied after the optional include list. Example:
+# exclude_item_codes = ["r33", "gpv"]
+exclude_item_codes = []
+
+[button]
+# Inventory-layout coordinates for the optional button. The default places it
+# directly below Dimentio's standard Charm Inventory button. Adjust these two
+# values if another mod or plugin already uses this location.
+x = 3
+y = 813
