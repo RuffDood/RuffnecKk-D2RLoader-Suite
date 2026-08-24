@@ -218,6 +218,10 @@ int main(int argc, char** argv) {
     REQUIRE(ShouldKeepInventoryOpenAfterRemoteOpen(false, true));
     REQUIRE(ShouldKeepInventoryOpenAfterRemoteOpen(true, false));
     REQUIRE(ShouldKeepInventoryOpenAfterRemoteOpen(true, true));
+    REQUIRE(!ShouldKeepRemoteOpenRequestPending(false, false));
+    REQUIRE(!ShouldKeepRemoteOpenRequestPending(false, true));
+    REQUIRE(!ShouldKeepRemoteOpenRequestPending(true, false));
+    REQUIRE(ShouldKeepRemoteOpenRequestPending(true, true));
 
     REQUIRE(ShouldRestoreIndependentInventory(true, false));
     REQUIRE(!ShouldRestoreIndependentInventory(false, false));
@@ -235,6 +239,37 @@ int main(int argc, char** argv) {
         "PlayerInventoryPanelMessage", "DropGold", ""));
     REQUIRE(!IsRemoteStashUiMessage(
         "PanelManager", "OpenPanel", "SettingsPanel"));
+
+    REQUIRE(ClassifyCubeReplacementClose(
+        200, 100, false,
+        PairedInterface::Inventory,
+        PairedCloseOrigin::Inventory)
+        == CubeReplacementCloseDisposition::AllowInventoryClose);
+    REQUIRE(ClassifyCubeReplacementClose(
+        200, 100, true,
+        PairedInterface::Stash,
+        PairedCloseOrigin::GeneralTeardown)
+        == CubeReplacementCloseDisposition::SuppressStashTeardown);
+    REQUIRE(ClassifyCubeReplacementClose(
+        200, 100, false,
+        PairedInterface::Stash,
+        PairedCloseOrigin::GeneralTeardown)
+        == CubeReplacementCloseDisposition::None);
+    REQUIRE(ClassifyCubeReplacementClose(
+        0, 100, false,
+        PairedInterface::Inventory,
+        PairedCloseOrigin::Inventory)
+        == CubeReplacementCloseDisposition::None);
+    REQUIRE(ClassifyCubeReplacementClose(
+        99, 100, false,
+        PairedInterface::Inventory,
+        PairedCloseOrigin::Inventory)
+        == CubeReplacementCloseDisposition::None);
+    REQUIRE(ClassifyCubeReplacementClose(
+        200, 100, false,
+        PairedInterface::Inventory,
+        PairedCloseOrigin::Movement)
+        == CubeReplacementCloseDisposition::None);
 
     auto closePlan = ResolvePairedClosePlan(
         true,
@@ -294,6 +329,43 @@ int main(int argc, char** argv) {
     REQUIRE(closePlan.deactivate);
     REQUIRE(closePlan.notifyServer);
     REQUIRE(closePlan.closeStash && closePlan.closeInventory);
+
+    closePlan = ResolvePairedClosePlan(
+        true,
+        true,
+        false,
+        PairedInterface::Inventory,
+        PairedCloseOrigin::Inventory,
+        CubeReplacementCloseDisposition::AllowInventoryClose);
+    REQUIRE(!closePlan.suppress);
+    REQUIRE(!closePlan.deactivate);
+    REQUIRE(!closePlan.notifyServer);
+    REQUIRE(!closePlan.closeStash);
+    REQUIRE(!closePlan.closeInventory);
+
+    closePlan = ResolvePairedClosePlan(
+        true,
+        true,
+        true,
+        PairedInterface::Stash,
+        PairedCloseOrigin::Server,
+        CubeReplacementCloseDisposition::AllowInventoryClose);
+    REQUIRE(closePlan.deactivate);
+    REQUIRE(closePlan.notifyServer);
+    REQUIRE(closePlan.closeStash && closePlan.closeInventory);
+
+    closePlan = ResolvePairedClosePlan(
+        true,
+        true,
+        true,
+        PairedInterface::Stash,
+        PairedCloseOrigin::GeneralTeardown,
+        CubeReplacementCloseDisposition::SuppressStashTeardown);
+    REQUIRE(closePlan.suppress);
+    REQUIRE(!closePlan.deactivate);
+    REQUIRE(!closePlan.notifyServer);
+    REQUIRE(!closePlan.closeStash);
+    REQUIRE(!closePlan.closeInventory);
 
     closePlan = ResolvePairedClosePlan(
         true,

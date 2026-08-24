@@ -410,6 +410,12 @@ enum class PairedCloseOrigin : std::uint8_t {
     Inventory,
 };
 
+enum class CubeReplacementCloseDisposition : std::uint8_t {
+    None,
+    AllowInventoryClose,
+    SuppressStashTeardown,
+};
+
 struct PairedClosePlan {
     bool suppress{};
     bool deactivate{};
@@ -663,15 +669,65 @@ inline bool ShouldSuppressHotkeyMouseReset(
     return remoteHotkeyOpenIsScoped;
 }
 
+inline bool ShouldKeepRemoteOpenRequestPending(
+    bool immediateHotkeyOpen,
+    bool remoteRequestIsPending
+) noexcept {
+    // A speculative local hotkey open can fail while another interface state
+    // is being replaced, notably the native Cube state. The queued server request
+    // remains authoritative and must be allowed to complete instead of being
+    // cancelled by an immediate close packet.
+    return immediateHotkeyOpen && remoteRequestIsPending;
+}
+
+inline CubeReplacementCloseDisposition ClassifyCubeReplacementClose(
+    std::uint64_t deadline,
+    std::uint64_t now,
+    bool inventoryCloseObserved,
+    PairedInterface interfaceToClose,
+    PairedCloseOrigin origin
+) noexcept {
+    if (deadline == 0 || now > deadline) {
+        return CubeReplacementCloseDisposition::None;
+    }
+    if (interfaceToClose == PairedInterface::Inventory
+        && origin == PairedCloseOrigin::Inventory) {
+        return CubeReplacementCloseDisposition::AllowInventoryClose;
+    }
+    if (inventoryCloseObserved
+        && interfaceToClose == PairedInterface::Stash
+        && origin == PairedCloseOrigin::GeneralTeardown) {
+        return CubeReplacementCloseDisposition::SuppressStashTeardown;
+    }
+    return CubeReplacementCloseDisposition::None;
+}
+
 inline PairedClosePlan ResolvePairedClosePlan(
     bool remoteSessionIsActive,
     bool inventoryIsCoupled,
     bool stashInterfaceIsOpen,
     PairedInterface interfaceToClose,
-    PairedCloseOrigin origin
+    PairedCloseOrigin origin,
+    CubeReplacementCloseDisposition cubeReplacementClose =
+        CubeReplacementCloseDisposition::None
 ) noexcept {
     if (!remoteSessionIsActive || interfaceToClose == PairedInterface::Other) {
         return {};
+    }
+    // Cube replacement is a two-stage native transition: D2R first closes
+    // Inventory, then its general teardown attempts to close the newly opened
+    // stash. Preserve the remote session across both exact close operations.
+    if (cubeReplacementClose
+            == CubeReplacementCloseDisposition::AllowInventoryClose
+        && interfaceToClose == PairedInterface::Inventory) {
+        return {};
+    }
+    if (cubeReplacementClose
+            == CubeReplacementCloseDisposition::SuppressStashTeardown
+        && interfaceToClose == PairedInterface::Stash) {
+        return {
+            .suppress = true,
+        };
     }
     if (origin == PairedCloseOrigin::Movement) {
         if (interfaceToClose == PairedInterface::Inventory

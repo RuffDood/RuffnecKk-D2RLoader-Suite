@@ -41,6 +41,8 @@ using ruffneckk::remote_stash::ButtonConfig;
 using ruffneckk::remote_stash::ButtonFramesFit;
 using ruffneckk::remote_stash::ButtonPlacement;
 using ruffneckk::remote_stash::ButtonPlacementName;
+using ruffneckk::remote_stash::ClassifyCubeReplacementClose;
+using ruffneckk::remote_stash::CubeReplacementCloseDisposition;
 using ruffneckk::remote_stash::ExactModifiersMatch;
 using ruffneckk::remote_stash::HasUsableSize;
 using ruffneckk::remote_stash::HotkeyMode;
@@ -63,6 +65,7 @@ using ruffneckk::remote_stash::ResolveRemoteTogglePlan;
 using ruffneckk::remote_stash::ResolveRemoteStashTransitionFlag;
 using ruffneckk::remote_stash::ShouldSuppressHotkeyMouseReset;
 using ruffneckk::remote_stash::ShouldKeepInventoryOpenAfterRemoteOpen;
+using ruffneckk::remote_stash::ShouldKeepRemoteOpenRequestPending;
 using ruffneckk::remote_stash::ShouldRestoreIndependentInventory;
 using ruffneckk::remote_stash::SdkModifierValue;
 using ruffneckk::remote_stash::ToggleSource;
@@ -71,6 +74,7 @@ using ruffneckk::remote_stash::WidgetRect;
 
 constexpr std::size_t MaximumConfigBytes = 65'536;
 constexpr std::uint64_t MaximumCustomSpriteBytes = 64ULL * 1024ULL * 1024ULL;
+constexpr char PluginVersion[] = "2.0.2";
 
 #define REMOTE_SITE(value) value
 
@@ -129,9 +133,11 @@ constexpr std::uintptr_t GeneralUiTeardownStashReturnRva = 0x22A9FE;
 constexpr std::size_t WidgetVisibleOffset = 0x51;
 constexpr std::size_t WidgetRectOffset = 0x70;
 constexpr std::int32_t StashInterfaceState = 0x18;
+constexpr std::int32_t CubeInterfaceState = 0x19;
 constexpr std::int32_t InventoryInterfaceState = 1;
 constexpr std::uint64_t HotkeyOpenTransitionWindowMs = 2000;
 constexpr std::uint64_t CompanionInventoryCloseWindowMs = 2000;
+constexpr std::uint64_t CubeReplacementInventoryCloseWindowMs = 2000;
 
 constexpr char ButtonLayoutVirtualPath[] =
     "data/global/ui/layouts/ruffneckk-remote-stash/inventory-button.json";
@@ -455,7 +461,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-remote-stash",
     .name = "Remote Stash",
-    .version = "2.0.1",
+    .version = PluginVersion,
     .author = "RuffnecKk",
     .description =
         "Opens the native personal and shared stash from anywhere.",
@@ -483,6 +489,8 @@ std::atomic<std::uint64_t> HotkeyRefusedRequests{};
 std::atomic<std::uint64_t> HotkeyFailedRequests{};
 std::atomic<std::uint64_t> HotkeyOpenTransitionDeadline{};
 std::atomic<std::uint64_t> CompanionInventoryCloseDeadline{};
+std::atomic<std::uint64_t> CubeReplacementCloseDeadline{};
+std::atomic_bool CubeReplacementInventoryCloseObserved{};
 std::atomic<std::uint64_t> HotkeyOpenTransitionTickets{};
 std::atomic<std::uint64_t> HotkeyOpenTransitionApplications{};
 std::atomic<std::uint64_t> HotkeyOpenTransitionExpirations{};
@@ -1035,19 +1043,40 @@ bool HasRemoteSession(void* game, void* player) noexcept {
     }
 }
 
-bool CloseRemoteSession(void* game, void* player) noexcept {
+bool CloseRemoteSession(
+    void* game,
+    void* player,
+    const char* reason
+) noexcept {
     if (!game || !player) return false;
+    bool removed{};
+    std::size_t remainingSessions{};
     try {
-        const std::lock_guard lock(RemoteSessionsMutex);
-        const auto found = RemoteSessions.find(player);
-        if (found != RemoteSessions.end() && found->second.game == game) {
-            RemoteSessions.erase(found);
-            ServerSessionsClosed.fetch_add(1, std::memory_order_relaxed);
-            return true;
+        {
+            const std::lock_guard lock(RemoteSessionsMutex);
+            const auto found = RemoteSessions.find(player);
+            if (found != RemoteSessions.end() && found->second.game == game) {
+                RemoteSessions.erase(found);
+                ServerSessionsClosed.fetch_add(1, std::memory_order_relaxed);
+                removed = true;
+            }
+            remainingSessions = RemoteSessions.size();
         }
     } catch (...) {
+        return false;
     }
-    return false;
+    if (removed && Context && HotkeySettings.diagnostics) {
+        char diagnostic[256]{};
+        std::snprintf(
+            diagnostic,
+            sizeof(diagnostic),
+            "RemoteStash server session closed: reason=%s; sessions=%llu.",
+            reason ? reason : "unspecified",
+            static_cast<unsigned long long>(remainingSessions)
+        );
+        Context->LogInfo(diagnostic);
+    }
+    return removed;
 }
 
 void UpdateMaximum(
@@ -1076,7 +1105,10 @@ void RecordRemoteItemOperation(
     UpdateMaximum(MaxRemoteItemOperationMs, elapsedMs);
 }
 
-void DeactivateRemoteClientSession(bool notifyServer) noexcept {
+void DeactivateRemoteClientSession(
+    bool notifyServer,
+    const char* reason
+) noexcept {
     const auto wasActive = RemoteClientSessionActive.exchange(
         false,
         std::memory_order_acq_rel
@@ -1087,27 +1119,55 @@ void DeactivateRemoteClientSession(bool notifyServer) noexcept {
     RemoteQuickMoveWithdrawalDeadline.store(0, std::memory_order_release);
     HotkeyOpenTransitionDeadline.store(0, std::memory_order_release);
     CompanionInventoryCloseDeadline.store(0, std::memory_order_release);
-    if (!notifyServer || !wasActive || !QueueOutgoingPacket) return;
-
-    __try {
-        QueueOutgoingPacket(
-            RemoteCloseRequest.data(),
-            static_cast<std::int32_t>(RemoteCloseRequest.size())
+    CubeReplacementCloseDeadline.store(0, std::memory_order_release);
+    CubeReplacementInventoryCloseObserved.store(false, std::memory_order_release);
+    bool closeQueued{};
+    if (notifyServer && wasActive && QueueOutgoingPacket) {
+        __try {
+            QueueOutgoingPacket(
+                RemoteCloseRequest.data(),
+                static_cast<std::int32_t>(RemoteCloseRequest.size())
+            );
+            CloseRequests.fetch_add(1, std::memory_order_relaxed);
+            closeQueued = true;
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+        }
+    }
+    if (wasActive && Context && HotkeySettings.diagnostics) {
+        char diagnostic[320]{};
+        std::snprintf(
+            diagnostic,
+            sizeof(diagnostic),
+            "RemoteStash client session deactivated: reason=%s; notify=%d; closeQueued=%d.",
+            reason ? reason : "unspecified",
+            notifyServer ? 1 : 0,
+            closeQueued ? 1 : 0
         );
-        CloseRequests.fetch_add(1, std::memory_order_relaxed);
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        Context->LogInfo(diagnostic);
     }
 }
 
 void ClearLifecycleState() noexcept {
-    DeactivateRemoteClientSession(false);
+    DeactivateRemoteClientSession(false, "gameplay lifecycle");
     HotkeyRequestPending.store(false, std::memory_order_release);
     HotkeyCaptured.store(false, std::memory_order_release);
     HotkeyPressed.store(false, std::memory_order_release);
+    std::size_t clearedSessions{};
     try {
         const std::lock_guard lock(RemoteSessionsMutex);
+        clearedSessions = RemoteSessions.size();
         RemoteSessions.clear();
     } catch (...) {
+    }
+    if (clearedSessions != 0 && Context && HotkeySettings.diagnostics) {
+        char diagnostic[256]{};
+        std::snprintf(
+            diagnostic,
+            sizeof(diagnostic),
+            "RemoteStash server sessions cleared: reason=gameplay lifecycle; cleared=%llu.",
+            static_cast<unsigned long long>(clearedSessions)
+        );
+        Context->LogInfo(diagnostic);
     }
 }
 
@@ -1258,19 +1318,31 @@ bool TrySendStashUi(void* player, std::uint8_t action) noexcept {
 
 bool OpenRemoteSession(void* game, void* player) noexcept {
     if (!game || !player) return false;
+    std::size_t sessionCount{};
     try {
         const std::lock_guard lock(RemoteSessionsMutex);
         RemoteSessions.insert_or_assign(player, RemoteSession{game});
+        sessionCount = RemoteSessions.size();
     } catch (...) {
         return false;
     }
 
     if (!TrySendStashUi(player, OpenStashUiAction)) {
-        CloseRemoteSession(game, player);
+        CloseRemoteSession(game, player, "open UI send failed");
         return false;
     }
 
     ServerSessionsOpened.fetch_add(1, std::memory_order_relaxed);
+    if (Context && HotkeySettings.diagnostics) {
+        char diagnostic[256]{};
+        std::snprintf(
+            diagnostic,
+            sizeof(diagnostic),
+            "RemoteStash server session opened: sessions=%llu.",
+            static_cast<unsigned long long>(sessionCount)
+        );
+        Context->LogInfo(diagnostic);
+    }
     LogDiagnosticOnce(
         FirstServerSessionReported,
         "RemoteStash diagnostics: first authoritative server stash session opened.");
@@ -1291,7 +1363,7 @@ std::int32_t __fastcall HookInsertItemHandler(
         return 1;
     }
     if (IsRemoteCloseRequest(packet, size)) {
-        CloseRemoteSession(game, player);
+        CloseRemoteSession(game, player, "client close request");
         return 0;
     }
 
@@ -1508,10 +1580,10 @@ void __fastcall HookRemoveServerUnit(void* game, void* unit) noexcept {
     }
     const auto session = HasRemoteSession(game, unit);
     const auto localPlayer = session && IsLocalPlayer(unit);
-    if (session && CloseRemoteSession(game, unit)) {
+    if (session && CloseRemoteSession(game, unit, "player unit removed")) {
         ServerSessionsPruned.fetch_add(1, std::memory_order_relaxed);
         if (localPlayer) {
-            DeactivateRemoteClientSession(false);
+            DeactivateRemoteClientSession(false, "local player unit removed");
         }
     }
     OriginalRemoveServerUnit(game, unit);
@@ -1561,7 +1633,7 @@ std::uint8_t __fastcall HookGetUiState(std::int32_t state) noexcept {
             std::memory_order_acquire
         );
         if (observedOpen) {
-            DeactivateRemoteClientSession(true);
+            DeactivateRemoteClientSession(true, "stash UI observed closed");
         }
     }
 
@@ -1684,7 +1756,17 @@ bool __fastcall HookOpenInterfaceState(
             result = false;
         }
         if (!result) {
-            DeactivateRemoteClientSession(true);
+            const auto keepRemoteRequestPending =
+                ShouldKeepRemoteOpenRequestPending(
+                    scopedHotkeyTransition,
+                    RemoteClientSessionActive.load(std::memory_order_acquire)
+            );
+            if (!keepRemoteRequestPending) {
+                DeactivateRemoteClientSession(
+                    true,
+                    "authoritative stash open failed"
+                );
+            }
             __try {
                 if (OriginalGetUiState(StashInterfaceState) != 0) {
                     OriginalCloseInterfaceState(StashInterfaceState, false);
@@ -1704,9 +1786,15 @@ bool __fastcall HookOpenInterfaceState(
                 TryMarkUiDirty();
             }
             if (Context) {
-                Context->LogError(
-                    "RemoteStash: native remote stash open failed."
-                );
+                if (keepRemoteRequestPending) {
+                    Context->LogWarn(
+                        "RemoteStash: immediate local stash open was deferred; awaiting the authoritative server response."
+                    );
+                } else {
+                    Context->LogError(
+                        "RemoteStash: authoritative remote stash open failed."
+                    );
+                }
             }
         }
     }
@@ -1811,6 +1899,66 @@ PairedCloseOrigin ClassifyPairedCloseOrigin(
     return PairedCloseOrigin::Other;
 }
 
+const char* PairedCloseOriginReason(PairedCloseOrigin origin) noexcept {
+    switch (origin) {
+    case PairedCloseOrigin::Movement:
+        return "paired interface close from movement";
+    case PairedCloseOrigin::Server:
+        return "paired interface close from server UI";
+    case PairedCloseOrigin::StashButton:
+        return "paired interface close from stash button";
+    case PairedCloseOrigin::Escape:
+        return "paired interface close from Escape";
+    case PairedCloseOrigin::GeneralTeardown:
+        return "paired interface close from general UI teardown";
+    case PairedCloseOrigin::Inventory:
+        return "paired interface close from Inventory";
+    case PairedCloseOrigin::Other:
+    default:
+        return "paired interface close from unknown origin";
+    }
+}
+
+CubeReplacementCloseDisposition ResolveCubeReplacementCloseDisposition(
+    PairedInterface interfaceToClose,
+    PairedCloseOrigin origin
+) noexcept {
+    const auto now = GetTickCount64();
+    const auto deadline = CubeReplacementCloseDeadline.load(
+        std::memory_order_acquire
+    );
+    const auto inventoryCloseObserved =
+        CubeReplacementInventoryCloseObserved.load(std::memory_order_acquire);
+    const auto disposition = ClassifyCubeReplacementClose(
+        deadline,
+        now,
+        inventoryCloseObserved,
+        interfaceToClose,
+        origin
+    );
+    if (deadline != 0 && now > deadline) {
+        CubeReplacementCloseDeadline.store(0, std::memory_order_release);
+        CubeReplacementInventoryCloseObserved.store(
+            false,
+            std::memory_order_release
+        );
+    } else if (disposition
+            == CubeReplacementCloseDisposition::AllowInventoryClose) {
+        CubeReplacementInventoryCloseObserved.store(
+            true,
+            std::memory_order_release
+        );
+    } else if (disposition
+            == CubeReplacementCloseDisposition::SuppressStashTeardown) {
+        CubeReplacementCloseDeadline.store(0, std::memory_order_release);
+        CubeReplacementInventoryCloseObserved.store(
+            false,
+            std::memory_order_release
+        );
+    }
+    return disposition;
+}
+
 void __fastcall HookMovementUiClose(
     std::int32_t closeMode,
     std::int32_t secondary
@@ -1839,6 +1987,11 @@ void __fastcall HookCloseInterfaceState(
         returnAddress,
         escapeIsDown
     );
+    const auto cubeReplacementClose =
+        ResolveCubeReplacementCloseDisposition(
+            interfaceToClose,
+            origin
+        );
     bool stashInterfaceIsOpen{};
     __try {
         stashInterfaceIsOpen = OriginalGetUiState(StashInterfaceState) != 0;
@@ -1850,10 +2003,27 @@ void __fastcall HookCloseInterfaceState(
         inventoryIsCoupled,
         stashInterfaceIsOpen,
         interfaceToClose,
-        origin
+        origin,
+        cubeReplacementClose
     );
+    if (remoteSessionIsActive && Context && HotkeySettings.diagnostics) {
+        if (cubeReplacementClose
+                == CubeReplacementCloseDisposition::AllowInventoryClose) {
+            Context->LogInfo(
+                "RemoteStash: Cube replacement Inventory close observed."
+            );
+        } else if (cubeReplacementClose
+                == CubeReplacementCloseDisposition::SuppressStashTeardown) {
+            Context->LogInfo(
+                "RemoteStash: Cube replacement general-teardown Stash close suppressed; transition completed."
+            );
+        }
+    }
     if (plan.suppress) {
-        RemoteMovementCloseSuppressions.fetch_add(1, std::memory_order_relaxed);
+        if (cubeReplacementClose
+                != CubeReplacementCloseDisposition::SuppressStashTeardown) {
+            RemoteMovementCloseSuppressions.fetch_add(1, std::memory_order_relaxed);
+        }
         return;
     }
     if (!plan.deactivate) {
@@ -1872,7 +2042,10 @@ void __fastcall HookCloseInterfaceState(
     __try {
         const auto inventoryWasOpen =
             OriginalGetUiState(InventoryInterfaceState) != 0;
-        DeactivateRemoteClientSession(plan.notifyServer);
+        DeactivateRemoteClientSession(
+            plan.notifyServer,
+            PairedCloseOriginReason(origin)
+        );
         if (plan.closeStash
             && OriginalGetUiState(StashInterfaceState) != 0) {
             OriginalCloseInterfaceState(StashInterfaceState, false);
@@ -1926,14 +2099,33 @@ std::int32_t __fastcall HookGoldButtonHandler(
     // Its final dword is a signed gold delta, not the legacy 18/19/20 action
     // value that older implementations assumed. Scope the handler itself; the
     // injected bypass still applies only at its stash-object proximity gate.
-    const auto remote = packet
+    const auto goldPacket = packet
         && size == 17
-        && packet[0] == 0x27
-        && HasRemoteSession(game, player);
+        && packet[0] == 0x27;
+    const auto authoritativeSessionCount = RemoteSessionCount();
+    const auto remote = goldPacket && HasRemoteSession(game, player);
+    std::int32_t goldDelta{};
+    if (goldPacket) {
+        std::memcpy(&goldDelta, packet + 13, sizeof(goldDelta));
+    }
     const auto previousScope = RemoteGoldScope;
     RemoteGoldScope = remote;
     const auto result = OriginalGoldButtonHandler(game, player, packet, size);
     RemoteGoldScope = previousScope;
+
+    if (Context && HotkeySettings.diagnostics && goldPacket) {
+        char diagnostic[256]{};
+        std::snprintf(
+            diagnostic,
+            sizeof(diagnostic),
+            "RemoteStash server gold packet: remote=%d; sessions=%llu; delta=%d; result=%d.",
+            remote ? 1 : 0,
+            static_cast<unsigned long long>(authoritativeSessionCount),
+            goldDelta,
+            result
+        );
+        Context->LogInfo(diagnostic);
+    }
 
     if (!remote) return result;
     RemoteGoldTransactions.fetch_add(1, std::memory_order_relaxed);
@@ -2031,9 +2223,24 @@ std::int32_t __fastcall HookSharedGoldDeposit(
         } __except (EXCEPTION_EXECUTE_HANDLER) {
         }
     }
-    return OriginalSharedGoldDeposit
+    const auto result = OriginalSharedGoldDeposit
         ? OriginalSharedGoldDeposit(panel, resolvedAmount)
         : 2;
+    if (Context && HotkeySettings.diagnostics) {
+        char diagnostic[256]{};
+        std::snprintf(
+            diagnostic,
+            sizeof(diagnostic),
+            "RemoteStash client shared-gold call: client=%d; sessions=%llu; amount=%d; resolved=%d; result=%d.",
+            RemoteClientSessionActive.load(std::memory_order_acquire) ? 1 : 0,
+            static_cast<unsigned long long>(RemoteSessionCount()),
+            amount,
+            resolvedAmount,
+            result
+        );
+        Context->LogInfo(diagnostic);
+    }
+    return result;
 }
 
 bool TryReadTopLevelPanelVisibility(const char* name, bool& visible) noexcept {
@@ -2082,9 +2289,30 @@ bool TryQueueRemoteOpenRequest(
 ) noexcept {
     HotkeyOpenTransitionDeadline.store(0, std::memory_order_release);
     CompanionInventoryCloseDeadline.store(0, std::memory_order_release);
+    CubeReplacementCloseDeadline.store(0, std::memory_order_release);
+    CubeReplacementInventoryCloseObserved.store(false, std::memory_order_release);
     if (!QueueOutgoingPacket || !LocalPlayerIsAvailable()) return false;
+    bool replacesCube{};
+    if (OriginalGetUiState) {
+        __try {
+            replacesCube = OriginalGetUiState(CubeInterfaceState) != 0;
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            replacesCube = false;
+        }
+    }
     __try {
         const auto now = GetTickCount64();
+        if (replacesCube) {
+            CubeReplacementCloseDeadline.store(
+                now + CubeReplacementInventoryCloseWindowMs,
+                std::memory_order_release
+            );
+            if (Context && HotkeySettings.diagnostics) {
+                Context->LogInfo(
+                    "RemoteStash: native Cube replacement Inventory-close ticket armed."
+                );
+            }
+        }
         if (plan.closeCompanionInventoryAfterOpen) {
             CompanionInventoryCloseDeadline.store(
                 now + CompanionInventoryCloseWindowMs,
@@ -2115,7 +2343,10 @@ bool TryQueueRemoteOpenRequest(
         OpenRequests.fetch_add(1, std::memory_order_relaxed);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        DeactivateRemoteClientSession(false);
+        DeactivateRemoteClientSession(
+            false,
+            "server open request queue exception"
+        );
         if (Context) {
             Context->LogError("RemoteStash: server open request could not be queued.");
         }
@@ -2135,7 +2366,7 @@ bool TryCloseRemoteInterfaces(
     __try {
         const auto inventoryWasOpen =
             OriginalGetUiState(InventoryInterfaceState) != 0;
-        DeactivateRemoteClientSession(notifyServer);
+        DeactivateRemoteClientSession(notifyServer, "remote toggle close");
         if (OriginalGetUiState(StashInterfaceState) != 0) {
             OriginalCloseInterfaceState(StashInterfaceState, false);
         }
@@ -2178,7 +2409,7 @@ bool TryRollbackRemoteOpen(bool inventoryWasOpenBeforeOpen) noexcept {
         return false;
     }
     __try {
-        DeactivateRemoteClientSession(true);
+        DeactivateRemoteClientSession(true, "immediate hotkey open rollback");
         if (OriginalGetUiState(StashInterfaceState) != 0) {
             OriginalCloseInterfaceState(StashInterfaceState, false);
         }
@@ -2225,11 +2456,6 @@ bool TryOpenStashUiFromHotkey() noexcept {
         // already-visible stash panel and leaves it untouched.
         if (!HookOpenInterfaceState(StashInterfaceState, false)
             || OriginalGetUiState(StashInterfaceState) == 0) {
-            if (Context) {
-                Context->LogError(
-                    "RemoteStash: immediate hotkey UI open failed."
-                );
-            }
             return false;
         }
         return true;
@@ -2289,6 +2515,12 @@ RemoteToggleExecution TryExecuteRemoteToggle(
         return RemoteToggleExecution::Failed;
     }
     if (fromHotkey && !TryOpenStashUiFromHotkey()) {
+        if (ShouldKeepRemoteOpenRequestPending(
+                true,
+                RemoteClientSessionActive.load(std::memory_order_acquire)
+            )) {
+            return RemoteToggleExecution::Dispatched;
+        }
         if (!TryRollbackRemoteOpen(inventoryIsOpen) && Context) {
             Context->LogError(
                 "RemoteStash: failed open could not restore the prior Inventory state."
@@ -3142,7 +3374,7 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
     std::snprintf(
         message,
         sizeof(message),
-        "Remote Stash 2.0.0: enabled=%s; diagnostics=%s; hotkeyEnabled=%s; "
+        "Remote Stash %s: enabled=%s; diagnostics=%s; hotkeyEnabled=%s; "
         "hotkey=%s; hotkeyMode=%s; hotkeyInput=%s; hotkeyUiDispatch=%s; "
         "inventoryButtonEnabled=%s; buttonListener=%s; buttonChild=%s; "
         "buttonResources=%s; buttonPlacement=%s; buttonAnchor=%s; "
@@ -3158,10 +3390,10 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
         "clientOpenRequests=%llu; clientCloseRequests=%llu; sessionsOpened=%llu; "
         "sessionsClosed=%llu; sessionsPruned=%llu; activeSessions=%llu; "
         "remoteItemOps=%llu; remoteItemFailures=%llu; maxRemoteItemMs=%llu; "
-        "remoteGoldOps=%llu; "
-        "remoteGoldFailures=%llu; stashProximityBypasses=%llu; "
+        "remoteGoldOps=%llu; remoteGoldFailures=%llu; stashProximityBypasses=%llu; "
         "clientTownBypasses=%llu; sharedTransferOps=%llu; "
         "sharedTransferFailures=%llu; quickMoveUiBypasses=%llu.",
+        PluginVersion,
         HotkeySettings.enabled ? "true" : "false",
         HotkeySettings.diagnostics ? "true" : "false",
         HotkeySettings.hotkeyEnabled ? "true" : "false",
@@ -3385,6 +3617,8 @@ bool Load(
     RemoteClientInventoryCoupled.store(false, std::memory_order_relaxed);
     RemoteClientInventoryWasOpenBeforeOpen.store(false, std::memory_order_relaxed);
     RemoteQuickMoveWithdrawalDeadline.store(0, std::memory_order_relaxed);
+    CubeReplacementCloseDeadline.store(0, std::memory_order_relaxed);
+    CubeReplacementInventoryCloseObserved.store(false, std::memory_order_relaxed);
     RemoteMovementCloseSuppressions.store(0, std::memory_order_relaxed);
     RemoteGeneralUiCloses.store(0, std::memory_order_relaxed);
     RemoteServerUiCloses.store(0, std::memory_order_relaxed);
@@ -3418,7 +3652,7 @@ bool Load(
     if (!HotkeySettings.enabled) {
         RegisterStatusCommand();
         context->LogInfo(
-            "Remote Stash 2.0.0 by RuffnecKk disabled; no hook, input action, listener, resource, or child layout was registered.");
+            "Remote Stash 2.0.2 by RuffnecKk disabled; no hook, input action, listener, resource, or child layout was registered.");
         return true;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
@@ -3673,10 +3907,12 @@ bool Load(
     std::snprintf(
         message,
         sizeof(message),
-        "Remote Stash 2.0.0 by RuffnecKk active for D2R 3.2.92777; "
+        "Remote Stash %s by RuffnecKk active for D2R %s; "
         "button=%s; placement=%s/%s offset=%d,%d size=%dx%d frames=%u/%u/%u/%u; "
         "sprite=%s; lifecycle=independent; hotkey=%s; binding=%s; mode=%s; "
         "input=%s; config=%s.",
+        PluginVersion,
+        runtimeBuild,
         HotkeySettings.inventoryButtonEnabled
             ? "plugin-owned (remote only)" : "disabled",
         ButtonPlacementName(EffectiveButtonSettings.placement),
@@ -3745,7 +3981,7 @@ void Unload() noexcept {
         (void)LifecycleService->unregisterGameplayEventListener(
             Context, GameLeftListener);
     }
-    DeactivateRemoteClientSession(false);
+    DeactivateRemoteClientSession(false, "plugin unload");
     RemoteItemScope = false;
     RemoteGoldScope = false;
     RemoteHotkeyOpenTransitionScope = false;

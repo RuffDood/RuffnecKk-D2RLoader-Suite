@@ -1,10 +1,10 @@
 # Remote Stash — Inventory Button and Migration Guide
 
-Remote Stash 2.0.0 creates its own keyboard-and-mouse Inventory button. The
+Remote Stash 2.0.2 creates its own keyboard-and-mouse Inventory button. The
 default RuffnecKk chest artwork is embedded in the DLL, and its placement is
 calculated from the Inventory layout that is actually loaded by the game.
 
-This 2.0.0 line is the canonical Remote Stash baseline for future releases of
+This 2.x line is the canonical Remote Stash baseline for future releases of
 the RuffnecKk D2RLoader Suite.
 
 No Inventory JSON merge and no sprite copy into a mod MPQ are required.
