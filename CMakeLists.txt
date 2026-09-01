@@ -23,8 +23,12 @@ option(
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/PluginSDK/CMakeLists.txt")
     message(FATAL_ERROR "The pinned D2RLoader PluginSDK v3 source is missing.")
 endif()
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/PluginSDK-v4/CMakeLists.txt")
+    message(FATAL_ERROR "The pinned D2RLoader PluginSDK v4 source is missing.")
+endif()
 
 add_subdirectory(third_party/PluginSDK)
+add_subdirectory(third_party/PluginSDK-v4)
 add_subdirectory(common)
 
 # Keep the repository foundation buildable even when a source checkout omits

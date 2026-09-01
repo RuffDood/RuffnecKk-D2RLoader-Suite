@@ -3,7 +3,7 @@ add_library(ruffneckk_vendor_stock_refresh SHARED
     src/plugin.rc
 )
 
-target_link_libraries(ruffneckk_vendor_stock_refresh PRIVATE RuffnecKk::Common)
+target_link_libraries(ruffneckk_vendor_stock_refresh PRIVATE RuffnecKk::CommonV4)
 target_compile_features(ruffneckk_vendor_stock_refresh PRIVATE cxx_std_20)
 set_target_properties(ruffneckk_vendor_stock_refresh PROPERTIES
     OUTPUT_NAME "d2rl-ruffneckk-vendor-stock-refresh"

@@ -1,0 +1,107 @@
+#pragma once
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+#include <optional>
+
+namespace RuffnecKk::VendorStockRefresh::NativeContract {
+
+inline constexpr std::size_t BuilderCallOffset = 0x2A;
+inline constexpr std::size_t BuilderCallDisplacementOffset = BuilderCallOffset + 1;
+inline constexpr std::size_t BuilderCallDisplacementSize = sizeof(std::int32_t);
+inline constexpr std::size_t ProviderForwardingOffset = 0xA0;
+inline constexpr std::size_t ProviderForwardingCallOffset = 0x0E;
+
+inline constexpr std::array<std::uint8_t, 48> VanillaBuilder{
+    0x48, 0x83, 0xEC, 0x48, 0x48, 0x8B, 0x05, 0x8D,
+    0xEB, 0x8D, 0x02, 0x48, 0x33, 0xC4, 0x48, 0x89,
+    0x44, 0x24, 0x30, 0x88, 0x4C, 0x24, 0x20, 0x48,
+    0x8D, 0x4C, 0x24, 0x20, 0x89, 0x54, 0x24, 0x21,
+    0xBA, 0x09, 0x00, 0x00, 0x00, 0x44, 0x89, 0x44,
+    0x24, 0x25, 0xE8, 0x41, 0x1B, 0x00, 0x00, 0x48
+};
+
+inline constexpr std::array<std::uint8_t, 2> RelayStubOpcode{
+    0xFF, 0x25
+};
+
+inline constexpr std::array<std::uint8_t, 91> D2RCoreProviderEntry{
+    0x55, 0x41, 0x57, 0x41, 0x56, 0x41, 0x54, 0x56,
+    0x57, 0x53, 0x48, 0x83, 0xEC, 0x50, 0x48, 0x8D,
+    0x6C, 0x24, 0x50, 0x48, 0xC7, 0x45, 0xF8, 0xFE,
+    0xFF, 0xFF, 0xFF, 0x48, 0x89, 0xCF, 0x48, 0x85,
+    0xC9, 0x0F, 0x94, 0xC0, 0x85, 0xD2, 0x0F, 0x9E,
+    0xC1, 0x08, 0xC1, 0x0F, 0x85, 0x5A, 0x01, 0x00,
+    0x00, 0x89, 0xD6, 0x89, 0xD3, 0x81, 0xFA, 0x01,
+    0x02, 0x00, 0x00, 0x73, 0x7D, 0xFF, 0x15, 0x15,
+    0xA3, 0xF0, 0xFF, 0x90, 0x41, 0x89, 0xC7, 0x44,
+    0x0F, 0xB6, 0x37, 0x39, 0x05, 0x57, 0x47, 0xF1,
+    0xFF, 0x75, 0x2A, 0x41, 0x80, 0xFE, 0x3A, 0x41,
+    0x0F, 0x94, 0xC4
+};
+
+inline constexpr std::array<std::uint8_t, 21> D2RCoreForwardingWitness{
+    0x81, 0xFE, 0x00, 0x02, 0x00, 0x00, 0x77, 0x3F,
+    0x48, 0x89, 0xF9, 0x48, 0x89, 0xDA, 0xFF, 0x15,
+    0x74, 0xA2, 0xF0, 0xFF, 0x90
+};
+
+inline constexpr std::array<std::uint8_t, 31> DownstreamQueueEntry{
+    0x48, 0x89, 0x5C, 0x24, 0x18, 0x57, 0x48, 0x81,
+    0xEC, 0x50, 0x02, 0x00, 0x00, 0x48, 0x8B, 0x05,
+    0x54, 0xCF, 0x8D, 0x02, 0x48, 0x33, 0xC4, 0x48,
+    0x89, 0x84, 0x24, 0x40, 0x02, 0x00, 0x00
+};
+
+template<std::size_t Size>
+bool Matches(const std::uint8_t* bytes,
+             const std::array<std::uint8_t, Size>& expected) noexcept {
+    return bytes && std::memcmp(bytes, expected.data(), Size) == 0;
+}
+
+inline bool MatchesRelayBuilder(const std::uint8_t* bytes) noexcept {
+    if (!bytes || bytes[BuilderCallOffset] != 0xE8) return false;
+    for (std::size_t index = 0; index < VanillaBuilder.size(); ++index) {
+        if (index >= BuilderCallDisplacementOffset
+            && index < BuilderCallDisplacementOffset + BuilderCallDisplacementSize) {
+            continue;
+        }
+        if (bytes[index] != VanillaBuilder[index]) return false;
+    }
+    return true;
+}
+
+inline std::optional<std::uintptr_t> AddSignedDisplacement(
+    std::uintptr_t base,
+    std::int32_t displacement
+) noexcept {
+    if (displacement >= 0) {
+        const auto positive = static_cast<std::uintptr_t>(displacement);
+        if (base > std::numeric_limits<std::uintptr_t>::max() - positive) {
+            return std::nullopt;
+        }
+        return base + positive;
+    }
+
+    const auto magnitude = static_cast<std::uintptr_t>(
+        -static_cast<std::int64_t>(displacement));
+    if (base < magnitude) return std::nullopt;
+    return base - magnitude;
+}
+
+inline std::optional<std::uintptr_t> ResolveRelativeTarget(
+    std::uintptr_t instructionAddress,
+    std::size_t instructionSize,
+    std::int32_t displacement
+) noexcept {
+    if (instructionAddress
+        > std::numeric_limits<std::uintptr_t>::max() - instructionSize) {
+        return std::nullopt;
+    }
+    return AddSignedDisplacement(instructionAddress + instructionSize, displacement);
+}
+
+} // namespace RuffnecKk::VendorStockRefresh::NativeContract

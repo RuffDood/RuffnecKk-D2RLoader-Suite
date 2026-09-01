@@ -1,8 +1,11 @@
+#include "native_contract.hpp"
 #include "policy.hpp"
 
+#include <array>
 #include <cstdlib>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <string>
 
 namespace {
@@ -74,5 +77,44 @@ int main(int argc, char** argv) {
     CHECK(!ShouldArmNormalRefresh(true, GambleVendorMode, true, true));
     CHECK(!ShouldArmNormalRefresh(true, NormalVendorMode, false, true));
     CHECK(!ShouldArmNormalRefresh(true, NormalVendorMode, true, false));
+
+    using namespace NativeContract;
+    CHECK(Matches(VanillaBuilder.data(), VanillaBuilder));
+    CHECK(MatchesRelayBuilder(VanillaBuilder.data()));
+    auto relayedBuilder = VanillaBuilder;
+    relayedBuilder[BuilderCallDisplacementOffset + 0] = 0xA7;
+    relayedBuilder[BuilderCallDisplacementOffset + 1] = 0xE0;
+    relayedBuilder[BuilderCallDisplacementOffset + 2] = 0xD3;
+    relayedBuilder[BuilderCallDisplacementOffset + 3] = 0x03;
+    CHECK(!Matches(relayedBuilder.data(), VanillaBuilder));
+    CHECK(MatchesRelayBuilder(relayedBuilder.data()));
+    auto mutatedBuilder = relayedBuilder;
+    mutatedBuilder[0x19] ^= 0x01;
+    CHECK(!MatchesRelayBuilder(mutatedBuilder.data()));
+
+    CHECK(Matches(RelayStubOpcode.data(), RelayStubOpcode));
+    auto invalidRelay = RelayStubOpcode;
+    invalidRelay[1] = 0x15;
+    CHECK(!Matches(invalidRelay.data(), RelayStubOpcode));
+    CHECK(Matches(D2RCoreProviderEntry.data(), D2RCoreProviderEntry));
+    auto invalidProvider = D2RCoreProviderEntry;
+    invalidProvider[0x20] ^= 0x01;
+    CHECK(!Matches(invalidProvider.data(), D2RCoreProviderEntry));
+    CHECK(Matches(D2RCoreForwardingWitness.data(), D2RCoreForwardingWitness));
+    auto invalidForwarding = D2RCoreForwardingWitness;
+    invalidForwarding[0x0B] ^= 0x01;
+    CHECK(!Matches(invalidForwarding.data(), D2RCoreForwardingWitness));
+    CHECK(Matches(DownstreamQueueEntry.data(), DownstreamQueueEntry));
+    auto invalidDownstream = DownstreamQueueEntry;
+    invalidDownstream[0x14] ^= 0x01;
+    CHECK(!Matches(invalidDownstream.data(), DownstreamQueueEntry));
+
+    const auto forwardTarget = ResolveRelativeTarget(0x1000, 5, 0x200);
+    CHECK(forwardTarget && *forwardTarget == 0x1205);
+    const auto backwardTarget = ResolveRelativeTarget(0x1000, 6, -0x206);
+    CHECK(backwardTarget && *backwardTarget == 0x0E00);
+    CHECK(!AddSignedDisplacement(0, -1));
+    CHECK(!AddSignedDisplacement(
+        std::numeric_limits<std::uintptr_t>::max(), 1));
     return EXIT_SUCCESS;
 }

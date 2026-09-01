@@ -1,5 +1,6 @@
 #include <D2RLPlugin/api.h>
 
+#include "native_contract.hpp"
 #include "policy.hpp"
 
 #include <Windows.h>
@@ -20,6 +21,7 @@ constexpr std::uint64_t MaximumDiagnosticLogs = 12;
 constexpr std::uintptr_t SendVendorRefreshRva = 0x10F520;
 constexpr std::uintptr_t IsGamblingRva = 0x10CAC0;
 constexpr std::uintptr_t SendNineBytePacketRva = 0x0EC730;
+constexpr std::uintptr_t DownstreamQueueRva = 0x0EE360;
 constexpr std::uintptr_t CurrentNpcGuidRva = 0x2A4875C;
 constexpr std::uintptr_t EntityActionRva = 0x4B0470;
 constexpr std::uintptr_t ConfigureVendorInteractionRva = 0x502F60;
@@ -52,14 +54,6 @@ constexpr std::array<std::uint8_t, 21> EntityActionExpected{
 };
 constexpr std::array<std::uint8_t, 7> IsGamblingExpected{
     0x8B, 0x05, 0x42, 0xBD, 0x93, 0x02, 0xC3
-};
-constexpr std::array<std::uint8_t, 48> SendNineBytePacketExpected{
-    0x48, 0x83, 0xEC, 0x48, 0x48, 0x8B, 0x05, 0x8D,
-    0xEB, 0x8D, 0x02, 0x48, 0x33, 0xC4, 0x48, 0x89,
-    0x44, 0x24, 0x30, 0x88, 0x4C, 0x24, 0x20, 0x48,
-    0x8D, 0x4C, 0x24, 0x20, 0x89, 0x54, 0x24, 0x21,
-    0xBA, 0x09, 0x00, 0x00, 0x00, 0x44, 0x89, 0x44,
-    0x24, 0x25, 0xE8, 0x41, 0x1B, 0x00, 0x00, 0x48
 };
 constexpr std::array<std::uint8_t, 24> GetVendorChainEntryExpected{
     0x48, 0x89, 0x5C, 0x24, 0x08, 0x57, 0x48, 0x83,
@@ -140,6 +134,14 @@ std::atomic_bool PlacementFailureReported{};
 std::atomic_bool PlacementSuccessReported{};
 std::atomic<std::uint64_t> DiagnosticLogs{};
 
+enum class PacketRoute {
+    Invalid,
+    Vanilla,
+    VerifiedD2RCoreRelay,
+};
+
+PacketRoute ActivePacketRoute{PacketRoute::Invalid};
+
 struct RefreshPlacementCache {
     void* panel{};
     void* widget{};
@@ -164,7 +166,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-vendor-stock-refresh",
     .name = "Vendor Stock Refresh",
-    .version = "0.2.1",
+    .version = "2.0.0",
     .author = "RuffnecKk",
     .description = "Refreshes a vendor's stock with one click.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -206,8 +208,195 @@ auto TakeDiagnosticLogSlot() noexcept -> bool {
             < MaximumDiagnosticLogs;
 }
 
+bool IsReadableRange(const void* address, std::size_t size) noexcept {
+    if (!address || size == 0) return false;
+    auto cursor = reinterpret_cast<std::uintptr_t>(address);
+    if (cursor > std::numeric_limits<std::uintptr_t>::max() - size) return false;
+    const auto end = cursor + size;
+
+    while (cursor < end) {
+        MEMORY_BASIC_INFORMATION memory{};
+        if (VirtualQuery(reinterpret_cast<const void*>(cursor), &memory, sizeof(memory))
+            != sizeof(memory)) {
+            return false;
+        }
+        if (memory.State != MEM_COMMIT
+            || (memory.Protect & PAGE_GUARD) != 0
+            || (memory.Protect & PAGE_NOACCESS) != 0) {
+            return false;
+        }
+        const auto regionStart = reinterpret_cast<std::uintptr_t>(memory.BaseAddress);
+        if (regionStart > std::numeric_limits<std::uintptr_t>::max() - memory.RegionSize) {
+            return false;
+        }
+        const auto regionEnd = regionStart + memory.RegionSize;
+        if (regionEnd <= cursor) return false;
+        cursor = regionEnd < end ? regionEnd : end;
+    }
+    return true;
+}
+
+std::size_t ModuleImageSize(HMODULE module) noexcept {
+    if (!module || !IsReadableRange(module, sizeof(IMAGE_DOS_HEADER))) return 0;
+    const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(module);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE || dos->e_lfanew <= 0) return 0;
+    const auto base = reinterpret_cast<std::uintptr_t>(module);
+    const auto ntAddress = NativeContract::AddSignedDisplacement(base, dos->e_lfanew);
+    if (!ntAddress
+        || !IsReadableRange(reinterpret_cast<const void*>(*ntAddress),
+            sizeof(IMAGE_NT_HEADERS64))) {
+        return 0;
+    }
+    const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(*ntAddress);
+    if (nt->Signature != IMAGE_NT_SIGNATURE
+        || nt->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
+        return 0;
+    }
+    return nt->OptionalHeader.SizeOfImage;
+}
+
+bool IsWithinImage(
+    const void* address,
+    std::size_t size,
+    HMODULE module,
+    std::size_t imageSize
+) noexcept {
+    if (!address || !module || size == 0 || imageSize < size) return false;
+    const auto imageStart = reinterpret_cast<std::uintptr_t>(module);
+    if (imageStart > std::numeric_limits<std::uintptr_t>::max() - imageSize) return false;
+    const auto imageEnd = imageStart + imageSize;
+    const auto rangeStart = reinterpret_cast<std::uintptr_t>(address);
+    if (rangeStart < imageStart || rangeStart > imageEnd - size) return false;
+    return IsReadableRange(address, size);
+}
+
+bool ReadInt32(const std::uint8_t* address, std::int32_t& value) noexcept {
+    if (!IsReadableRange(address, sizeof(value))) return false;
+    std::memcpy(&value, address, sizeof(value));
+    return true;
+}
+
+bool ReadPointer(const void* address, std::uintptr_t& value) noexcept {
+    if (!IsReadableRange(address, sizeof(value))) return false;
+    std::memcpy(&value, address, sizeof(value));
+    return true;
+}
+
+PacketRoute ValidateSendNineBytePacketRoute() noexcept {
+    const auto mainModule = reinterpret_cast<HMODULE>(Base);
+    const auto mainImageSize = ModuleImageSize(mainModule);
+    auto* builder = Base + SendNineBytePacketRva;
+    if (!IsWithinImage(
+            builder,
+            NativeContract::VanillaBuilder.size(),
+            mainModule,
+            mainImageSize)) {
+        return PacketRoute::Invalid;
+    }
+    if (NativeContract::Matches(builder, NativeContract::VanillaBuilder)) {
+        return PacketRoute::Vanilla;
+    }
+    if (!NativeContract::MatchesRelayBuilder(builder)) return PacketRoute::Invalid;
+
+    std::int32_t builderDisplacement{};
+    if (!ReadInt32(
+            builder + NativeContract::BuilderCallDisplacementOffset,
+            builderDisplacement)) {
+        return PacketRoute::Invalid;
+    }
+    const auto relayAddress = NativeContract::ResolveRelativeTarget(
+        reinterpret_cast<std::uintptr_t>(builder + NativeContract::BuilderCallOffset),
+        5,
+        builderDisplacement);
+    if (!relayAddress) return PacketRoute::Invalid;
+    const auto* relay = reinterpret_cast<const std::uint8_t*>(*relayAddress);
+    if (!IsWithinImage(
+            relay,
+            6,
+            mainModule,
+            mainImageSize)
+        || !NativeContract::Matches(relay, NativeContract::RelayStubOpcode)) {
+        return PacketRoute::Invalid;
+    }
+
+    std::int32_t relayDisplacement{};
+    if (!ReadInt32(relay + 2, relayDisplacement)) return PacketRoute::Invalid;
+    const auto relaySlotAddress = NativeContract::ResolveRelativeTarget(
+        reinterpret_cast<std::uintptr_t>(relay),
+        6,
+        relayDisplacement);
+    if (!relaySlotAddress
+        || !IsWithinImage(
+            reinterpret_cast<const void*>(*relaySlotAddress),
+            sizeof(std::uintptr_t),
+            mainModule,
+            mainImageSize)) {
+        return PacketRoute::Invalid;
+    }
+    std::uintptr_t providerAddress{};
+    if (!ReadPointer(reinterpret_cast<const void*>(*relaySlotAddress), providerAddress)) {
+        return PacketRoute::Invalid;
+    }
+
+    const auto d2rCore = GetModuleHandleW(L"D2RCore.dll");
+    const auto d2rCoreImageSize = ModuleImageSize(d2rCore);
+    const auto* provider = reinterpret_cast<const std::uint8_t*>(providerAddress);
+    if (!IsWithinImage(
+            provider,
+            NativeContract::ProviderForwardingOffset
+                + NativeContract::D2RCoreForwardingWitness.size(),
+            d2rCore,
+            d2rCoreImageSize)
+        || !NativeContract::Matches(provider, NativeContract::D2RCoreProviderEntry)
+        || !NativeContract::Matches(
+            provider + NativeContract::ProviderForwardingOffset,
+            NativeContract::D2RCoreForwardingWitness)) {
+        return PacketRoute::Invalid;
+    }
+
+    const auto* forwardingCall = provider
+        + NativeContract::ProviderForwardingOffset
+        + NativeContract::ProviderForwardingCallOffset;
+    if (forwardingCall[0] != 0xFF || forwardingCall[1] != 0x15) {
+        return PacketRoute::Invalid;
+    }
+    std::int32_t forwardingDisplacement{};
+    if (!ReadInt32(forwardingCall + 2, forwardingDisplacement)) {
+        return PacketRoute::Invalid;
+    }
+    const auto forwardingSlotAddress = NativeContract::ResolveRelativeTarget(
+        reinterpret_cast<std::uintptr_t>(forwardingCall),
+        6,
+        forwardingDisplacement);
+    if (!forwardingSlotAddress
+        || !IsWithinImage(
+            reinterpret_cast<const void*>(*forwardingSlotAddress),
+            sizeof(std::uintptr_t),
+            d2rCore,
+            d2rCoreImageSize)) {
+        return PacketRoute::Invalid;
+    }
+    std::uintptr_t downstreamAddress{};
+    if (!ReadPointer(
+            reinterpret_cast<const void*>(*forwardingSlotAddress),
+            downstreamAddress)
+        || downstreamAddress != reinterpret_cast<std::uintptr_t>(Base + DownstreamQueueRva)
+        || !IsWithinImage(
+            reinterpret_cast<const void*>(downstreamAddress),
+            NativeContract::DownstreamQueueEntry.size(),
+            mainModule,
+            mainImageSize)
+        || !NativeContract::Matches(
+            reinterpret_cast<const std::uint8_t*>(downstreamAddress),
+            NativeContract::DownstreamQueueEntry)) {
+        return PacketRoute::Invalid;
+    }
+    return PacketRoute::VerifiedD2RCoreRelay;
+}
+
 bool ValidateRuntime() noexcept {
-    return Context->CheckExpectedBytes(
+    ActivePacketRoute = PacketRoute::Invalid;
+    const auto fixedSurfacesMatch = Context->CheckExpectedBytes(
             SendVendorRefreshRva,
             SendVendorRefreshExpected.data(),
             static_cast<std::uint32_t>(SendVendorRefreshExpected.size()))
@@ -224,10 +413,6 @@ bool ValidateRuntime() noexcept {
             IsGamblingExpected.data(),
             static_cast<std::uint32_t>(IsGamblingExpected.size()))
         && Context->CheckExpectedBytes(
-            SendNineBytePacketRva,
-            SendNineBytePacketExpected.data(),
-            static_cast<std::uint32_t>(SendNineBytePacketExpected.size()))
-        && Context->CheckExpectedBytes(
             GetVendorChainEntryRva,
             GetVendorChainEntryExpected.data(),
             static_cast<std::uint32_t>(GetVendorChainEntryExpected.size()))
@@ -243,6 +428,9 @@ bool ValidateRuntime() noexcept {
             GetWidgetRectRva,
             GetWidgetRectExpected.data(),
             static_cast<std::uint32_t>(GetWidgetRectExpected.size()));
+    if (!fixedSurfacesMatch) return false;
+    ActivePacketRoute = ValidateSendNineBytePacketRoute();
+    return ActivePacketRoute != PacketRoute::Invalid;
 }
 
 bool SameRect(const WidgetRect& first, const WidgetRect& second) noexcept {
@@ -534,7 +722,7 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
     std::snprintf(
         message,
         sizeof(message),
-        "Vendor Stock Refresh 0.2.0: %s; diagnostics=%s; placed=%llu; "
+        "Vendor Stock Refresh 2.0.0: %s; diagnostics=%s; placed=%llu; "
         "placementFailures=%llu; sent=%llu; received=%llu; armed=%llu; rejected=%llu.",
         Settings.enabled ? "active" : "disabled",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
@@ -575,11 +763,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     PlacementSuccessReported.store(false, std::memory_order_relaxed);
     DiagnosticLogs.store(0, std::memory_order_relaxed);
     PlacementCache = {};
+    ActivePacketRoute = PacketRoute::Invalid;
 
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "VendorStockRefresh 0.2.0 by RuffnecKk loaded disabled; no hook or service registered.");
+            "VendorStockRefresh 2.0.0 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 
@@ -590,19 +779,20 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "VendorStockRefresh: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "VendorStockRefresh: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
 
     if (!ValidateRuntime()) {
         context->LogError(
-            "VendorStockRefresh: 92777 hook or helper signature mismatch; plugin refused.");
+            "VendorStockRefresh: native hook or helper fingerprint mismatch; plugin refused.");
         return false;
     }
+    context->LogInfo(ActivePacketRoute == PacketRoute::Vanilla
+        ? "VendorStockRefresh: verified the vanilla nine-byte packet route."
+        : "VendorStockRefresh: verified the D2RCore packet relay and downstream queue ABI.");
 
     IsGambling = At<IsGamblingFn>(IsGamblingRva);
     SendNineBytePacket = At<SendNineBytePacketFn>(SendNineBytePacketRva);
@@ -665,7 +855,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
 
     context->LogInfo(
-        "VendorStockRefresh 0.2.0 by RuffnecKk active; native button uses the runtime gold anchor.");
+        "VendorStockRefresh 2.0.0 by RuffnecKk active; native button uses the runtime gold anchor.");
     return true;
 }
 
@@ -683,6 +873,7 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     OriginalSendVendorRefresh = nullptr;
     DiagnosticLogs.store(0, std::memory_order_relaxed);
     Settings = {};
+    ActivePacketRoute = PacketRoute::Invalid;
     Base = nullptr;
     Context = nullptr;
 }
