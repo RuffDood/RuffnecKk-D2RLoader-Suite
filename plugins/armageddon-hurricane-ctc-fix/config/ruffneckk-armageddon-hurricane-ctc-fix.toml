@@ -1,0 +1,16 @@
+# RuffnecKk Armageddon-Hurricane CtC Fix
+# Lets persistent Druid storm skills start from native chance-to-cast effects.
+
+enabled = true
+
+[skills]
+# Enables the native Armageddon chance-to-cast correction.
+armageddon = true
+
+# Enables the shared native Hurricane chance-to-cast correction.
+hurricane = true
+
+[diagnostics]
+# Writes bounded activation details to the D2RLoader log. The
+# armageddon-ctc-fix console command exposes counters even when this is false.
+enabled = false

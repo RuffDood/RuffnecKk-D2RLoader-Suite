@@ -1,0 +1,10 @@
+.{
+    .name = .ruffneckk_mapsense_mapgen,
+    .version = "0.13.35",
+    .minimum_zig_version = "0.16.0",
+    .fingerprint = 0xf18085daa732040c,
+    .dependencies = .{
+        .libd2 = .{ .path = "vendor/libd2" },
+    },
+    .paths = .{ "build.zig", "build.zig.zon", "src" },
+}

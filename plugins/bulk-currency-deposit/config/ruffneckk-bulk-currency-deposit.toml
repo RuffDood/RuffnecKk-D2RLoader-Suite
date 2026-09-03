@@ -5,8 +5,8 @@
 # Master switch. false disables the Controls action, button, resources and deposit logic.
 enabled = true
 
-# Adds an optional button to the Inventory panel. Disabled by default
-# so the plugin does not add a control to layouts unless the player requests it.
+# Injects the plugin-owned button into the Inventory panel. Keep this false
+# when the active mod provides its own button in another layout, such as the stash.
 inventory_button_enabled = false
 
 # Delay between native transfers. Keep the default unless troubleshooting.
@@ -30,3 +30,7 @@ exclude_item_codes = []
 # values if another mod or plugin already uses this location.
 x = 3
 y = 813
+
+# Literal UTF-8 tooltip for the optional Inventory button. Mod-owned layouts
+# set their own literal tooltipString and do not depend on a global string ID.
+tooltip = "Deposit Currency"

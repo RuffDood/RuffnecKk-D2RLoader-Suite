@@ -17,6 +17,12 @@ set(RUFFNECKK_SUITE_PLUGIN_DIRECTORIES
     larzuk-sockets
     bulk-skill-point-allocation
     progressive-affixes
+    cast-triggers
+    armageddon-hurricane-ctc-fix
+    resistance-floor
+    extended-act-level-ids
+    isc12
+    mapsense
 )
 
 foreach(plugin_directory IN LISTS RUFFNECKK_SUITE_PLUGIN_DIRECTORIES)

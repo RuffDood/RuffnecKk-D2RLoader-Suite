@@ -337,7 +337,6 @@ function Invoke-NativeWriteValidation {
     }
     $sdkV4Commit = '6eb8f8b6192868214706bd6d528c5294f2f551b7'
     $expectedSdkV4Components = @(
-        'ruffneckk-mass-identify',
         'ruffneckk-vendor-stock-refresh'
     )
     if (-not (Has-Property -Object $Manifest.target -Name 'pluginSdkOverrides')) {
@@ -346,7 +345,7 @@ function Invoke-NativeWriteValidation {
     $actualSdkV4Components = @($Manifest.target.pluginSdkOverrides.PSObject.Properties.Name)
     if ($actualSdkV4Components.Count -ne $expectedSdkV4Components.Count -or
         @($expectedSdkV4Components | Where-Object { $_ -notin $actualSdkV4Components }).Count -ne 0) {
-        throw 'PluginSDK v4 overrides must contain exactly MassID and Vendor Stock Refresh.'
+        throw 'PluginSDK v4 overrides must contain exactly Vendor Stock Refresh.'
     }
     foreach ($componentId in $expectedSdkV4Components) {
         if ([string]$Manifest.target.pluginSdkOverrides.$componentId -ne $sdkV4Commit) {
@@ -522,6 +521,7 @@ function Invoke-NativeWriteValidation {
     $requiredCallThroughs = @{
         'EE2A0' = @(
             'ruffneckk-equipped-item-to-cube',
+            'ruffneckk-mass-identify',
             'ruffneckk-remote-stash'
         )
         '373890' = @(

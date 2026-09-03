@@ -3,7 +3,6 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(RuffnecKkMassIdentify LANGUAGES CXX RC)
     include(CTest)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
-    add_subdirectory(../../third_party/PluginSDK-v4 "${CMAKE_BINARY_DIR}/_deps/PluginSDK-v4")
     add_subdirectory(../../common "${CMAKE_BINARY_DIR}/_deps/common")
 endif()
 
@@ -12,7 +11,7 @@ add_library(ruffneckk_mass_identify SHARED
     src/plugin.rc
 )
 
-target_link_libraries(ruffneckk_mass_identify PRIVATE RuffnecKk::CommonV4 user32)
+target_link_libraries(ruffneckk_mass_identify PRIVATE RuffnecKk::Common user32)
 target_compile_features(ruffneckk_mass_identify PRIVATE cxx_std_20)
 set_target_properties(ruffneckk_mass_identify PROPERTIES
     OUTPUT_NAME "d2rl-ruffneckk-mass-identify"

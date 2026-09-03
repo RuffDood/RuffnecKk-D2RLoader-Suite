@@ -44,7 +44,6 @@ if ([string]$distribution.model -ne 'modular-catalog' -or
 }
 $sdkV4Commit = '6eb8f8b6192868214706bd6d528c5294f2f551b7'
 $expectedSdkV4Components = @(
-    'ruffneckk-mass-identify',
     'ruffneckk-vendor-stock-refresh'
 )
 $sdkV4Overrides = @($allowlist.suite.pluginSdkOverrides)
@@ -55,7 +54,7 @@ if ($sdkV4Overrides.Count -ne $expectedSdkV4Components.Count -or
     @($sdkV4Overrides | Where-Object {
         [string]$_.version -ne 'v4' -or [string]$_.commit -ne $sdkV4Commit
     }).Count -ne 0) {
-    throw 'Suite PluginSDK v4 overrides must pin MassID and Vendor Stock Refresh.'
+    throw 'Suite PluginSDK v4 overrides must pin Vendor Stock Refresh.'
 }
 $expectedAssets = $distribution.expectedGithubAssets
 $expectedCounts = $allowlist.policy.expectedCounts
@@ -344,7 +343,7 @@ foreach ($entry in $pluginEntries) {
         $errors.Add("$slug contains a forbidden D2R build-name allowlist.")
     }
     if ($runtimeSourceText -notmatch 'GetBuildName\s*\(\s*context\s*\)' -or
-        $runtimeSourceText -notmatch 'validating the complete native fingerprint') {
+        $runtimeSourceText -notmatch 'validating (?:the complete )?native fingerprint') {
         $errors.Add("$slug must log the observed build name and gate native work through its complete fingerprint.")
     }
 

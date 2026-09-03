@@ -1,0 +1,30 @@
+# Resistance Floor
+# Choose how low each group can push its six damage resistances.
+
+# File format version. Leave this value unchanged.
+config_version = 3
+enabled = true
+
+[players]
+# Your characters.
+enabled = true
+minimum_resistance = -1000
+
+[companions]
+# Your mercenaries, summons, pets, Revives and converted monsters.
+enabled = true
+minimum_resistance = -1000
+
+[monsters]
+# Enemies and other monsters that do not belong to a player.
+# They keep the normal -100 minimum until you enable this option.
+enabled = false
+minimum_resistance = -1000
+
+[character_screen]
+# Lets Fire, Lightning, Cold and Poison display values lower than -100.
+show_resistances_below_minus_100 = true
+
+[troubleshooting]
+# Adds usage counters to the resistance-floor console status.
+show_usage_counters = false

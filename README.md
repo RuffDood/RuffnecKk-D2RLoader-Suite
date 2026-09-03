@@ -167,6 +167,13 @@ For complete Burn damage behavior, install Burn Damage Fix together with the
 independent Thorns/Burn Kill Credit patch. The DLL owns damage behavior and visual replay; Floating Damage owns periodic numbers, and the JSON patch owns
 experience and kill attribution.
 
+## Source code
+
+The source code for all 24 Suite plugins is available under `plugins/`.
+Each plugin keeps its own build files, source, configuration, and tests when
+applicable. MapSense also includes its map generator source under
+`plugins/mapsense/mapgen/`.
+
 
 
 ## Changing or removing features

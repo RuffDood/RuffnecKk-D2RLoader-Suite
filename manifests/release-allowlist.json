@@ -21,14 +21,9 @@
       ],
       "otherBuilds": "eligible only when every native signature, layout witness, ABI contract, RVA and owned range matches"
     },
-    "targetLoader": "D2RLoader 1.2.0-beta; plugin API v4 is required by MassID 2.1.0 and Vendor Stock Refresh 2.0.0",
+    "targetLoader": "D2RLoader 1.2.0-beta; plugin API v4 is required by Vendor Stock Refresh 2.0.0",
     "targetPluginSdk": "v3",
     "pluginSdkOverrides": [
-      {
-        "componentId": "ruffneckk-mass-identify",
-        "version": "v4",
-        "commit": "6eb8f8b6192868214706bd6d528c5294f2f551b7"
-      },
       {
         "componentId": "ruffneckk-vendor-stock-refresh",
         "version": "v4",
@@ -117,10 +112,10 @@
       "kind": "plugin-dll",
       "componentId": "ruffneckk-bulk-currency-deposit",
       "pluginInfoId": "bulk-currency-deposit",
-      "version": "1.0.1",
+      "version": "1.1.1",
       "source": "plugins/d2rl-ruffneckk-bulk-currency-deposit.dll",
       "destination": "plugins/d2rl-ruffneckk-bulk-currency-deposit.dll",
-      "sha256": "238A0CB3D0BD69D9DBFB4DFF790750095F3FA50F534588A642E66AB78C75A97D",
+      "sha256": "52B54990773485F98F04F7EC50711F18075D7B5A87785A602E30C400232A2EC5",
       "qualification": "User-validated native and mod-specific currency routing, Controls Shift+D and optional button, interrupted deposits, save, and reload"
     },
     {
@@ -185,11 +180,11 @@
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-mass-identify",
-      "version": "2.1.0",
+      "version": "2.0.2",
       "source": "plugins/d2rl-ruffneckk-mass-identify.dll",
       "destination": "plugins/d2rl-ruffneckk-mass-identify.dll",
-      "sha256": "21A65C8F840464ECD87630714D01C720EE8879B66847843226B6032ED6E79AE3",
-      "qualification": "strict builds, CTest, manifest API v4, and static ownership validation passed; runtime pending a loader exposing plugin API v4"
+      "sha256": "6688814C2E0AEA68247D45037E273D892E4EE3B04EB443BFC67E863760F1D275",
+      "qualification": "Compatibility-only 2.0.2 build with native fingerprint validation; the PluginSDK v4 feature update remains deferred"
     },
     {
       "kind": "plugin-dll",
@@ -274,7 +269,7 @@
       "componentId": "ruffneckk-bulk-currency-deposit",
       "source": "plugins/bulk-currency-deposit/config/ruffneckk-bulk-currency-deposit.toml",
       "destination": "config/ruffneckk-bulk-currency-deposit.toml",
-      "sha256": "747DEA10790FA5F403B81DE74DA9693ECB72C41235FB5E764DADEF90042FBE2A"
+      "sha256": "5363EC40E27D49FFFFB4C2059E5ABBD7EC6D5FDA9DEE469A74BE460F034143D4"
     },
     {
       "kind": "plugin-config-toml",
@@ -323,7 +318,7 @@
       "componentId": "ruffneckk-mass-identify",
       "source": "plugins/mass-identify/config/ruffneckk-mass-identify.toml",
       "destination": "config/ruffneckk-mass-identify.toml",
-      "sha256": "AEB57780752ECA91E63C8D4F208A8E0837616883AF49F1359A96BCCFA38ED243"
+      "sha256": "FA023927335F32138CCF118343DE14805D062D2D9E0D68B90B4635B2BFCE0CFA"
     },
     {
       "kind": "plugin-config-toml",

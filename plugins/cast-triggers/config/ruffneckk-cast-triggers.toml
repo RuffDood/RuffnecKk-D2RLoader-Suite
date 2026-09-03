@@ -1,0 +1,59 @@
+# RuffnecKk Cast Triggers
+# Triggers item skills from spells, attack attempts, and combat outcomes.
+
+enabled = true
+
+[on_cast]
+# Empty means every eligible non-repeating spell. A non-empty list narrows
+# source skills to these numeric Skills.txt IDs. It cannot opt attacks in.
+include_skill_ids = []
+
+# Applied after include_skill_ids. Use this for custom spells that should never
+# activate cast-on-cast item properties.
+exclude_skill_ids = []
+
+[while_channeling]
+# Repeating/channelled spells use their own item properties and stat IDs.
+enabled = true
+
+# D2R runs at 25 server frames per second. The default 50 frames is 2 seconds.
+# The first successful channel tick triggers immediately, then this interval
+# limits how often another native item chance roll may occur.
+interval_frames = 50
+
+# These IDs must match the separate fixed-level and source-level channeling
+# rows added to ItemStatCost.txt. Leave both at 0 to disable channeling procs.
+fixed_stat_id = 0
+same_level_stat_id = 0
+
+# Empty means every otherwise eligible repeating/channelled spell.
+include_skill_ids = []
+
+# Applied after include_skill_ids. Weapon attacks remain ineligible.
+exclude_skill_ids = []
+
+# Optional source-conditioned families apply only to ordinary, non-channelled
+# casts. Each family owns distinct ItemStatCost.txt rows. The item property
+# still chooses the skill to cast, its chance, and its fixed/source level.
+# Add as many blocks as the mod needs. A live block requires at least one
+# nonzero stat ID; replace the zero placeholders before uncommenting it.
+#
+# [[source_skill_triggers]]
+# name = "frost_nova"
+# source_skill_ids = [44]
+# fixed_stat_id = 0
+# same_level_stat_id = 0
+
+[combat_triggers]
+# These IDs must match free ItemStatCost.txt IDs owned by the consuming
+# mod. Set an unused trigger to 0. Nonzero IDs must be distinct.
+attack_attempt_stat_id = 0
+critical_strike_stat_id = 0
+crushing_blow_stat_id = 0
+open_wounds_stat_id = 0
+
+[diagnostics]
+# Retains the latest detailed events in a bounded in-memory trace. The
+# cast-triggers console command always exposes counters and prints the retained
+# entries when this setting is true.
+enabled = false

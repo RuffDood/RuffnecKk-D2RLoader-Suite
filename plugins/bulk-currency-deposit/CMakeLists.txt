@@ -69,16 +69,22 @@ endif()
 
 if(BUILD_TESTING)
     add_executable(ruffneckk_bulk_currency_deposit_tests
-        src/policy_tests.cpp
+        tests/policy_tests.cpp
     )
     target_compile_features(ruffneckk_bulk_currency_deposit_tests PRIVATE
         cxx_std_20
+    )
+    target_include_directories(ruffneckk_bulk_currency_deposit_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
     )
     target_link_libraries(ruffneckk_bulk_currency_deposit_tests PRIVATE
         tomlplusplus::tomlplusplus
     )
     target_compile_definitions(ruffneckk_bulk_currency_deposit_tests PRIVATE
         BULK_CURRENCY_DEPOSIT_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/src/plugin.cpp"
+        BULK_CURRENCY_DEPOSIT_CONFIG_FILE="${CMAKE_CURRENT_SOURCE_DIR}/config/ruffneckk-bulk-currency-deposit.toml"
+        BULK_CURRENCY_DEPOSIT_BUTTON_MOLD_FILE="${BULK_CURRENCY_DEPOSIT_BUTTON_MOLD}"
+        BULK_CURRENCY_DEPOSIT_BUTTON_MOLD_LOWEND_FILE="${BULK_CURRENCY_DEPOSIT_BUTTON_MOLD_LOWEND}"
         BULK_CURRENCY_DEPOSIT_BUTTON_FILE="${BULK_CURRENCY_DEPOSIT_BUTTON}"
         BULK_CURRENCY_DEPOSIT_BUTTON_LOWEND_FILE="${BULK_CURRENCY_DEPOSIT_BUTTON_LOWEND}"
     )

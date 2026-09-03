@@ -8,7 +8,6 @@
     "analysisSha256": "673E8C0B2E89563E75525B24D137098EFD07B2DB4ED42ADEC56AA1ADDF0E63AB",
     "pluginSdkCommit": "4933e2c42cb2592958cd0df3b6dc5003102252d1",
     "pluginSdkOverrides": {
-      "ruffneckk-mass-identify": "6eb8f8b6192868214706bd6d528c5294f2f551b7",
       "ruffneckk-vendor-stock-refresh": "6eb8f8b6192868214706bd6d528c5294f2f551b7"
     },
     "loaderArchiveSha256": "923B4933476A8649B7D7C4B50286C0E7FC64CE013B561A446C152A41868C4EDB",
@@ -116,14 +115,10 @@
       "id": "ruffneckk-mass-identify",
       "source": "plugins/mass-identify/src/plugin.cpp",
       "fixedWrites": [
-        {"rva": "0x2C51A9", "size": 5, "kind": "sdk-patch-call-rel32"},
-        {"rva": "0x2C5455", "size": 5, "kind": "sdk-patch-call-rel32"},
-        {"rva": "0x2C55F2", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x1C7A30", "size": 5, "kind": "sdk-inline-hook"},
         {"rva": "0x4C6C90", "size": 5, "kind": "sdk-inline-hook"}
       ],
-      "dynamicAllocations": [
-        {"kind": "rel32-relay-page", "allocation": "one system page near the vendor/trade tooltip call sites", "usedBytes": 64}
-      ]
+      "dynamicAllocations": []
     },
     {
       "id": "ruffneckk-cube-quick-move",
@@ -447,7 +442,7 @@
     {
       "entryRva": "0x0EE2A0",
       "ownerPluginId": "ruffneckk-equipped-item-to-cube",
-      "consumerPluginIds": ["ruffneckk-remote-stash"],
+      "consumerPluginIds": ["ruffneckk-mass-identify", "ruffneckk-remote-stash"],
       "consumerContract": "call-current-live-entry",
       "requiresVanillaEntry": false
     },

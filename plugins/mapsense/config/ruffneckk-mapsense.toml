@@ -1,0 +1,182 @@
+# RuffnecKk MapSense configuration.
+# Configure normal settings in the in-game MapSense menu.
+# Only navigation.custom_levels.targets is intended for manual editing.
+
+schema_version = 16
+
+[general]
+# Master switch for every MapSense feature. The settings panel remains available.
+enabled = true
+
+[overlay]
+# Legacy diagnostic-scene switch retained for schema 2 compatibility. Keep disabled.
+diagnostic_preview = false
+# Compatibility key: MapSense additions follow the native automap by design.
+follow_native_automap = true
+opacity = 1.00
+scale = 1.00
+frame_rate = 60
+
+[monsters]
+enabled = true
+
+[monsters.normal]
+shape = "player_cross"
+color = "#FFFFFFFF"
+size = 18.00
+thickness = 2.00
+
+[monsters.minion]
+shape = "player_cross"
+color = "#FFD43BFF"
+size = 18.00
+thickness = 2.00
+
+[monsters.champion]
+shape = "player_cross"
+color = "#3D8BFFFF"
+size = 20.00
+thickness = 2.00
+
+[monsters.unique]
+shape = "player_cross"
+color = "#FF8A24FF"
+size = 22.00
+thickness = 2.00
+
+[monsters.super_unique_boss]
+shape = "player_cross"
+color = "#FF3B30FF"
+size = 24.00
+thickness = 2.00
+show_names = true
+name_color = "#FFD33DFF"
+name_size = 28.00
+
+[immunities]
+enabled = true
+# Uses colored letters above markers or a segmented halo around them.
+style = "colored_i"
+indicator_size = 14.00
+halo_thickness = 2.00
+physical = "#D8C39AFF"
+fire = "#F23D1FFF"
+cold = "#33A6FFFF"
+lightning = "#FFE02EFF"
+poison = "#57E03DFF"
+magic = "#C75CFFFF"
+
+[missiles]
+enabled = true
+
+[missiles.fire]
+color = "#FF00007F"
+size = 3.00
+
+[missiles.cold]
+color = "#00D0FF7F"
+size = 3.00
+
+[missiles.lightning]
+color = "#FFFF0046"
+size = 3.00
+
+[missiles.poison]
+color = "#32CD327F"
+size = 3.00
+
+[missiles.physical]
+color = "#CD853F7F"
+size = 3.00
+
+[missiles.magic]
+color = "#FF88007F"
+size = 3.00
+
+[objects]
+enabled = true
+
+[objects.exit_labels]
+enabled = true
+color = "#FFD33DFF"
+size = 28.00
+
+[objects.waypoint_labels]
+enabled = true
+color = "#FFD33DFF"
+size = 28.00
+
+[objects.shrine_labels]
+enabled = true
+color = "#FFD33DFF"
+size = 28.00
+
+[objects.chests]
+enabled = true
+outline_color = "#1450ADFF"
+interior_color = "#B88A2AB0"
+locked_accent_color = "#00FFFFFF"
+trapped_accent_color = "#FF3B30FF"
+size = 36.00
+
+[objects.super_chests]
+enabled = true
+stars_enabled = true
+stars_color = "#FFD33DFF"
+stars_size = 28.00
+
+[objects.armor_racks]
+enabled = true
+color = "#3D8BFFFF"
+size = 36.00
+
+[objects.weapon_racks]
+enabled = true
+color = "#FF8A24FF"
+size = 36.00
+
+[navigation]
+# Configure this and every navigation switch/color in the MapSense menu.
+line_thickness = 2.00
+
+[navigation.waypoint]
+enabled = true
+color = "#3D8BFFFF"
+
+[navigation.progression]
+enabled = true
+color = "#57E03DFF"
+
+[navigation.quests]
+# Marks static normal-quest routes and exact quest POIs, including the tomb.
+enabled = true
+color = "#FF3B30FF"
+
+[navigation.custom_levels]
+# This switch and color are also available in the MapSense menu.
+enabled = false
+color = "#C75CFFFF"
+# Edit only this list manually. Each entry must contain exactly one level_id
+# or level_name. Level IDs are the safest choice when a name is ambiguous.
+targets = [
+  { level_id = 12 },                  # Pit Level 1
+  { level_name = "Mausoleum" },       # levelId 19
+  { level_name = "Ancient Tunnels" }, # levelId 65
+  { level_id = 119 },                 # Icy Cellar
+]
+
+[menu]
+# Changes only the MapSense settings panel palette.
+theme = "sanctuary_gold"
+# Keeps a small movable MapSense launcher visible while the panel is collapsed.
+show_launcher = true
+# Opens the full settings panel at startup instead of the launcher.
+start_expanded = false
+# Saves the launcher/panel position in this file after dragging ends.
+remember_position = true
+position_x = 0.86
+position_y = 0.04
+
+[diagnostics]
+# Logs reveal, renderer, input, and automap diagnostics. Leave disabled for normal play.
+enabled = false

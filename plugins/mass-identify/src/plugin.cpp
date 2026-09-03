@@ -2,7 +2,6 @@
 #include <D2RLPlugin/diagnostics.h>
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
-#include <D2RLPlugin/item_interactions.h>
 #include <D2RLPlugin/localization.h>
 #include <D2RLPlugin/shared_events.h>
 
@@ -10,7 +9,6 @@
 
 #include <Windows.h>
 
-#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstddef>
@@ -19,7 +17,6 @@
 #include <cstring>
 #include <limits>
 #include <mutex>
-#include <span>
 #include <string>
 #include <string_view>
 
@@ -30,12 +27,9 @@ constexpr std::size_t MaximumConfigBytes = 65'536;
 constexpr std::int32_t SharedStashProxyState = 0xBA;
 constexpr std::uint64_t HoverLifetimeMilliseconds = 1'500;
 
-constexpr std::uintptr_t SendTwentyOneBytePacketRva = 0x0EC820;
-constexpr std::uintptr_t ModernSellAppenderCallRva = 0x2C51A9;
-constexpr std::uintptr_t ModernGiveAppenderCallRva = 0x2C5455;
-constexpr std::uintptr_t ModernUiStateProbeCallRva = 0x2C55F2;
-constexpr std::uintptr_t IsUiStateOpenRva = 0x0CE500;
-constexpr std::uintptr_t GetLocalizedStringByKeyRva = 0x5F4B90;
+constexpr std::uintptr_t QueueOutgoingPacketRva = 0x0EE2A0;
+constexpr std::uintptr_t TargetingPacketWorkerRva = 0x1C7A30;
+constexpr std::uintptr_t IsVirtualKeyDownRva = 0x120A100;
 constexpr std::uintptr_t GetUnitStatRva = 0x2F5020;
 constexpr std::uintptr_t CheckStateRva = 0x3351B0;
 constexpr std::uintptr_t GetUnitIdRva = 0x34A330;
@@ -57,30 +51,23 @@ constexpr std::uintptr_t SynchronizeQuantityRva = 0x46F090;
 constexpr std::uintptr_t ServerUnitRva = 0x48FE80;
 constexpr std::uintptr_t CainIdentifyCallbackRva = 0x4C6C90;
 
-constexpr std::array<std::uint8_t, 32> SendTwentyOneBytePacketExpected{
-    0x48, 0x83, 0xEC, 0x48, 0x48, 0x8B, 0x05, 0x9D,
-    0xEA, 0x8D, 0x02, 0x48, 0x33, 0xC4, 0x48, 0x89,
-    0x44, 0x24, 0x38, 0x8B, 0x44, 0x24, 0x70, 0x89,
-    0x44, 0x24, 0x2D, 0x8B, 0x44, 0x24, 0x78, 0x88,
+constexpr std::array<std::uint8_t, 32> QueueOutgoingPacketExpected{
+    0x48, 0x89, 0x5C, 0x24, 0x18, 0x55, 0x56, 0x57,
+    0x48, 0x81, 0xEC, 0x30, 0x02, 0x00, 0x00, 0x48,
+    0x8B, 0x05, 0x12, 0xD0, 0x8D, 0x02, 0x48, 0x33,
+    0xC4, 0x48, 0x89, 0x84, 0x24, 0x20, 0x02, 0x00,
 };
-constexpr std::array<std::uint8_t, 5> ModernSellAppenderCallExpected{
-    0xE8, 0xE2, 0xF9, 0x32, 0x00,
+constexpr std::array<std::uint8_t, 35> TargetingPacketWorkerExpected{
+    0x40, 0x53, 0x48, 0x81, 0xEC, 0xB0, 0x00, 0x00,
+    0x00, 0x48, 0x8B, 0x05, 0x88, 0x38, 0x80, 0x02,
+    0x48, 0x33, 0xC4, 0x48, 0x89, 0x84, 0x24, 0x90,
+    0x00, 0x00, 0x00, 0x48, 0x8B, 0xD9, 0xE8, 0x8D,
+    0x77, 0xF8, 0xFF,
 };
-constexpr std::array<std::uint8_t, 5> ModernGiveAppenderCallExpected{
-    0xE8, 0x36, 0xF7, 0x32, 0x00,
-};
-constexpr std::array<std::uint8_t, 5> ModernUiStateProbeCallExpected{
-    0xE8, 0x09, 0x8F, 0xE0, 0xFF,
-};
-constexpr std::array<std::uint8_t, 15> IsUiStateOpenExpected{
-    0x48, 0x63, 0xC1, 0x48, 0x8D, 0x0D, 0x96, 0xC8,
-    0x95, 0x02, 0x0F, 0xB6, 0x04, 0x08, 0xC3,
-};
-constexpr std::array<std::uint8_t, 29> GetLocalizedStringByKeyExpected{
-    0x4C, 0x8B, 0xDC, 0x55, 0x53, 0x57, 0x49, 0x8D,
-    0x6B, 0xA1, 0x48, 0x81, 0xEC, 0xB0, 0x00, 0x00,
-    0x00, 0x48, 0x8B, 0x05, 0x20, 0x67, 0x3D, 0x02,
-    0x48, 0x33, 0xC4, 0x48, 0x89,
+constexpr std::array<std::uint8_t, 21> IsVirtualKeyDownExpected{
+    0x48, 0x83, 0xEC, 0x28, 0xFF, 0x15, 0x86, 0x6E,
+    0xAA, 0x00, 0xC1, 0xE8, 0x0F, 0x83, 0xE0, 0x01,
+    0x48, 0x83, 0xC4, 0x28, 0xC3,
 };
 constexpr std::array<std::uint8_t, 32> CainIdentifyCallbackExpected{
     0x40, 0x55, 0x53, 0x56, 0x57, 0x48, 0x8D, 0xAC,
@@ -212,21 +199,13 @@ constexpr std::array TooltipLocales{
     TooltipLocale{"防御: %d", "Shift + 右键点击以批量辨识"},
 };
 
-struct GameStringView {
-    const char* data{};
-    std::size_t size{};
-};
-
-using SendTwentyOneBytePacketFn = void(__fastcall*)(
-    std::uint8_t, std::uint32_t, std::uint32_t, std::uint32_t,
-    std::uint32_t, std::uint32_t) noexcept;
-using IsUiStateOpenFn = std::int32_t(__fastcall*)(std::int32_t) noexcept;
-using GetLocalizedStringByKeyFn = const char*(__fastcall*)(
-    const GameStringView*) noexcept;
-using TooltipAppenderFn = const char*(__fastcall*)(
-    const GameStringView*, void*) noexcept;
+using QueueOutgoingPacketFn = void(__fastcall*)(
+    const std::uint8_t*, std::int32_t) noexcept;
+using TargetingPacketWorkerFn = void(__fastcall*)(
+    const std::uint8_t*) noexcept;
 using CainIdentifyCallbackFn = std::int32_t(__fastcall*)(
     void*, void*, const std::uint8_t*, std::int32_t) noexcept;
+using IsVirtualKeyDownFn = std::int32_t(__fastcall*)(std::int32_t) noexcept;
 using GetUnitInventoryFn = void*(__fastcall*)(void*) noexcept;
 using GetParentInventoryFn = void*(__fastcall*)(void*) noexcept;
 using GetUnitTypeFn = std::int32_t(__fastcall*)(void*) noexcept;
@@ -259,18 +238,15 @@ std::uint8_t* Base{};
 Config Settings{};
 
 const D2RL::SharedEventServiceV1* SharedEventService{};
-const D2RL::DiagnosticsServiceV1* DiagnosticsService{};
-const D2RL::ItemInteractionServiceV1* ItemInteractionService{};
 const D2RL::ItemServiceV1* ItemService{};
 const D2RL::InventoryServiceV1* InventoryService{};
 const D2RL::LocalizationServiceV1* LocalizationService{};
 D2RL::SharedEvents::ListenerHandle TooltipListenerHandle{};
-D2RL::ItemInteractions::ListenerHandle ItemInteractionListenerHandle{};
 
-SendTwentyOneBytePacketFn SendTwentyOneBytePacket{};
+QueueOutgoingPacketFn QueueOutgoingPacket{};
+TargetingPacketWorkerFn OriginalTargetingPacketWorker{};
 CainIdentifyCallbackFn OriginalCainIdentifyCallback{};
-IsUiStateOpenFn IsUiStateOpen{};
-GetLocalizedStringByKeyFn GetLocalizedStringByKey{};
+IsVirtualKeyDownFn IsVirtualKeyDown{};
 GetUnitInventoryFn GetUnitInventory{};
 GetParentInventoryFn GetParentInventory{};
 GetUnitTypeFn GetUnitType{};
@@ -293,22 +269,18 @@ SynchronizeQuantityFn SynchronizeQuantity{};
 
 std::atomic<std::uint64_t> RequestsSent{};
 std::atomic<std::uint64_t> GesturesObserved{};
-std::atomic<std::uint64_t> ItemInteractionsObserved{};
-std::atomic<std::uint64_t> ItemInteractionsConsumed{};
-std::atomic<std::uint64_t> VendorTradeFallbacks{};
-std::atomic<std::uint64_t> UiContextProbesObserved{};
+std::atomic<std::uint64_t> TargetingWorkersObserved{};
 std::atomic<std::uint64_t> RequestsAccepted{};
 std::atomic<std::uint64_t> RequestsRejected{};
 std::atomic<std::uint64_t> ItemsIdentified{};
 std::atomic<std::uint64_t> ChargesConsumed{};
 std::atomic<std::uint64_t> DiagnosticMessages{};
-std::atomic<std::uint32_t> HoveredFallbackTomeGuid{};
-std::atomic<std::uint64_t> HoveredFallbackTomeTick{};
-std::atomic_bool FallbackTooltipObserved{};
+std::atomic<D2RL::ItemHandle> HoveredIdentifyTome{};
+std::atomic<std::uint64_t> HoveredIdentifyTomeTick{};
+std::atomic<D2RL::ItemHandle> PendingMassIdentifyTome{};
+std::atomic<std::uint64_t> PendingMassIdentifyTick{};
 std::atomic_bool SuppressRightButtonUp{};
 std::atomic_bool PluginActive{};
-void* TooltipRelayPage{};
-bool TooltipCallSitesInstalled{};
 
 std::atomic<HHOOK> GameMessageHook{};
 std::mutex GameMessageHookMutex;
@@ -320,7 +292,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-mass-identify",
     .name = "MassID",
-    .version = "2.1.0",
+    .version = "2.0.2",
     .author = "RuffnecKk",
     .description = "Identifies selected item containers from an Identify Tome.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -334,10 +306,7 @@ auto At(std::uintptr_t rva) noexcept -> T {
 void ResetCounters() noexcept {
     RequestsSent.store(0, std::memory_order_relaxed);
     GesturesObserved.store(0, std::memory_order_relaxed);
-    ItemInteractionsObserved.store(0, std::memory_order_relaxed);
-    ItemInteractionsConsumed.store(0, std::memory_order_relaxed);
-    VendorTradeFallbacks.store(0, std::memory_order_relaxed);
-    UiContextProbesObserved.store(0, std::memory_order_relaxed);
+    TargetingWorkersObserved.store(0, std::memory_order_relaxed);
     RequestsAccepted.store(0, std::memory_order_relaxed);
     RequestsRejected.store(0, std::memory_order_relaxed);
     ItemsIdentified.store(0, std::memory_order_relaxed);
@@ -353,9 +322,12 @@ auto ShouldLogDiagnostic() noexcept -> bool {
 }
 
 void ClearHoverState() noexcept {
-    HoveredFallbackTomeGuid.store(0, std::memory_order_release);
-    HoveredFallbackTomeTick.store(0, std::memory_order_release);
-    FallbackTooltipObserved.store(false, std::memory_order_release);
+    HoveredIdentifyTome.store(
+        D2RL::InvalidItemHandle, std::memory_order_release);
+    HoveredIdentifyTomeTick.store(0, std::memory_order_release);
+    PendingMassIdentifyTome.store(
+        D2RL::InvalidItemHandle, std::memory_order_release);
+    PendingMassIdentifyTick.store(0, std::memory_order_release);
     SuppressRightButtonUp.store(false, std::memory_order_release);
 }
 
@@ -397,38 +369,6 @@ auto QueryRequiredServices() noexcept -> bool {
     constexpr auto LocalizationKeyFieldEnd = static_cast<std::uint32_t>(
         offsetof(D2RL::LocalizationServiceV1, getStringByKey)
         + sizeof(D2RL::Localization::GetStringByKeyFn));
-
-    const auto diagnosticsResult = Context->QueryService(
-        D2RL::ServiceId::Diagnostics,
-        D2RL::DiagnosticsServiceV1Version,
-        &DiagnosticsService);
-    if (diagnosticsResult == D2RL::ServiceQueryResult::Success) {
-        if (!D2RL::HasDiagnosticsServiceV1Field(
-                DiagnosticsService, D2RL::DiagnosticsServiceV1RequiredSize)
-            || DiagnosticsService->queryHookStatus == nullptr) {
-            Context->LogError(
-                "MassID: DiagnosticsService v1 returned an invalid contract.");
-            return false;
-        }
-    } else {
-        DiagnosticsService = nullptr;
-        Context->LogWarn(
-            "MassID: DiagnosticsService v1 is unavailable; composable native entries must remain byte-exact vanilla.");
-    }
-
-    if (Context->QueryService(
-            D2RL::ServiceId::ItemInteraction,
-            D2RL::ItemInteractionServiceV1Version,
-            &ItemInteractionService) != D2RL::ServiceQueryResult::Success
-        || !D2RL::HasItemInteractionServiceV1Field(
-            ItemInteractionService,
-            D2RL::ItemInteractionServiceV1RequiredSize)
-        || ItemInteractionService->registerListener == nullptr
-        || ItemInteractionService->unregisterListener == nullptr) {
-        Context->LogError(
-            "MassID: PluginSDK v4 ItemInteractionService v1 is required.");
-        return false;
-    }
 
     if (Context->QueryService(
             D2RL::ServiceId::SharedEvent,
@@ -513,112 +453,76 @@ auto IsExecutableAddress(const void* address) noexcept -> bool {
         || protection == PAGE_EXECUTE_WRITECOPY;
 }
 
-template<std::size_t Size>
-auto ValidateComposableEntry(
-    std::uintptr_t rva,
-    const std::array<std::uint8_t, Size>& expected,
-    std::string_view expectedOwner,
-    const char* label
-) noexcept -> bool {
-    if (std::memcmp(Base + rva, expected.data(), expected.size()) == 0) {
+auto ValidateQueueOutgoingPacket() noexcept -> bool {
+    if (std::memcmp(
+            Base + QueueOutgoingPacketRva,
+            QueueOutgoingPacketExpected.data(),
+            QueueOutgoingPacketExpected.size()) == 0) {
         return true;
     }
-    if (DiagnosticsService == nullptr) {
-        char message[256]{};
-        std::snprintf(
-            message,
-            sizeof(message),
-            "MassID: %s differs and no tracked owner proof is available.",
-            label);
-        Context->LogError(message);
+    if (!IsExecutableAddress(Base + QueueOutgoingPacketRva)) {
+        Context->LogError(
+            "MassID: the outgoing-packet entry is not executable.");
         return false;
     }
 
-    const D2RL::Diagnostics::HookQuery query{
+    const D2RL::DiagnosticsServiceV1* diagnostics{};
+    if (Context->QueryService(
+            D2RL::ServiceId::Diagnostics,
+            D2RL::DiagnosticsServiceV1Version,
+            &diagnostics) != D2RL::ServiceQueryResult::Success
+        || !D2RL::HasDiagnosticsServiceV1Field(
+            diagnostics, D2RL::DiagnosticsServiceV1RequiredSize)
+        || diagnostics->queryHookStatus == nullptr) {
+        Context->LogError(
+            "MassID: the outgoing-packet entry changed without diagnostics.");
+        return false;
+    }
+
+    D2RL::Diagnostics::HookQuery query{
         .structSize = D2RL::Diagnostics::HookQuerySize,
-        .rva = rva,
-        .expected = expected.data(),
-        .expectedSize = static_cast<std::uint32_t>(expected.size()),
+        .rva = QueueOutgoingPacketRva,
+        .expected = QueueOutgoingPacketExpected.data(),
+        .expectedSize = static_cast<std::uint32_t>(
+            QueueOutgoingPacketExpected.size()),
     };
     D2RL::Diagnostics::HookStatus status{
         .structSize = D2RL::Diagnostics::HookStatusSize,
     };
-    const auto result = DiagnosticsService->queryHookStatus(
+    const auto queryResult = diagnostics->queryHookStatus(
         Context, &query, &status);
-    if (result != D2RL::Diagnostics::Result::Success
-        || status.structSize < D2RL::Diagnostics::HookStatusRequiredSize) {
-        char message[256]{};
-        std::snprintf(
-            message,
-            sizeof(message),
-            "MassID: DiagnosticsService could not validate %s.",
-            label);
-        Context->LogError(message);
-        return false;
-    }
-
-    const auto ownerEnd = std::find(
-        std::begin(status.ownerPluginId),
-        std::end(status.ownerPluginId),
-        '\0');
-    const std::string_view owner{
-        status.ownerPluginId,
-        static_cast<std::size_t>(
-            ownerEnd - std::begin(status.ownerPluginId))};
-    const bool accepted =
-        status.state == D2RL::Diagnostics::ModificationState::Tracked
+    const bool knownCallThroughOwner = status.ownerCount == 1
+        && (std::strcmp(
+                status.ownerPluginId,
+                "ruffneckk-equipped-item-to-cube") == 0
+            || std::strcmp(
+                status.ownerPluginId,
+                "community-plugin-misc") == 0);
+    if (queryResult == D2RL::Diagnostics::Result::Success
+        && status.state == D2RL::Diagnostics::ModificationState::Tracked
         && status.kind == D2RL::Diagnostics::ModificationKind::InlineHook
-        && status.ownerCount == 1
-        && owner == expectedOwner
-        && IsExecutableAddress(Base + rva);
-    if (!accepted) {
-        char message[384]{};
-        std::snprintf(
-            message,
-            sizeof(message),
-            "MassID: %s ownership refused (state=%u; kind=%u; owners=%u; owner=%.*s).",
-            label,
-            static_cast<unsigned>(status.state),
-            static_cast<unsigned>(status.kind),
-            status.ownerCount,
-            static_cast<int>(owner.size()),
-            owner.data());
-        Context->LogError(message);
+        && knownCallThroughOwner) {
+        return true;
     }
-    return accepted;
+    Context->LogError(
+        "MassID: the outgoing-packet entry has no safe composable owner.");
+    return false;
 }
 
 auto ValidateRuntime() noexcept -> bool {
-    bool valid = Check(
-        SendTwentyOneBytePacketRva,
-        SendTwentyOneBytePacketExpected,
-        "native 21-byte command sender");
+    bool valid = ValidateQueueOutgoingPacket();
     valid = Check(
-        ModernSellAppenderCallRva,
-        ModernSellAppenderCallExpected,
-        "vendor tooltip action call") && valid;
-    valid = Check(
-        ModernGiveAppenderCallRva,
-        ModernGiveAppenderCallExpected,
-        "trade tooltip action call") && valid;
-    valid = Check(
-        ModernUiStateProbeCallRva,
-        ModernUiStateProbeCallExpected,
-        "trade UI-state probe call") && valid;
-    valid = ValidateComposableEntry(
-        IsUiStateOpenRva,
-        IsUiStateOpenExpected,
-        "ruffneckk-remote-stash",
-        "UI_IsStateOpen") && valid;
-    valid = ValidateComposableEntry(
-        GetLocalizedStringByKeyRva,
-        GetLocalizedStringByKeyExpected,
-        "eezstreet-plugin-skills",
-        "LOCALIZATION_GetStringByKey") && valid;
+        TargetingPacketWorkerRva,
+        TargetingPacketWorkerExpected,
+        "targeting-packet worker") && valid;
     valid = Check(
         CainIdentifyCallbackRva,
         CainIdentifyCallbackExpected,
         "server opcode-0x34 callback") && valid;
+    valid = Check(
+        IsVirtualKeyDownRva,
+        IsVirtualKeyDownExpected,
+        "Shift-key helper") && valid;
     valid = Check(
         IdentifyItemRva,
         IdentifyItemExpected,
@@ -685,11 +589,8 @@ auto ValidateRuntime() noexcept -> bool {
 }
 
 void BindNativeFunctions() noexcept {
-    SendTwentyOneBytePacket = At<SendTwentyOneBytePacketFn>(
-        SendTwentyOneBytePacketRva);
-    IsUiStateOpen = At<IsUiStateOpenFn>(IsUiStateOpenRva);
-    GetLocalizedStringByKey = At<GetLocalizedStringByKeyFn>(
-        GetLocalizedStringByKeyRva);
+    QueueOutgoingPacket = At<QueueOutgoingPacketFn>(QueueOutgoingPacketRva);
+    IsVirtualKeyDown = At<IsVirtualKeyDownFn>(IsVirtualKeyDownRva);
     GetUnitInventory = At<GetUnitInventoryFn>(GetUnitInventoryRva);
     GetParentInventory = At<GetParentInventoryFn>(GetParentInventoryRva);
     GetUnitType = At<GetUnitTypeFn>(GetUnitTypeRva);
@@ -751,8 +652,7 @@ auto CursorIsEmpty() noexcept -> bool {
 
 auto CaptureMassIdentifyRequest(
     D2RL::ItemHandle item,
-    const char* path,
-    bool shiftDown
+    const char* path
 ) noexcept -> bool {
     GesturesObserved.fetch_add(1, std::memory_order_relaxed);
     D2RL::Items::ItemInfo info{};
@@ -762,8 +662,7 @@ auto CaptureMassIdentifyRequest(
         && IsSupportedTomeContainer(info.container);
     if (!inspected || !ShouldCaptureGesture(
             Settings.enabled,
-            Settings.rightClickMassIdentify,
-            shiftDown,
+            true,
             true,
             cursorEmpty,
             info.code,
@@ -773,11 +672,9 @@ auto CaptureMassIdentifyRequest(
             std::snprintf(
                 message,
                 sizeof(message),
-                "MassID: %s gesture ignored; handle=%llu; shift=%s; directMode=%s; inspected=%s; cursorEmpty=%s; itemCode=0x%08X; supportedContainer=%s.",
+                "MassID: %s gesture ignored; handle=%llu; inspected=%s; cursorEmpty=%s; itemCode=0x%08X; supportedContainer=%s.",
                 path,
                 static_cast<unsigned long long>(item),
-                shiftDown ? "true" : "false",
-                Settings.rightClickMassIdentify ? "true" : "false",
                 inspected ? "true" : "false",
                 cursorEmpty ? "true" : "false",
                 inspected ? info.code : 0,
@@ -787,94 +684,24 @@ auto CaptureMassIdentifyRequest(
         return false;
     }
 
-    SendTwentyOneBytePacket(
-        CainIdentifyOpcode,
-        info.runtimeId,
-        RequestMarker,
-        RequestGuard,
-        0,
-        0);
+    const auto packet = MakeRequest(info.runtimeId);
+    QueueOutgoingPacket(
+        packet.data(), static_cast<std::int32_t>(packet.size()));
     RequestsSent.fetch_add(1, std::memory_order_relaxed);
+    PendingMassIdentifyTome.store(
+        D2RL::InvalidItemHandle, std::memory_order_release);
+    PendingMassIdentifyTick.store(0, std::memory_order_release);
     if (ShouldLogDiagnostic()) {
         char message[224]{};
         std::snprintf(
             message,
             sizeof(message),
-            "MassID: %s %s captured; Tome runtime id=%u; private opcode 0x34 queued through the native 21-byte sender.",
+            "MassID: %s Shift-right-click captured; Tome runtime id=%u; private opcode 0x34 queued.",
             path,
-            shiftDown ? "Shift-right-click" : "right-click",
             info.runtimeId);
         Context->LogInfo(message);
     }
     return true;
-}
-
-auto QueueFallbackMassIdentifyRequest(
-    std::uint32_t tomeGuid,
-    const char* path,
-    bool shiftDown
-) noexcept -> bool {
-    GesturesObserved.fetch_add(1, std::memory_order_relaxed);
-    VendorTradeFallbacks.fetch_add(1, std::memory_order_relaxed);
-    if (!ShouldCaptureGesture(
-            Settings.enabled,
-            Settings.rightClickMassIdentify,
-            shiftDown,
-            true,
-            CursorIsEmpty(),
-            IdentifyTomeCode,
-            tomeGuid != 0)) {
-        return false;
-    }
-    SendTwentyOneBytePacket(
-        CainIdentifyOpcode,
-        tomeGuid,
-        RequestMarker,
-        RequestGuard,
-        0,
-        0);
-    RequestsSent.fetch_add(1, std::memory_order_relaxed);
-    if (ShouldLogDiagnostic()) {
-        char message[256]{};
-        std::snprintf(
-            message,
-            sizeof(message),
-            "MassID: %s %s captured; Tome runtime id=%u; private opcode 0x34 queued through the native 21-byte sender.",
-            path,
-            shiftDown ? "Shift-right-click" : "right-click",
-            tomeGuid);
-        Context->LogInfo(message);
-    }
-    return true;
-}
-
-auto __cdecl OnItemInteraction(
-    const D2RL::PluginContext* context,
-    const D2RL::ItemInteractions::ItemInteractionEvent* event,
-    void*
-) noexcept -> D2RL::ItemInteractions::Decision {
-    ItemInteractionsObserved.fetch_add(1, std::memory_order_relaxed);
-    if (!PluginActive.load(std::memory_order_acquire)
-        || context == nullptr || context != Context || event == nullptr
-        || event->structSize
-            < D2RL::ItemInteractions::ItemInteractionEventRequiredSize
-        || event->action != D2RL::ItemInteractions::Action::Activate
-        || event->inputSource
-            != D2RL::ItemInteractions::InputSource::KeyboardMouse) {
-        return D2RL::ItemInteractions::Decision::Continue;
-    }
-
-    const bool shiftDown = (event->modifiers
-        & D2RL::ItemInteractions::ModifierBit(
-            D2RL::ItemInteractions::Modifier::Shift)) != 0;
-    if (!CaptureMassIdentifyRequest(
-            event->item,
-            "PluginSDK item interaction",
-            shiftDown)) {
-        return D2RL::ItemInteractions::Decision::Continue;
-    }
-    ItemInteractionsConsumed.fetch_add(1, std::memory_order_relaxed);
-    return D2RL::ItemInteractions::Decision::Consume;
 }
 
 void SuppressWindowMessage(MSG* message) noexcept {
@@ -907,22 +734,20 @@ LRESULT CALLBACK MassIdentifyMessageHook(
         && message->message == WM_RBUTTONDOWN) {
         const bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0
             || (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-        if (Settings.rightClickMassIdentify || shift) {
+        if (shift) {
             const auto now = GetTickCount64();
-            const auto hoveredAt = HoveredFallbackTomeTick.load(
+            const auto hoveredAt = HoveredIdentifyTomeTick.load(
                 std::memory_order_acquire);
-            const auto tomeGuid = HoveredFallbackTomeGuid.load(
+            const auto tome = HoveredIdentifyTome.load(
                 std::memory_order_acquire);
             const auto age = now >= hoveredAt
                 ? now - hoveredAt
                 : (std::numeric_limits<std::uint64_t>::max)();
-            if (tomeGuid != 0
+            if (tome != D2RL::InvalidItemHandle
                 && hoveredAt != 0
-                && age <= HoverLifetimeMilliseconds
-                && QueueFallbackMassIdentifyRequest(
-                    tomeGuid,
-                    "vendor/trade window fallback",
-                    shift)) {
+                && age <= HoverLifetimeMilliseconds) {
+                PendingMassIdentifyTome.store(tome, std::memory_order_release);
+                PendingMassIdentifyTick.store(now, std::memory_order_release);
                 SuppressRightButtonUp.store(true, std::memory_order_release);
                 SuppressWindowMessage(message);
             }
@@ -1030,19 +855,24 @@ void __cdecl ItemTooltipCallback(
         return;
     }
 
-    const bool fallbackTooltip = FallbackTooltipObserved.exchange(
-        false, std::memory_order_acq_rel);
-    if (!fallbackTooltip
-        || HoveredFallbackTomeGuid.load(std::memory_order_acquire)
-            != info.runtimeId) {
-        HoveredFallbackTomeGuid.store(0, std::memory_order_release);
-        HoveredFallbackTomeTick.store(0, std::memory_order_release);
+    const auto now = GetTickCount64();
+    HoveredIdentifyTome.store(event->item, std::memory_order_release);
+    HoveredIdentifyTomeTick.store(now, std::memory_order_release);
+
+    const auto pending = PendingMassIdentifyTome.exchange(
+        D2RL::InvalidItemHandle, std::memory_order_acq_rel);
+    const auto pendingAt = PendingMassIdentifyTick.exchange(
+        0, std::memory_order_acq_rel);
+    const auto pendingAge = now >= pendingAt
+        ? now - pendingAt
+        : (std::numeric_limits<std::uint64_t>::max)();
+    if (pending != D2RL::InvalidItemHandle
+        && pending == event->item
+        && pendingAt != 0
+        && pendingAge <= HoverLifetimeMilliseconds) {
+        CaptureMassIdentifyRequest(event->item, "shared tooltip event");
     }
 
-    if (!ShouldShowMassIdentifyTooltip(
-            Settings.enabled, Settings.rightClickMassIdentify)) {
-        return;
-    }
     const auto text = CurrentMassIdentifyTooltipText();
     if (text.size() + 1 > event->capacity) return;
     std::memcpy(event->text, text.data(), text.size());
@@ -1050,153 +880,27 @@ void __cdecl ItemTooltipCallback(
     event->length = static_cast<std::uint32_t>(text.size());
 }
 
-void ObserveVendorTradeTome(void* item) noexcept {
-    FallbackTooltipObserved.store(true, std::memory_order_release);
-    if (!Settings.enabled || item == nullptr
-        || GetUnitType(item) != 4
-        || GetItemCode(item) != IdentifyTomeCode
-        || !IsSupportedInventoryPage(
-            ReadInventoryPageFromItemData(GetItemData(item)))) {
-        HoveredFallbackTomeGuid.store(0, std::memory_order_release);
-        HoveredFallbackTomeTick.store(0, std::memory_order_release);
+void __fastcall HookTargetingPacketWorker(
+    const std::uint8_t* packet
+) noexcept {
+    TargetingWorkersObserved.fetch_add(1, std::memory_order_relaxed);
+    const bool nativeShift = IsVirtualKeyDown(VK_SHIFT) != 0;
+    const bool win32Shift = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+    const auto now = GetTickCount64();
+    const auto hoveredAt = HoveredIdentifyTomeTick.load(
+        std::memory_order_acquire);
+    const auto age = now >= hoveredAt
+        ? now - hoveredAt
+        : (std::numeric_limits<std::uint64_t>::max)();
+    const auto tome = HoveredIdentifyTome.load(std::memory_order_acquire);
+    if (Settings.enabled && (nativeShift || win32Shift)
+        && tome != D2RL::InvalidItemHandle
+        && hoveredAt != 0
+        && age <= HoverLifetimeMilliseconds
+        && CaptureMassIdentifyRequest(tome, "targeting worker")) {
         return;
     }
-    HoveredFallbackTomeGuid.store(
-        static_cast<std::uint32_t>(GetUnitId(item)),
-        std::memory_order_release);
-    HoveredFallbackTomeTick.store(
-        GetTickCount64(), std::memory_order_release);
-}
-
-const char* __fastcall HookVendorTradeTooltipAppender(
-    const GameStringView* key,
-    void* item
-) noexcept {
-    const auto* original = GetLocalizedStringByKey(key);
-    ObserveVendorTradeTome(item);
-    return original;
-}
-
-std::int32_t __fastcall HookUiContextProbe(
-    std::int32_t state,
-    void* item
-) noexcept {
-    const auto result = IsUiStateOpen(state);
-    UiContextProbesObserved.fetch_add(1, std::memory_order_relaxed);
-    if (result != 0) ObserveVendorTradeTome(item);
-    return result;
-}
-
-void* AllocateNear(void* hint, std::size_t size) noexcept {
-    SYSTEM_INFO systemInfo{};
-    GetSystemInfo(&systemInfo);
-    const auto granularity = static_cast<std::uintptr_t>(
-        systemInfo.dwAllocationGranularity);
-    const auto base = reinterpret_cast<std::uintptr_t>(hint)
-        & ~(granularity - 1);
-    for (std::uintptr_t delta = granularity;
-        delta < 0x70000000ULL;
-        delta += granularity) {
-        if (base > (std::numeric_limits<std::uintptr_t>::max)() - delta) {
-            break;
-        }
-        if (auto* memory = VirtualAlloc(
-                reinterpret_cast<void*>(base + delta),
-                size,
-                MEM_COMMIT | MEM_RESERVE,
-                PAGE_EXECUTE_READWRITE)) {
-            return memory;
-        }
-    }
-    return nullptr;
-}
-
-auto WriteTooltipRelay(
-    std::uint8_t* destination,
-    std::span<const std::uint8_t> itemMove,
-    TooltipAppenderFn target
-) noexcept -> bool {
-    if (destination == nullptr || itemMove.empty()) return false;
-    std::memcpy(destination, itemMove.data(), itemMove.size());
-    auto* jump = destination + itemMove.size();
-    jump[0] = 0xFF;
-    jump[1] = 0x25;
-    jump[2] = jump[3] = jump[4] = jump[5] = 0x00;
-    const auto targetAddress = reinterpret_cast<std::uint64_t>(target);
-    std::memcpy(jump + 6, &targetAddress, sizeof(targetAddress));
-    return true;
-}
-
-auto WriteUiContextProbeRelay(std::uint8_t* destination) noexcept -> bool {
-    if (destination == nullptr) return false;
-    constexpr std::array<std::uint8_t, 3> ItemMove{
-        0x4C, 0x89, 0xE2, // mov rdx, r12
-    };
-    std::memcpy(destination, ItemMove.data(), ItemMove.size());
-    auto* jump = destination + ItemMove.size();
-    jump[0] = 0xFF;
-    jump[1] = 0x25;
-    jump[2] = jump[3] = jump[4] = jump[5] = 0x00;
-    const auto targetAddress = reinterpret_cast<std::uint64_t>(
-        &HookUiContextProbe);
-    std::memcpy(jump + 6, &targetAddress, sizeof(targetAddress));
-    return true;
-}
-
-auto InstallVendorTradeTooltipCallSites() noexcept -> bool {
-    constexpr std::size_t RelayStride = 32;
-    constexpr std::size_t RelayBytes = RelayStride * 2;
-    constexpr std::array<std::uint8_t, 3> ItemMove{
-        0x4C, 0x89, 0xE2, // mov rdx, r12
-    };
-
-    TooltipRelayPage = AllocateNear(
-        Base + ModernSellAppenderCallRva, RelayBytes);
-    if (TooltipRelayPage == nullptr) return false;
-    auto* relays = static_cast<std::uint8_t*>(TooltipRelayPage);
-    if (!WriteTooltipRelay(
-            relays, ItemMove, &HookVendorTradeTooltipAppender)
-        || !WriteUiContextProbeRelay(relays + RelayStride)) {
-        return false;
-    }
-    DWORD previousProtection{};
-    if (!VirtualProtect(
-            relays,
-            RelayBytes,
-            PAGE_EXECUTE_READ,
-            &previousProtection)) {
-        return false;
-    }
-    FlushInstructionCache(GetCurrentProcess(), relays, RelayBytes);
-
-    const auto relayAddress = reinterpret_cast<std::uintptr_t>(relays);
-    const auto baseAddress = reinterpret_cast<std::uintptr_t>(Base);
-    if (relayAddress < baseAddress) return false;
-    const auto relayRva = relayAddress - baseAddress;
-    return Context->PatchCallRel32(
-            ModernSellAppenderCallRva,
-            ModernSellAppenderCallExpected.data(),
-            static_cast<std::uint32_t>(
-                ModernSellAppenderCallExpected.size()),
-            relayRva,
-            static_cast<std::uint32_t>(
-                ModernSellAppenderCallExpected.size()))
-        && Context->PatchCallRel32(
-            ModernGiveAppenderCallRva,
-            ModernGiveAppenderCallExpected.data(),
-            static_cast<std::uint32_t>(
-                ModernGiveAppenderCallExpected.size()),
-            relayRva,
-            static_cast<std::uint32_t>(
-                ModernGiveAppenderCallExpected.size()))
-        && Context->PatchCallRel32(
-            ModernUiStateProbeCallRva,
-            ModernUiStateProbeCallExpected.data(),
-            static_cast<std::uint32_t>(
-                ModernUiStateProbeCallExpected.size()),
-            relayRva + RelayStride,
-            static_cast<std::uint32_t>(
-                ModernUiStateProbeCallExpected.size()));
+    OriginalTargetingPacketWorker(packet);
 }
 
 auto GetInventoryPage(void* item) noexcept -> std::uint8_t {
@@ -1427,30 +1131,18 @@ auto RegisterTooltipListener() noexcept -> bool {
     return true;
 }
 
-auto RegisterItemInteractionListener() noexcept -> bool {
-    const D2RL::ItemInteractions::ItemInteractionListener listener{
-        .structSize = D2RL::ItemInteractions::ItemInteractionListenerSize,
-        .flags = 0,
-        .priority = 100,
-        .reserved = 0,
-        .callback = OnItemInteraction,
-        .userData = nullptr,
-    };
-    ItemInteractionListenerHandle = D2RL::ItemInteractions::InvalidHandle;
-    if (ItemInteractionService->registerListener(
-            Context, &listener, &ItemInteractionListenerHandle)
-            != D2RL::ItemInteractions::Result::Success
-        || ItemInteractionListenerHandle
-            == D2RL::ItemInteractions::InvalidHandle) {
+auto InstallChanges() noexcept -> bool {
+    if (!Context->InstallInlineHook(
+            TargetingPacketWorkerRva,
+            TargetingPacketWorkerExpected.data(),
+            static_cast<std::uint32_t>(
+                TargetingPacketWorkerExpected.size()),
+            HookTargetingPacketWorker,
+            &OriginalTargetingPacketWorker)) {
         Context->LogError(
-            "MassID: ItemInteractionService listener registration failed.");
-        ItemInteractionListenerHandle = D2RL::ItemInteractions::InvalidHandle;
+            "MassID: targeting-packet worker hook installation failed.");
         return false;
     }
-    return true;
-}
-
-auto InstallChanges() noexcept -> bool {
     if (!Context->InstallInlineHook(
             CainIdentifyCallbackRva,
             CainIdentifyCallbackExpected.data(),
@@ -1461,14 +1153,7 @@ auto InstallChanges() noexcept -> bool {
             "MassID: server opcode-0x34 hook installation failed.");
         return false;
     }
-    TooltipCallSitesInstalled = InstallVendorTradeTooltipCallSites();
-    if (!TooltipCallSitesInstalled) {
-        Context->LogError(
-            "MassID: vendor/trade tooltip fallback call-sites are unavailable.");
-        return false;
-    }
-    return RegisterTooltipListener()
-        && RegisterItemInteractionListener();
+    return RegisterTooltipListener();
 }
 
 auto Status(
@@ -1479,34 +1164,23 @@ auto Status(
     if (command == nullptr || command->plugin == nullptr) {
         return D2RL::ConsoleCommandResult::Failed;
     }
-    char message[896]{};
+    char message[720]{};
     std::snprintf(
         message,
         sizeof(message),
-        "MassID 2.1.0: enabled=%s; freeIdentification=%s; rightClickMassIdentify=%s; includeCube=%s; includePersonalStash=%s; includeSharedStash=%s; diagnostics=%s; itemInteraction=%s; sharedTooltip=%s; vendorTradeFallback=%s; serverTransaction=%s; itemEvents=%llu; sdkConsumed=%llu; fallbackGestures=%llu; uiContextProbes=%llu; gestures=%llu; sent=%llu; accepted=%llu; rejected=%llu; identified=%llu; chargesConsumed=%llu.",
+        "MassID 2.0.1: enabled=%s; freeIdentification=%s; includeCube=%s; includePersonalStash=%s; includeSharedStash=%s; diagnostics=%s; sharedTooltip=%s; windowInput=%s; targetingWorker=%s; serverTransaction=%s; gestures=%llu; sent=%llu; accepted=%llu; rejected=%llu; identified=%llu; consumed=%llu.",
         Settings.enabled ? "true" : "false",
         Settings.freeIdentification ? "true" : "false",
-        Settings.rightClickMassIdentify ? "true" : "false",
         Settings.targets.includeCube ? "true" : "false",
         Settings.targets.includePersonalStash ? "true" : "false",
         Settings.targets.includeSharedStash ? "true" : "false",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
-        ItemInteractionListenerHandle
-                != D2RL::ItemInteractions::InvalidHandle
-            ? "registered" : "inactive",
         TooltipListenerHandle != D2RL::SharedEvents::InvalidHandle
             ? "registered" : "inactive",
         GameMessageHook.load(std::memory_order_acquire) != nullptr
             ? "installed" : "pending",
+        OriginalTargetingPacketWorker != nullptr ? "installed" : "inactive",
         OriginalCainIdentifyCallback != nullptr ? "installed" : "inactive",
-        static_cast<unsigned long long>(
-            ItemInteractionsObserved.load(std::memory_order_relaxed)),
-        static_cast<unsigned long long>(
-            ItemInteractionsConsumed.load(std::memory_order_relaxed)),
-        static_cast<unsigned long long>(
-            VendorTradeFallbacks.load(std::memory_order_relaxed)),
-        static_cast<unsigned long long>(
-            UiContextProbesObserved.load(std::memory_order_relaxed)),
         static_cast<unsigned long long>(
             GesturesObserved.load(std::memory_order_relaxed)),
         static_cast<unsigned long long>(
@@ -1543,10 +1217,10 @@ void ClearNativeBindings() noexcept {
     GetUnitType = nullptr;
     GetParentInventory = nullptr;
     GetUnitInventory = nullptr;
-    GetLocalizedStringByKey = nullptr;
-    IsUiStateOpen = nullptr;
+    IsVirtualKeyDown = nullptr;
     OriginalCainIdentifyCallback = nullptr;
-    SendTwentyOneBytePacket = nullptr;
+    OriginalTargetingPacketWorker = nullptr;
+    QueueOutgoingPacket = nullptr;
 }
 
 void UnregisterTooltipListener() noexcept {
@@ -1557,17 +1231,6 @@ void UnregisterTooltipListener() noexcept {
             Context, TooltipListenerHandle);
     }
     TooltipListenerHandle = D2RL::SharedEvents::InvalidHandle;
-}
-
-void UnregisterItemInteractionListener() noexcept {
-    if (Context != nullptr && ItemInteractionService != nullptr
-        && ItemInteractionService->unregisterListener != nullptr
-        && ItemInteractionListenerHandle
-            != D2RL::ItemInteractions::InvalidHandle) {
-        ItemInteractionService->unregisterListener(
-            Context, ItemInteractionListenerHandle);
-    }
-    ItemInteractionListenerHandle = D2RL::ItemInteractions::InvalidHandle;
 }
 
 void RemoveGameMessageHook() noexcept {
@@ -1612,15 +1275,10 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     Base = reinterpret_cast<std::uint8_t*>(context->exeBase);
     Settings = {};
     SharedEventService = nullptr;
-    DiagnosticsService = nullptr;
-    ItemInteractionService = nullptr;
     ItemService = nullptr;
     InventoryService = nullptr;
     LocalizationService = nullptr;
     TooltipListenerHandle = D2RL::SharedEvents::InvalidHandle;
-    ItemInteractionListenerHandle = D2RL::ItemInteractions::InvalidHandle;
-    TooltipRelayPage = nullptr;
-    TooltipCallSitesInstalled = false;
     PluginActive.store(false, std::memory_order_release);
     ResetCounters();
     ClearHoverState();
@@ -1663,24 +1321,19 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "MassID: status command could not be registered.");
     }
 
-    char message[768]{};
+    char message[512]{};
     std::snprintf(
         message,
         sizeof(message),
-        "MassID 2.1.0 by RuffnecKk loaded: enabled=%s; inventory=always; cube=%s; personal stash=%s; shared stash=%s; freeIdentification=%s; rightClickMassIdentify=%s; diagnostics=%s; input=PluginSDK v4 ItemInteractionService v1 plus vendor/trade fallback; tooltip=%s; native hooks=%s.",
+        "MassID 2.0.1 by RuffnecKk loaded: enabled=%s; inventory=always; cube=%s; personal stash=%s; shared stash=%s; freeIdentification=%s; diagnostics=%s; tooltip=SharedEventService v1; inspection=ItemService/InventoryService v1; native hooks=%s.",
         Settings.enabled ? "true" : "false",
         Settings.targets.includeCube ? "enabled" : "disabled",
         Settings.targets.includePersonalStash ? "enabled" : "disabled",
         Settings.targets.includeSharedStash ? "enabled" : "disabled",
         Settings.freeIdentification ? "true" : "false",
-        Settings.rightClickMassIdentify ? "true" : "false",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
-        ShouldShowMassIdentifyTooltip(
-                Settings.enabled, Settings.rightClickMassIdentify)
-            ? "gray Shift-right-click hint enabled"
-            : "MassID hint omitted; native right-click hint retained",
         Settings.enabled
-            ? "vendor/trade fallback calls and authoritative opcode-0x34 transaction"
+            ? "targeting gesture and authoritative opcode-0x34 transaction"
             : "none");
     context->LogInfo(message);
     return true;
@@ -1688,18 +1341,13 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     PluginActive.store(false, std::memory_order_release);
-    UnregisterItemInteractionListener();
     UnregisterTooltipListener();
     RemoveGameMessageHook();
     ClearHoverState();
     ClearNativeBindings();
-    TooltipCallSitesInstalled = false;
-    TooltipRelayPage = nullptr;
     LocalizationService = nullptr;
     InventoryService = nullptr;
     ItemService = nullptr;
-    ItemInteractionService = nullptr;
-    DiagnosticsService = nullptr;
     SharedEventService = nullptr;
     Settings = {};
     Base = nullptr;

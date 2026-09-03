@@ -1,0 +1,1999 @@
+diff --git a/packages/drlg/src/drlg/materialize.zig b/packages/drlg/src/drlg/materialize.zig
+index cc0c456..ab1c07a 100644
+--- a/packages/drlg/src/drlg/materialize.zig
++++ b/packages/drlg/src/drlg/materialize.zig
+@@ -1213,7 +1213,6 @@ pub fn materializeDs1(a: std.mem.Allocator, d: *const ds1.Ds1, dts: []const dt1.
+         }
+     }
+
+-
+     // No-floor subtiles are void/unwalkable: a subtile whose tile has no floor tile
+     // is a dungeon gap (the runtime CollMap has no walkable void, so "no floor =
+     // unwalkable" is faithful). Mark the truly-empty ones with Colbit.blank
+@@ -1602,6 +1601,16 @@ fn applySubTileFloor(
+ // group, then either tries random positions (Trials >= 0) or shuffles all positions
+ // exhaustively (Trials == -1), placing the group when overlap-free. Runs Max[nSubTypeIndex]
+ // times. Faithful to the C reconstruction (same seed consumption order, same shuffle).
++pub const SubTilePlacement = struct {
++    base_x: i32,
++    base_y: i32,
++    source_x: i32,
++    source_y: i32,
++    source_w: i32,
++    source_h: i32,
++    file: *s.D2DrlgFileStrc,
++};
++
+ fn doNotCheckAll(
+     pRoom: *s.D2RoomExStrc,
+     fg: *s.D2DrlgGridStrc,
+@@ -1609,6 +1618,7 @@ fn doNotCheckAll(
+     og: *s.D2DrlgGridStrc,
+     pSubTxt: *dtables.D2LvlSubTxt,
+     nSubTypeIndex: i32,
++    placement_out: ?*?SubTilePlacement,
+ ) void {
+     const pFile = pSubTxt.pDrlgFile orelse return;
+     if (pFile.nSubstGroups == 0) return;
+@@ -1639,7 +1649,7 @@ fn doNotCheckAll(
+                     var coordBuf: [514]i32 = undefined;
+                     var nPosX: u32 = 0;
+                     while (nPosX < nTotalPositions) : (nPosX += 1) {
+-                        coordBuf[nPosX * 2] = @intCast(nPosX % nMaxX);     // x
++                        coordBuf[nPosX * 2] = @intCast(nPosX % nMaxX); // x
+                         coordBuf[nPosX * 2 + 1] = @intCast(nPosX / nMaxX); // y
+                     }
+                     // Shuffle: nTotalPositions random swaps (each uses two randomNumberSelector
+@@ -1663,6 +1673,18 @@ fn doNotCheckAll(
+                         const bx: i32 = coordBuf[i * 2] + 1;
+                         const by: i32 = coordBuf[i * 2 + 1] + 1;
+                         if (checkSubTileOverlap(bx, by, fg, wg, pSubstGroup, pSubTxt)) {
++                            if (placement_out) |out| {
++                                out.* = .{
++                                    .base_x = bx,
++                                    .base_y = by,
++                                    .source_x = pSubstGroup.tBox.nPosX,
++                                    .source_y = pSubstGroup.tBox.nPosY,
++                                    .source_w = pSubstGroup.tBox.nWidth,
++                                    .source_h = pSubstGroup.tBox.nHeight,
++                                    .file = pFile,
++                                };
++                                return;
++                            }
+                             applySubTileFloor(pRoom, fg, wg, og, bx, by, pSubstGroup, pSubTxt);
+                             break;
+                         }
+@@ -1675,6 +1697,18 @@ fn doNotCheckAll(
+                     const bx: i32 = @intCast(drlg_rng.randomNumberSelector(&pRoom.sSeed, nMaxX) + 1);
+                     const by: i32 = @intCast(drlg_rng.randomNumberSelector(&pRoom.sSeed, nMaxY) + 1);
+                     if (checkSubTileOverlap(bx, by, fg, wg, pSubstGroup, pSubTxt)) {
++                        if (placement_out) |out| {
++                            out.* = .{
++                                .base_x = bx,
++                                .base_y = by,
++                                .source_x = pSubstGroup.tBox.nPosX,
++                                .source_y = pSubstGroup.tBox.nPosY,
++                                .source_w = pSubstGroup.tBox.nWidth,
++                                .source_h = pSubstGroup.tBox.nHeight,
++                                .file = pFile,
++                            };
++                            return;
++                        }
+                         applySubTileFloor(pRoom, fg, wg, og, bx, by, pSubstGroup, pSubTxt);
+                         break;
+                     }
+@@ -1714,12 +1748,81 @@ fn applySubThemeTerrain(
+         const pFile = pRec.pDrlgFile orelse continue;
+         if (pFile.nSubstGroups == 0) continue;
+         if (pRec.CheckAll == 0) {
+-            doNotCheckAll(pRoom, fg, wg, og, pRec, nSubTypeIndex);
++            doNotCheckAll(pRoom, fg, wg, og, pRec, nSubTypeIndex, null);
+         }
+         // CheckAll (nAct 1 or 2 path) not needed for outdoor terrain subs (all CheckAll=0).
+     }
+ }
+
++/// Replays only the first outdoor waypoint-substitution placement for one
++/// generated room. It creates the small pre-placement floor/wall grids needed
++/// by CheckSubTileOverlap, but deliberately stops before tile materialization,
++/// collision, shrine/terrain passes, object population or monster generation.
++/// The selected file and source/destination boxes let a caller transform the
++/// DS1 waypoint object's subtile coordinate exactly.
++pub fn locateOutdoorWaypointPlacement(
++    ws_x: i32,
++    ws_y: i32,
++    level_id: i32,
++    room_seed: i32,
++    overlay: ?OutdoorOverlay,
++    waypoint_mask: i32,
++) !?SubTilePlacement {
++    if (waypoint_mask == 0) return null;
++    const ar = roomScratch(&scratch_outdoor_room);
++    const gw: usize = @intCast(ws_x + 1);
++    const gh: usize = @intCast(ws_y + 1);
++    const ncells = gw * gh;
++
++    var level = std.mem.zeroes(s.D2DrlgLevelStrc);
++    level.eD2LevelId = @enumFromInt(level_id);
++    var room = std.mem.zeroes(s.D2RoomExStrc);
++    room.pLevel = &level;
++    room.sSeed = .{ .nSeedLow = room_seed, .nSeedHigh = 0x29a };
++    room.sCoords = .{
++        .WorldPosition = .{ .x = 0, .y = 0 },
++        .WorldSize = .{ .x = ws_x, .y = ws_y },
++    };
++
++    const floor_cells = try ar.alloc(i32, ncells);
++    @memset(floor_cells, 0);
++    var fg = try buildGrid(ar, gw, gh, floor_cells);
++    const wall_cells = try ar.alloc(i32, ncells);
++    @memset(wall_cells, 0);
++    var wg = try buildGrid(ar, gw, gh, wall_cells);
++    const orient_cells = try ar.alloc(i32, ncells);
++    @memset(orient_cells, 0);
++    var og = try buildGrid(ar, gw, gh, orient_cells);
++
++    var yy: i32 = 0;
++    while (yy < 8 and yy < ws_y) : (yy += 1) {
++        var xx: i32 = 0;
++        while (xx < 8 and xx < ws_x) : (xx += 1) {
++            DrlgGrid.AlterGridFlag(&fg.grid, xx, yy, 0x40002, 3);
++        }
++    }
++    if (overlay) |ov| try applyAct1WallOverlay(ar, &fg, ov, ws_x, ws_y);
++
++    const pDef = dtables.levelDefsGetLine(@enumFromInt(level_id));
++    if (pDef.*.SubWaypoint == -1) return null;
++    var mask: u32 = @bitCast(waypoint_mask);
++    var pLine = dtables.lvlSubGetLineFromSubType(pDef.*.SubWaypoint);
++    if (pLine == null) return null;
++    while (mask != 0) : ({
++        mask >>= 1;
++        pLine += 1;
++    }) {
++        if (mask & 1 == 0) continue;
++        const pRec: *dtables.D2LvlSubTxt = @ptrCast(pLine);
++        TileSub.InitializeDrlgFile(null, pRec);
++        if (pRec.pDrlgFile == null or pRec.CheckAll != 0) continue;
++        var placement: ?SubTilePlacement = null;
++        doNotCheckAll(&room, &fg.grid, &wg.grid, &og.grid, pRec, 0, &placement);
++        if (placement != null) return placement;
++    }
++    return null;
++}
++
+ /// Materialize one outdoor FLOOR room (an 8x8 CreateOutdoorRoomEx shell) into a
+ /// room-local floor collision grid. Faithful transform of InitGridCells
+ /// (0067d2d0), including the ACT_I wall-orientation overlay (step 3) when
+@@ -1938,6 +2041,161 @@ pub const PlacedTile = struct {
+     pass: u8,
+ };
+
++/// Faithful outdoor automap materialization. This follows the exact
++/// InitGridCells -> LvlSub waypoint/shrine/terrain -> border ownership ->
++/// InitRoomTiles sequence used by materializeOutdoorFloorRoom, but stops before
++/// allocating or rasterizing a collision grid. `near` preserves the native
++/// first-room seam ownership and seed consumption across the complete level.
++pub fn outdoorAutomapRoomTiles(
++    a: std.mem.Allocator,
++    dts: []const dt1.Dt1,
++    ws_x: i32,
++    ws_y: i32,
++    nLevelType: i32,
++    level_id: i32,
++    room_seed: i32,
++    overlay: ?OutdoorOverlay,
++    nSubType: i32,
++    nSubTheme: i32,
++    nSubThemePicked: i32,
++    nWaypointCount: i32,
++    nShrineCount: i32,
++    near: ?NearRooms,
++) ![]PlacedTile {
++    const ar = roomScratch(&scratch_outdoor_tiles);
++
++    const gw: usize = @intCast(ws_x + 1);
++    const gh: usize = @intCast(ws_y + 1);
++    const ncells = gw * gh;
++
++    var tlib = tilegen.TileLib{ .dts = dts };
++    var drlg = std.mem.zeroes(s.D2DrlgStrc);
++    var level = std.mem.zeroes(s.D2DrlgLevelStrc);
++    level.pDrlg = &drlg;
++    level.eD2LevelId = @enumFromInt(level_id);
++
++    var room = std.mem.zeroes(s.D2RoomExStrc);
++    room.pLevel = &level;
++    room.apTiles[0] = @ptrCast(&tlib);
++    room.sSeed = .{ .nSeedLow = room_seed, .nSeedHigh = 0x29a };
++    room.sCoords = .{
++        .WorldPosition = .{ .x = 0, .y = 0 },
++        .WorldSize = .{ .x = ws_x, .y = ws_y },
++    };
++    const pRoom: [*c]s.D2RoomExStrc = &room;
++
++    const floor_cells = try ar.alloc(i32, ncells);
++    @memset(floor_cells, 0);
++    var fg = try buildGrid(ar, gw, gh, floor_cells);
++
++    const wall_cells = try ar.alloc(i32, ncells);
++    @memset(wall_cells, 0);
++    var wg = try buildGrid(ar, gw, gh, wall_cells);
++
++    const orient_cells = try ar.alloc(i32, ncells);
++    @memset(orient_cells, 0);
++    var og = try buildGrid(ar, gw, gh, orient_cells);
++
++    {
++        var yy: i32 = 0;
++        while (yy < 8 and yy < ws_y) : (yy += 1) {
++            var xx: i32 = 0;
++            while (xx < 8 and xx < ws_x) : (xx += 1) {
++                DrlgGrid.AlterGridFlag(&fg.grid, xx, yy, 0x40002, 3);
++            }
++        }
++    }
++    if (overlay) |ov| try applyAct1WallOverlay(ar, &fg, ov, ws_x, ws_y);
++
++    // The engine allocates the room tile grid before its three LvlSub passes.
++    // The roof array must also exist because ApplyLvlSubTileData can grow it.
++    try allocRoomTileGrid(pRoom, ar);
++    {
++        const pg: [*c]s.D2DrlgTileGridStrc = @ptrCast(pRoom.*.pRoomTiles);
++        const n = ncells + 16;
++        const arr = try ar.alloc(s.D2DrlgTileDataStrc, n);
++        @memset(std.mem.sliceAsBytes(arr), 0);
++        pg.*.pRoofTiles = @ptrCast(arr.ptr);
++        pg.*.nRoofTilesMax = @intCast(n);
++    }
++    const pDef = dtables.levelDefsGetLine(@enumFromInt(level_id));
++    if (nWaypointCount != 0) applySubThemeTerrain(&room, &fg.grid, &wg.grid, &og.grid, pDef.*.SubWaypoint, 0, nWaypointCount);
++    if (nShrineCount != 0) applySubThemeTerrain(&room, &fg.grid, &wg.grid, &og.grid, pDef.*.SubShrine, 0, nShrineCount);
++    applySubThemeTerrain(&room, &fg.grid, &wg.grid, &og.grid, nSubType, nSubTheme, nSubThemePicked);
++
++    const nGridFlag = outdoorFillFlag(nLevelType, level_id);
++    if (nGridFlag != 0) {
++        var yy: i32 = 0;
++        while (yy < @as(i32, @intCast(gh))) : (yy += 1) {
++            var xx: i32 = 0;
++            while (xx < @as(i32, @intCast(gw))) : (xx += 1) {
++                if ((DrlgGrid.GetGridFlags(&fg.grid, xx, yy) & 0x3f0ff80) == 0) {
++                    DrlgGrid.AlterGridFlag(&fg.grid, xx, yy, nGridFlag, 0);
++                }
++            }
++        }
++    }
++
++    flagBorderCells(&wg, CELLFLAGS_0x04);
++    flagBorderCells(&fg, CELLFLAGS_0x04);
++
++    countTilesFromGrid(pRoom, &fg.grid, 0, 0, 0);
++    countWallTilesFromGrid(pRoom, &wg.grid, &og.grid, 0, 0);
++    countTilesFromGrid(pRoom, &wg.grid, 0, 0, 0);
++
++    const pTileGrid: [*c]s.D2DrlgTileGridStrc = @ptrCast(room.pRoomTiles);
++    pTileGrid.*.nFloorTilesMax += 16;
++    pTileGrid.*.nWallTilesMax += @as(i32, @intCast(ncells)) + 16;
++    pTileGrid.*.nRoofTilesMax += @as(i32, @intCast(ncells)) + 16;
++    try allocTileDataArrays(pRoom, ar);
++
++    var ctx = MatCtx{
++        .width = gw,
++        .special = try ar.alloc(bool, ncells),
++        .companion = try ar.alloc(bool, @intCast(pTileGrid.*.nWallTilesMax)),
++        .near = if (near) |n| n.index else null,
++        .link_alloc = if (near) |n| n.alloc else a,
++        .room_wx = if (near) |n| n.wx else 0,
++        .room_wy = if (near) |n| n.wy else 0,
++        .room_rect = if (near) |n| .{ .x = n.wx, .y = n.wy, .w = n.w, .h = n.h } else .{ .x = 0, .y = 0, .w = 0, .h = 0 },
++    };
++    @memset(ctx.special, false);
++    @memset(ctx.companion, false);
++    defer ctx.linked.deinit(if (near) |n| n.alloc else a);
++    g_ctx = &ctx;
++
++    InitRoomTiles(pRoom, &fg.grid, null, 0, 0, 0);
++    InitRoomTiles(pRoom, &wg.grid, &og.grid, 0, 0, 0);
++
++    var out: std.ArrayListUnmanaged(PlacedTile) = .empty;
++    errdefer out.deinit(a);
++
++    if (pTileGrid.*.pFloorTiles) |fp| {
++        const pFloor: [*]s.D2DrlgTileDataStrc = @ptrCast(@alignCast(fp));
++        var fi: usize = 0;
++        while (fi < @as(usize, @intCast(pTileGrid.*.nFloors))) : (fi += 1) {
++            const td = &pFloor[fi];
++            if (td.nPosX < 0 or td.nPosY < 0) continue;
++            const t = tilegen.tileFromEntry(td.pTileLibraryEntry) orelse continue;
++            try out.append(a, .{ .pos_x = td.nPosX, .pos_y = td.nPosY, .orient = t.orientation, .main = t.main, .sub = t.sub, .pass = 0 });
++        }
++    }
++    if (pTileGrid.*.pWallTiles) |wp| {
++        const pWall: [*]s.D2DrlgTileDataStrc = @ptrCast(@alignCast(wp));
++        var wi: usize = 0;
++        while (wi < @as(usize, @intCast(pTileGrid.*.nWalls))) : (wi += 1) {
++            if (wi < ctx.companion.len and ctx.companion[wi]) continue;
++            const td = &pWall[wi];
++            if (td.nPosX < 0 or td.nPosY < 0) continue;
++            const t = tilegen.tileFromEntry(td.pTileLibraryEntry) orelse continue;
++            try out.append(a, .{ .pos_x = td.nPosX, .pos_y = td.nPosY, .orient = t.orientation, .main = t.main, .sub = t.sub, .pass = 1 });
++        }
++    }
++
++    if (near) |n| try publishRoomTiles(n, ctx.linked.items, dts, room.sSeed);
++    return out.toOwnedSlice(a);
++}
++
+ /// Materialize a wilderness FLOOR room and return its placed FLOOR + WALL tiles
+ /// (identities + room-local positions) so a pixel renderer can draw grass/cliff
+ /// tiles for outdoor rooms that carry NO preset DS1. Same InitGridCells +
+@@ -2161,7 +2419,10 @@ fn unresolvedMask(d: *const ds1.Ds1, dtlib: *const collision.DtLibrary, mask: []
+             const main = @as(i32, @intCast((c.raw >> 20) & 0x3f));
+             const sub = @as(i32, @intCast((c.raw >> 8) & 0xff));
+             if (dtlib.find(0, main, sub) == null or dtlib.isAmbiguous(0, main, sub)) {
+-                if (i < mask.len and !mask[i]) { mask[i] = true; n += 1; }
++                if (i < mask.len and !mask[i]) {
++                    mask[i] = true;
++                    n += 1;
++                }
+             }
+         }
+     }
+@@ -2175,7 +2436,10 @@ fn unresolvedMask(d: *const ds1.Ds1, dtlib: *const collision.DtLibrary, mask: []
+             const sub = @as(i32, @intCast((wc.raw >> 8) & 0xff));
+             const orient = wl.orient[i].prop1;
+             if (dtlib.find(orient, main, sub) == null or dtlib.isAmbiguous(orient, main, sub)) {
+-                if (i < mask.len and !mask[i]) { mask[i] = true; n += 1; }
++                if (i < mask.len and !mask[i]) {
++                    mask[i] = true;
++                    n += 1;
++                }
+             }
+         }
+     }
+@@ -2259,7 +2523,10 @@ test "materialize: InitRoomTiles reproduces collision.zig for several maze/prese
+             if (pmap.pTxtLevelPrest == null or pmap.nSizeX <= 0 or pmap.nSizeY <= 0) continue;
+             const key = @intFromPtr(pmap);
+             var dup = false;
+-            for (seen.items) |sk| if (sk == key) { dup = true; break; };
++            for (seen.items) |sk| if (sk == key) {
++                dup = true;
++                break;
++            };
+             if (dup) continue;
+             seen.append(a, key) catch {};
+
+diff --git a/packages/drlg/src/drlg/preset.zig b/packages/drlg/src/drlg/preset.zig
+index 64e7e1d..674f442 100644
+--- a/packages/drlg/src/drlg/preset.zig
++++ b/packages/drlg/src/drlg/preset.zig
+@@ -319,9 +319,89 @@ fn ParsePresetsOfDrlgFile(pDrlgFile: *s.D2DrlgFileStrc, pMemory: ?*s.D2PoolManag
+ var g_blobIndex: ?ds1blob.Index = null;
+ var g_blobRaw: ?[]u8 = null;
+ var g_blobState = std.atomic.Value(u8).init(0); // 0 uninit, 1 building, 2 ready
++
++const MAX_DS1_OVERLAY_ROOTS: usize = 4;
++const MAX_DS1_OVERLAY_PATH: usize = 32 * 1024;
++const MAX_DS1_OVERLAY_BYTES: usize = 8 * 1024 * 1024;
++var g_ds1_overlay_roots: [MAX_DS1_OVERLAY_ROOTS][]const u8 =
++    .{"", "", "", ""};
++var g_ds1_overlay_root_count: usize = 0;
++
++fn isAbsoluteOverlayRoot(root: []const u8) bool {
++    if (root.len >= 3 and std.ascii.isAlphabetic(root[0])
++        and root[1] == ':' and (root[2] == '/' or root[2] == '\\')) {
++        return true;
++    }
++    return root.len >= 2
++        and ((root[0] == '\\' and root[1] == '\\')
++            or (root[0] == '/' and root[1] == '/'));
++}
++
++fn isSafeAssetRelative(rel: []const u8) bool {
++    if (rel.len == 0 or rel.len >= MAX_DS1_OVERLAY_PATH
++        or rel[0] == '/' or rel[0] == '\\'
++        or std.mem.indexOfScalar(u8, rel, ':') != null
++        or std.mem.indexOfScalar(u8, rel, 0) != null) {
++        return false;
++    }
++    var segment_start: usize = 0;
++    var index: usize = 0;
++    while (index <= rel.len) : (index += 1) {
++        if (index != rel.len and rel[index] != '/' and rel[index] != '\\') {
++            continue;
++        }
++        const segment = rel[segment_start..index];
++        if (segment.len == 0 or std.mem.eql(u8, segment, ".")
++            or std.mem.eql(u8, segment, "..")) {
++            return false;
++        }
++        segment_start = index + 1;
++    }
++    return true;
++}
++
++/// Configure ordered active-mod tile roots. The helper process owns the root
++/// strings and invokes this once before generation; missing files fall through
++/// to the embedded vanilla DS1 blob.
++pub fn configureDs1OverlayRoots(roots: []const []const u8) bool {
++    if (roots.len > g_ds1_overlay_roots.len) return false;
++    for (roots) |root| {
++        if (root.len == 0 or root.len >= MAX_DS1_OVERLAY_PATH
++            or std.mem.indexOfScalar(u8, root, 0) != null
++            or !isAbsoluteOverlayRoot(root)) {
++            return false;
++        }
++    }
++    g_ds1_overlay_roots = .{"", "", "", ""};
++    for (roots, 0..) |root, index| g_ds1_overlay_roots[index] = root;
++    g_ds1_overlay_root_count = roots.len;
++    last_ds1_key = "";
++    last_ds1 = null;
++    return true;
++}
++
++fn unpackOverlayDs1(a: std.mem.Allocator, rel: []const u8) ?ds1mod.Ds1 {
++    if (g_ds1_overlay_root_count == 0 or !isSafeAssetRelative(rel)) {
++        return null;
++    }
++    var threaded = std.Io.Threaded.init_single_threaded;
++    const io = threaded.io();
++    for (g_ds1_overlay_roots[0..g_ds1_overlay_root_count]) |root| {
++        var pathbuf: [MAX_DS1_OVERLAY_PATH]u8 = undefined;
++        const full = std.fmt.bufPrint(
++            &pathbuf, "{s}/{s}", .{ root, rel }) catch continue;
++        const bytes = std.Io.Dir.cwd().readFileAlloc(
++            io, full, a, .limited(MAX_DS1_OVERLAY_BYTES)) catch continue;
++        defer a.free(bytes);
++        return ds1mod.parse(a, bytes) catch continue;
++    }
++    return null;
++}
++
+ /// Unpack a DS1 by asset-relative path from the baked blob (for the collision
+ /// rasterizer). Uses the process-lifetime blob index; caller owns the Ds1.
+ pub fn unpackDs1(a: std.mem.Allocator, rel: []const u8) ?ds1mod.Ds1 {
++    if (unpackOverlayDs1(a, rel)) |d| return d;
+     const rec = ds1BlobIndex().get(rel) orelse return null;
+     return ds1blob.unpack(a, rec) catch null;
+ }
+@@ -364,9 +444,11 @@ pub fn cachedDs1(rel: []const u8) ?*const ds1mod.Ds1 {
+     }
+     ds1CacheUnlock();
+
+-    const rec = ds1BlobIndex().get(rel) orelse return null;
+     const a = pool.default_allocator;
+-    const parsed = ds1blob.unpack(a, rec) catch return null;
++    const parsed = unpackOverlayDs1(a, rel) orelse blk: {
++        const rec = ds1BlobIndex().get(rel) orelse return null;
++        break :blk ds1blob.unpack(a, rec) catch return null;
++    };
+     const boxed = a.create(ds1mod.Ds1) catch return null;
+     boxed.* = parsed;
+
+diff --git a/packages/drlg/src/drlg/tables.zig b/packages/drlg/src/drlg/tables.zig
+index ecb5842..b0d1f62 100644
+--- a/packages/drlg/src/drlg/tables.zig
++++ b/packages/drlg/src/drlg/tables.zig
+@@ -169,7 +169,14 @@ pub const LvlTables = struct {
+     level_defs: []D2LevelDefsTxt,
+
+     pub fn load(gpa: std.mem.Allocator) !LvlTables {
+-        var src = try srctables.Tables.load(gpa);
++        return loadFrom(gpa, .{});
++    }
++
++    pub fn loadFrom(
++        gpa: std.mem.Allocator,
++        sources: srctables.Sources,
++    ) !LvlTables {
++        var src = try srctables.Tables.loadFrom(gpa, sources);
+         errdefer src.deinit();
+
+         const lvl_prest = try buildPrest(gpa, &src.lvl_prest);
+diff --git a/packages/drlg/src/enums.zig b/packages/drlg/src/enums.zig
+index 6f1239e..0d7b6ea 100644
+--- a/packages/drlg/src/enums.zig
++++ b/packages/drlg/src/enums.zig
+@@ -148,6 +148,7 @@ pub const eD2LevelId = enum(c_int) {
+     ForgottenSands = 134,
+     FurnaceofPain = 135,
+     UberTristram = 136,
++    _,
+
+     pub fn isTown(self: eD2LevelId) bool {
+         return switch (self) {
+@@ -1265,4 +1266,5 @@ pub const eD2PresetId = enum(c_int) {
+     Act5TempleEntrance = 1088,
+     Act5BaalEntrance = 1089,
+     Act5PandemoniumFinale = 1090,
++    _,
+ };
+diff --git a/packages/drlg/src/lib.zig b/packages/drlg/src/lib.zig
+index 605ca75..4c99885 100644
+--- a/packages/drlg/src/lib.zig
++++ b/packages/drlg/src/lib.zig
+@@ -95,22 +95,51 @@ pub const Difficulty = enum(u8) { normal = 0, nightmare = 1, hell = 2 };
+ /// (e.g. from a golden capture, or the level's Levels.txt size at the origin).
+ pub const Placement = struct { x: i32, y: i32, w: i32, h: i32 };
+
++/// Runtime inputs accepted by `Ctx.initFromBuffers`. Every null table uses the
++/// embedded vanilla bytes. Override slices and DS1 root strings must outlive the
++/// Ctx; the parsers deliberately retain read-only views into those buffers.
++pub const TableSet = struct {
++    levels: ?[]const u8 = null,
++    lvl_prest: ?[]const u8 = null,
++    lvl_types: ?[]const u8 = null,
++    lvl_maze: ?[]const u8 = null,
++    lvl_sub: ?[]const u8 = null,
++    lvl_warp: ?[]const u8 = null,
++    objects: ?[]const u8 = null,
++    ds1_roots: []const []const u8 = &.{},
++};
++
+ /// Loaded, read-only game data. Long-lived; shared across generate() calls.
+-///
+-/// SEAM: `init` currently loads via the file-based table loaders. The
+-/// distributable path is buffers-only (a `initFromBuffers(TableSet)`); swap this
+-/// when the FFI/wasm layer lands. Never bundle Blizzard assets in the public lib.
+ pub const Ctx = struct {
+     gpa: std.mem.Allocator,
+     lvl: dtables.LvlTables,
+     act: tables.Tables,
++    objects_txt: []const u8,
+
+     pub fn init(gpa: std.mem.Allocator) !Ctx {
++        return initFromBuffers(gpa, .{});
++    }
++
++    pub fn initFromBuffers(gpa: std.mem.Allocator, input: TableSet) !Ctx {
+         _ = presettables.ensureLoaded();
++        if (!preset.configureDs1OverlayRoots(input.ds1_roots)) {
++            return error.InvalidDs1OverlayRoots;
++        }
++        const sources = tables.Sources{
++            .levels = input.levels,
++            .lvl_prest = input.lvl_prest,
++            .lvl_types = input.lvl_types,
++            .lvl_maze = input.lvl_maze,
++            .lvl_sub = input.lvl_sub,
++            .lvl_warp = input.lvl_warp,
++        };
++        var lvl = try dtables.LvlTables.loadFrom(gpa, sources);
++        errdefer lvl.deinit();
+         return .{
+             .gpa = gpa,
+-            .lvl = try dtables.LvlTables.load(gpa),
+-            .act = try tables.Tables.load(gpa),
++            .lvl = lvl,
++            .act = try tables.Tables.loadFrom(gpa, sources),
++            .objects_txt = input.objects orelse d2data.file("Objects"),
+         };
+     }
+
+@@ -187,7 +216,17 @@ pub fn generate(
+ /// `picked_file` = the room's DS1 selector (D2DrlgPresetRoomStrc.nPickedFile for a
+ /// preset room, D2DrlgRoomExDataMazeStrc.nSubThemePicked for an outdoor/maze room,
+ /// -1 if the room carries neither). x/y are WORLD TILES, w/h TILES.
+-pub const RoomRect = struct { x: i32, y: i32, w: i32, h: i32, n_type: i32, n_preset_type: i32, picked_file: i32 };
++pub const RoomRect = struct {
++    x: i32,
++    y: i32,
++    w: i32,
++    h: i32,
++    n_type: i32,
++    n_preset_type: i32,
++    picked_file: i32,
++    map_prest_id: i32 = -1,
++    flags: u32 = 0,
++};
+
+ /// One level's id + its generated rooms (owned by the ActResult's allocator).
+ /// `placed` = the level was positioned by the act placement graph (part of the
+@@ -242,6 +281,272 @@ pub const ActResult = struct {
+     }
+ };
+
++/// MapSense spike payload: only immutable label anchors. It deliberately omits
++/// collision, walk grids, object population, monsters and routing state.
++pub const LabelWaypoint = struct {
++    x: i32,
++    y: i32,
++    class_id: i32,
++    exact: bool,
++};
++
++pub const LevelLabels = struct {
++    meta: LevelRooms,
++    exits: []LevelAdjacent,
++    waypoints: []LabelWaypoint,
++};
++
++pub const ActLabelsResult = struct {
++    levels: []LevelLabels,
++
++    pub fn deinit(self: *ActLabelsResult, alloc: std.mem.Allocator) void {
++        for (self.levels) |level| {
++            alloc.free(level.meta.rooms);
++            alloc.free(level.exits);
++            alloc.free(level.waypoints);
++        }
++        alloc.free(self.levels);
++    }
++};
++
++/// Generate one act's complete distant-label atlas without materializing any
++/// collision grids or seeded room contents. Exit anchors are the DRLG warp and
++/// seam bridges. Waypoints found in preset-unit chains are exact; an outdoor
++/// waypoint room whose special-object pass has not run is returned as a
++/// deliberately inexact room-centre sentinel for coverage accounting.
++pub fn generateActLabels(
++    ctx: *Ctx,
++    out_alloc: std.mem.Allocator,
++    act_no: i32,
++    seed: u32,
++    diff: Difficulty,
++) !ActLabelsResult {
++    var pool = fog.PoolManager.init(ctx.gpa);
++    defer pool.deinit();
++    const saved_alloc = dpool.allocator;
++    const saved_tables = dtables.g_lvl_tables;
++    defer {
++        dpool.allocator = saved_alloc;
++        dtables.g_lvl_tables = saved_tables;
++    }
++    dtables.g_lvl_tables = &ctx.lvl;
++    dpool.allocator = pool.allocator();
++    dpool.resetRegistry();
++    ctx.lvl.resetGenCache();
++
++    var act = try act_mod.build(ctx.gpa, &ctx.act, act_no, seed);
++    defer act.deinit(ctx.gpa);
++
++    var pDrlg: abi.D2DrlgStrc = undefined;
++    _ = drlg.allocDrlgActMisc(&pDrlg, 1, seed, .None, 0, @intFromEnum(diff));
++
++    var ids: std.ArrayListUnmanaged(i32) = .empty;
++    defer ids.deinit(out_alloc);
++    var row: usize = 0;
++    while (row < ctx.act.levelCount()) : (row += 1) {
++        if (ctx.act.levelAtRow(row)) |lv| {
++            if (lv.act == act_no) try ids.append(out_alloc, @intCast(lv.id));
++        }
++    }
++
++    for (ids.items) |lid| {
++        const pLevel = drlg.GetLevelAndAlloc(&pDrlg, @enumFromInt(lid));
++        const c = act.coords(&ctx.act, lid);
++        pLevel.sCoordinatesAndSize = .{
++            .WorldPosition = .{ .x = c.x, .y = c.y },
++            .WorldSize = .{ .x = c.w, .y = c.h },
++        };
++    }
++    if (act_no == 0) drlg.applyAct1PresetPicks(&pDrlg, &ctx.act, seed);
++    if (act_no == 1) drlg.applyAct2PresetPicks(&pDrlg, &ctx.act, seed);
++    drlg.buildInterLevelOrths(&pDrlg);
++
++    // Every level must be placed before the pure seam-geometry pass.
++    for (ids.items) |lid| {
++        const pLevel = drlg.GetLevelAndAlloc(&pDrlg, @enumFromInt(lid));
++        if (pLevel.pRoomExFirst == null) drlg.InitLevel(pLevel);
++    }
++
++    var object_table = try objects_mod.loadFrom(
++        ctx.gpa, ctx.objects_txt);
++    defer object_table.deinit();
++
++    var out: std.ArrayListUnmanaged(LevelLabels) = .empty;
++    errdefer {
++        for (out.items) |level| {
++            out_alloc.free(level.meta.rooms);
++            out_alloc.free(level.exits);
++            out_alloc.free(level.waypoints);
++        }
++        out.deinit(out_alloc);
++    }
++
++    var scratch = std.heap.ArenaAllocator.init(ctx.gpa);
++    defer scratch.deinit();
++    for (ids.items) |lid| {
++        _ = scratch.reset(.free_all);
++        const sa = scratch.allocator();
++        const pLevel = drlg.GetLevelAndAlloc(&pDrlg, @enumFromInt(lid));
++
++        var rooms: std.ArrayListUnmanaged(RoomRect) = .empty;
++        errdefer rooms.deinit(out_alloc);
++        const level_table = ctx.act.level(lid);
++        const level_has_waypoint = if (level_table) |lv| lv.waypoint >= 0 and lv.waypoint < 255 else false;
++        var waypoint_room: ?*abi.D2RoomExStrc = null;
++        var pr: ?*abi.D2RoomExStrc = pLevel.pRoomExFirst;
++        while (pr) |p| : (pr = p.pRoomExNext) {
++            const rr = RoomRect{
++                .x = p.sCoords.WorldPosition.x,
++                .y = p.sCoords.WorldPosition.y,
++                .w = p.sCoords.WorldSize.x,
++                .h = p.sCoords.WorldSize.y,
++                .n_type = p.nType,
++                .n_preset_type = p.nPresetType,
++                .picked_file = roomPickedFile(p),
++                .map_prest_id = if (roomPMap(p)) |m| m.nNumber else -1,
++                .flags = p.eRoomExFlags.raw(),
++            };
++            try rooms.append(out_alloc, rr);
++            if (p.eRoomExFlags.hasWaypoint()) waypoint_room = p;
++        }
++
++        const presets = try collectLevelPresets(sa, pLevel);
++        var waypoints: std.ArrayListUnmanaged(LabelWaypoint) = .empty;
++        errdefer waypoints.deinit(out_alloc);
++        for (presets) |preset_unit| {
++            if (!level_has_waypoint) break;
++            if (preset_unit.etype != 2
++                or !object_table.isWaypoint(preset_unit.txt_file_no)) continue;
++            try waypoints.append(out_alloc, .{
++                .x = preset_unit.x,
++                .y = preset_unit.y,
++                .class_id = preset_unit.txt_file_no,
++                .exact = true,
++            });
++        }
++
++        // Some selected DS1s (notably Expansion waypoint replacements) keep a
++        // non-empty filtered pMap preset chain that omits the waypoint object.
++        // Replay only the selected DS1's object list, using CopyPresetUnit's
++        // world transform, when the ordinary chain produced no waypoint.
++        if (level_has_waypoint and waypoints.items.len == 0) {
++            var seen_maps: std.AutoHashMapUnmanaged(usize, void) = .empty;
++            defer seen_maps.deinit(sa);
++            pr = pLevel.pRoomExFirst;
++            while (pr) |p| : (pr = p.pRoomExNext) {
++                const pmap = roomPMap(p) orelse continue;
++                if ((try seen_maps.getOrPut(sa, @intFromPtr(pmap))).found_existing) continue;
++                const rel = preset.presetDs1Path(pmap) orelse continue;
++                var decoded = preset.unpackDs1(sa, rel) orelse continue;
++                defer decoded.deinit();
++                const level_origin = pLevel.sCoordinatesAndSize.WorldPosition;
++                const bw = pLevel.sCoordinatesAndSize.WorldSize.x * SUB;
++                const bh = pLevel.sCoordinatesAndSize.WorldSize.y * SUB;
++                for (decoded.objects) |object| {
++                    if (object.kind != 2) continue;
++                    const class_id = presettables.objectClassId(decoded.act_id, object.id);
++                    if (!object_table.isWaypoint(class_id)) continue;
++                    const x = object.x + pmap.nRealOffsetX * SUB - level_origin.x * SUB;
++                    const y = object.y + pmap.nRealOffsetY * SUB - level_origin.y * SUB;
++                    if (x < 0 or y < 0 or x >= bw or y >= bh) continue;
++                    try waypoints.append(out_alloc, .{
++                        .x = x,
++                        .y = y,
++                        .class_id = class_id,
++                        .exact = true,
++                    });
++                }
++            }
++        }
++        if (level_has_waypoint and waypoints.items.len == 0) {
++            if (waypoint_room) |wr| {
++                const origin = pLevel.sCoordinatesAndSize.WorldPosition;
++                if (try materialize.locateOutdoorWaypointPlacement(
++                    wr.sCoords.WorldSize.x,
++                    wr.sCoords.WorldSize.y,
++                    lid,
++                    wr.nSeed,
++                    materialize.outdoorOverlayFor(pLevel, wr),
++                    @intCast(@as(u8, wr.eRoomExFlags.waypoint)),
++                )) |placement| {
++                    var unit = placement.file.pPresetUnit;
++                    while (unit) |candidate| : (unit = candidate.pPresetUnitNext) {
++                        if (candidate.eType != 2
++                            or !object_table.isWaypoint(candidate.nClassId)) continue;
++                        const source_subtile_x = placement.source_x * SUB;
++                        const source_subtile_y = placement.source_y * SUB;
++                        if (candidate.nPosX < source_subtile_x
++                            or candidate.nPosY < source_subtile_y
++                            or candidate.nPosX >= (placement.source_x + placement.source_w) * SUB
++                            or candidate.nPosY >= (placement.source_y + placement.source_h) * SUB) continue;
++                        try waypoints.append(out_alloc, .{
++                            .x = (wr.sCoords.WorldPosition.x - origin.x + placement.base_x - placement.source_x) * SUB + candidate.nPosX,
++                            .y = (wr.sCoords.WorldPosition.y - origin.y + placement.base_y - placement.source_y) * SUB + candidate.nPosY,
++                            .class_id = candidate.nClassId,
++                            .exact = true,
++                        });
++                        break;
++                    }
++                }
++                if (waypoints.items.len == 0) {
++                    try waypoints.append(out_alloc, .{
++                        .x = (wr.sCoords.WorldPosition.x - origin.x + @divTrunc(wr.sCoords.WorldSize.x, 2)) * SUB,
++                        .y = (wr.sCoords.WorldPosition.y - origin.y + @divTrunc(wr.sCoords.WorldSize.y, 2)) * SUB,
++                        .class_id = -1,
++                        .exact = false,
++                    });
++                }
++            }
++        }
++
++        const exits = try out_alloc.dupe(LevelAdjacent, try collectLevelAdjacents(sa, pLevel));
++        const placed = act.positions.get(lid) != null;
++        const dtype: i32 = if (ctx.act.level(lid)) |lv| @intFromEnum(lv.drlg_type) else 0;
++        const lpos = pLevel.sCoordinatesAndSize.WorldPosition;
++        const lsize = pLevel.sCoordinatesAndSize.WorldSize;
++        try out.append(out_alloc, .{
++            .meta = .{
++                .level_id = lid,
++                .drlg_type = dtype,
++                .placed = placed,
++                .origin_x = lpos.x,
++                .origin_y = lpos.y,
++                .width = lsize.x,
++                .height = lsize.y,
++                .rooms = try rooms.toOwnedSlice(out_alloc),
++            },
++            .exits = exits,
++            .waypoints = try waypoints.toOwnedSlice(out_alloc),
++        });
++    }
++
++    // Outdoor level-to-level joins are pure geometry over the placed rooms.
++    {
++        var conn_arena = std.heap.ArenaAllocator.init(ctx.gpa);
++        defer conn_arena.deinit();
++        const ca = conn_arena.allocator();
++        const boxes = try out_alloc.alloc(SeamLevelBox, out.items.len);
++        defer out_alloc.free(boxes);
++        for (out.items, 0..) |*level, i| boxes[i] = .{
++            .id = level.meta.level_id,
++            .origin_x = level.meta.origin_x,
++            .origin_y = level.meta.origin_y,
++            .rooms = level.meta.rooms,
++            .conn = try buildSeamConn(ca, &pDrlg, act.warps.items, level.meta.level_id, ids.items),
++        };
++        for (out.items, 0..) |*level, i| {
++            var merged: std.ArrayListUnmanaged(LevelAdjacent) = .empty;
++            errdefer merged.deinit(out_alloc);
++            try merged.appendSlice(out_alloc, level.exits);
++            try appendSeamAdjacents(&merged, out_alloc, boxes, i);
++            out_alloc.free(level.exits);
++            level.exits = try merged.toOwnedSlice(out_alloc);
++        }
++    }
++
++    return .{ .levels = try out.toOwnedSlice(out_alloc) };
++}
++
+ /// Generate an ENTIRE act with faithful inter-level placement, mirroring the
+ /// verify.zig `tallyLevelsRecon` flow except the coords come from `act.coords`
+ /// (standalone) instead of a golden capture. One fog pool + one D2DrlgStrc for
+@@ -317,6 +622,8 @@ pub fn generateAct(
+                 .n_type = p.nType,
+                 .n_preset_type = p.nPresetType,
+                 .picked_file = roomPickedFile(p),
++                .map_prest_id = if (roomPMap(p)) |m| m.nNumber else -1,
++                .flags = p.eRoomExFlags.raw(),
+             });
+         }
+         const placed = act.positions.get(lid) != null;
+@@ -354,9 +661,22 @@ pub fn generateAct(
+ /// level's `meta.rooms`.
+ pub const RoomLink = struct { from_room: u32, to_level: i32, to_room: u32 };
+
++/// One generated DT1 tile whose style/sequence can create a preset unit through
++/// DRLGROOMTILE_AddTilePresetUnits. Coordinates are level-local SUBTILES at the
++/// tile origin; consumers apply the small, documented unit offset for the
++/// matching level/style/orientation rule.
++pub const SpecialTileAnchor = struct {
++    x: i32,
++    y: i32,
++    orientation: i32,
++    main: i32,
++    sub: i32,
++};
++
+ pub const LevelFull = struct {
+     meta: LevelRooms,
+     presets: []PresetUnit,
++    special_tiles: []SpecialTileAnchor,
+     adjacents: []LevelAdjacent,
+     /// Cross-level near-room links; empty unless `ActFullOptions.room_links` asked for them.
+     room_links: []RoomLink = &.{},
+@@ -387,6 +707,7 @@ pub const ActFullResult = struct {
+         for (self.levels) |l| {
+             alloc.free(l.meta.rooms);
+             alloc.free(l.presets);
++            alloc.free(l.special_tiles);
+             alloc.free(l.adjacents);
+             if (l.room_links.len != 0) alloc.free(l.room_links);
+             if (l.coll_deflated.len != 0) alloc.free(l.coll_deflated);
+@@ -468,11 +789,24 @@ fn deflateLevelColl(
+     lid: i32,
+     deflate_fn: ?DeflateFn,
+     want_walk: bool,
+-) !struct { w: i32, h: i32, deflated: []u8, walk_deflated: []u8, raw: []const u8 = &.{} } {
++) !struct {
++    w: i32,
++    h: i32,
++    deflated: []u8,
++    walk_deflated: []u8,
++    raw: []const u8 = &.{},
++    special_tiles: []SpecialTileAnchor = &.{},
++} {
+     const t_mat = prof.begin();
+     const maybe_lc = try materializeLevelColl(sa, ctx, idx, pLevel, lid);
+     prof.end(.materialize, t_mat);
+     if (maybe_lc) |lc| {
++        const kept_special_tiles = try out_alloc.dupe(
++            SpecialTileAnchor,
++            lc.special_tiles,
++        );
++        var keep_special_tiles = false;
++        defer if (!keep_special_tiles) out_alloc.free(kept_special_tiles);
+         const t_comp = prof.begin();
+         const maybe_rc = try compositeLevelRaw(sa, lc, true);
+         prof.end(.composite, t_comp);
+@@ -502,12 +836,14 @@ fn deflateLevelColl(
+                 // Deferred: the raw grid lives in `sa`, which is reset before the batch
+                 // flushes, so it moves to the batch allocator now.
+                 const kept = try ra.dupe(u8, src);
+-                return .{ .w = @intCast(rc.w), .h = @intCast(rc.h), .deflated = &.{}, .walk_deflated = walk_deflated, .raw = kept };
++                keep_special_tiles = true;
++                return .{ .w = @intCast(rc.w), .h = @intCast(rc.h), .deflated = &.{}, .walk_deflated = walk_deflated, .raw = kept, .special_tiles = kept_special_tiles };
+             }
+             const t_def = prof.begin();
+             const deflated = if (deflate_fn) |df| try df(out_alloc, src) else try deflateZlib(out_alloc, src);
+             prof.end(.deflate, t_def);
+-            return .{ .w = @intCast(rc.w), .h = @intCast(rc.h), .deflated = deflated, .walk_deflated = walk_deflated };
++            keep_special_tiles = true;
++            return .{ .w = @intCast(rc.w), .h = @intCast(rc.h), .deflated = deflated, .walk_deflated = walk_deflated, .special_tiles = kept_special_tiles };
+         }
+     }
+     return .{ .w = 0, .h = 0, .deflated = &.{}, .walk_deflated = &.{} };
+@@ -544,6 +880,8 @@ fn collectLevelFull(
+             .n_type = p.nType,
+             .n_preset_type = p.nPresetType,
+             .picked_file = roomPickedFile(p),
++            .map_prest_id = if (roomPMap(p)) |m| m.nNumber else -1,
++            .flags = p.eRoomExFlags.raw(),
+         });
+     }
+     const placed = act.positions.get(lid) != null;
+@@ -560,6 +898,7 @@ fn collectLevelFull(
+     const coll = try deflateLevelColl(out_alloc, sa, raw_alloc, ctx, idx, pLevel, lid, deflate_fn, want_walk);
+     errdefer if (coll.deflated.len != 0) out_alloc.free(coll.deflated);
+     errdefer if (coll.walk_deflated.len != 0) out_alloc.free(coll.walk_deflated);
++    errdefer if (coll.special_tiles.len != 0) out_alloc.free(coll.special_tiles);
+
+     return .{
+         .meta = .{
+@@ -573,6 +912,7 @@ fn collectLevelFull(
+             .rooms = try rooms.toOwnedSlice(out_alloc),
+         },
+         .presets = presets,
++        .special_tiles = coll.special_tiles,
+         .adjacents = adjacents,
+         .coll_w = coll.w,
+         .coll_h = coll.h,
+@@ -585,6 +925,7 @@ fn collectLevelFull(
+ pub fn freeLevelFull(alloc: std.mem.Allocator, l: LevelFull) void {
+     alloc.free(l.meta.rooms);
+     alloc.free(l.presets);
++    alloc.free(l.special_tiles);
+     alloc.free(l.adjacents);
+     if (l.room_links.len != 0) alloc.free(l.room_links);
+     if (l.coll_deflated.len != 0) alloc.free(l.coll_deflated);
+@@ -1277,6 +1618,7 @@ pub const LevelColl = struct {
+     unresolved: usize,
+     grids: []CollGrid,
+     objects: []ObjColl = &.{},
++    special_tiles: []SpecialTileAnchor = &.{},
+     /// Level world TILE origin (lvlPos). Grid x/y are local subtiles relative to
+     /// this; world subtile = origin*SUBTILES_PER_TILE + grid-local. Lets the
+     /// frontend lay every level of an act in one shared world-coord space.
+@@ -1297,6 +1639,7 @@ pub const ActCollResult = struct {
+             for (l.grids) |g| alloc.free(g.cells);
+             alloc.free(l.grids);
+             alloc.free(l.objects);
++            alloc.free(l.special_tiles);
+         }
+         alloc.free(self.levels);
+     }
+@@ -1652,8 +1995,21 @@ fn materializeLevelColl(
+         for (rooms.items) |r| out_alloc.free(r.cells);
+         rooms.deinit(out_alloc);
+     }
+-    try buildLevelRoomColl(out_alloc, ctx, idx, pLevel, level_id, &rooms);
+-    if (rooms.items.len == 0) return null;
++    var special_tiles: std.ArrayListUnmanaged(SpecialTileAnchor) = .empty;
++    errdefer special_tiles.deinit(out_alloc);
++    try buildLevelRoomColl(
++        out_alloc,
++        ctx,
++        idx,
++        pLevel,
++        level_id,
++        &rooms,
++        &special_tiles,
++    );
++    if (rooms.items.len == 0) {
++        special_tiles.deinit(out_alloc);
++        return null;
++    }
+
+     const grids = try out_alloc.alloc(CollGrid, rooms.items.len);
+     for (rooms.items, 0..) |*r, i| {
+@@ -1670,6 +2026,7 @@ fn materializeLevelColl(
+         .level_id = level_id,
+         .unresolved = tilegen.g_lookup_null + tilegen.g_lookup_fallback,
+         .grids = grids,
++        .special_tiles = try special_tiles.toOwnedSlice(out_alloc),
+         .origin_x = lvlPos.x,
+         .origin_y = lvlPos.y,
+         .width = pLevel.sCoordinatesAndSize.WorldSize.x,
+@@ -1742,7 +2099,7 @@ pub fn generateActCollisionAll(
+         }
+         out.deinit(out_alloc);
+     }
+-    var objtbl = try objects_mod.load(ctx.gpa);
++    var objtbl = try objects_mod.loadFrom(ctx.gpa, ctx.objects_txt);
+     defer objtbl.deinit();
+     for (ids.items) |lid| {
+         const pLevel = drlg.GetLevelAndAlloc(&pDrlg, @enumFromInt(lid));
+@@ -1796,10 +2153,12 @@ fn buildLevelRoomColl(
+     pLevel: *abi.D2DrlgLevelStrc,
+     lid: i32,
+     rooms: *std.ArrayListUnmanaged(RoomColl),
++    special_tiles: ?*std.ArrayListUnmanaged(SpecialTileAnchor),
+ ) !void {
+     const tilegen = @import("drlg/tilegen.zig");
+     linkLevelWarpNodes(pLevel);
+     const tlv = ctx.act.level(lid) orelse return;
++    const level_pos = pLevel.sCoordinatesAndSize.WorldPosition;
+     const nLevelType: i32 = @intFromEnum(pLevel.nLevelType);
+     tilegen.probe_cur_level = lid;
+
+@@ -1906,6 +2265,42 @@ fn buildLevelRoomColl(
+             .room = p,
+         });
+     }
++    if (special_tiles) |anchors| {
++        const level_w = pLevel.sCoordinatesAndSize.WorldSize.x * SUB;
++        const level_h = pLevel.sCoordinatesAndSize.WorldSize.y * SUB;
++        for (rbs.items) |rb| {
++            for (rb.tiles) |placed| {
++                const tile = placed.tile;
++                const supported = if (lid == 26 or lid == 27)
++                    tile.sub == 0 and (tile.main == 4 or tile.main == 6)
++                else if (lid == 111 or lid == 112 or lid == 117)
++                    tile.sub == 0 and tile.main == 29
++                else
++                    false;
++                if (!supported) continue;
++                const anchor = SpecialTileAnchor{
++                    .x = (rb.wpx - level_pos.x + placed.nPosX) * SUB,
++                    .y = (rb.wpy - level_pos.y + placed.nPosY) * SUB,
++                    .orientation = tile.orientation,
++                    .main = tile.main,
++                    .sub = tile.sub,
++                };
++                if (anchor.x < 0 or anchor.y < 0
++                    or anchor.x >= level_w or anchor.y >= level_h) continue;
++                var duplicate = false;
++                for (anchors.items) |existing| {
++                    if (existing.x == anchor.x and existing.y == anchor.y
++                        and existing.orientation == anchor.orientation
++                        and existing.main == anchor.main
++                        and existing.sub == anchor.sub) {
++                        duplicate = true;
++                        break;
++                    }
++                }
++                if (!duplicate) try anchors.append(out_alloc, anchor);
++            }
++        }
++    }
+     prof.end(.mat_rooms, t_rooms);
+     const t_foreign = prof.begin();
+         // Cross-LEVEL contributors. A room's near list (DRLGROOMEX_LinkNearRoomsByVis)
+@@ -2224,7 +2619,15 @@ pub fn generateActRoomCollision(
+         const pLevel = drlg.GetLevelAndAlloc(&pDrlg, @enumFromInt(lid));
+         // On-demand like the engine (see generateActCollisionAll note).
+         if (pLevel.pRoomExFirst == null) drlg.InitLevel(pLevel);
+-        try buildLevelRoomColl(out_alloc, ctx, idx, pLevel, lid, &rooms);
++        try buildLevelRoomColl(
++            out_alloc,
++            ctx,
++            idx,
++            pLevel,
++            lid,
++            &rooms,
++            null,
++        );
+     }
+
+     return .{
+@@ -2745,7 +3148,7 @@ const SHRINE_VARIANTS = [4]struct { groups: u32, box: i32, classes: [2]i32 }{
+ /// subtiles. NOTE: DRLGOUTDOOR_CheckSubTileOverlap (0066fcf0) rejection is not modeled
+ /// — the first shuffled position is taken; verified byte-exact (position+type) vs the
+ /// d2mapapi oracle for all 30 objects across Act-1 wilderness levels 2-7.
+-fn appendOutdoorShrines(pLevel: *abi.D2DrlgLevelStrc, out: *std.ArrayListUnmanaged(OutdoorShrine), a: std.mem.Allocator) !void {
++pub fn appendOutdoorShrines(pLevel: *abi.D2DrlgLevelStrc, out: *std.ArrayListUnmanaged(OutdoorShrine), a: std.mem.Allocator) !void {
+     if (pLevel.eDrlgType != .wilderness) return;
+     var pr: ?*abi.D2RoomExStrc = pLevel.pRoomExFirst;
+     while (pr) |p| : (pr = p.pRoomExNext) {
+diff --git a/packages/drlg/src/objects.zig b/packages/drlg/src/objects.zig
+index 85527f0..623a9b8 100644
+--- a/packages/drlg/src/objects.zig
++++ b/packages/drlg/src/objects.zig
+@@ -46,6 +46,12 @@ pub const Table = struct {
+     /// (@0x584420) calls on interact. Data-observed families: 1 casket/sarcophagus,
+     /// 2 shrine, 3 urn/basket, 4 chest, 8 door, 14 corpse, 22 well.
+     operate: []i32,
++    /// init[objectRowIndex] = InitFn. InitFn 12 is D2's permanent red-portal
++    /// initializer; unlike dynamic town/cow portals these preset objects are
++    /// seed-static and safe to expose in an immutable label atlas.
++    init: []i32,
++    /// Objects.txt SubClass bit 0x40, the native waypoint predicate.
++    waypoint: []bool,
+     allocator: std.mem.Allocator,
+
+     pub fn deinit(self: *Table) void {
+@@ -53,6 +59,8 @@ pub const Table = struct {
+         self.allocator.free(self.coll);
+         self.allocator.free(self.light);
+         self.allocator.free(self.operate);
++        self.allocator.free(self.init);
++        self.allocator.free(self.waypoint);
+     }
+
+     /// OperateFn for an objects.txt row (0 = not operable / id out of range).
+@@ -61,6 +69,26 @@ pub const Table = struct {
+         return self.operate[@intCast(id)];
+     }
+
++    pub fn isPermanentPortal(self: *const Table, id: i32) bool {
++        return id >= 0 and id < self.init.len
++            and self.init[@intCast(id)] == 12;
++    }
++
++    pub fn permanentPortalClassId(self: *const Table) ?i32 {
++        var result: ?i32 = null;
++        for (self.init, 0..) |init_fn, id| {
++            if (init_fn != 12) continue;
++            if (result != null) return null;
++            result = @intCast(id);
++        }
++        return result;
++    }
++
++    pub fn isWaypoint(self: *const Table, id: i32) bool {
++        return id >= 0 and id < self.waypoint.len
++            and self.waypoint[@intCast(id)];
++    }
++
+     /// Dynamic-light emitter for an objects.txt row, or null if the row emits
+     /// no light (all Lit modes zero) or the id is out of range.
+     pub fn emitter(self: *const Table, id: i32) ?Light {
+@@ -88,9 +116,31 @@ pub const Table = struct {
+ };
+
+ pub fn load(gpa: std.mem.Allocator) !Table {
+-    var t = try txt.Table.parse(gpa, d2data.file("Objects"));
++    return loadFrom(gpa, d2data.file("Objects"));
++}
++
++pub fn loadFrom(gpa: std.mem.Allocator, source: []const u8) !Table {
++    var t = try txt.Table.parse(gpa, source);
+     defer t.deinit();
+-    const n = t.rowCount();
++    // D2R names the runtime ordinal column "*ID" while the legacy libd2
++    // extract names it "Id". They carry the same numeric contract; accepting
++    // both keeps active D2R tables data-driven without changing vanilla.
++    const id_column: []const u8 = if (t.col("Id") != null)
++        "Id"
++    else if (t.col("*ID") != null)
++        "*ID"
++    else
++        return error.MissingObjectIdColumn;
++    // Objects.txt contains an Expansion sentinel and then reuses the trailing
++    // classic placeholder ids. Runtime class ids follow the explicit Id
++    // column, not the physical TSV row. Later expansion rows intentionally win
++    // for duplicate ids 408/409.
++    var max_id: usize = 0;
++    for (0..t.rowCount()) |row| {
++        const id = t.int(row, id_column);
++        if (id >= 0) max_id = @max(max_id, @as(usize, @intCast(id)));
++    }
++    const n = max_id + 1;
+     const cel = try gpa.alloc(i32, n);
+     errdefer gpa.free(cel);
+     const coll = try gpa.alloc(Coll, n);
+@@ -99,10 +149,27 @@ pub fn load(gpa: std.mem.Allocator) !Table {
+     errdefer gpa.free(light);
+     const operate = try gpa.alloc(i32, n);
+     errdefer gpa.free(operate);
++    const init = try gpa.alloc(i32, n);
++    errdefer gpa.free(init);
++    const waypoint = try gpa.alloc(bool, n);
++    errdefer gpa.free(waypoint);
++    @memset(cel, 0);
++    @memset(coll, .{
++        .has = false,
++        .sx = 0,
++        .sy = 0,
++    });
++    @memset(light, .{ .r = 0, .g = 0, .b = 0, .radius = 0 });
++    @memset(operate, 0);
++    @memset(init, 0);
++    @memset(waypoint, false);
+     var i: usize = 0;
+-    while (i < n) : (i += 1) {
+-        cel[i] = @intCast(t.int(i, "AutoMap"));
+-        coll[i] = .{
++    while (i < t.rowCount()) : (i += 1) {
++        const raw_id = t.int(i, id_column);
++        if (raw_id < 0 or raw_id >= n) continue;
++        const id: usize = @intCast(raw_id);
++        cel[id] = @intCast(t.int(i, "AutoMap"));
++        coll[id] = .{
+             .has = t.int(i, "HasCollision0") != 0,
+             .sx = @intCast(t.int(i, "SizeX")),
+             .sy = @intCast(t.int(i, "SizeY")),
+@@ -111,7 +178,9 @@ pub fn load(gpa: std.mem.Allocator) !Table {
+             .block_missile = t.int(i, "BlockMissile") != 0,
+             .is_corpse = t.int(i, "SubClass") & 4 != 0,
+         };
+-        operate[i] = @intCast(t.int(i, "OperateFn"));
++        operate[id] = @intCast(t.int(i, "OperateFn"));
++        init[id] = @intCast(t.int(i, "InitFn"));
++        waypoint[id] = t.int(i, "SubClass") & 0x40 != 0;
+         // Brightest lit mode -> emit diameter; engine radius = (Lit>>1) clamped
+         // to 18 subtiles. Color is Red/Green/Blue verbatim.
+         var max_lit: i64 = 0;
+@@ -120,14 +189,22 @@ pub fn load(gpa: std.mem.Allocator) !Table {
+             if (v > max_lit) max_lit = v;
+         }
+         const radius: i32 = @intCast(@min(@divTrunc(max_lit, 2), 18));
+-        light[i] = .{
++        light[id] = .{
+             .r = @intCast(std.math.clamp(t.int(i, "Red"), 0, 255)),
+             .g = @intCast(std.math.clamp(t.int(i, "Green"), 0, 255)),
+             .b = @intCast(std.math.clamp(t.int(i, "Blue"), 0, 255)),
+             .radius = radius,
+         };
+     }
+-    return .{ .cel = cel, .coll = coll, .light = light, .operate = operate, .allocator = gpa };
++    return .{
++        .cel = cel,
++        .coll = coll,
++        .light = light,
++        .operate = operate,
++        .init = init,
++        .waypoint = waypoint,
++        .allocator = gpa,
++    };
+ }
+
+ const testing = std.testing;
+@@ -139,6 +216,9 @@ test "objects table maps shrine/stone ids to automap cels" {
+     try testing.expectEqual(@as(i32, 310), tbl.lookup(2));
+     try testing.expectEqual(@as(i32, 314), tbl.lookup(17));
+     try testing.expectEqual(@as(i32, 313), tbl.lookup(30));
++    try testing.expect(tbl.isPermanentPortal(60));
++    try testing.expectEqual(@as(?i32, 60), tbl.permanentPortalClassId());
++    try testing.expect(!tbl.isPermanentPortal(17));
+     // A non-marker object (id 0 = well/none) -> -1.
+     try testing.expectEqual(@as(i32, -1), tbl.lookup(0));
+     // Count objects that carry a marker — should be the 64 we saw in objects.txt.
+diff --git a/packages/drlg/src/tables.zig b/packages/drlg/src/tables.zig
+index a18d62f..52d0217 100644
+--- a/packages/drlg/src/tables.zig
++++ b/packages/drlg/src/tables.zig
+@@ -13,6 +13,19 @@ pub const DrlgType = enum(u8) {
+     _,
+ };
+
++/// Optional runtime table overrides. A null entry keeps libd2's embedded
++/// vanilla table, so callers can provide only the files exposed by an active
++/// mod. The byte slices must outlive the returned Tables because txt.Table
++/// stores views into their source.
++pub const Sources = struct {
++    levels: ?[]const u8 = null,
++    lvl_prest: ?[]const u8 = null,
++    lvl_types: ?[]const u8 = null,
++    lvl_maze: ?[]const u8 = null,
++    lvl_sub: ?[]const u8 = null,
++    lvl_warp: ?[]const u8 = null,
++};
++
+ pub const Tables = struct {
+     levels: txt.Table,
+     lvl_prest: txt.Table,
+@@ -22,13 +35,23 @@ pub const Tables = struct {
+     lvl_warp: txt.Table,
+
+     pub fn load(gpa: std.mem.Allocator) !Tables {
++        return loadFrom(gpa, .{});
++    }
++
++    pub fn loadFrom(gpa: std.mem.Allocator, sources: Sources) !Tables {
+         return .{
+-            .levels = try txt.Table.parse(gpa, d2data.file("Levels")),
+-            .lvl_prest = try txt.Table.parse(gpa, d2data.file("LvlPrest")),
+-            .lvl_types = try txt.Table.parse(gpa, d2data.file("LvlTypes")),
+-            .lvl_maze = try txt.Table.parse(gpa, d2data.file("LvlMaze")),
+-            .lvl_sub = try txt.Table.parse(gpa, d2data.file("LvlSub")),
+-            .lvl_warp = try txt.Table.parse(gpa, d2data.file("LvlWarp")),
++            .levels = try txt.Table.parse(
++                gpa, sources.levels orelse d2data.file("Levels")),
++            .lvl_prest = try txt.Table.parse(
++                gpa, sources.lvl_prest orelse d2data.file("LvlPrest")),
++            .lvl_types = try txt.Table.parse(
++                gpa, sources.lvl_types orelse d2data.file("LvlTypes")),
++            .lvl_maze = try txt.Table.parse(
++                gpa, sources.lvl_maze orelse d2data.file("LvlMaze")),
++            .lvl_sub = try txt.Table.parse(
++                gpa, sources.lvl_sub orelse d2data.file("LvlSub")),
++            .lvl_warp = try txt.Table.parse(
++                gpa, sources.lvl_warp orelse d2data.file("LvlWarp")),
+         };
+     }
+
+@@ -56,6 +79,8 @@ pub const Tables = struct {
+         offset_x: i64,
+         offset_y: i64,
+         depend: i64, // level this one is positioned relative to
++        /// Waypoint destination index (0..38); 255 means this level has none.
++        waypoint: i64,
+         /// Area monster level per difficulty [normal, nightmare, hell] — the EXPANSION
+         /// columns MonLvl1Ex/2Ex/3Ex (TXT_Levels_GetMonLvlForDifficulty reads these for
+         /// LoD; classic uses MonLvl1/2/3). Drives mlvl-scaled rolls (chest-tier bucket).
+@@ -95,6 +120,7 @@ pub const Tables = struct {
+             .offset_x = t.int(row, "OffsetX"),
+             .offset_y = t.int(row, "OffsetY"),
+             .depend = t.int(row, "Depend"),
++            .waypoint = t.int(row, "Waypoint"),
+             .monlvl = .{ t.int(row, "MonLvl1Ex"), t.int(row, "MonLvl2Ex"), t.int(row, "MonLvl3Ex") },
+         };
+     }
+diff --git a/packages/render/src/lib.zig b/packages/render/src/lib.zig
+index 0672610..72392f5 100644
+--- a/packages/render/src/lib.zig
++++ b/packages/render/src/lib.zig
+@@ -13,9 +13,140 @@
+
+ const std = @import("std");
+ const d2drlg = @import("d2-drlg");
++const d2formats = @import("d2-formats");
+
+ // The moved sprite-lookup + blob accessor files (local to this package).
+ const automap_mod = @import("automap.zig");
++const automap_blob = @import("automap_blob.zig");
++const automap_data = @import("automap_data.zig");
++
++pub const AutomapSpriteFrameInfo = struct {
++    width: u32,
++    height: u32,
++    offset_x: i32,
++    offset_y: i32,
++    opaque_pixels: u32,
++};
++
++pub const AutomapSpriteStats = struct {
++    frames: []AutomapSpriteFrameInfo,
++    allocator: std.mem.Allocator,
++
++    pub fn deinit(self: *AutomapSpriteStats) void {
++        self.allocator.free(self.frames);
++    }
++};
++
++pub const AutomapSpriteAtlas = struct {
++    palettes: []u8,
++    indices: []u8,
++    frame_count: u32,
++    frame_width: u16,
++    frame_height: u16,
++    columns: u16,
++    rows: u16,
++    atlas_width: u32,
++    atlas_height: u32,
++    allocator: std.mem.Allocator,
++
++    pub fn deinit(self: *AutomapSpriteAtlas) void {
++        self.allocator.free(self.palettes);
++        self.allocator.free(self.indices);
++    }
++};
++
++/// Decodes MaxiMap once into one fixed palette-index atlas. Keeping palette
++/// indices makes the persisted package compact while retaining D2's exact
++/// per-act colours; the plugin expands the five palettes during GPU setup.
++pub fn loadAutomapSpriteAtlas(alloc: std.mem.Allocator) !AutomapSpriteAtlas {
++    const frame_width: u16 = 16;
++    const frame_height: u16 = 32;
++    const columns: u16 = 64;
++    const rows: u16 = 24;
++    const atlas_width: u32 = frame_width * columns;
++    const atlas_height: u32 = frame_height * rows;
++
++    var blob = try automap_blob.parse(alloc, automap_data.bytes);
++    defer blob.deinit();
++    if (blob.palettes.len != 5) return error.InvalidAutomapPaletteCount;
++    const bytes = blob.layer("MaxiMap") orelse return error.MissingAutomapLayer;
++    var sheet = try d2formats.dc6.parse(alloc, bytes);
++    defer sheet.deinit();
++    if (sheet.frames.len == 0 or sheet.frames.len > @as(usize, columns) * rows) {
++        return error.InvalidAutomapFrameCount;
++    }
++
++    const palettes = try alloc.alloc(u8, 5 * automap_blob.PALETTE_LEN);
++    errdefer alloc.free(palettes);
++    for (blob.palettes, 0..) |palette, act| {
++        if (palette.len != automap_blob.PALETTE_LEN) {
++            return error.InvalidAutomapPalette;
++        }
++        @memcpy(
++            palettes[act * automap_blob.PALETTE_LEN ..][0..automap_blob.PALETTE_LEN],
++            palette,
++        );
++    }
++
++    const indices = try alloc.alloc(u8, @as(usize, atlas_width) * atlas_height);
++    errdefer alloc.free(indices);
++    @memset(indices, 0);
++    for (sheet.frames, 0..) |frame, frame_index| {
++        if (frame.width != frame_width or frame.height != frame_height or frame.offset_x != 0 or frame.offset_y != 0 or frame.indices.len != @as(usize, frame_width) * frame_height) {
++            return error.UnsupportedAutomapFrameLayout;
++        }
++        const cell_x = (frame_index % columns) * frame_width;
++        const cell_y = (frame_index / columns) * frame_height;
++        var y: usize = 0;
++        while (y < frame_height) : (y += 1) {
++            const destination = (cell_y + y) * atlas_width + cell_x;
++            const source = y * frame_width;
++            @memcpy(
++                indices[destination..][0..frame_width],
++                frame.indices[source..][0..frame_width],
++            );
++        }
++    }
++    return .{
++        .palettes = palettes,
++        .indices = indices,
++        .frame_count = @intCast(sheet.frames.len),
++        .frame_width = frame_width,
++        .frame_height = frame_height,
++        .columns = columns,
++        .rows = rows,
++        .atlas_width = atlas_width,
++        .atlas_height = atlas_height,
++        .allocator = alloc,
++    };
++}
++
++/// Returns bounded MaxiMap frame metadata without exposing the embedded blob.
++/// This is used by the external MapSense packager to choose a texture layout;
++/// gameplay atlas generation remains independent from sprite packaging.
++pub fn loadAutomapSpriteStats(alloc: std.mem.Allocator) !AutomapSpriteStats {
++    var blob = try automap_blob.parse(alloc, automap_data.bytes);
++    defer blob.deinit();
++    const bytes = blob.layer("MaxiMap") orelse return error.MissingAutomapLayer;
++    var sheet = try d2formats.dc6.parse(alloc, bytes);
++    defer sheet.deinit();
++    const frames = try alloc.alloc(AutomapSpriteFrameInfo, sheet.frames.len);
++    errdefer alloc.free(frames);
++    for (sheet.frames, 0..) |frame, index| {
++        var opaque_count: u32 = 0;
++        for (frame.indices) |pixel| {
++            if (pixel != 0) opaque_count += 1;
++        }
++        frames[index] = .{
++            .width = frame.width,
++            .height = frame.height,
++            .offset_x = frame.offset_x,
++            .offset_y = frame.offset_y,
++            .opaque_pixels = opaque_count,
++        };
++    }
++    return .{ .frames = frames, .allocator = alloc };
++}
+
+ // Public generation API consumed here.
+ const Ctx = d2drlg.Ctx;
+@@ -48,10 +179,16 @@ const OutdoorShrine = d2drlg.OutdoorShrine;
+
+ // ── Automap (faithful sprite-based render data) ────────────────────────────────
+
+-/// One automap cell: a DC6 frame to blit at a world TILE position. `wall` tiles
+-/// get the engine's +extra vertical offset. The web/native renderer projects
+-/// (tx,ty) isometrically and blits `frame` from the act's automap DC6 layer.
+-pub const AutomapCell = struct { frame: i32, tx: i32, ty: i32, wall: bool };
++/// One automap cell: a DC6 frame to blit at a world TILE position. `wall_tree`
++/// preserves whether D2R emitted it through the room's wall tile array, while
++/// `raised` independently preserves the native orientation >= 0x10 y offset.
++pub const AutomapCell = struct {
++    frame: i32,
++    tx: i32,
++    ty: i32,
++    wall_tree: bool,
++    raised: bool,
++};
+
+ pub const LevelAutomap = struct {
+     level_id: i32,
+@@ -141,7 +278,13 @@ fn appendTownReveal(
+             const sum = py / 4.0;
+             const tx: i32 = @intFromFloat(@round((sum + diff) / 2.0));
+             const ty: i32 = @intFromFloat(@round((sum - diff) / 2.0));
+-            try out.append(alloc, .{ .frame = @intCast(cell), .tx = tx, .ty = ty, .wall = false });
++            try out.append(alloc, .{
++                .frame = @intCast(cell),
++                .tx = tx,
++                .ty = ty,
++                .wall_tree = false,
++                .raised = false,
++            });
+         }
+     }
+ }
+@@ -151,7 +294,6 @@ fn actAutomapLayer(act_no: i32) u8 {
+     return 0;
+ }
+
+-
+ /// Generate an act and emit the faithful automap cells for every level: per placed
+ /// floor/wall tile, look up automap.txt on (LevelType, DT1 orientation, index,
+ /// subindex) → a DC6 frame, positioned at the tile's world coords. Mirrors the
+@@ -163,13 +305,40 @@ pub fn generateActAutomap(
+     act_no: i32,
+     seed: u32,
+     diff: Difficulty,
++) !ActAutomapResult {
++    return generateActAutomapImpl(ctx, out_alloc, act_no, seed, diff, true);
++}
++
++/// Generate only the immutable automap geometry for an act. Unlike
++/// `generateActAutomap`, this path never runs object population and never emits
++/// preset objects, shrines, chests, wells, monsters, collision grids or routes.
++/// Outdoor floor rooms are materialized only far enough to recover the seeded
++/// DT1 identities required by AutoMap.txt.
++pub fn generateActAutomapGeometry(
++    ctx: *Ctx,
++    out_alloc: std.mem.Allocator,
++    act_no: i32,
++    seed: u32,
++    diff: Difficulty,
++) !ActAutomapResult {
++    return generateActAutomapImpl(ctx, out_alloc, act_no, seed, diff, false);
++}
++
++fn generateActAutomapImpl(
++    ctx: *Ctx,
++    out_alloc: std.mem.Allocator,
++    act_no: i32,
++    seed: u32,
++    diff: Difficulty,
++    comptime include_objects: bool,
+ ) !ActAutomapResult {
+     // Seeded object population (self-contained: own pool/act build). Its populate-fn
+     // spawns (preset==false) are the real shrines/wells that the automap must show;
+     // preset==true entries (DS1 presets + outdoor LvlSub shrines) are already handled
+     // below, so we skip them here to avoid double-emitting.
+-    var objres = try generateActObjects(ctx, out_alloc, act_no, seed, diff);
+-    defer objres.deinit(out_alloc);
++    var objres: ?d2drlg.ActObjectsResult = null;
++    if (include_objects) objres = try generateActObjects(ctx, out_alloc, act_no, seed, diff);
++    defer if (objres) |*result| result.deinit(out_alloc);
+
+     var pool = fog.PoolManager.init(ctx.gpa);
+     defer pool.deinit();
+@@ -212,8 +381,9 @@ pub fn generateActAutomap(
+
+     var amt = try automap_mod.AutomapTable.load(ctx.gpa);
+     defer amt.deinit();
+-    var objtbl = try objects_mod.load(ctx.gpa);
+-    defer objtbl.deinit();
++    var objtbl: ?objects_mod.Table = null;
++    if (include_objects) objtbl = try objects_mod.load(ctx.gpa);
++    defer if (objtbl) |*table| table.deinit();
+     const layer = actAutomapLayer(act_no);
+
+     var out: std.ArrayListUnmanaged(LevelAutomap) = .empty;
+@@ -246,9 +416,129 @@ pub fn generateActAutomap(
+             continue;
+         }
+
++        // Geometry-only outdoor rooms do not carry a DS1 preset map. Recover
++        // their seeded floor/wall identities from the level's DT1 set without
++        // building collision grids or populating gameplay units.
++        var outdoor_dts: std.ArrayListUnmanaged(dt1.Dt1) = .empty;
++        defer {
++            for (outdoor_dts.items) |*d| d.deinit();
++            outdoor_dts.deinit(out_alloc);
++        }
++        var outdoor_dt_bits: std.ArrayListUnmanaged(u8) = .empty;
++        defer outdoor_dt_bits.deinit(out_alloc);
++        if (!include_objects) {
++            var files: [32][]const u8 = undefined;
++            var file_cols: [32]u8 = undefined;
++            const file_count = ctx.act.typeFilesCols(
++                tlv.lvl_type,
++                &files,
++                &file_cols,
++            );
++            for (files[0..file_count], 0..) |path, index| {
++                const bytes = dt1Bytes(ctx.gpa, path) orelse continue;
++                if (dt1.parse(out_alloc, bytes)) |parsed| {
++                    try outdoor_dts.append(out_alloc, parsed);
++                    try outdoor_dt_bits.append(out_alloc, file_cols[index]);
++                } else |_| {}
++            }
++            // These three libraries are appended to every native room tile
++            // library independently of pRoomEx.nDT1Mask.
++            for (AutomapGlobalDt1Paths) |path| {
++                const bytes = dt1Bytes(ctx.gpa, path) orelse continue;
++                if (dt1.parse(out_alloc, bytes)) |parsed| {
++                    try outdoor_dts.append(out_alloc, parsed);
++                    try outdoor_dt_bits.append(out_alloc, 0xff);
++                } else |_| {}
++            }
++        }
++
++        var room_dts_buf: [35]dt1.Dt1 = undefined;
++        var near_tiles: materialize.NearTileIndex = .{};
++        defer near_tiles.deinit(out_alloc);
++        const OutdoorBlankCell = struct {
++            cell_index: usize,
++            tx: i32,
++            ty: i32,
++            owner_x: i32,
++            owner_y: i32,
++        };
++        var outdoor_blank_cells: std.ArrayListUnmanaged(OutdoorBlankCell) = .empty;
++        defer outdoor_blank_cells.deinit(out_alloc);
++
+         var pr: ?*abi.D2RoomExStrc = pLevel.pRoomExFirst;
+         while (pr) |p| : (pr = p.pRoomExNext) {
+-            const pmap = roomPMap(p) orelse continue; // DS1 rooms (preset/maze/border)
++            const pmap = roomPMap(p) orelse {
++                if (!include_objects and p.eRoomExFlags.noLos and outdoor_dts.items.len != 0) {
++                    const sub_type, const sub_theme, const sub_picked = sub: {
++                        if (p.pRoomExData) |room_data| {
++                            const maze: *abi.D2DrlgRoomExDataMazeStrc =
++                                @ptrCast(@alignCast(room_data));
++                            break :sub .{
++                                maze.nSubType,
++                                maze.nSubTheme,
++                                maze.nSubThemePicked,
++                            };
++                        }
++                        break :sub .{
++                            @as(i32, -1),
++                            @as(i32, 0),
++                            @as(i32, 0),
++                        };
++                    };
++                    const room_dts = maskAutomapRoomDts(
++                        outdoor_dts.items,
++                        outdoor_dt_bits.items,
++                        @bitCast(p.nDT1Mask),
++                        &room_dts_buf,
++                    );
++                    const placed = materialize.outdoorAutomapRoomTiles(
++                        out_alloc,
++                        room_dts,
++                        p.sCoords.WorldSize.x,
++                        p.sCoords.WorldSize.y,
++                        level_type,
++                        lid,
++                        p.nSeed,
++                        materialize.outdoorOverlayFor(pLevel, p),
++                        sub_type,
++                        sub_theme,
++                        sub_picked,
++                        @intCast(@as(u8, p.eRoomExFlags.waypoint)),
++                        @intCast(@as(u8, p.eRoomExFlags.shrineRows)),
++                        .{
++                            .index = &near_tiles,
++                            .alloc = out_alloc,
++                            .wx = p.sCoords.WorldPosition.x,
++                            .wy = p.sCoords.WorldPosition.y,
++                            .w = p.sCoords.WorldSize.x,
++                            .h = p.sCoords.WorldSize.y,
++                        },
++                    ) catch continue;
++                    defer out_alloc.free(placed);
++                    for (placed) |tile| {
++                        const frame = amt.lookup(level_type, tile.orient, tile.main, tile.sub, 0);
++                        if (frame < 0) continue;
++                        const cell_index = cells.items.len;
++                        try cells.append(out_alloc, .{
++                            .frame = frame,
++                            .tx = p.sCoords.WorldPosition.x + tile.pos_x,
++                            .ty = p.sCoords.WorldPosition.y + tile.pos_y,
++                            .wall_tree = tile.pass != 0,
++                            .raised = tile.orient > 0xf,
++                        });
++                        if (tile.pass == 0 and tile.main == 30 and tile.sub == 0) {
++                            try outdoor_blank_cells.append(out_alloc, .{
++                                .cell_index = cell_index,
++                                .tx = p.sCoords.WorldPosition.x + tile.pos_x,
++                                .ty = p.sCoords.WorldPosition.y + tile.pos_y,
++                                .owner_x = p.sCoords.WorldPosition.x,
++                                .owner_y = p.sCoords.WorldPosition.y,
++                            });
++                        }
++                    }
++                }
++                continue;
++            }; // DS1 rooms (preset/maze/border)
+             var d = preset.unpackDs1(out_alloc, preset.presetDs1Path(pmap) orelse continue) orelse continue;
+             defer d.deinit();
+             const win = roomWindow(p, pmap);
+@@ -276,7 +566,13 @@ pub fn generateActAutomap(
+                         const main: i32 = @intCast((raw >> 20) & 0x3f);
+                         const sub: i32 = @intCast((raw >> 8) & 0xff);
+                         const frame = amt.lookup(level_type, 0, main, sub, 0);
+-                        if (frame >= 0) try cells.append(out_alloc, .{ .frame = frame, .tx = tx, .ty = ty, .wall = false });
++                        if (frame >= 0) try cells.append(out_alloc, .{
++                            .frame = frame,
++                            .tx = tx,
++                            .ty = ty,
++                            .wall_tree = false,
++                            .raised = false,
++                        });
+                     }
+                     // Wall tiles: orientation from the paired orient cell's prop1.
+                     for (d.wall_layers) |wl| {
+@@ -287,79 +583,158 @@ pub fn generateActAutomap(
+                         const main: i32 = @intCast((raw >> 20) & 0x3f);
+                         const sub: i32 = @intCast((raw >> 8) & 0xff);
+                         const frame = amt.lookup(level_type, orient, main, sub, 0);
+-                        if (frame >= 0) try cells.append(out_alloc, .{ .frame = frame, .tx = tx, .ty = ty, .wall = orient > 0xf });
++                        if (frame >= 0) try cells.append(out_alloc, .{
++                            .frame = frame,
++                            .tx = tx,
++                            .ty = ty,
++                            .wall_tree = true,
++                            .raised = orient > 0xf,
++                        });
++                    }
++                }
++            }
++            if (include_objects) {
++                // Object/shrine markers (Charon MapReveal DrawPresets): DS1 preset objects
++                // (kind==2) carry an objects.txt row id -> AutoMap cel (Shrine 310, waypoint
++                // stones 314, ...). The DS1 is the shared LEVEL file windowed per room, so
++                // emit each object only for the room whose window contains it (same window
++                // bounds as the tile loops) to avoid duplicating it across rooms.
++                for (d.objects) |o| {
++                    if (o.kind != 2) continue;
++                    // The DS1 object id is NOT the objects.txt row — the engine resolves
++                    // it via the preset-object table (same map buildPresetUnits uses).
++                    // Looking up objects.txt with the raw id hits random rows -> phantom
++                    // shrines/wells/pillars. classId<0 = no object placed here.
++                    const class_id = presettables.objectClassId(d.act_id, o.id);
++                    if (class_id < 0) continue;
++                    const cel = objtbl.?.lookup(class_id);
++                    if (cel < 0) continue;
++                    // Skip the "décor flood" cels: 310 is shared by 93 shrine/dummy/caged
++                    // object classes and 309 by 14 well classes — these are decorative
++                    // preset objects (e.g. Baal-chamber crystals) that the VANILLA automap
++                    // does not persistently mark (only a maphack draws every preset). Keep
++                    // the meaningful low-share cels: waypoints (307), cairn stones (314),
++                    // inifuss (313), seals (306), chests (318), tomes (427), quest objects.
++                    if (cel == 310 or cel == 309) continue;
++                    const otx = @divFloor(o.x, 5); // subtiles -> DS1 tile
++                    const oty = @divFloor(o.y, 5);
++                    if (otx < win.off_x or otx > win.off_x + win.size_x) continue;
++                    if (oty < win.off_y or oty > win.off_y + win.size_y) continue;
++                    const mtx = base_x + (otx - win.off_x);
++                    const mty = base_y + (oty - win.off_y);
++                    if (mtx >= 0 and mty >= 0) {
++                        const okey = (@as(u64, @intCast(mtx & 0xffffff)) << 40) | (@as(u64, @intCast(mty & 0xffffff)) << 16) | @as(u64, @intCast(cel & 0xffff));
++                        if ((try obj_seen.getOrPut(out_alloc, okey)).found_existing) continue;
+                     }
++                    try cells.append(out_alloc, .{
++                        .frame = cel,
++                        .tx = mtx,
++                        .ty = mty,
++                        .wall_tree = false,
++                        .raised = false,
++                    });
+                 }
+             }
+-            // Object/shrine markers (Charon MapReveal DrawPresets): DS1 preset objects
+-            // (kind==2) carry an objects.txt row id -> AutoMap cel (Shrine 310, waypoint
+-            // stones 314, ...). The DS1 is the shared LEVEL file windowed per room, so
+-            // emit each object only for the room whose window contains it (same window
+-            // bounds as the tile loops) to avoid duplicating it across rooms.
+-            for (d.objects) |o| {
+-                if (o.kind != 2) continue;
+-                // The DS1 object id is NOT the objects.txt row — the engine resolves
+-                // it via the preset-object table (same map buildPresetUnits uses).
+-                // Looking up objects.txt with the raw id hits random rows -> phantom
+-                // shrines/wells/pillars. classId<0 = no object placed here.
+-                const class_id = presettables.objectClassId(d.act_id, o.id);
+-                if (class_id < 0) continue;
+-                const cel = objtbl.lookup(class_id);
++        }
++        if (include_objects) {
++            // Seeded outdoor shrines/wells (SpawnAct12Shrines -> LvlSub Type-5 substitution).
++            // These are REAL spawned objects, not DS1-preset décor, so emit their automap
++            // cel unconditionally (the 310/309 skip above only suppresses preset-décor flood).
++            var shrines: std.ArrayListUnmanaged(OutdoorShrine) = .empty;
++            defer shrines.deinit(out_alloc);
++            try appendOutdoorShrines(pLevel, &shrines, out_alloc);
++            for (shrines.items) |sh| {
++                const cel = objtbl.?.lookup(sh.class_id);
+                 if (cel < 0) continue;
+-                // Skip the "décor flood" cels: 310 is shared by 93 shrine/dummy/caged
+-                // object classes and 309 by 14 well classes — these are decorative
+-                // preset objects (e.g. Baal-chamber crystals) that the VANILLA automap
+-                // does not persistently mark (only a maphack draws every preset). Keep
+-                // the meaningful low-share cels: waypoints (307), cairn stones (314),
+-                // inifuss (313), seals (306), chests (318), tomes (427), quest objects.
+-                if (cel == 310 or cel == 309) continue;
+-                const otx = @divFloor(o.x, 5); // subtiles -> DS1 tile
+-                const oty = @divFloor(o.y, 5);
+-                if (otx < win.off_x or otx > win.off_x + win.size_x) continue;
+-                if (oty < win.off_y or oty > win.off_y + win.size_y) continue;
+-                const mtx = base_x + (otx - win.off_x);
+-                const mty = base_y + (oty - win.off_y);
+-                if (mtx >= 0 and mty >= 0) {
+-                    const okey = (@as(u64, @intCast(mtx & 0xffffff)) << 40) | (@as(u64, @intCast(mty & 0xffffff)) << 16) | @as(u64, @intCast(cel & 0xffff));
+-                    if ((try obj_seen.getOrPut(out_alloc, okey)).found_existing) continue;
++                try cells.append(out_alloc, .{
++                    .frame = cel,
++                    .tx = @divFloor(sh.x, 5),
++                    .ty = @divFloor(sh.y, 5),
++                    .wall_tree = false,
++                    .raised = false,
++                });
++            }
++            // Seeded populate-fn spawns (OBJECT_PopulateRoomObjects → Fn3/Fn6/Fn7 chest &
++            // quest scatter, …). preset==true entries (DS1 presets + outdoor LvlSub shrines)
++            // are already emitted above. placeholder_pos==true spawns (Fn2 shrine, Fn8 well:
++            // spawn-point placement unmodeled) are SKIPPED here — emitting them at their
++            // room-center placeholder would fake positions and, because the engine's
++            // per-level spawn capacity throttle (OBJECTRGN_CheckPointsCapacity) is not
++            // modeled, flood the map (~1 per eligible room). We only mark spawns whose
++            // position is faithfully modeled AND whose objects.txt AutoMap cel is set
++            // (chest 318 / gidbinn 315 / tome 427 / …). Dedup by tile position + cel.
++            for (objres.?.levels) |lo| {
++                if (lo.level_id != lid) continue;
++                for (lo.objs) |o| {
++                    if (o.preset or o.placeholder_pos) continue;
++                    const cel = objtbl.?.lookup(o.class_id);
++                    if (cel <= 0) continue;
++                    const mtx = @divFloor(o.x, 5);
++                    const mty = @divFloor(o.y, 5);
++                    if (mtx >= 0 and mty >= 0) {
++                        const okey = (@as(u64, @intCast(mtx & 0xffffff)) << 40) | (@as(u64, @intCast(mty & 0xffffff)) << 16) | @as(u64, @intCast(cel & 0xffff));
++                        if ((try obj_seen.getOrPut(out_alloc, okey)).found_existing) continue;
++                    }
++                    try cells.append(out_alloc, .{
++                        .frame = cel,
++                        .tx = mtx,
++                        .ty = mty,
++                        .wall_tree = false,
++                        .raised = false,
++                    });
+                 }
+-                try cells.append(out_alloc, .{ .frame = cel, .tx = mtx, .ty = mty, .wall = false });
+             }
+         }
+-        // Seeded outdoor shrines/wells (SpawnAct12Shrines -> LvlSub Type-5 substitution).
+-        // These are REAL spawned objects, not DS1-preset décor, so emit their automap
+-        // cel unconditionally (the 310/309 skip above only suppresses preset-décor flood).
+-        var shrines: std.ArrayListUnmanaged(OutdoorShrine) = .empty;
+-        defer shrines.deinit(out_alloc);
+-        try appendOutdoorShrines(pLevel, &shrines, out_alloc);
+-        for (shrines.items) |sh| {
+-            const cel = objtbl.lookup(sh.class_id);
+-            if (cel < 0) continue;
+-            try cells.append(out_alloc, .{ .frame = cel, .tx = @divFloor(sh.x, 5), .ty = @divFloor(sh.y, 5), .wall = false });
++        if (!include_objects) {
++            // Later rooms can re-type an earlier room's Blank seam tile in
++            // place. Apply those recorded native owner mutations only after
++            // the complete level has been walked.
++            for (outdoor_blank_cells.items) |candidate| {
++                if (candidate.cell_index >= cells.items.len) continue;
++                const replacement = near_tiles.blankReplacement(
++                    candidate.tx,
++                    candidate.ty,
++                ) orelse continue;
++                if (replacement.ox != candidate.owner_x or replacement.oy != candidate.owner_y) continue;
++                const tile = replacement.tile orelse materialize.zeroCollisionTile();
++                const frame = amt.lookup(
++                    level_type,
++                    tile.orientation,
++                    tile.main,
++                    tile.sub,
++                    0,
++                );
++                if (frame < 0) continue;
++                cells.items[candidate.cell_index].frame = frame;
++                cells.items[candidate.cell_index].raised =
++                    tile.orientation > 0xf;
++            }
+         }
+-        // Seeded populate-fn spawns (OBJECT_PopulateRoomObjects → Fn3/Fn6/Fn7 chest &
+-        // quest scatter, …). preset==true entries (DS1 presets + outdoor LvlSub shrines)
+-        // are already emitted above. placeholder_pos==true spawns (Fn2 shrine, Fn8 well:
+-        // spawn-point placement unmodeled) are SKIPPED here — emitting them at their
+-        // room-center placeholder would fake positions and, because the engine's
+-        // per-level spawn capacity throttle (OBJECTRGN_CheckPointsCapacity) is not
+-        // modeled, flood the map (~1 per eligible room). We only mark spawns whose
+-        // position is faithfully modeled AND whose objects.txt AutoMap cel is set
+-        // (chest 318 / gidbinn 315 / tome 427 / …). Dedup by tile position + cel.
+-        for (objres.levels) |lo| {
+-            if (lo.level_id != lid) continue;
+-            for (lo.objs) |o| {
+-                if (o.preset or o.placeholder_pos) continue;
+-                const cel = objtbl.lookup(o.class_id);
+-                if (cel <= 0) continue;
+-                const mtx = @divFloor(o.x, 5);
+-                const mty = @divFloor(o.y, 5);
+-                if (mtx >= 0 and mty >= 0) {
+-                    const okey = (@as(u64, @intCast(mtx & 0xffffff)) << 40) | (@as(u64, @intCast(mty & 0xffffff)) << 16) | @as(u64, @intCast(cel & 0xffff));
+-                    if ((try obj_seen.getOrPut(out_alloc, okey)).found_existing) continue;
+-                }
+-                try cells.append(out_alloc, .{ .frame = cel, .tx = mtx, .ty = mty, .wall = false });
++        if (!include_objects and cells.items.len != 0) {
++            const GeometryCellKey = struct {
++                frame: i32,
++                tx: i32,
++                ty: i32,
++                wall_tree: bool,
++                raised: bool,
++            };
++            var seen: std.AutoHashMapUnmanaged(GeometryCellKey, void) = .empty;
++            defer seen.deinit(out_alloc);
++            var unique: std.ArrayListUnmanaged(AutomapCell) = .empty;
++            errdefer unique.deinit(out_alloc);
++            for (cells.items) |cell| {
++                const key = GeometryCellKey{
++                    .frame = cell.frame,
++                    .tx = cell.tx,
++                    .ty = cell.ty,
++                    .wall_tree = cell.wall_tree,
++                    .raised = cell.raised,
++                };
++                if ((try seen.getOrPut(out_alloc, key)).found_existing) continue;
++                try unique.append(out_alloc, cell);
+             }
++            cells.deinit(out_alloc);
++            cells = unique;
+         }
+         try out.append(out_alloc, .{ .level_id = lid, .layer = layer, .cells = try cells.toOwnedSlice(out_alloc) });
+     }
+@@ -500,6 +875,30 @@ fn dt1Bytes(a: std.mem.Allocator, fpath: []const u8) ?[]const u8 {
+     return dt1pixIndex(a).get(fpath);
+ }
+
++const AutomapGlobalDt1Paths = [_][]const u8{
++    "act1/outdoors/blank.dt1",
++    "act1/barracks/inviswal.dt1",
++    "act1/barracks/warp.dt1",
++};
++
++/// Build the exact room-scoped DT1 view used by D2R: the LvlTypes File
++/// columns selected by pRoomEx.nDT1Mask followed by the three global DT1s.
++fn maskAutomapRoomDts(
++    dts: []const dt1.Dt1,
++    bits: []const u8,
++    mask: u32,
++    buffer: []dt1.Dt1,
++) []const dt1.Dt1 {
++    var count: usize = 0;
++    for (dts, bits) |entry, bit| {
++        if (bit == 0xff or (bit < 32 and (mask >> @intCast(bit)) & 1 != 0)) {
++            buffer[count] = entry;
++            count += 1;
++        }
++    }
++    return buffer[0..count];
++}
++
+ /// The unique DT1 file rel paths every level of `act_no` references (LvlTypes File
+ /// columns; seed-independent). The browser fetches these, registers them via
+ /// dt1RegisterFile, then calls generateActTilesAll. Caller owns the outer slice

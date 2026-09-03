@@ -76,6 +76,24 @@ std::uint32_t ReadU32(
         | static_cast<std::uint32_t>(bytes[offset + 3]) << 24;
 }
 
+void VerifySpriteLayout(
+        const std::filesystem::path& path,
+        std::uint16_t expectedFrameWidth,
+        std::uint32_t expectedWidth,
+        std::uint32_t expectedHeight,
+        std::uint32_t expectedFrameCount) {
+    const auto bytes = ReadBinaryFile(path);
+    REQUIRE(bytes.size() >= 40);
+    REQUIRE(std::memcmp(bytes.data(), "SPa1", 4) == 0
+        || std::memcmp(bytes.data(), "SpA1", 4) == 0);
+    REQUIRE(ReadU16(bytes, 6) == expectedFrameWidth);
+    REQUIRE(ReadU32(bytes, 8) == expectedWidth);
+    REQUIRE(ReadU32(bytes, 12) == expectedHeight);
+    REQUIRE(ReadU32(bytes, 20) == expectedFrameCount);
+    REQUIRE(bytes.size()
+        == 40ULL + 4ULL * expectedWidth * expectedHeight);
+}
+
 std::array<std::uint64_t, 4> ReadFrameBrightness(
         const std::filesystem::path& path) {
     const auto bytes = ReadBinaryFile(path);
@@ -140,6 +158,7 @@ exclude_item_codes = ["wms"]
 [button]
 x = 7
 y = 900
+tooltip = 'Deposit "Currency" \ Now'
 )toml";
     REQUIRE(ParseToml(valid, parsed, error));
     REQUIRE(parsed.enabled);
@@ -147,6 +166,7 @@ y = 900
     REQUIRE(parsed.itemDelayMs == 250);
     REQUIRE(parsed.button.x == 7);
     REQUIRE(parsed.button.y == 900);
+    REQUIRE(parsed.button.tooltip == "Deposit \"Currency\" \\ Now");
     REQUIRE(parsed.includeItemCodes.size() == 2);
     REQUIRE(parsed.excludeItemCodes.size() == 1);
     REQUIRE(MatchesItemCodeFilter(parsed, *rune));
@@ -161,11 +181,24 @@ y = 900
     REQUIRE(!ParseToml("[deposit]\nunknown = true\n", parsed, error));
     REQUIRE(!ParseToml("[deposit]\n[button]\nx = 32768\n", parsed, error));
     REQUIRE(!ParseToml("[deposit]\n[button]\nunknown = 1\n", parsed, error));
+    REQUIRE(!ParseToml("[deposit]\n[button]\ntooltip = \"\"\n", parsed, error));
+    const auto oversizedTooltip = std::string{"[deposit]\n[button]\ntooltip = \""}
+        + std::string(MaximumButtonTooltipBytes + 1, 'x') + "\"\n";
+    REQUIRE(!ParseToml(oversizedTooltip, parsed, error));
     REQUIRE(!ParseToml(
         "[deposit]\ninclude_item_codes = [\"r01\", \"r01\"]\n",
         parsed,
         error));
     REQUIRE(!ParseToml("enabled = true\n", parsed, error));
+
+    Config packaged{};
+    const auto packagedConfig =
+        ReadTextFile(BULK_CURRENCY_DEPOSIT_CONFIG_FILE);
+    REQUIRE(ParseToml(packagedConfig, packaged, error));
+    REQUIRE(packaged.enabled);
+    REQUIRE(!packaged.inventoryButtonEnabled);
+    REQUIRE(packaged.itemDelayMs == 100);
+    REQUIRE(packaged.button.tooltip == DefaultButtonTooltip);
 
     std::array<std::uint8_t, 0x56> itemData{};
     itemData[ItemDataInventoryPageOffset] = MainInventoryPage;
@@ -190,6 +223,13 @@ y = 900
     REQUIRE(layout.find("\"y\": 900") != std::string::npos);
     REQUIRE(layout.find("\"hoveredFrame\": 3") != std::string::npos);
     REQUIRE(layout.find("RuffnecKkBulkCurrencyDeposit") != std::string::npos);
+    REQUIRE(layout.find(
+        "\"tooltipString\": \"Deposit \\\"Currency\\\" \\\\ Now\"")
+        != std::string::npos);
+    REQUIRE(layout.find("@RuffnecKkBulkCurrencyDepositTooltip")
+        == std::string::npos);
+    REQUIRE(EscapeJsonString("line\n\"quoted\"\\path\x01")
+        == "line\\n\\\"quoted\\\"\\\\path\\u0001");
 
     REQUIRE(IsFreshRequest(120, 100, 20));
     REQUIRE(!IsFreshRequest(121, 100, 20));
@@ -256,6 +296,7 @@ y = 900
         != std::string::npos);
     REQUIRE(source.find(".displayName = \"Bulk Currency Deposit\"")
         != std::string::npos);
+    REQUIRE(source.find(".version = \"1.1.1\"") != std::string::npos);
     REQUIRE(source.find(".category = \"RuffnecKk Suite\"")
         != std::string::npos);
     REQUIRE(source.find("D2RL::Input::Key::D") != std::string::npos);
@@ -271,6 +312,18 @@ y = 900
     REQUIRE(source.find("DepositAction.exchange(") != std::string::npos);
     REQUIRE(source.find("D2RL::HasContext(context)") != std::string::npos);
     REQUIRE(source.find("DiagnosticsService->queryHookStatus")
+        != std::string::npos);
+    REQUIRE(source.find("IsSupportedBuild") == std::string::npos);
+    REQUIRE(source.find("only D2R builds") == std::string::npos);
+    REQUIRE(source.find("D2RL::GetBuildName") != std::string::npos);
+    REQUIRE(source.find("D2RL::GetBuildVersion") != std::string::npos);
+    REQUIRE(source.find("ButtonLocalizationVirtualPath") == std::string::npos);
+    REQUIRE(source.find("ButtonLocalizationResource") == std::string::npos);
+    REQUIRE(source.find("strings.json") == std::string::npos);
+    REQUIRE(source.find("65101") == std::string::npos);
+    REQUIRE(source.find("ValidateNativeFingerprint")
+        != std::string::npos);
+    REQUIRE(source.find("native fingerprint accepted")
         != std::string::npos);
     REQUIRE(source.find("WH_KEYBOARD_LL") == std::string::npos);
     REQUIRE(source.find("WH_MOUSE_LL") == std::string::npos);
@@ -306,6 +359,33 @@ y = 900
         == std::string_view::npos);
     REQUIRE(buttonCallback.find("ProcessNextItem")
         == std::string_view::npos);
+
+    const auto buttonServices = Slice(
+        source,
+        "bool QueryButtonServices()",
+        "bool LoadEmbeddedResource");
+    REQUIRE(buttonServices.find(
+        "if (!Settings.inventoryButtonEnabled) return true;")
+        == std::string_view::npos);
+    REQUIRE(buttonServices.find("D2RL::ServiceId::SharedEvent")
+        != std::string_view::npos);
+    REQUIRE(buttonServices.find("D2RL::ServiceId::Resource")
+        != std::string_view::npos);
+    REQUIRE(buttonServices.find("Settings.inventoryButtonEnabled")
+        < buttonServices.find("D2RL::ServiceId::Panel"));
+
+    const auto ownedButton = Slice(
+        source,
+        "bool RegisterOwnedButton()",
+        "void ResetCountersAndBatch()");
+    REQUIRE(ownedButton.find("DepositButtonVirtualPath")
+        < ownedButton.find("if (!Settings.inventoryButtonEnabled) return true;"));
+    REQUIRE(ownedButton.find("ButtonLocalizationVirtualPath")
+        == std::string_view::npos);
+    REQUIRE(ownedButton.find("if (!Settings.inventoryButtonEnabled) return true;")
+        < ownedButton.find("ButtonLayoutVirtualPath"));
+    REQUIRE(ownedButton.find("ButtonLayoutVirtualPath")
+        < ownedButton.find("registerChildLayout"));
 
     const auto inputCallback = Slice(
         source,
@@ -367,6 +447,9 @@ y = 900
         "D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin");
     REQUIRE(load.find("RegisterButtonListener()")
         < load.find("RegisterOwnedButton()"));
+    REQUIRE(load.find(
+        "Settings.inventoryButtonEnabled\n            && (!RegisterButtonListener()")
+        == std::string_view::npos);
     REQUIRE(load.find("QueryThreadService()") != std::string_view::npos);
     const auto unload = Slice(
         source,
@@ -392,6 +475,18 @@ y = 900
     REQUIRE(statusCallback.find("CallbackGuard")
         != std::string_view::npos);
 
+    VerifySpriteLayout(
+        BULK_CURRENCY_DEPOSIT_BUTTON_MOLD_FILE,
+        54,
+        54,
+        141,
+        1);
+    VerifySpriteLayout(
+        BULK_CURRENCY_DEPOSIT_BUTTON_MOLD_LOWEND_FILE,
+        27,
+        27,
+        71,
+        1);
     VerifyButtonFrameOrder(BULK_CURRENCY_DEPOSIT_BUTTON_FILE);
     VerifyButtonFrameOrder(BULK_CURRENCY_DEPOSIT_BUTTON_LOWEND_FILE);
     std::cout << "Bulk Currency Deposit policy tests passed.\n";

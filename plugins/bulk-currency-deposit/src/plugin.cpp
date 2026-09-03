@@ -58,8 +58,8 @@ constexpr char DefaultConfig[] = R"toml(# Bulk Currency Deposit
 # Master switch. false disables the Controls action, button, resources and deposit logic.
 enabled = true
 
-# Adds an optional button to the Inventory panel. Disabled by default
-# so the plugin does not add a control to layouts unless the player requests it.
+# Injects the plugin-owned button into the Inventory panel. Keep this false
+# when the active mod provides its own button in another layout, such as the stash.
 inventory_button_enabled = false
 
 # Delay between native transfers. Keep the default unless troubleshooting.
@@ -83,6 +83,10 @@ exclude_item_codes = []
 # values if another mod or plugin already uses this location.
 x = 3
 y = 813
+
+# Literal UTF-8 tooltip for the optional Inventory button. Mod-owned layouts
+# set their own literal tooltipString and do not depend on a global string ID.
+tooltip = "Deposit Currency"
 )toml";
 
 constexpr std::uintptr_t GetLocalDataContextRva = 0x08B2D0;
@@ -334,7 +338,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "bulk-currency-deposit",
     .name = "Bulk Currency Deposit",
-    .version = "1.0.1",
+    .version = "1.1.1",
     .author = "RuffnecKk",
     .description = "Auto transfers all your stackable currency items into their respective stash slots.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -475,7 +479,7 @@ bool ValidateUiStateEntry() noexcept {
     return false;
 }
 
-bool ValidateRuntime() noexcept {
+bool ValidateNativeFingerprint() noexcept {
     bool valid = Base != nullptr;
     const auto check = [&valid](
             std::uintptr_t rva,
@@ -528,6 +532,21 @@ bool ValidateRuntime() noexcept {
 
     if (!ValidateUiStateEntry()) valid = false;
     return valid;
+}
+
+void LogRuntimeIdentity() noexcept {
+    const auto* buildName = D2RL::GetBuildName(Context);
+    const auto* buildVersion = D2RL::GetBuildVersion(Context);
+    char message[320]{};
+    std::snprintf(
+        message,
+        sizeof(message),
+        "BulkCurrencyDeposit: observed D2R build-name=%s; version=%s; validating native fingerprint.",
+        buildName && buildName[0] != '\0' ? buildName : "<unavailable>",
+        buildVersion && buildVersion[0] != '\0'
+            ? buildVersion
+            : "<unavailable>");
+    Context->LogInfo(message);
 }
 
 std::vector<std::filesystem::path> ConfigCandidates() {
@@ -680,7 +699,6 @@ bool QueryThreadService() noexcept {
 }
 
 bool QueryButtonServices() noexcept {
-    if (!Settings.inventoryButtonEnabled) return true;
     if (Context->QueryService(
             D2RL::ServiceId::SharedEvent,
             D2RL::SharedEventServiceV1Version,
@@ -694,18 +712,6 @@ bool QueryButtonServices() noexcept {
         return false;
     }
     if (Context->QueryService(
-            D2RL::ServiceId::Panel,
-            D2RL::PanelServiceV1Version,
-            &PanelService) != D2RL::ServiceQueryResult::Success
-        || !D2RL::HasPanelServiceV1Field(
-            PanelService, D2RL::PanelServiceV1RequiredSize)
-        || PanelService->registerChildLayout == nullptr
-        || PanelService->unregisterChildLayout == nullptr) {
-        Context->LogError(
-            "BulkCurrencyDeposit: D2RLoader Panel service v1 is unavailable.");
-        return false;
-    }
-    if (Context->QueryService(
             D2RL::ServiceId::Resource,
             D2RL::ResourceServiceV1Version,
             &ResourceService) != D2RL::ServiceQueryResult::Success
@@ -715,6 +721,19 @@ bool QueryButtonServices() noexcept {
         || ResourceService->unregisterResource == nullptr) {
         Context->LogError(
             "BulkCurrencyDeposit: D2RLoader Resource service v1 is unavailable.");
+        return false;
+    }
+    if (Settings.inventoryButtonEnabled
+        && (Context->QueryService(
+                D2RL::ServiceId::Panel,
+                D2RL::PanelServiceV1Version,
+                &PanelService) != D2RL::ServiceQueryResult::Success
+            || !D2RL::HasPanelServiceV1Field(
+                PanelService, D2RL::PanelServiceV1RequiredSize)
+            || PanelService->registerChildLayout == nullptr
+            || PanelService->unregisterChildLayout == nullptr)) {
+        Context->LogError(
+            "BulkCurrencyDeposit: D2RLoader Panel service v1 is unavailable.");
         return false;
     }
     return true;
@@ -816,7 +835,6 @@ bool RegisterOwnedButton() noexcept {
             "BulkCurrencyDeposit: embedded Inventory button sprites are unavailable.");
         return false;
     }
-    const auto layout = BuildButtonLayoutJson(Settings.button);
     if (!RegisterResource(
             ButtonMoldVirtualPath, mold.data(), mold.size(), ButtonMoldResource)
         || !RegisterResource(
@@ -833,14 +851,23 @@ bool RegisterOwnedButton() noexcept {
             DepositButtonLowendVirtualPath,
             buttonLowend.data(),
             buttonLowend.size(),
-            DepositButtonLowendResource)
-        || !RegisterResource(
+            DepositButtonLowendResource)) {
+        Context->LogError(
+            "BulkCurrencyDeposit: plugin-owned button resource registration failed.");
+        (void)UnregisterOwnedButton();
+        return false;
+    }
+
+    if (!Settings.inventoryButtonEnabled) return true;
+
+    const auto layout = BuildButtonLayoutJson(Settings.button);
+    if (!RegisterResource(
             ButtonLayoutVirtualPath,
             layout.data(),
             layout.size(),
             ButtonLayoutResource)) {
         Context->LogError(
-            "BulkCurrencyDeposit: plugin-owned Inventory button resource registration failed.");
+            "BulkCurrencyDeposit: Inventory button layout registration failed.");
         (void)UnregisterOwnedButton();
         return false;
     }
@@ -1566,7 +1593,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Bulk Currency Deposit 1.0.1: enabled=%s; Controls=%s; defaultBinding=SHIFT+D; UI=%s; button=%s; buttonPosition=%d,%d; delay=%ums; include=%llu; exclude=%llu; batch=%s; pending=%llu; requests=%llu; buttonRequests=%llu; coalesced=%llu; refused=%llu; stale=%llu; empty=%llu; started=%llu; completed=%llu; cancelled=%llu; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; dispatchFailures=%llu; TOML=%s.",
+        "Bulk Currency Deposit 1.1.1: enabled=%s; Controls=%s; defaultBinding=SHIFT+D; UI=%s; buttonResources=%s; inventoryButton=%s; buttonPosition=%d,%d; delay=%ums; include=%llu; exclude=%llu; batch=%s; pending=%llu; requests=%llu; buttonRequests=%llu; coalesced=%llu; refused=%llu; stale=%llu; empty=%llu; started=%llu; completed=%llu; cancelled=%llu; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; dispatchFailures=%llu; TOML=%s.",
         Settings.enabled ? "true" : "false",
         DepositAction.load(std::memory_order_acquire)
                 != D2RL::Input::InvalidHandle
@@ -1577,7 +1604,10 @@ auto Status(
             : (UiDispatchReady.load(std::memory_order_acquire)
                 ? "ready"
                 : "pending"),
-        Settings.inventoryButtonEnabled ? "enabled" : "disabled",
+        DepositButtonResource != D2RL::Resources::InvalidHandle
+            ? "ready"
+            : "not-registered",
+        Settings.inventoryButtonEnabled ? "injected" : "external-ready",
         Settings.button.x,
         Settings.button.y,
         Settings.itemDelayMs,
@@ -1622,6 +1652,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     InputStopping.store(false, std::memory_order_release);
     CallbackRundown.Reset();
     ResetCountersAndBatch();
+    LogRuntimeIdentity();
 
     if (!LoadConfig()) return false;
     if (!Settings.enabled) {
@@ -1633,20 +1664,14 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
                 "BulkCurrencyDeposit: optional status command was not registered.");
         }
         context->LogInfo(
-            "Bulk Currency Deposit 1.0.1 by RuffnecKk loaded disabled; no Controls action, SDK listeners or resources installed.");
+            "Bulk Currency Deposit 1.1.1 by RuffnecKk loaded disabled; no Controls action, SDK listeners or resources installed.");
         return true;
     }
 
-    const auto* runtimeBuild = D2RL::GetBuildName(context);
-    char buildMessage[192]{};
-    std::snprintf(buildMessage, sizeof(buildMessage),
-        "BulkCurrencyDeposit: observed D2R build-name=%s; validating the complete native fingerprint.",
-        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
-    context->LogInfo(buildMessage);
     if (!QueryDiagnosticsService()) return false;
-    if (!ValidateRuntime()) {
+    if (!ValidateNativeFingerprint()) {
         context->LogError(
-            "BulkCurrencyDeposit: complete native fingerprint validation failed; plugin refused.");
+            "BulkCurrencyDeposit: native fingerprint rejected; plugin refused.");
         return false;
     }
 
@@ -1690,8 +1715,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         (void)StopInput();
         return false;
     }
-    if (Settings.inventoryButtonEnabled
-            && (!RegisterButtonListener() || !RegisterOwnedButton())) {
+    if (!RegisterButtonListener() || !RegisterOwnedButton()) {
         const auto teardownModule = AcquireTeardownModuleReference();
         InputStopping.store(true, std::memory_order_release);
         CallbackRundown.Stop();
@@ -1716,9 +1740,8 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Bulk Currency Deposit 1.0.1 by RuffnecKk active for D2R %s; Controls action=Bulk Currency Deposit (default SHIFT+D); button=%s at %d,%d; delay=%ums; routing=native Advanced Stash registry; installation=%s; TOML=%s.",
-        runtimeBuild,
-        Settings.inventoryButtonEnabled ? "enabled" : "disabled",
+        "Bulk Currency Deposit 1.1.1 by RuffnecKk active; native fingerprint accepted; Controls action=Bulk Currency Deposit (default SHIFT+D); buttonResources=ready; inventoryButton=%s at %d,%d; delay=%ums; routing=native Advanced Stash registry; installation=%s; TOML=%s.",
+        Settings.inventoryButtonEnabled ? "injected" : "external-ready",
         Settings.button.x,
         Settings.button.y,
         Settings.itemDelayMs,
