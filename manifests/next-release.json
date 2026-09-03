@@ -73,7 +73,7 @@
       "asset": "RuffnecKk-bulk-currency-deposit-v1.1.1.zip",
       "sourceRef": "workspace:addons/BulkCurrencyDeposit",
       "releaseNoteCategory": "Fixed",
-      "releaseNote": "Fixes the Inventory tooltip localization collision without changing deposit behavior.",
+      "releaseNote": "Fixes a tooltip conflict with D2RLoader's native Stat Ranges feature and updates the button sprite to better match the regular Inventory panel.",
       "decision": "Previously retained for the next Suite release after gameplay validation.",
       "gates": { "source": "passed", "build": "passed", "battleNetRuntime": "passed", "steamRuntime": "not-required", "packaging": "passed" }
     },
@@ -322,7 +322,7 @@
       "asset": "RuffnecKk-remote-stash-v2.3.0.zip",
       "sourceRef": "workspace:addons/RemoteStash",
       "releaseNoteCategory": "Changed",
-      "releaseNote": "Fixed inconsistencies and behavior issues, and lets mods customize the button placement and sprites through the active MPQ.",
+      "releaseNote": "Fixes behavior inconsistencies and lets each active mod use its MPQ to automatically apply its own placement and sprites to the global Remote Stash button.",
       "decision": "Vincent moved Remote Stash into the current release on 2026-09-02 and chose the concise public release wording on 2026-09-03.",
       "gates": { "source": "passed", "build": "passed", "battleNetRuntime": "pending", "steamRuntime": "not-required", "packaging": "pending" }
     },

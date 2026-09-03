@@ -4,31 +4,32 @@
 
 Suite 1.3.0 includes 24 plugins, 17 patches, and two bundles.
 
-### Added
+### New plugins
 
-- Added Cast Triggers 1.0.0.
-- Added Armageddon-Hurricane CtC Fix 1.0.0.
-- Added Resistance Floor 1.0.0.
-- Added MapSense 1.0.0.
-- Added Extended Act Level IDs 1.0.0.
-- Added ISC12 1.0.0.
-- Added D2R Save Converter 1.0.0.
-- Added Shadow Master AI Fix.
-- Added Burn Damage Fix 1.0.0.
+- Cast Triggers 1.0.0.
+- Armageddon-Hurricane CtC Fix 1.0.0.
+- Resistance Floor 1.0.0.
+- MapSense 1.0.0.
+- Extended Act Level IDs 1.0.0.
+- ISC12 1.0.0 with D2R Save Converter 1.0.0.
+- Burn Damage Fix 1.0.0.
+
+### New patch
+
+- Shadow Master AI Fix.
 
 ### Changed
 
 - Plugins no longer reject Steam because of its version number.
-- Remote Stash 2.3.0 now lets mods customize its button placement and sprites.
+- Remote Stash 2.3.0 fixes behavior inconsistencies and lets each active mod use its MPQ to automatically apply its own placement and sprites to the global Remote Stash button.
 - Vendor Stock Refresh 2.0.0 now works with D2RLoader 1.2.
-- Updated Bulk Currency Deposit 1.1.1.
+- Bulk Currency Deposit 1.1.1 fixes a tooltip conflict with D2RLoader's native Stat Ranges feature and updates its button sprite to better match the regular Inventory panel.
 - Suite downloads now use paths supported by D2RMM Custom for D2RLoader.
 - D2R Save Converter now ships inside the ISC12 download.
 
 ### Fixed
 
 - Fixed Hit Chance limits in game and on the Character Screen.
-- Remote Stash 2.3.0: Fixed inconsistencies and behavior issues.
 
 ### Removed
 
