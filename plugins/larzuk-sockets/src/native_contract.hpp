@@ -6,8 +6,6 @@
 
 namespace RuffnecKk::LarzukSockets::NativeContract {
 
-inline constexpr std::uint32_t SupportedBuild = 92777;
-
 inline constexpr std::uintptr_t AddSocketsRva = 0x375560;
 inline constexpr std::uintptr_t LarzukCallerRva = 0x4FD574;
 inline constexpr std::uintptr_t LarzukReturnRva = 0x4FD580;

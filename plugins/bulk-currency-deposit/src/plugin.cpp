@@ -334,7 +334,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "bulk-currency-deposit",
     .name = "Bulk Currency Deposit",
-    .version = "1.0.0",
+    .version = "1.0.1",
     .author = "RuffnecKk",
     .description = "Auto transfers all your stackable currency items into their respective stash slots.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -1566,7 +1566,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Bulk Currency Deposit 1.0.0: enabled=%s; Controls=%s; defaultBinding=SHIFT+D; UI=%s; button=%s; buttonPosition=%d,%d; delay=%ums; include=%llu; exclude=%llu; batch=%s; pending=%llu; requests=%llu; buttonRequests=%llu; coalesced=%llu; refused=%llu; stale=%llu; empty=%llu; started=%llu; completed=%llu; cancelled=%llu; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; dispatchFailures=%llu; TOML=%s.",
+        "Bulk Currency Deposit 1.0.1: enabled=%s; Controls=%s; defaultBinding=SHIFT+D; UI=%s; button=%s; buttonPosition=%d,%d; delay=%ums; include=%llu; exclude=%llu; batch=%s; pending=%llu; requests=%llu; buttonRequests=%llu; coalesced=%llu; refused=%llu; stale=%llu; empty=%llu; started=%llu; completed=%llu; cancelled=%llu; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; dispatchFailures=%llu; TOML=%s.",
         Settings.enabled ? "true" : "false",
         DepositAction.load(std::memory_order_acquire)
                 != D2RL::Input::InvalidHandle
@@ -1633,22 +1633,20 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
                 "BulkCurrencyDeposit: optional status command was not registered.");
         }
         context->LogInfo(
-            "Bulk Currency Deposit 1.0.0 by RuffnecKk loaded disabled; no Controls action, SDK listeners or resources installed.");
+            "Bulk Currency Deposit 1.0.1 by RuffnecKk loaded disabled; no Controls action, SDK listeners or resources installed.");
         return true;
     }
 
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (!runtimeBuild
-            || (std::strcmp(runtimeBuild, "92777") != 0
-                && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "BulkCurrencyDeposit: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "BulkCurrencyDeposit: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
     if (!QueryDiagnosticsService()) return false;
     if (!ValidateRuntime()) {
         context->LogError(
-            "BulkCurrencyDeposit: D2R 3.3.93847 runtime validation failed; plugin refused.");
+            "BulkCurrencyDeposit: complete native fingerprint validation failed; plugin refused.");
         return false;
     }
 
@@ -1718,7 +1716,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Bulk Currency Deposit 1.0.0 by RuffnecKk active for D2R %s; Controls action=Bulk Currency Deposit (default SHIFT+D); button=%s at %d,%d; delay=%ums; routing=native Advanced Stash registry; installation=%s; TOML=%s.",
+        "Bulk Currency Deposit 1.0.1 by RuffnecKk active for D2R %s; Controls action=Bulk Currency Deposit (default SHIFT+D); button=%s at %d,%d; delay=%ums; routing=native Advanced Stash registry; installation=%s; TOML=%s.",
         runtimeBuild,
         Settings.inventoryButtonEnabled ? "enabled" : "disabled",
         Settings.button.x,

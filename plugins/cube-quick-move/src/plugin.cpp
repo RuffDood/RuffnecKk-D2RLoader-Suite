@@ -147,7 +147,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-cube-quick-move",
     .name = "Cube Quick Move",
-    .version = "1.0.1",
+    .version = "1.0.2",
     .author = "RuffnecKk",
     .description = "Places quick-moved Cube items from the bottom-right.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -440,7 +440,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Cube Quick Move 1.0.0: %s; diagnostics=%s; callSites=%llu; calls=%llu; "
+        "Cube Quick Move 1.0.2: %s; diagnostics=%s; callSites=%llu; calls=%llu; "
         "page3=%llu; redirected=%llu; vanilla=%llu; safeFallbacks=%llu; "
         "lastCallSite=0x%llX; lastPage3CallSite=0x%llX.",
         Settings.enabled ? "active" : "disabled",
@@ -493,7 +493,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "CubeQuickMove 1.0.0 by RuffnecKk loaded disabled; no patch or service registered.");
+            "CubeQuickMove 1.0.2 by RuffnecKk loaded disabled; no patch or service registered.");
         return true;
     }
 
@@ -504,16 +504,14 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "CubeQuickMove: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "CubeQuickMove: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
     if (!ValidateRuntime()) {
         context->LogError(
-            "CubeQuickMove: 92777 call-site or helper signature mismatch; plugin refused."
+            "CubeQuickMove: native call-site or helper fingerprint mismatch; plugin refused."
         );
         return false;
     }
@@ -541,7 +539,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "CubeQuickMove 1.0.0 by RuffnecKk active; %llu Cube-capable call-sites redirect through relay RVA 0x%llX.",
+        "CubeQuickMove 1.0.2 by RuffnecKk active; %llu Cube-capable call-sites redirect through relay RVA 0x%llX.",
         static_cast<unsigned long long>(CubeCallSites.size()),
         static_cast<unsigned long long>(RelayRva)
     );

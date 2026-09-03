@@ -106,7 +106,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-item-durability",
     .name = "Item Durability",
-    .version = "1.2.3",
+    .version = "1.2.4",
     .author = "RuffnecKk",
     .description = "Controls durability loss, ethereal durability, and bow durability.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -366,7 +366,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Item Durability 1.2.2: enabled=%s; loss=%s; normal=%u%% (weapon %s, armor %s); "
+        "Item Durability 1.2.4: enabled=%s; loss=%s; normal=%u%% (weapon %s, armor %s); "
         "ethereal=%u%% (weapon %s, armor %s); ethereal maximum=%u%s; "
         "bows/crossbows=%s; item records=%llu; repair types=%llu; "
         "compile passes=%llu failures=%llu; prevented normal=%llu ethereal=%llu; diagnostics=%s.",
@@ -475,13 +475,11 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     if (!ReadConfiguration()) return false;
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "ItemDurability: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "ItemDurability: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
     if (!ValidateRuntime() || !InstallHooks()) return false;
 
     if (!context->RegisterConsoleCommand(
@@ -496,7 +494,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Item Durability 1.2.2 by RuffnecKk loaded: enabled=%s; loss=%s; normal=%u%%; "
+        "Item Durability 1.2.4 by RuffnecKk loaded: enabled=%s; loss=%s; normal=%u%%; "
         "ethereal=%u%%; ethereal maximum=%u%s; bows/crossbows=%s; "
         "compiled-table hook=%s; diagnostics=%s.",
         Settings.enabled ? "true" : "false",

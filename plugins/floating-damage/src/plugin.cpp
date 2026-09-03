@@ -25,6 +25,7 @@
 #include <cstring>
 #include <filesystem>
 #include <limits>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -33,8 +34,11 @@
 namespace {
 constexpr std::uintptr_t HitpointsCommitContextRva = 0x44D083;
 constexpr std::uintptr_t HitpointsCommitCallRva = 0x44D093;
+constexpr std::uintptr_t PeriodicHitpointsCommitContextRva = 0x448D3B;
+constexpr std::uintptr_t PeriodicHitpointsCommitCallRva = 0x448D4C;
 constexpr std::uintptr_t GetUnitStatRva = 0x2F5020;
 constexpr std::uintptr_t SetUnitStatRva = 0x2F7D10;
+constexpr std::uintptr_t CheckStateRva = 0x3351B0;
 constexpr std::uintptr_t GetClientUnitRva = 0x09A5D0;
 constexpr std::uintptr_t UpdateCameraRva = 0x0B9B90;
 constexpr std::uintptr_t GetRenderThreadContextRootRva = 0x685750;
@@ -44,6 +48,8 @@ constexpr std::uintptr_t GetNativeWidthRva = 0x07F510;
 constexpr std::uint16_t CriticalStrikeResultFlag = 0x2000;
 constexpr std::uint32_t MonsterUnitType = 1;
 constexpr std::int32_t HitPointsStatId = 6;
+constexpr std::int32_t PoisonStateId = 2;
+constexpr std::int32_t BurningStateId = 115;
 
 constexpr std::size_t DamagePhysicalOffset = 0x018;
 constexpr std::size_t DamageFireOffset = 0x020;
@@ -65,15 +71,21 @@ D2RL::Lifecycle::ListenerHandle LocalPlayerReadyListener{
 std::uint8_t* Base{};
 HMODULE Module{};
 std::atomic<std::uint64_t> CapturedEvents{};
+std::atomic<std::uint64_t> DirectCapturedEvents{};
+std::atomic<std::uint64_t> PeriodicCapturedEvents{};
 std::atomic<std::uint64_t> DisplayedEvents{};
 std::atomic<std::uint64_t> ProjectionSuccesses{};
 std::atomic<std::uint64_t> ProjectionFailures{};
 std::atomic_bool ProjectionReadyLogged{};
 std::atomic<bool> OverlayReady{};
 std::atomic_bool RuntimeActive{};
+std::atomic_bool UsingMapSenseOverlayHost{};
+std::atomic<const RuffnecKk::OverlayHost::HostApiV2*> MapSenseOverlayHost{};
+std::mutex OverlayWorkerMutex;
 HANDLE OverlayStopEvent{};
 HANDLE OverlayWorker{};
 void* HitpointsCommitRelay{};
+void* PeriodicHitpointsCommitRelay{};
 
 #pragma pack(push, 1)
 struct UnitView {
@@ -93,6 +105,8 @@ using GetUnitStatFn = std::int32_t(__fastcall*)(
     UnitView*, std::int32_t, std::uint16_t) noexcept;
 using SetUnitStatFn = void(__fastcall*)(
     UnitView*, std::int32_t, std::int32_t, std::uint16_t) noexcept;
+using CheckStateFn = std::int32_t(__fastcall*)(
+    UnitView*, std::int32_t) noexcept;
 using GetClientUnitFn = UnitView*(__fastcall*)(
     std::uint32_t unitId, std::uint32_t unitType) noexcept;
 using ProjectUnitToScreenFn = bool(__fastcall*)(
@@ -105,6 +119,7 @@ using GetRenderThreadContextRootFn = void*(__fastcall*)() noexcept;
 using GetNativeDimensionFn = std::int32_t(__fastcall*)() noexcept;
 GetUnitStatFn GetUnitStat{};
 SetUnitStatFn SetUnitStat{};
+CheckStateFn CheckState{};
 GetClientUnitFn GetClientUnit{};
 ProjectUnitToScreenFn ProjectUnitToScreen{};
 UpdateCameraFn OriginalUpdateCamera{};
@@ -161,7 +176,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-floating-damage",
     .name = "Floating Damage",
-    .version = "1.4.0",
+    .version = "1.4.2",
     .author = "RuffnecKk",
     .description = "Shows floating combat numbers and rolling damage per second.",
     .flags = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
@@ -932,6 +947,27 @@ bool TryGetFixedHitpoints(UnitView* target, std::int32_t& hitpoints) noexcept {
     }
 }
 
+bool HasState(UnitView* target, std::int32_t stateId) noexcept {
+    __try {
+        return target && CheckState && CheckState(target, stateId) != 0;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+FloatingDamage::Element ElementFromPeriodicStates(
+        UnitView* target) noexcept {
+    // HPREGEN is one combined native rate. When several periodic states are
+    // active, the exact visible loss cannot be partitioned after the commit;
+    // prefer Burn, then Poison, and keep every other negative rate physical.
+    if (HasState(target, BurningStateId))
+        return FloatingDamage::Element::Fire;
+    if (HasState(target, PoisonStateId))
+        return FloatingDamage::Element::Poison;
+    return FloatingDamage::Element::Physical;
+}
+
 constexpr std::int32_t VisibleHitpoints(std::int32_t fixedHitpoints) noexcept {
     return fixedHitpoints > 0 ? fixedHitpoints >> 8 : 0;
 }
@@ -947,6 +983,55 @@ constexpr std::int32_t VisibleHitpointLoss(
 static_assert(VisibleHitpointLoss(20 * 256, 20 * 256 - 1023) == 4);
 static_assert(VisibleHitpointLoss(20 * 256, 20 * 256 - 794) == 4);
 static_assert(VisibleHitpointLoss(20 * 256 - 794, 20 * 256 - 1588) == 3);
+
+void QueueCommittedVisibleLoss(
+        std::uint32_t targetId,
+        std::int32_t beforeFixed,
+        std::int32_t afterFixed,
+        FloatingDamage::Kind kind,
+        FloatingDamage::Element element,
+        bool periodic) noexcept {
+    const std::int32_t amount = VisibleHitpointLoss(
+        beforeFixed, afterFixed);
+    if (amount <= 0) return;
+
+    CapturedEvents.fetch_add(1, std::memory_order_relaxed);
+    auto& sourceCounter = periodic
+        ? PeriodicCapturedEvents
+        : DirectCapturedEvents;
+    const std::uint64_t sourceCaptured = sourceCounter.fetch_add(
+        1, std::memory_order_relaxed) + 1;
+    if (sourceCaptured == 1 && Context
+            && FloatingDamage::GetConfig().diagnosticsEnabled) {
+        char message[224]{};
+        std::snprintf(
+            message,
+            sizeof(message),
+            periodic
+                ? "FloatingDamage captured its first periodic visible HP loss: fixed=%d->%d; popup=%d."
+                : "FloatingDamage captured its first committed visible HP loss: fixed=%d->%d; popup=%d.",
+            beforeFixed,
+            afterFixed,
+            amount);
+        Context->LogInfo(message);
+    }
+    if (!FloatingDamage::IsEnabled()) return;
+
+    RequestTargetProjection(MonsterUnitType, targetId);
+    FloatingDamage::QueueGameDamage(
+        amount,
+        MonsterUnitType,
+        targetId,
+        kind,
+        element);
+    const std::uint64_t displayed = DisplayedEvents.fetch_add(
+        1, std::memory_order_relaxed) + 1;
+    if (displayed == 1 && Context
+            && FloatingDamage::GetConfig().diagnosticsEnabled) {
+        Context->LogInfo(
+            "FloatingDamage queued its first committed target-monster HP loss.");
+    }
+}
 
 __declspec(noinline) void __fastcall HookHitpointsCommit(
     UnitView* target,
@@ -973,36 +1058,45 @@ __declspec(noinline) void __fastcall HookHitpointsCommit(
 
     std::int32_t afterFixed{};
     if (!TryGetFixedHitpoints(target, afterFixed)) return;
-    const std::int32_t amount = VisibleHitpointLoss(beforeFixed, afterFixed);
-    if (amount <= 0) return;
-
-    const std::uint64_t captured = CapturedEvents.fetch_add(1, std::memory_order_relaxed) + 1;
-    if (captured == 1 && Context
-            && FloatingDamage::GetConfig().diagnosticsEnabled) {
-        char message[192]{};
-        std::snprintf(
-            message,
-            sizeof(message),
-            "FloatingDamage captured its first committed visible HP loss: fixed=%d->%d; popup=%d.",
-            beforeFixed,
-            afterFixed,
-            amount);
-        Context->LogInfo(message);
-    }
-    if (!FloatingDamage::IsEnabled()) return;
-
-    RequestTargetProjection(MonsterUnitType, targetId);
-    FloatingDamage::QueueGameDamage(
-        amount,
-        MonsterUnitType,
+    QueueCommittedVisibleLoss(
         targetId,
-        critical ? FloatingDamage::Kind::Critical : FloatingDamage::Kind::Normal,
-        element);
-    const std::uint64_t displayed = DisplayedEvents.fetch_add(1, std::memory_order_relaxed) + 1;
-    if (displayed == 1 && Context
-            && FloatingDamage::GetConfig().diagnosticsEnabled) {
-        Context->LogInfo("FloatingDamage queued its first committed target-monster HP loss.");
-    }
+        beforeFixed,
+        afterFixed,
+        critical ? FloatingDamage::Kind::Critical
+                 : FloatingDamage::Kind::Normal,
+        element,
+        false);
+}
+
+__declspec(noinline) void __fastcall HookPeriodicHitpointsCommit(
+    UnitView* target,
+    std::int32_t statId,
+    std::int32_t newFixed,
+    std::uint16_t layer
+) noexcept {
+    std::uint32_t targetId{};
+    std::int32_t beforeFixed{};
+    const bool observe = FloatingDamage::IsGameplayActive()
+        && statId == HitPointsStatId
+        && layer == 0
+        && TryGetMonsterId(target, targetId)
+        && TryGetFixedHitpoints(target, beforeFixed);
+    const FloatingDamage::Element element = observe
+        ? ElementFromPeriodicStates(target)
+        : FloatingDamage::Element::Physical;
+
+    SetUnitStat(target, statId, newFixed, layer);
+    if (!observe) return;
+
+    std::int32_t afterFixed{};
+    if (!TryGetFixedHitpoints(target, afterFixed)) return;
+    QueueCommittedVisibleLoss(
+        targetId,
+        beforeFixed,
+        afterFixed,
+        FloatingDamage::Kind::Normal,
+        element,
+        true);
 }
 
 template <std::size_t Size>
@@ -1140,6 +1234,51 @@ bool CreateHitpointsCommitRelay() noexcept {
     return true;
 }
 
+bool CreatePeriodicHitpointsCommitRelay() noexcept {
+    PeriodicHitpointsCommitRelay = AllocateRelayPageNear(
+        Base + PeriodicHitpointsCommitCallRva);
+    if (!PeriodicHitpointsCommitRelay) return false;
+
+    std::array<std::uint8_t, 21> relay{
+        0x48,0x83,0xEC,0x28,
+        0x48,0xB8,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0xFF,0xD0,
+        0x48,0x83,0xC4,0x28,
+        0xC3,
+    };
+    const auto hookAddress = reinterpret_cast<std::uintptr_t>(
+        &HookPeriodicHitpointsCommit);
+    std::memcpy(relay.data() + 6, &hookAddress, sizeof(hookAddress));
+    std::memcpy(PeriodicHitpointsCommitRelay, relay.data(), relay.size());
+
+    DWORD previousProtection{};
+    if (!VirtualProtect(
+            PeriodicHitpointsCommitRelay,
+            relay.size(),
+            PAGE_EXECUTE_READ,
+            &previousProtection)) {
+        VirtualFree(PeriodicHitpointsCommitRelay, 0, MEM_RELEASE);
+        PeriodicHitpointsCommitRelay = nullptr;
+        return false;
+    }
+    FlushInstructionCache(
+        GetCurrentProcess(),
+        PeriodicHitpointsCommitRelay,
+        relay.size());
+
+    const auto relayAddress = reinterpret_cast<std::uintptr_t>(
+        PeriodicHitpointsCommitRelay);
+    const auto baseAddress = reinterpret_cast<std::uintptr_t>(Base);
+    if (relayAddress < baseAddress
+            || relayAddress - baseAddress
+                > std::numeric_limits<std::uint32_t>::max()) {
+        VirtualFree(PeriodicHitpointsCommitRelay, 0, MEM_RELEASE);
+        PeriodicHitpointsCommitRelay = nullptr;
+        return false;
+    }
+    return true;
+}
+
 bool InstallDamageHook() noexcept {
     constexpr std::array<std::uint8_t, 29> getUnitStatExpected{
         0x48,0x89,0x5C,0x24,0x10,0x48,0x89,0x6C,0x24,0x18,
@@ -1150,6 +1289,12 @@ bool InstallDamageHook() noexcept {
         0x48,0x89,0x5C,0x24,0x10,0x48,0x89,0x6C,0x24,0x18,
         0x56,0x57,0x41,0x54,0x41,0x56,0x41,0x57,0x48,0x83,
         0xEC,0x40,0x45,0x0F,0xB7,0xE1,0x45,0x8B,0xF0,
+    };
+    constexpr std::array<std::uint8_t, 32> checkStateExpected{
+        0x48,0x89,0x5C,0x24,0x08,0x48,0x89,0x74,
+        0x24,0x10,0x57,0x48,0x83,0xEC,0x20,0x8B,
+        0xDA,0x48,0x8B,0xF1,0xE8,0x07,0x68,0x01,
+        0x00,0x85,0xC0,0x74,0x0E,0x83,0xE8,0x01,
     };
     constexpr std::array<std::uint8_t, 32> getClientUnitExpected{
         0x4C,0x63,0xCA,0x48,0x8D,0x05,0x36,0x93,
@@ -1202,7 +1347,18 @@ bool InstallDamageHook() noexcept {
     constexpr std::array<std::uint8_t, 5> hitpointsCommitCallExpected{
         0xE8,0x78,0xAC,0xEA,0xFF,
     };
+    constexpr std::array<std::uint8_t, 22>
+        periodicHitpointsCommitContextExpected{
+        0x48,0x8B,0xCF,0x44,0x0F,0x4D,0xF6,0x45,
+        0x33,0xC9,0x45,0x8B,0xC6,0x41,0x8D,0x51,
+        0x06,0xE8,0xBF,0xEF,0xEA,0xFF,
+    };
+    constexpr std::array<std::uint8_t, 5>
+        periodicHitpointsCommitCallExpected{
+        0xE8,0xBF,0xEF,0xEA,0xFF,
+    };
     if (!MatchesSignature(GetUnitStatRva, getUnitStatExpected)
+            || !MatchesSignature(CheckStateRva, checkStateExpected)
             || !MatchesSignature(
                 GetClientUnitRva,
                 getClientUnitExpected)
@@ -1223,12 +1379,16 @@ bool InstallDamageHook() noexcept {
                 getNativeWidthExpected)
             || !MatchesSignature(
                 HitpointsCommitContextRva,
-                hitpointsCommitContextExpected)) {
+                hitpointsCommitContextExpected)
+            || !MatchesSignature(
+                PeriodicHitpointsCommitContextRva,
+                periodicHitpointsCommitContextExpected)) {
         return false;
     }
     if (!ValidateComposableSetUnitStatEntry(setUnitStatExpected)) return false;
     GetUnitStat = reinterpret_cast<GetUnitStatFn>(Base + GetUnitStatRva);
     SetUnitStat = reinterpret_cast<SetUnitStatFn>(Base + SetUnitStatRva);
+    CheckState = reinterpret_cast<CheckStateFn>(Base + CheckStateRva);
     GetClientUnit = reinterpret_cast<GetClientUnitFn>(
         Base + GetClientUnitRva);
     ProjectUnitToScreen = reinterpret_cast<ProjectUnitToScreenFn>(
@@ -1241,6 +1401,11 @@ bool InstallDamageHook() noexcept {
     GetNativeWidth = reinterpret_cast<GetNativeDimensionFn>(
         Base + GetNativeWidthRva);
     if (!CreateHitpointsCommitRelay()) return false;
+    if (!CreatePeriodicHitpointsCommitRelay()) {
+        VirtualFree(HitpointsCommitRelay, 0, MEM_RELEASE);
+        HitpointsCommitRelay = nullptr;
+        return false;
+    }
     if (!Context->InstallInlineHook(
             UpdateCameraRva,
             updateCameraExpected.data(),
@@ -1249,6 +1414,8 @@ bool InstallDamageHook() noexcept {
             &OriginalUpdateCamera)) {
         VirtualFree(HitpointsCommitRelay, 0, MEM_RELEASE);
         HitpointsCommitRelay = nullptr;
+        VirtualFree(PeriodicHitpointsCommitRelay, 0, MEM_RELEASE);
+        PeriodicHitpointsCommitRelay = nullptr;
         return false;
     }
     const auto relayRva = reinterpret_cast<std::uintptr_t>(
@@ -1261,6 +1428,21 @@ bool InstallDamageHook() noexcept {
             5)) {
         VirtualFree(HitpointsCommitRelay, 0, MEM_RELEASE);
         HitpointsCommitRelay = nullptr;
+        VirtualFree(PeriodicHitpointsCommitRelay, 0, MEM_RELEASE);
+        PeriodicHitpointsCommitRelay = nullptr;
+        return false;
+    }
+    const auto periodicRelayRva = reinterpret_cast<std::uintptr_t>(
+        PeriodicHitpointsCommitRelay) - reinterpret_cast<std::uintptr_t>(Base);
+    if (!Context->PatchCallRel32(
+            PeriodicHitpointsCommitCallRva,
+            periodicHitpointsCommitCallExpected.data(),
+            static_cast<std::uint32_t>(
+                periodicHitpointsCommitCallExpected.size()),
+            periodicRelayRva,
+            5)) {
+        // The direct call may already target its relay. Keep both pages alive
+        // until D2RLoader rolls back the failed plugin transaction.
         return false;
     }
     return true;
@@ -1311,6 +1493,8 @@ DWORD WINAPI OverlayWorkerMain(void*) noexcept {
 }
 
 bool StartOverlayWorker() noexcept {
+    std::scoped_lock workerLock(OverlayWorkerMutex);
+    if (OverlayWorker != nullptr) return true;
     OverlayStopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (!OverlayStopEvent) return false;
     OverlayWorker = CreateThread(nullptr, 0, OverlayWorkerMain, nullptr, 0, nullptr);
@@ -1323,11 +1507,13 @@ bool StartOverlayWorker() noexcept {
     return false;
 }
 
-void StopOverlayWorker() noexcept {
-    D3D12::SetExternalOverlayAvailability(false);
+void StopOverlayWorker(bool preserveExternalOverlays = false) noexcept {
+    std::scoped_lock workerLock(OverlayWorkerMutex);
+    if (!preserveExternalOverlays)
+        D3D12::SetExternalOverlayAvailability(false);
     if (OverlayStopEvent) SetEvent(OverlayStopEvent);
     if (OverlayWorker) {
-        WaitForSingleObject(OverlayWorker, 3000);
+        WaitForSingleObject(OverlayWorker, INFINITE);
         CloseHandle(OverlayWorker);
         OverlayWorker = nullptr;
     }
@@ -1337,6 +1523,182 @@ void StopOverlayWorker() noexcept {
     }
     D3D12::RemoveHooks();
     OverlayReady.store(false, std::memory_order_release);
+}
+
+void __cdecl MapSenseContextCreated(
+        const RuffnecKk::OverlayHost::FrameContextV2* frame,
+        void*) noexcept {
+    if (!D3D12::AttachExternalImGuiContext(frame)
+        && Context != nullptr) {
+        Context->LogWarn(
+            "FloatingDamage: MapSense created an ImGui context, but the Floating Damage font set could not be attached.");
+    }
+}
+
+void __cdecl MapSenseContextDestroying(
+        const RuffnecKk::OverlayHost::FrameContextV2* frame,
+        void*) noexcept {
+    D3D12::DetachExternalImGuiContext(frame);
+}
+
+void __cdecl RenderThroughMapSense(
+        const RuffnecKk::OverlayHost::FrameContextV2* frame,
+        void*) noexcept {
+    D3D12::RenderAsExternalClient(frame);
+}
+
+void __cdecl MapSenseHostStopped(void*) noexcept {
+    const bool wasUsing = UsingMapSenseOverlayHost.exchange(
+        false, std::memory_order_acq_rel);
+    MapSenseOverlayHost.store(nullptr, std::memory_order_release);
+    if (!wasUsing) return;
+
+    D3D12::DetachExternalImGuiContext(nullptr);
+    OverlayReady.store(false, std::memory_order_release);
+    if (!RuntimeActive.load(std::memory_order_acquire)
+        || !FloatingDamage::GetConfig().enabled) {
+        return;
+    }
+
+    if (StartOverlayWorker()) {
+        if (Context != nullptr) {
+            Context->LogInfo(
+                "FloatingDamage: MapSense stopped; autonomous renderer recovery was scheduled.");
+        }
+    }
+    else if (Context != nullptr) {
+        Context->LogError(
+            "FloatingDamage: MapSense stopped and the autonomous renderer could not restart.");
+    }
+}
+
+auto ResolveMapSenseOverlayHost() noexcept
+        -> const RuffnecKk::OverlayHost::HostApiV2* {
+    const HMODULE mapSense = GetModuleHandleW(L"RuffnecKkMapSense.dll");
+    if (mapSense == nullptr) return nullptr;
+    const auto getApi = reinterpret_cast<
+        RuffnecKk::OverlayHost::GetHostApiV2Fn>(GetProcAddress(
+            mapSense,
+            "RuffnecKkMapSenseGetOverlayHostApi"));
+    if (getApi == nullptr) return nullptr;
+    const auto* api = getApi(
+        RuffnecKk::OverlayHost::ApiVersion2,
+        RuffnecKk::OverlayHost::HostApiV2Size);
+    if (api == nullptr
+        || api->structSize < RuffnecKk::OverlayHost::HostApiV2Size
+        || api->version != RuffnecKk::OverlayHost::ApiVersion2
+        || api->imguiAbiFingerprint
+            != RuffnecKk::OverlayHost::ImGuiAbiFingerprint
+        || api->registerClient == nullptr
+        || api->unregisterClient == nullptr) {
+        return nullptr;
+    }
+    return api;
+}
+
+auto ConnectToMapSenseOverlayHost() noexcept -> bool {
+    if (UsingMapSenseOverlayHost.load(std::memory_order_acquire))
+        return true;
+    const auto* api = ResolveMapSenseOverlayHost();
+    if (api == nullptr) return false;
+    MapSenseOverlayHost.store(api, std::memory_order_release);
+    UsingMapSenseOverlayHost.store(true, std::memory_order_release);
+    const RuffnecKk::OverlayHost::ClientV2 client{
+        .structSize = RuffnecKk::OverlayHost::ClientV2Size,
+        .version = RuffnecKk::OverlayHost::ApiVersion2,
+        .owner = "ruffneckk-floating-damage",
+        .imguiAbiFingerprint =
+            RuffnecKk::OverlayHost::ImGuiAbiFingerprint,
+        .contextCreated = MapSenseContextCreated,
+        .contextDestroying = MapSenseContextDestroying,
+        .hostStopped = MapSenseHostStopped,
+        .beforeFrame = nullptr,
+        .render = RenderThroughMapSense,
+        .userData = nullptr,
+    };
+    if (!api->registerClient(&client)) {
+        UsingMapSenseOverlayHost.store(false, std::memory_order_release);
+        const auto* expected = api;
+        MapSenseOverlayHost.compare_exchange_strong(
+            expected,
+            nullptr,
+            std::memory_order_acq_rel,
+            std::memory_order_acquire);
+        D3D12::DetachExternalImGuiContext(nullptr);
+        return false;
+    }
+    if (!UsingMapSenseOverlayHost.load(std::memory_order_acquire)
+        || MapSenseOverlayHost.load(std::memory_order_acquire) != api) {
+        return false;
+    }
+    D3D12::SetExternalOverlayAvailability(true);
+    OverlayReady.store(true, std::memory_order_release);
+    if (Context != nullptr) {
+        Context->LogInfo(
+            "FloatingDamage: rendering through the priority MapSense ImGui host.");
+    }
+    return true;
+}
+
+void DisconnectFromMapSenseOverlayHost() noexcept {
+    const bool wasUsing = UsingMapSenseOverlayHost.exchange(
+        false, std::memory_order_acq_rel);
+    const auto* const api = MapSenseOverlayHost.exchange(
+        nullptr, std::memory_order_acq_rel);
+    if (!wasUsing) {
+        D3D12::DetachExternalImGuiContext(nullptr);
+        return;
+    }
+    const auto* const liveApi = ResolveMapSenseOverlayHost();
+    if (api != nullptr
+        && liveApi == api
+        && liveApi->unregisterClient != nullptr) {
+        (void)liveApi->unregisterClient(
+            "ruffneckk-floating-damage");
+    }
+    D3D12::DetachExternalImGuiContext(nullptr);
+    D3D12::SetExternalOverlayAvailability(false);
+    OverlayReady.store(false, std::memory_order_release);
+}
+
+auto StartOverlayTransport() noexcept -> bool {
+    if (ConnectToMapSenseOverlayHost()) return true;
+    if (ResolveMapSenseOverlayHost() != nullptr) {
+        if (Context != nullptr) {
+            Context->LogError(
+                "FloatingDamage: a compatible MapSense host is active, but client registration failed; autonomous hooks were refused.");
+        }
+        return false;
+    }
+    return StartOverlayWorker();
+}
+
+void StopOverlayTransport() noexcept {
+    if (UsingMapSenseOverlayHost.load(std::memory_order_acquire)) {
+        DisconnectFromMapSenseOverlayHost();
+        return;
+    }
+    StopOverlayWorker();
+}
+
+auto YieldOverlayHostToMapSense() noexcept -> bool {
+    if (UsingMapSenseOverlayHost.load(std::memory_order_acquire)) {
+        const auto* const registered = MapSenseOverlayHost.load(
+            std::memory_order_acquire);
+        if (registered != nullptr
+            && ResolveMapSenseOverlayHost() == registered) {
+            return true;
+        }
+        UsingMapSenseOverlayHost.store(false, std::memory_order_release);
+        MapSenseOverlayHost.store(nullptr, std::memory_order_release);
+        D3D12::DetachExternalImGuiContext(nullptr);
+        OverlayReady.store(false, std::memory_order_release);
+    }
+    if (ResolveMapSenseOverlayHost() == nullptr) return false;
+    StopOverlayWorker(true);
+    if (ConnectToMapSenseOverlayHost()) return true;
+    (void)StartOverlayWorker();
+    return false;
 }
 
 auto ConsoleCommand(
@@ -1350,7 +1712,7 @@ auto ConsoleCommand(
     const bool enabled = FloatingDamage::IsEnabled();
 
     if (action.empty() || action == "status") {
-        char message[896]{};
+        char message[960]{};
         float displayWidth{};
         float displayHeight{};
         D3D12::GetDisplaySize(displayWidth, displayHeight);
@@ -1359,7 +1721,7 @@ auto ConsoleCommand(
         std::snprintf(
             message,
             sizeof(message),
-            "FloatingDamage 1.4.0: enabled=%s; runtime=%s; diagnostics=%s; in_game=%s; input_action=%s; overlay_hooks=%s; presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; queued=%llu; projected=%llu; rejected=%llu; forced=%llu; missed=%llu; request_drops=%llu; active=%zu; pending=%zu; font=%d; display=%.0fx%.0f; scale=%.3f.",
+            "FloatingDamage 1.4.2: enabled=%s; runtime=%s; diagnostics=%s; in_game=%s; input_action=%s; renderer_role=%s; overlay_hooks=%s; presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; direct=%llu; periodic=%llu; queued=%llu; projected=%llu; rejected=%llu; forced=%llu; missed=%llu; request_drops=%llu; active=%zu; pending=%zu; font=%d; display=%.0fx%.0f; scale=%.3f.",
             enabled ? "true" : "false",
             RuntimeActive.load(std::memory_order_acquire) ? "active" : "not installed",
             config.diagnosticsEnabled ? "true" : "false",
@@ -1367,6 +1729,9 @@ auto ConsoleCommand(
             ToggleAction != D2RL::Input::InvalidHandle
                 ? "registered"
                 : "not registered",
+            UsingMapSenseOverlayHost.load(std::memory_order_acquire)
+                ? "mapsense-client"
+                : "autonomous",
             OverlayReady.load(std::memory_order_acquire) ? "ready" : "waiting",
             static_cast<unsigned long long>(overlay.presentCalls),
             static_cast<unsigned long long>(overlay.directQueueCaptures),
@@ -1377,6 +1742,8 @@ auto ConsoleCommand(
             static_cast<unsigned long long>(CameraFrameTicks.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(RenderContextMisses.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(CapturedEvents.load(std::memory_order_relaxed)),
+            static_cast<unsigned long long>(DirectCapturedEvents.load(std::memory_order_relaxed)),
+            static_cast<unsigned long long>(PeriodicCapturedEvents.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(DisplayedEvents.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(ProjectionSuccesses.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(ProjectionFailures.load(std::memory_order_relaxed)),
@@ -1470,6 +1837,15 @@ RuffnecKkFloatingDamageGetOverlayApi(
     return &api;
 }
 
+extern "C" __declspec(dllexport)
+bool __cdecl RuffnecKkFloatingDamageUseMapSenseOverlayHost() noexcept {
+    // A loaded-but-not-yet-started or disabled Floating Damage instance owns
+    // no renderer, so MapSense may safely claim the D3D12 methods. If active,
+    // the return value remains a transactional yield/registration result.
+    if (Context == nullptr || !FloatingDamage::GetConfig().enabled) return true;
+    return YieldOverlayHostToMapSense();
+}
+
 D2RL_PLUGIN_EXPORT auto D2RLoaderGetPluginInfo() noexcept -> const D2RL::PluginInfo* {
     return &Info;
 }
@@ -1487,6 +1863,8 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     GameLeftListener = D2RL::Lifecycle::InvalidHandle;
     LocalPlayerReadyListener = D2RL::Lifecycle::InvalidHandle;
     RuntimeActive.store(false, std::memory_order_release);
+    UsingMapSenseOverlayHost.store(false, std::memory_order_release);
+    MapSenseOverlayHost.store(nullptr, std::memory_order_release);
     FloatingDamage::SetGameplayActive(false);
     Base = reinterpret_cast<std::uint8_t*>(context->exeBase);
     if (!GetModuleHandleExW(
@@ -1498,13 +1876,15 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     }
     if (!Base || !Module) return false;
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "FloatingDamage: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(
+        buildMessage,
+        sizeof(buildMessage),
+        "FloatingDamage: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0'
+            ? runtimeBuild
+            : "unknown");
+    context->LogInfo(buildMessage);
     if (!context->EnsureConfig(
             RuffnecKk::FloatingDamage::DefaultConfigToml)
             || !LoadConfig()) {
@@ -1521,7 +1901,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     if (!FloatingDamage::GetConfig().enabled) {
         D3D12::SetDiagnosticLogCallback(nullptr);
         context->LogInfo(
-            "Floating Damage 1.4.0 by RuffnecKk disabled; no input action, renderer or combat hook was installed.");
+            "Floating Damage 1.4.2 by RuffnecKk disabled; no input action, renderer or combat hook was installed.");
         return true;
     }
     if (!RegisterInputAction())
@@ -1538,45 +1918,47 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
         kodiaFont.empty()
             ? "FloatingDamage: Kodia was not found in the active mod; font index 12 will fall back to index 0."
             : "FloatingDamage: active-mod Kodia detected for font index 12.");
-    if (!StartOverlayWorker()) {
+    if (!StartOverlayTransport()) {
         D3D12::SetOptionalKodiaFontPath(nullptr);
         D3D12::SetDiagnosticLogCallback(nullptr);
         UnregisterLifecycleListeners();
         LifecycleService = nullptr;
         UnregisterInputAction();
-        context->LogError("FloatingDamage: DirectX 12 overlay worker could not be started.");
+        context->LogError("FloatingDamage: no autonomous or MapSense-hosted renderer could be started.");
         return false;
     }
     if (!InstallDamageHook()) {
-        StopOverlayWorker();
+        StopOverlayTransport();
         D3D12::SetOptionalKodiaFontPath(nullptr);
         D3D12::SetDiagnosticLogCallback(nullptr);
         UnregisterLifecycleListeners();
         LifecycleService = nullptr;
         UnregisterInputAction();
-        context->LogError("FloatingDamage: D2R builds 92777/93847 HP commit, composable stat setter, client-unit lookup, camera-frame or native projection guards could not be installed; plugin refused.");
+        context->LogError("FloatingDamage: the complete direct/periodic HP commit, state, composable stat setter, client-unit lookup, camera-frame or native projection fingerprint did not match; plugin refused.");
         return false;
     }
     FloatingDamage::SetTargetScreenPositionProvider(TryProjectTargetToScreen);
     RuntimeActive.store(true, std::memory_order_release);
-    context->LogInfo("FloatingDamage 1.4.0 active for D2R builds 92777/93847 with native Input v1 rebinding, a composable stat setter, Lifecycle v1 gameplay gating, persistent Kodia font index 12, shared overlay API v1 and per-frame camera-thread multi-target projection.");
+    context->LogInfo("FloatingDamage 1.4.2 active after complete native fingerprint validation with direct and periodic HP-loss capture, autonomous rendering when alone, and priority MapSense host coexistence.");
     return true;
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
+    const bool wasRuntimeActive = RuntimeActive.exchange(
+        false, std::memory_order_acq_rel);
     FloatingDamage::SetGameplayActive(false);
     UnregisterInputAction();
     UnregisterLifecycleListeners();
     FloatingDamage::SetTargetScreenPositionProvider(nullptr);
     if (Context && FloatingDamage::GetConfig().diagnosticsEnabled
-            && RuntimeActive.load(std::memory_order_acquire)) {
-        char message[320]{};
+            && wasRuntimeActive) {
+        char message[384]{};
         const D3D12::OverlayDiagnostics overlay =
             D3D12::GetOverlayDiagnostics();
         std::snprintf(
             message,
             sizeof(message),
-            "FloatingDamage stopped: presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; queued=%llu; forced=%llu; missed=%llu; request_drops=%llu.",
+            "FloatingDamage stopped: presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; direct=%llu; periodic=%llu; queued=%llu; forced=%llu; missed=%llu; request_drops=%llu.",
             static_cast<unsigned long long>(overlay.presentCalls),
             static_cast<unsigned long long>(overlay.directQueueCaptures),
             static_cast<unsigned long long>(overlay.rendererInitAttempts),
@@ -1586,19 +1968,24 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
             static_cast<unsigned long long>(CameraFrameTicks.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(RenderContextMisses.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(CapturedEvents.load(std::memory_order_relaxed)),
+            static_cast<unsigned long long>(DirectCapturedEvents.load(std::memory_order_relaxed)),
+            static_cast<unsigned long long>(PeriodicCapturedEvents.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(DisplayedEvents.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(ActiveProjectionAttempts.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(ActiveProjectionMisses.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(ProjectionRequestDrops.load(std::memory_order_relaxed)));
         Context->LogInfo(message);
     }
-    StopOverlayWorker();
-    RuntimeActive.store(false, std::memory_order_release);
+    StopOverlayTransport();
     D3D12::SetOptionalKodiaFontPath(nullptr);
     D3D12::SetDiagnosticLogCallback(nullptr);
     if (HitpointsCommitRelay) {
         VirtualFree(HitpointsCommitRelay, 0, MEM_RELEASE);
         HitpointsCommitRelay = nullptr;
+    }
+    if (PeriodicHitpointsCommitRelay) {
+        VirtualFree(PeriodicHitpointsCommitRelay, 0, MEM_RELEASE);
+        PeriodicHitpointsCommitRelay = nullptr;
     }
     OriginalUpdateCamera = nullptr;
     GetNativeWidth = nullptr;
@@ -1608,6 +1995,7 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     GetClientUnit = nullptr;
     SetUnitStat = nullptr;
     GetUnitStat = nullptr;
+    CheckState = nullptr;
     Module = nullptr;
     Base = nullptr;
     LifecycleService = nullptr;

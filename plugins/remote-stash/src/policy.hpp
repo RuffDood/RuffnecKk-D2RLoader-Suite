@@ -5,11 +5,13 @@
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <limits>
 #include <string>
 #include <string_view>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 namespace ruffneckk::remote_stash {
 
@@ -25,17 +27,6 @@ struct Hotkey {
     bool shift{};
     bool alt{};
 };
-
-enum class HotkeyMode : std::uint8_t {
-    RemoteOnly,
-    RemoteAndInventory,
-};
-
-inline const char* HotkeyModeName(HotkeyMode mode) noexcept {
-    return mode == HotkeyMode::RemoteAndInventory
-        ? "remoteAndInventory"
-        : "remoteOnly";
-}
 
 enum class ButtonPlacement : std::uint8_t {
     Automatic,
@@ -82,9 +73,9 @@ struct HotkeyConfig {
     bool inventoryButtonEnabled{true};
     bool hotkeyEnabled{true};
     bool diagnostics{};
+    bool closeRemoteStashAndInventoryTogether{};
     Hotkey hotkey{'R', InputDevice::Keyboard, false, true, false};
     std::string hotkeyText{"SHIFT+R"};
-    HotkeyMode mode{HotkeyMode::RemoteOnly};
     ButtonConfig button{};
 };
 
@@ -410,12 +401,6 @@ enum class PairedCloseOrigin : std::uint8_t {
     Inventory,
 };
 
-enum class CubeReplacementCloseDisposition : std::uint8_t {
-    None,
-    AllowInventoryClose,
-    SuppressStashTeardown,
-};
-
 struct PairedClosePlan {
     bool suppress{};
     bool deactivate{};
@@ -582,10 +567,9 @@ inline bool ExactModifiersMatch(
 
 inline RemoteTogglePlan ResolveRemoteTogglePlan(
     ToggleSource source,
-    HotkeyMode mode,
+    bool closeRemoteStashAndInventoryTogether,
     bool remoteSessionIsActive,
-    bool knownInputIsBlocked,
-    bool inventoryIsOpen
+    bool knownInputIsBlocked
 ) noexcept {
     if (source == ToggleSource::Hotkey && knownInputIsBlocked) {
         return {};
@@ -596,12 +580,14 @@ inline RemoteTogglePlan ResolveRemoteTogglePlan(
         ? HotkeyDispatch::Close
         : HotkeyDispatch::Open;
     const auto toggleInventoryTogether = source == ToggleSource::Hotkey
-        && mode == HotkeyMode::RemoteAndInventory;
+        && closeRemoteStashAndInventoryTogether;
     plan.coupleInventory = toggleInventoryTogether;
     if (plan.dispatch == HotkeyDispatch::Open) {
-        plan.closeCompanionInventoryAfterOpen = source == ToggleSource::Hotkey
-            && !toggleInventoryTogether
-            && !inventoryIsOpen;
+        // The native Inventory companion is part of stash item routing even
+        // when the close-together option leaves its lifecycle independent.
+        // Closing it after
+        // a hotkey open leaves a visible stash with no usable item target.
+        plan.closeCompanionInventoryAfterOpen = false;
     } else {
         plan.closeInventoryAfterClose = toggleInventoryTogether;
         plan.preserveInventoryAfterClose = !toggleInventoryTogether;
@@ -656,11 +642,24 @@ inline bool IsRemoteStashUiMessage(
         && text == RemoteStashUiText;
 }
 
-inline bool ResolveRemoteStashTransitionFlag(
-    bool remoteHotkeyOpenIsScoped,
-    bool requestedFlag
+inline constexpr bool ShouldBypassRemoteStashProximity(
+    std::int32_t inventoryPage,
+    bool remoteItemScope,
+    bool remoteClientSessionActive
 ) noexcept {
-    return remoteHotkeyOpenIsScoped ? false : requestedFlag;
+    return inventoryPage == 4
+        && (remoteItemScope || remoteClientSessionActive);
+}
+
+inline constexpr bool ShouldSuppressRemoteStashTransition(
+    bool remoteHotkeyOpenIsScoped,
+    std::int32_t mode
+) noexcept {
+    (void)remoteHotkeyOpenIsScoped;
+    (void)mode;
+    // The native mode-2 transition registers the stash item-routing targets.
+    // Remote opens preserve that transition exactly.
+    return false;
 }
 
 inline bool ShouldSuppressHotkeyMouseReset(
@@ -680,54 +679,15 @@ inline bool ShouldKeepRemoteOpenRequestPending(
     return immediateHotkeyOpen && remoteRequestIsPending;
 }
 
-inline CubeReplacementCloseDisposition ClassifyCubeReplacementClose(
-    std::uint64_t deadline,
-    std::uint64_t now,
-    bool inventoryCloseObserved,
-    PairedInterface interfaceToClose,
-    PairedCloseOrigin origin
-) noexcept {
-    if (deadline == 0 || now > deadline) {
-        return CubeReplacementCloseDisposition::None;
-    }
-    if (interfaceToClose == PairedInterface::Inventory
-        && origin == PairedCloseOrigin::Inventory) {
-        return CubeReplacementCloseDisposition::AllowInventoryClose;
-    }
-    if (inventoryCloseObserved
-        && interfaceToClose == PairedInterface::Stash
-        && origin == PairedCloseOrigin::GeneralTeardown) {
-        return CubeReplacementCloseDisposition::SuppressStashTeardown;
-    }
-    return CubeReplacementCloseDisposition::None;
-}
-
 inline PairedClosePlan ResolvePairedClosePlan(
     bool remoteSessionIsActive,
     bool inventoryIsCoupled,
     bool stashInterfaceIsOpen,
     PairedInterface interfaceToClose,
-    PairedCloseOrigin origin,
-    CubeReplacementCloseDisposition cubeReplacementClose =
-        CubeReplacementCloseDisposition::None
+    PairedCloseOrigin origin
 ) noexcept {
     if (!remoteSessionIsActive || interfaceToClose == PairedInterface::Other) {
         return {};
-    }
-    // Cube replacement is a two-stage native transition: D2R first closes
-    // Inventory, then its general teardown attempts to close the newly opened
-    // stash. Preserve the remote session across both exact close operations.
-    if (cubeReplacementClose
-            == CubeReplacementCloseDisposition::AllowInventoryClose
-        && interfaceToClose == PairedInterface::Inventory) {
-        return {};
-    }
-    if (cubeReplacementClose
-            == CubeReplacementCloseDisposition::SuppressStashTeardown
-        && interfaceToClose == PairedInterface::Stash) {
-        return {
-            .suppress = true,
-        };
     }
     if (origin == PairedCloseOrigin::Movement) {
         if (interfaceToClose == PairedInterface::Inventory
@@ -860,6 +820,185 @@ inline bool ParseFrame(std::string_view value, std::uint32_t& output) noexcept {
     return true;
 }
 
+struct ButtonParseState {
+    bool placementSeen{};
+    bool anchorSeen{};
+    bool offsetXSeen{};
+    bool offsetYSeen{};
+    bool widthSeen{};
+    bool heightSeen{};
+    bool spriteFileSeen{};
+    bool lowendSpriteFileSeen{};
+    bool normalFrameSeen{};
+    bool pressedFrameSeen{};
+    bool disabledFrameSeen{};
+    bool hoveredFrameSeen{};
+};
+
+inline bool ParseButtonSetting(
+    std::string_view key,
+    std::string_view value,
+    ButtonConfig& button,
+    ButtonParseState& state,
+    std::string& error,
+    std::size_t lineNumber
+) {
+    bool valid{};
+    bool* duplicate{};
+    if (key == "placement") {
+        duplicate = &state.placementSeen;
+        std::string placement;
+        valid = ParseQuotedString(value, placement);
+        if (valid && placement == "auto") {
+            button.placement = ButtonPlacement::Automatic;
+        } else if (valid && placement == "custom") {
+            button.placement = ButtonPlacement::Custom;
+        } else if (valid) {
+            return SetError(error, lineNumber,
+                "button placement must be auto or custom");
+        }
+    } else if (key == "anchor") {
+        duplicate = &state.anchorSeen;
+        std::string anchor;
+        valid = ParseQuotedString(value, anchor);
+        if (valid && anchor == "topLeft") {
+            button.anchor = ButtonAnchor::TopLeft;
+        } else if (valid && anchor == "topRight") {
+            button.anchor = ButtonAnchor::TopRight;
+        } else if (valid && anchor == "bottomLeft") {
+            button.anchor = ButtonAnchor::BottomLeft;
+        } else if (valid && anchor == "bottomRight") {
+            button.anchor = ButtonAnchor::BottomRight;
+        } else if (valid) {
+            return SetError(error, lineNumber,
+                "button anchor must be topLeft, topRight, bottomLeft, or bottomRight");
+        }
+    } else if (key == "offset_x") {
+        duplicate = &state.offsetXSeen;
+        valid = ParseInt32(value, button.offsetX);
+    } else if (key == "offset_y") {
+        duplicate = &state.offsetYSeen;
+        valid = ParseInt32(value, button.offsetY);
+    } else if (key == "width") {
+        duplicate = &state.widthSeen;
+        valid = ParseInt32(value, button.width);
+    } else if (key == "height") {
+        duplicate = &state.heightSeen;
+        valid = ParseInt32(value, button.height);
+    } else if (key == "sprite_file") {
+        duplicate = &state.spriteFileSeen;
+        valid = ParseQuotedString(value, button.spriteFile);
+    } else if (key == "lowend_sprite_file") {
+        duplicate = &state.lowendSpriteFileSeen;
+        valid = ParseQuotedString(value, button.lowendSpriteFile);
+    } else if (key == "normal_frame") {
+        duplicate = &state.normalFrameSeen;
+        valid = ParseFrame(value, button.normalFrame);
+    } else if (key == "pressed_frame") {
+        duplicate = &state.pressedFrameSeen;
+        valid = ParseFrame(value, button.pressedFrame);
+    } else if (key == "disabled_frame") {
+        duplicate = &state.disabledFrameSeen;
+        valid = ParseFrame(value, button.disabledFrame);
+    } else if (key == "hovered_frame") {
+        duplicate = &state.hoveredFrameSeen;
+        valid = ParseFrame(value, button.hoveredFrame);
+    } else {
+        return SetError(error, lineNumber, "unknown button setting");
+    }
+    if (*duplicate) {
+        return SetError(error, lineNumber, "duplicate setting");
+    }
+    *duplicate = true;
+    if (!valid) return SetError(error, lineNumber, "invalid setting value");
+    return true;
+}
+
+inline bool ValidateButtonConfig(
+    const ButtonConfig& button,
+    std::string& error
+) {
+    if (button.offsetX < -32768 || button.offsetX > 32767
+        || button.offsetY < -32768 || button.offsetY > 32767) {
+        error = "button offsets must be between -32768 and 32767";
+        return false;
+    }
+    if (button.width < 1 || button.width > 4096
+        || button.height < 1 || button.height > 4096) {
+        error = "button width and height must be between 1 and 4096";
+        return false;
+    }
+    if (button.spriteFile.size() > 1024
+        || button.lowendSpriteFile.size() > 1024
+        || button.spriteFile.find('\0') != std::string::npos
+        || button.lowendSpriteFile.find('\0') != std::string::npos) {
+        error = "button sprite paths are invalid or too long";
+        return false;
+    }
+    return true;
+}
+
+inline bool IsPortableMpqSpritePath(std::string_view path) noexcept {
+    if (path.empty()) return true;
+    if (path.front() == '/' || path.front() == '\\'
+        || path.find(':') != std::string_view::npos) {
+        return false;
+    }
+    for (std::size_t start = 0; start <= path.size();) {
+        const auto end = path.find_first_of("/\\", start);
+        const auto component = path.substr(
+            start,
+            end == std::string_view::npos ? path.size() - start : end - start
+        );
+        if (component == "..") return false;
+        if (end == std::string_view::npos) break;
+        start = end + 1;
+    }
+    return true;
+}
+
+inline std::vector<std::filesystem::path> BuildActiveModMpqRoots(
+    std::string_view activeMod,
+    const std::filesystem::path& modDirectory,
+    const std::filesystem::path& modSupportDirectory,
+    const std::filesystem::path& scopeRootDirectory,
+    bool globalScope
+) {
+    std::vector<std::filesystem::path> roots;
+    if (activeMod.empty() || activeMod == "." || activeMod == ".."
+        || activeMod.find_first_of("/\\:") != std::string_view::npos) {
+        return roots;
+    }
+    const auto mpqName = std::filesystem::path(
+        std::string(activeMod) + ".mpq");
+    const auto append = [&](std::filesystem::path root) {
+        if (root.empty()) return;
+        root = root.lexically_normal();
+        if (std::find(roots.begin(), roots.end(), root) == roots.end()) {
+            roots.push_back(std::move(root));
+        }
+    };
+
+    if (!modDirectory.empty()) {
+        append(modDirectory.extension() == L".mpq"
+            ? modDirectory
+            : modDirectory / mpqName);
+    }
+    if (!modSupportDirectory.empty()) {
+        const auto modRoot = modSupportDirectory.filename() == L"d2rloader"
+            ? modSupportDirectory.parent_path()
+            : modSupportDirectory;
+        append(modRoot / mpqName);
+    }
+    if (!scopeRootDirectory.empty()) {
+        append(globalScope
+            ? scopeRootDirectory / L"mods"
+                / std::filesystem::path(activeMod) / mpqName
+            : scopeRootDirectory / mpqName);
+    }
+    return roots;
+}
+
 inline bool ParseConfig(
     std::string_view input,
     HotkeyConfig& output,
@@ -876,22 +1015,12 @@ inline bool ParseConfig(
     bool inventoryButtonEnabledSeen{};
     bool hotkeyEnabledSeen{};
     bool hotkeySeen{};
-    bool hotkeyModeSeen{};
+    bool closeTogetherSeen{};
+    bool legacyHotkeyModeSeen{};
     bool diagnosticsSeen{};
     bool diagnosticsTableSeen{};
     bool buttonTableSeen{};
-    bool placementSeen{};
-    bool anchorSeen{};
-    bool offsetXSeen{};
-    bool offsetYSeen{};
-    bool widthSeen{};
-    bool heightSeen{};
-    bool spriteFileSeen{};
-    bool lowendSpriteFileSeen{};
-    bool normalFrameSeen{};
-    bool pressedFrameSeen{};
-    bool disabledFrameSeen{};
-    bool hoveredFrameSeen{};
+    ButtonParseState buttonState{};
     Section section{Section::Root};
 
     std::size_t lineNumber{};
@@ -940,67 +1069,16 @@ inline bool ParseConfig(
             duplicate = &diagnosticsSeen;
             valid = ParseBoolean(value, parsed.diagnostics);
         } else if (section == Section::Button) {
-            if (key == "placement") {
-                duplicate = &placementSeen;
-                std::string placement;
-                valid = ParseQuotedString(value, placement);
-                if (valid && placement == "auto") {
-                    parsed.button.placement = ButtonPlacement::Automatic;
-                } else if (valid && placement == "custom") {
-                    parsed.button.placement = ButtonPlacement::Custom;
-                } else if (valid) {
-                    return SetError(error, lineNumber,
-                        "button placement must be auto or custom");
-                }
-            } else if (key == "anchor") {
-                duplicate = &anchorSeen;
-                std::string anchor;
-                valid = ParseQuotedString(value, anchor);
-                if (valid && anchor == "topLeft") {
-                    parsed.button.anchor = ButtonAnchor::TopLeft;
-                } else if (valid && anchor == "topRight") {
-                    parsed.button.anchor = ButtonAnchor::TopRight;
-                } else if (valid && anchor == "bottomLeft") {
-                    parsed.button.anchor = ButtonAnchor::BottomLeft;
-                } else if (valid && anchor == "bottomRight") {
-                    parsed.button.anchor = ButtonAnchor::BottomRight;
-                } else if (valid) {
-                    return SetError(error, lineNumber,
-                        "button anchor must be topLeft, topRight, bottomLeft, or bottomRight");
-                }
-            } else if (key == "offset_x") {
-                duplicate = &offsetXSeen;
-                valid = ParseInt32(value, parsed.button.offsetX);
-            } else if (key == "offset_y") {
-                duplicate = &offsetYSeen;
-                valid = ParseInt32(value, parsed.button.offsetY);
-            } else if (key == "width") {
-                duplicate = &widthSeen;
-                valid = ParseInt32(value, parsed.button.width);
-            } else if (key == "height") {
-                duplicate = &heightSeen;
-                valid = ParseInt32(value, parsed.button.height);
-            } else if (key == "sprite_file") {
-                duplicate = &spriteFileSeen;
-                valid = ParseQuotedString(value, parsed.button.spriteFile);
-            } else if (key == "lowend_sprite_file") {
-                duplicate = &lowendSpriteFileSeen;
-                valid = ParseQuotedString(value, parsed.button.lowendSpriteFile);
-            } else if (key == "normal_frame") {
-                duplicate = &normalFrameSeen;
-                valid = ParseFrame(value, parsed.button.normalFrame);
-            } else if (key == "pressed_frame") {
-                duplicate = &pressedFrameSeen;
-                valid = ParseFrame(value, parsed.button.pressedFrame);
-            } else if (key == "disabled_frame") {
-                duplicate = &disabledFrameSeen;
-                valid = ParseFrame(value, parsed.button.disabledFrame);
-            } else if (key == "hovered_frame") {
-                duplicate = &hoveredFrameSeen;
-                valid = ParseFrame(value, parsed.button.hoveredFrame);
-            } else {
-                return SetError(error, lineNumber, "unknown button setting");
+            if (!ParseButtonSetting(
+                    key,
+                    value,
+                    parsed.button,
+                    buttonState,
+                    error,
+                    lineNumber)) {
+                return false;
             }
+            continue;
         } else if (key == "enabled") {
             duplicate = &enabledSeen;
             valid = ParseBoolean(value, parsed.enabled);
@@ -1017,17 +1095,31 @@ inline bool ParseConfig(
                 return SetError(error, lineNumber,
                     "hotkey is invalid or unsupported");
             }
+        } else if (key == "close_remote_stash_and_inventory_together") {
+            if (legacyHotkeyModeSeen) {
+                return SetError(error, lineNumber,
+                    "close_remote_stash_and_inventory_together cannot be combined with legacy hotkey_mode");
+            }
+            duplicate = &closeTogetherSeen;
+            valid = ParseBoolean(
+                value,
+                parsed.closeRemoteStashAndInventoryTogether
+            );
         } else if (key == "hotkey_mode") {
-            duplicate = &hotkeyModeSeen;
+            if (closeTogetherSeen) {
+                return SetError(error, lineNumber,
+                    "legacy hotkey_mode cannot be combined with close_remote_stash_and_inventory_together");
+            }
+            duplicate = &legacyHotkeyModeSeen;
             std::string mode;
             valid = ParseQuotedString(value, mode);
             if (valid && mode == "remoteOnly") {
-                parsed.mode = HotkeyMode::RemoteOnly;
+                parsed.closeRemoteStashAndInventoryTogether = false;
             } else if (valid && mode == "remoteAndInventory") {
-                parsed.mode = HotkeyMode::RemoteAndInventory;
+                parsed.closeRemoteStashAndInventoryTogether = true;
             } else if (valid) {
                 return SetError(error, lineNumber,
-                    "hotkey_mode must be remoteOnly or remoteAndInventory");
+                    "legacy hotkey_mode must be remoteOnly or remoteAndInventory");
             }
         } else if (key == "diagnostics") {
             duplicate = &diagnosticsSeen;
@@ -1054,24 +1146,83 @@ inline bool ParseConfig(
         parsed.hotkeyEnabled = parsed.enabled;
         parsed.enabled = true;
     }
-    if (parsed.button.offsetX < -32768 || parsed.button.offsetX > 32767
-        || parsed.button.offsetY < -32768 || parsed.button.offsetY > 32767) {
-        error = "button offsets must be between -32768 and 32767";
-        return false;
-    }
-    if (parsed.button.width < 1 || parsed.button.width > 4096
-        || parsed.button.height < 1 || parsed.button.height > 4096) {
-        error = "button width and height must be between 1 and 4096";
-        return false;
-    }
-    if (parsed.button.spriteFile.size() > 1024
-        || parsed.button.lowendSpriteFile.size() > 1024
-        || parsed.button.spriteFile.find('\0') != std::string::npos
-        || parsed.button.lowendSpriteFile.find('\0') != std::string::npos) {
-        error = "button sprite paths are invalid or too long";
-        return false;
-    }
+    if (!ValidateButtonConfig(parsed.button, error)) return false;
     output = parsed;
+    error.clear();
+    return true;
+}
+
+inline bool ParseMpqButtonConfig(
+    std::string_view input,
+    ButtonConfig& output,
+    std::string& error
+) {
+    ButtonConfig parsed{};
+    ButtonParseState state{};
+    bool buttonSectionSeen{};
+    bool settingSeen{};
+
+    std::size_t lineNumber{};
+    for (std::size_t start = 0; start <= input.size();) {
+        ++lineNumber;
+        const auto end = input.find('\n', start);
+        auto line = Trim(WithoutComment(input.substr(
+            start,
+            end == std::string_view::npos
+                ? input.size() - start : end - start)));
+        start = end == std::string_view::npos ? input.size() + 1 : end + 1;
+        if (line.empty()) continue;
+        if (line.front() == '[') {
+            if (line != "[button]" || buttonSectionSeen || settingSeen) {
+                return SetError(
+                    error,
+                    lineNumber,
+                    "expected one [button] section"
+                );
+            }
+            buttonSectionSeen = true;
+            continue;
+        }
+        if (!buttonSectionSeen) {
+            return SetError(error, lineNumber,
+                "button settings must follow [button]");
+        }
+
+        const auto equal = line.find('=');
+        if (equal == std::string_view::npos
+            || line.find('=', equal + 1) != std::string_view::npos) {
+            return SetError(error, lineNumber,
+                "expected one key/value assignment");
+        }
+        const auto key = Trim(line.substr(0, equal));
+        const auto value = Trim(line.substr(equal + 1));
+        if (key.empty() || value.empty()) {
+            return SetError(error, lineNumber,
+                "invalid key/value assignment");
+        }
+        if (!ParseButtonSetting(
+                key,
+                value,
+                parsed,
+                state,
+                error,
+                lineNumber)) {
+            return false;
+        }
+        settingSeen = true;
+    }
+
+    if (!buttonSectionSeen || !settingSeen) {
+        error = "the [button] section is missing or empty";
+        return false;
+    }
+    if (!ValidateButtonConfig(parsed, error)) return false;
+    if (!IsPortableMpqSpritePath(parsed.spriteFile)
+        || !IsPortableMpqSpritePath(parsed.lowendSpriteFile)) {
+        error = "MPQ sprite paths must be relative and remain inside the active MPQ";
+        return false;
+    }
+    output = std::move(parsed);
     error.clear();
     return true;
 }

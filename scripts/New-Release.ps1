@@ -2,7 +2,9 @@
 param(
     [Parameter(Mandatory = $true)][string]$SourceRoot,
     [Parameter(Mandatory = $true)][string]$AllowlistPath,
-    [Parameter(Mandatory = $true)][string]$OutputDirectory
+    [Parameter(Mandatory = $true)][string]$OutputDirectory,
+    [string]$ReleasePlanPath,
+    [string]$ReleaseNotesPath
 )
 
 Set-StrictMode -Version Latest
@@ -110,6 +112,15 @@ $resolvedSourceRoot = (Resolve-Path -LiteralPath $SourceRoot).Path
 $resolvedAllowlist = (Resolve-Path -LiteralPath $AllowlistPath).Path
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $absoluteOutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
+if ([string]::IsNullOrWhiteSpace($ReleasePlanPath)) {
+    $ReleasePlanPath = Join-Path $repositoryRoot 'manifests\next-release.json'
+}
+$resolvedReleasePlan = (Resolve-Path -LiteralPath $ReleasePlanPath).Path
+$releasePlanValidator = Join-Path $PSScriptRoot 'Test-NextRelease.ps1'
+& $releasePlanValidator `
+    -PlanPath $resolvedReleasePlan `
+    -AllowlistPath $resolvedAllowlist `
+    -RequirePackageReady | Out-Null
 
 try { $document = Get-Content -LiteralPath $resolvedAllowlist -Raw | ConvertFrom-Json }
 catch { throw "Invalid release allowlist JSON '$resolvedAllowlist': $($_.Exception.Message)" }
@@ -120,26 +131,52 @@ if ([int]$document.schemaVersion -ne 1 -or [string]$document.suite.id -ne 'ruffn
 if ([string]$document.suite.version -notmatch '^\d+\.\d+\.\d+$') {
     throw 'The Suite release requires a semantic x.y.z version.'
 }
+$compatibility = $document.suite.compatibility
+if ([string]$compatibility.policy -ne 'native-fingerprint-fail-closed' -or
+    @($compatibility.runtimeQualified | Where-Object {
+        [string]$_.version -eq '3.3' -and [int]$_.build -eq 93847
+    }).Count -ne 1 -or
+    @($compatibility.nativeEquivalent | Where-Object {
+        [string]$_.version -eq '3.2' -and [int]$_.build -eq 92777
+    }).Count -ne 1 -or
+    $document.suite.PSObject.Properties.Name -contains 'targetGameBuild' -or
+    $document.suite.PSObject.Properties.Name -contains 'validatedGameBuilds') {
+    throw 'The Suite release must report qualified builds without using a D2R build-name allowlist.'
+}
 if ([string]$document.distribution.model -ne 'modular-catalog' -or [string]$document.distribution.primaryDownloads -ne 'individual-components') {
     throw 'The release manifest must use the approved modular catalog model.'
 }
-if ([bool]$document.policy.readmeIncluded -or
-    [string]$document.policy.readmeLocation -ne 'repository-only') {
-    throw 'README files must remain repository-only and must not be release assets.'
-}
 if (-not [bool]$document.policy.requireSha256) { throw 'Every public release entry must have a pinned SHA-256.' }
+
+try { $releasePlan = Get-Content -LiteralPath $resolvedReleasePlan -Raw | ConvertFrom-Json }
+catch { throw "Invalid next-release registry '$resolvedReleasePlan': $($_.Exception.Message)" }
 
 $entries = @($document.entries)
 $expectedCounts = $document.policy.expectedCounts
 if ($entries.Count -ne [int]$expectedCounts.total) {
     throw "Expected $($expectedCounts.total) allowlist entries; found $($entries.Count)."
 }
+$expectedPluginCompanionExecutables = if ($null -ne $expectedCounts.PSObject.Properties['pluginCompanionExecutables']) {
+    [int]$expectedCounts.pluginCompanionExecutables
+} else { 0 }
+$expectedEmbeddedToolExecutables = if ($null -ne $expectedCounts.PSObject.Properties['embeddedToolExecutables']) {
+    [int]$expectedCounts.embeddedToolExecutables
+} else { 0 }
+$expectedEmbeddedToolReadmes = if ($null -ne $expectedCounts.PSObject.Properties['embeddedToolReadmes']) {
+    [int]$expectedCounts.embeddedToolReadmes
+} else { 0 }
 $kindCounts = @{
     'plugin-dll' = [int]$expectedCounts.pluginDlls
     'plugin-readme' = [int]$expectedCounts.pluginReadmes
+    'plugin-companion-exe' = $expectedPluginCompanionExecutables
+    'embedded-tool-exe' = $expectedEmbeddedToolExecutables
+    'embedded-tool-readme' = $expectedEmbeddedToolReadmes
     'loose-config-json' = [int]$expectedCounts.looseConfigJson
     'plugin-config-toml' = [int]$expectedCounts.pluginConfigToml
     'memory-patch-json' = [int]$expectedCounts.memoryPatchJson
+    'standalone-tool' = if ($null -ne $expectedCounts.PSObject.Properties['standaloneTools']) {
+        [int]$expectedCounts.standaloneTools
+    } else { 0 }
 }
 $deniedBasenames = @($document.policy.deniedBasenames | ForEach-Object { ([string]$_).ToLowerInvariant() })
 $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -152,35 +189,66 @@ foreach ($entry in $entries) {
     $destination = Normalize-ReleasePath ([string]$entry.destination)
     Assert-RelativeReleasePath -Path $source -Label 'Source path'
     Assert-RelativeReleasePath -Path $destination -Label 'Archive destination'
-    if ($kind -notin 'plugin-readme', 'plugin-config-toml' -and
+    if ($kind -notin 'plugin-readme', 'plugin-config-toml', 'embedded-tool-exe', 'embedded-tool-readme' -and
         -not $source.Equals($destination, [StringComparison]::Ordinal)) {
         throw "Source and destination must match: '$source' vs '$destination'."
     }
-    if (-not $seen.Add($destination)) { throw "Duplicate archive destination '$destination'." }
     $basename = [IO.Path]::GetFileName($destination)
     if ($deniedBasenames -contains $basename.ToLowerInvariant()) { throw "Release entry '$destination' is forbidden." }
-    if ($kind -ne 'plugin-readme' -and $destination -match '(?i)(^|/)readme(?:\.[^/]+)?$') {
-        throw "README requires the plugin-readme release kind: '$destination'."
+    if ($kind -notin 'plugin-readme', 'embedded-tool-readme' -and
+        $destination -match '(?i)(^|/)readme(?:\.[^/]+)?$') {
+        throw "README requires an approved README release kind: '$destination'."
     }
 
     $componentId = ''
     if ($kind -ne 'memory-patch-json') {
         $componentId = [string]$entry.componentId
         if ($componentId -notmatch '^ruffneckk-[a-z0-9-]+$') {
-            throw "Entry '$destination' requires a valid plugin componentId."
+            throw "Entry '$destination' requires a valid RuffnecKk componentId."
         }
     }
+    $archiveComponentId = $componentId
+    if ($kind -in 'embedded-tool-exe', 'embedded-tool-readme') {
+        $archiveComponentId = [string]$entry.archiveComponentId
+        if ($archiveComponentId -notmatch '^ruffneckk-[a-z0-9-]+$') {
+            throw "Embedded entry '$destination' requires a valid archiveComponentId."
+        }
+    }
+    $destinationKey = if ($kind -in 'plugin-readme', 'embedded-tool-exe', 'embedded-tool-readme') {
+        "$archiveComponentId|$destination"
+    } else { $destination }
+    if (-not $seen.Add($destinationKey)) { throw "Duplicate archive destination '$destinationKey'." }
 
     $extension = [IO.Path]::GetExtension($destination)
     switch ($kind) {
         'plugin-dll' {
-            if ($extension -ine '.dll' -or $basename -notmatch '^d2rl-ruffneckk-[a-z0-9-]+\.dll$') {
+            if ($extension -ine '.dll' -or $basename -notmatch '^d2rl-ruffneckk-[a-z0-9-]+\.dll$' -or
+                $destination -cne "plugins/$basename") {
                 throw "Invalid plugin release path '$destination'."
+            }
+        }
+        'plugin-companion-exe' {
+            if ($extension -ine '.exe' -or $destination -cne "plugins/$basename") {
+                throw "Invalid plugin companion release path '$destination'."
             }
         }
         'plugin-readme' {
             if ($destination -cne 'README.md' -or [IO.Path]::GetFileName($source) -cne 'README.md') {
                 throw "Invalid plugin README release path '$source' -> '$destination'."
+            }
+        }
+        'embedded-tool-exe' {
+            $destinationDirectory = Split-Path -Parent $destination
+            if ($source -notmatch '^tools/[A-Za-z0-9][A-Za-z0-9._-]*\.exe$' -or
+                $extension -ine '.exe' -or [string]::IsNullOrWhiteSpace($destinationDirectory)) {
+                throw "Invalid embedded tool executable path '$source' -> '$destination'."
+            }
+        }
+        'embedded-tool-readme' {
+            $destinationDirectory = Split-Path -Parent $destination
+            if ($source -notmatch '^tools/[a-z0-9-]+/README\.md$' -or
+                $basename -cne 'README.md' -or [string]::IsNullOrWhiteSpace($destinationDirectory)) {
+                throw "Invalid embedded tool README path '$source' -> '$destination'."
             }
         }
         'plugin-config-toml' {
@@ -192,20 +260,32 @@ foreach ($entry in $entries) {
                 throw "Invalid plugin TOML source '$source'; expected '$expectedSource'."
             }
         }
-        { $_ -in 'loose-config-json', 'memory-patch-json' } {
-            if ($extension -ine '.json') { throw "Invalid JSON release path '$destination'." }
+        'loose-config-json' {
+            if ($extension -ine '.json' -or $destination -cne "config/$basename") {
+                throw "Invalid plugin JSON configuration path '$destination'."
+            }
+        }
+        'memory-patch-json' {
+            if ($extension -ine '.json' -or $destination -cne "patches/$basename") {
+                throw "Invalid memory patch path '$destination'."
+            }
+        }
+        'standalone-tool' {
+            if ($extension -ine '.exe' -or $destination -cne $basename) {
+                throw "Invalid standalone tool release path '$destination'."
+            }
         }
     }
 
     $version = ''
-    if ($kind -eq 'plugin-dll') {
+    if ($kind -in 'plugin-dll', 'standalone-tool', 'embedded-tool-exe') {
         $version = [string]$entry.version
-        if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Plugin '$componentId' requires a semantic version." }
+        if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Component '$componentId' requires a semantic version." }
     }
 
     $expectedHash = ([string]$entry.sha256).Trim().ToUpperInvariant()
     if ($expectedHash -notmatch '^[0-9A-F]{64}$') { throw "Entry '$destination' requires a valid SHA-256." }
-    $sourceBase = if ($kind -in 'plugin-readme', 'plugin-config-toml') {
+    $sourceBase = if ($kind -in 'plugin-readme', 'plugin-config-toml', 'embedded-tool-readme') {
         $repositoryRoot
     }
     else {
@@ -217,8 +297,8 @@ foreach ($entry in $entries) {
         throw "SHA-256 mismatch for '$source': expected $expectedHash, found $actualHash."
     }
     $validated.Add([pscustomobject]@{
-        Source = $absoluteSource; Destination = $destination; SHA256 = $expectedHash
-        Kind = $kind; ComponentId = $componentId; Version = $version
+        Source = $absoluteSource; SourceRelative = $source; Destination = $destination; SHA256 = $expectedHash
+        Kind = $kind; ComponentId = $componentId; ArchiveComponentId = $archiveComponentId; Version = $version
     })
 }
 
@@ -231,32 +311,91 @@ $pluginIds = @($pluginDlls | ForEach-Object ComponentId)
 if (@($pluginIds | Sort-Object -Unique).Count -ne $pluginDlls.Count) {
     throw 'Every plugin archive requires one unique plugin componentId.'
 }
-foreach ($entry in @($validated | Where-Object Kind -ne 'memory-patch-json')) {
+foreach ($entry in @($validated | Where-Object {
+    $_.Kind -notin 'memory-patch-json', 'standalone-tool', 'embedded-tool-exe', 'embedded-tool-readme'
+})) {
     if ($pluginIds -notcontains $entry.ComponentId) {
         throw "Entry '$($entry.Destination)' references unknown plugin '$($entry.ComponentId)'."
     }
 }
+$embeddedToolEntries = @($validated | Where-Object Kind -in 'embedded-tool-exe', 'embedded-tool-readme')
+$plannedEmbeddedTools = @($releasePlan.components | Where-Object {
+    [string]$_.kind -eq 'tool' -and
+    [string]$_.disposition -eq 'include' -and
+    $null -ne $_.PSObject.Properties['archiveEmbedding']
+})
+$plannedEmbeddedToolIds = @($plannedEmbeddedTools | ForEach-Object { [string]$_.id })
+foreach ($entry in $embeddedToolEntries) {
+    if ($entry.ComponentId -notin $plannedEmbeddedToolIds -or $entry.ArchiveComponentId -notin $pluginIds) {
+        throw "Embedded entry '$($entry.Destination)' does not reference an approved tool and plugin archive."
+    }
+}
+foreach ($tool in $plannedEmbeddedTools) {
+    $embedding = $tool.archiveEmbedding
+    $matches = @($embeddedToolEntries | Where-Object ComponentId -eq [string]$tool.id)
+    if ($matches.Count -ne 2 -or
+        @($matches | Where-Object Kind -eq 'embedded-tool-exe').Count -ne 1 -or
+        @($matches | Where-Object Kind -eq 'embedded-tool-readme').Count -ne 1 -or
+        @($matches | Where-Object { $_.ArchiveComponentId -ne [string]$embedding.ownerComponentId }).Count -ne 0) {
+        throw "Embedded tool '$($tool.id)' must provide exactly one executable and one README in '$($embedding.ownerComponentId)'."
+    }
+    $expectedFiles = @(
+        [pscustomobject]@{ Kind = 'embedded-tool-exe'; File = $embedding.executable }
+        [pscustomobject]@{ Kind = 'embedded-tool-readme'; File = $embedding.readme }
+    )
+    foreach ($expected in $expectedFiles) {
+        $match = @($matches | Where-Object Kind -eq $expected.Kind)[0]
+        if ($match.Destination -cne ([string]$expected.File.destination).Replace('\', '/') -or
+            $match.SourceRelative -cne ([string]$expected.File.source).Replace('\', '/') -or
+            $match.SHA256 -cne ([string]$expected.File.sha256).ToUpperInvariant() -or
+            ($expected.Kind -eq 'embedded-tool-exe' -and $match.Version -ne [string]$tool.targetVersion)) {
+            throw "Embedded tool '$($tool.id)' $($expected.Kind) does not match the release registry."
+        }
+    }
+}
 $pluginReadmes = @($validated | Where-Object Kind -eq 'plugin-readme')
-if ($pluginReadmes.Count -ne 0) {
-    throw 'README files must not be release assets.'
+$plannedReadmeIds = @($releasePlan.components | Where-Object {
+    [string]$_.kind -eq 'plugin' -and
+    [string]$_.disposition -eq 'include' -and
+    $null -ne $_.PSObject.Properties['archiveReadme'] -and
+    [bool]$_.archiveReadme.include
+} | ForEach-Object { [string]$_.id })
+$actualReadmeIds = @($pluginReadmes | ForEach-Object ComponentId)
+if (@($plannedReadmeIds | Where-Object { $_ -notin $actualReadmeIds }).Count -ne 0 -or
+    @($actualReadmeIds | Where-Object { $_ -notin $plannedReadmeIds }).Count -ne 0 -or
+    @($actualReadmeIds | Sort-Object -Unique).Count -ne $pluginReadmes.Count) {
+    throw 'Plugin README entries must match the reviewed archive contracts in the next-release registry.'
+}
+if (($pluginReadmes.Count + @($embeddedToolEntries | Where-Object Kind -eq 'embedded-tool-readme').Count) -eq 0) {
+    if ([bool]$document.policy.readmeIncluded -or
+        [string]$document.policy.readmeLocation -ne 'repository-only') {
+        throw 'A release without governed plugin READMEs must keep them repository-only.'
+    }
+}
+elseif (-not [bool]$document.policy.readmeIncluded -or
+    [string]$document.policy.readmeLocation -ne 'selected-plugin-archives') {
+    throw 'Governed plugin READMEs require the selected-plugin-archives policy.'
 }
 $pluginConfigs = @($validated | Where-Object Kind -in 'plugin-config-toml', 'loose-config-json')
-if ($pluginConfigs.Count -ne $pluginDlls.Count) {
-    throw "Every plugin archive requires exactly one configuration; found $($pluginConfigs.Count) for $($pluginDlls.Count) plugins."
-}
 foreach ($pluginId in $pluginIds) {
     $ownedConfigs = @($pluginConfigs | Where-Object ComponentId -eq $pluginId)
-    if ($ownedConfigs.Count -ne 1) {
-        throw "Plugin '$pluginId' requires exactly one configuration entry; found $($ownedConfigs.Count)."
+    if ($ownedConfigs.Count -gt 1) {
+        throw "Plugin '$pluginId' may have at most one justified configuration entry; found $($ownedConfigs.Count)."
     }
 }
 
 $expectedAssets = $document.distribution.expectedGithubAssets
+$standaloneTools = @($validated | Where-Object Kind -eq 'standalone-tool')
+$expectedStandaloneTools = if ($null -ne $expectedAssets.PSObject.Properties['standaloneTools']) {
+    [int]$expectedAssets.standaloneTools
+} else { 0 }
+$derivedAssetTotal = $pluginDlls.Count + [int]$expectedCounts.memoryPatchJson + $standaloneTools.Count + [int]$expectedAssets.optionalBundles
 if ([int]$expectedAssets.individualPluginArchives -ne $pluginDlls.Count -or
     [int]$expectedAssets.individualPatchFiles -ne [int]$expectedCounts.memoryPatchJson -or
+    $expectedStandaloneTools -ne $standaloneTools.Count -or
     [int]$expectedAssets.optionalBundles -ne 2 -or
-    [int]$expectedAssets.total -ne 38) {
-    throw 'The modular asset counts do not match the approved 17/19/2 contract.'
+    [int]$expectedAssets.total -ne $derivedAssetTotal) {
+    throw "The modular asset counts do not match the derived $($pluginDlls.Count)/$($expectedCounts.memoryPatchJson)/$($standaloneTools.Count)/$($expectedAssets.optionalBundles) contract."
 }
 
 if (Test-Path -LiteralPath $absoluteOutputDirectory) {
@@ -269,7 +408,7 @@ try {
         $slug = $plugin.ComponentId.Substring('ruffneckk-'.Length)
         $assetName = "RuffnecKk-$slug-v$($plugin.Version).zip"
         $assetPath = Join-Path $absoluteOutputDirectory $assetName
-        $assetHash = New-VerifiedZip -Path $assetPath -Items @($validated | Where-Object ComponentId -eq $plugin.ComponentId)
+        $assetHash = New-VerifiedZip -Path $assetPath -Items @($validated | Where-Object ArchiveComponentId -eq $plugin.ComponentId)
         $generated.Add([pscustomobject]@{ Name = $assetName; Path = $assetPath; SHA256 = $assetHash; Kind = 'individual-plugin' })
     }
 
@@ -283,11 +422,23 @@ try {
         $generated.Add([pscustomobject]@{ Name = $assetName; Path = $assetPath; SHA256 = $assetHash; Kind = 'individual-patch' })
     }
 
+    foreach ($tool in @($standaloneTools | Sort-Object ComponentId)) {
+        $assetName = [IO.Path]::GetFileName($tool.Destination)
+        $assetPath = Join-Path $absoluteOutputDirectory $assetName
+        if (Test-Path -LiteralPath $assetPath) { throw "Duplicate generated asset '$assetName'." }
+        Copy-Item -LiteralPath $tool.Source -Destination $assetPath
+        $assetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $assetPath).Hash
+        if ($assetHash -ne $tool.SHA256) { throw "Copied standalone tool hash mismatch for '$assetName'." }
+        $generated.Add([pscustomobject]@{ Name = $assetName; Path = $assetPath; SHA256 = $assetHash; Kind = 'standalone-tool' })
+    }
+
     $suiteVersion = [string]$document.suite.version
     $pluginBundleName = "RuffnecKk-All-Plugins-v$suiteVersion.zip"
     $pluginBundlePath = Join-Path $absoluteOutputDirectory $pluginBundleName
     $pluginBundleHash = New-VerifiedZip -Path $pluginBundlePath -Items @(
-        $validated | Where-Object { $_.Kind -ne 'memory-patch-json' -and $_.Kind -ne 'plugin-readme' }
+        $validated | Where-Object {
+            $_.Kind -in 'plugin-dll', 'plugin-companion-exe', 'plugin-config-toml', 'loose-config-json'
+        }
     )
     $generated.Add([pscustomobject]@{ Name = $pluginBundleName; Path = $pluginBundlePath; SHA256 = $pluginBundleHash; Kind = 'plugin-bundle' })
 
@@ -307,10 +458,24 @@ try {
         throw 'README files must be reviewed beside the generated catalog, not generated as release assets.'
     }
 
+    if (-not [string]::IsNullOrWhiteSpace($ReleaseNotesPath)) {
+        $absoluteReleaseNotes = [IO.Path]::GetFullPath($ReleaseNotesPath)
+        $outputPrefix = $absoluteOutputDirectory.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+        if ($absoluteReleaseNotes.StartsWith($outputPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Release notes must be written beside the generated catalog, never inside the asset directory.'
+        }
+        & $releasePlanValidator `
+            -PlanPath $resolvedReleasePlan `
+            -AllowlistPath $resolvedAllowlist `
+            -RequirePackageReady `
+            -WriteReleaseNotesPath $absoluteReleaseNotes | Out-Null
+    }
+
     [pscustomobject]@{
         OutputDirectory = $absoluteOutputDirectory
         PluginArchives = @($generated | Where-Object Kind -eq 'individual-plugin').Count
         PatchFiles = @($generated | Where-Object Kind -eq 'individual-patch').Count
+        StandaloneTools = @($generated | Where-Object Kind -eq 'standalone-tool').Count
         OptionalBundles = @($generated | Where-Object Kind -Match 'bundle$').Count
         Assets = $generated.Count
         Result = 'VALID'

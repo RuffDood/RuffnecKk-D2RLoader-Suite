@@ -9,8 +9,8 @@ BULK_CURRENCY_DEPOSIT_BUTTON_RESOURCE_ID RCDATA "../assets/deposit-button.sprite
 BULK_CURRENCY_DEPOSIT_BUTTON_LOWEND_RESOURCE_ID RCDATA "../assets/deposit-button.lowend.sprite"
 
 1 VERSIONINFO
-FILEVERSION 1,0,0,0
-PRODUCTVERSION 1,0,0,0
+FILEVERSION 1,0,1,0
+PRODUCTVERSION 1,0,1,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -18,11 +18,11 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "RuffnecKk"
       VALUE "FileDescription", "Auto transfers all your stackable currency items into their respective stash slots."
-      VALUE "FileVersion", "1.0.0"
+      VALUE "FileVersion", "1.0.1"
       VALUE "InternalName", "bulk-currency-deposit"
       VALUE "OriginalFilename", "d2rl-ruffneckk-bulk-currency-deposit.dll"
       VALUE "ProductName", "Bulk Currency Deposit"
-      VALUE "ProductVersion", "1.0.0"
+      VALUE "ProductVersion", "1.0.1"
     END
   END
   BLOCK "VarFileInfo"

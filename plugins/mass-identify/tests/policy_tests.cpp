@@ -31,6 +31,7 @@ int main(int argc, char** argv) {
     REQUIRE(ParseConfig(stream.str(), config, error));
     REQUIRE(config.enabled);
     REQUIRE(!config.freeIdentification);
+    REQUIRE(!config.rightClickMassIdentify);
     REQUIRE(!config.targets.includeCube);
     REQUIRE(!config.targets.includePersonalStash);
     REQUIRE(!config.targets.includeSharedStash);
@@ -41,6 +42,7 @@ int main(int argc, char** argv) {
 [mass_identify]
 enabled = true
 freeIdentification = true
+rightClickMassIdentify = true
 includeCube = true
 includePersonalStash = true
 includeSharedStash = true
@@ -48,16 +50,29 @@ includeSharedStash = true
     REQUIRE(ParseConfig(allEnabled, config, error));
     REQUIRE(config.enabled);
     REQUIRE(config.freeIdentification);
+    REQUIRE(config.rightClickMassIdentify);
     REQUIRE(!config.diagnosticsEnabled);
     REQUIRE(IncludesTarget(config.targets, TargetContainer::Cube));
     REQUIRE(IncludesTarget(
         config.targets, TargetContainer::PersonalStash));
     REQUIRE(IncludesTarget(config.targets, TargetContainer::SharedStash));
 
+    constexpr auto legacyWithoutDirectMode = R"toml(
+[mass_identify]
+enabled = true
+freeIdentification = false
+includeCube = false
+includePersonalStash = false
+includeSharedStash = false
+)toml";
+    REQUIRE(ParseConfig(legacyWithoutDirectMode, config, error));
+    REQUIRE(!config.rightClickMassIdentify);
+
     constexpr auto diagnostics = R"toml(
 [mass_identify]
 enabled = false
 freeIdentification = false
+rightClickMassIdentify = false
 includeCube = false
 includePersonalStash = false
 includeSharedStash = false
@@ -70,35 +85,41 @@ enabled = true
 
     REQUIRE(!ParseConfig(
         "[mass_identify]\nenabled=true\nfreeIdentification=false\n"
+        "rightClickMassIdentify=false\n"
         "includeCube=false\nincludePersonalStash=false\n",
         config,
         error));
     REQUIRE(!ParseConfig(
         "[mass_identify]\nenabled=1\nfreeIdentification=false\n"
+        "rightClickMassIdentify=false\n"
         "includeCube=false\nincludePersonalStash=false\n"
         "includeSharedStash=false\n",
         config,
         error));
     REQUIRE(!ParseConfig(
         "[mass_identify]\nenabled=true\nenabled=false\n"
-        "freeIdentification=false\nincludeCube=false\n"
+        "freeIdentification=false\nrightClickMassIdentify=false\n"
+        "includeCube=false\n"
         "includePersonalStash=false\nincludeSharedStash=false\n",
         config,
         error));
     REQUIRE(!ParseConfig(
         "[mass_identify]\nenabled=true\nfreeIdentification=false\n"
+        "rightClickMassIdentify=false\n"
         "includeCube=false\nincludePersonalStash=false\n"
         "includeSharedStash=false\nunknown=false\n",
         config,
         error));
     REQUIRE(!ParseConfig(
         "[other]\nenabled=true\nfreeIdentification=false\n"
+        "rightClickMassIdentify=false\n"
         "includeCube=false\nincludePersonalStash=false\n"
         "includeSharedStash=false\n",
         config,
         error));
     REQUIRE(!ParseConfig(
         "[mass_identify]\nenabled=true\nfreeIdentification=false\n"
+        "rightClickMassIdentify=false\n"
         "includeCube=false\nincludePersonalStash=false\n"
         "includeSharedStash=false\n[diagnostics]\n",
         config,
@@ -124,15 +145,20 @@ enabled = true
     REQUIRE(ReadInventoryPageFromItemData(nullptr) == InvalidInventoryPage);
 
     REQUIRE(ShouldCaptureGesture(
-        true, true, true, true, IdentifyTomeCode, true));
+        true, false, true, true, true, IdentifyTomeCode, true));
     REQUIRE(!ShouldCaptureGesture(
-        true, false, true, true, IdentifyTomeCode, true));
+        true, false, false, true, true, IdentifyTomeCode, true));
+    REQUIRE(ShouldCaptureGesture(
+        true, true, false, true, true, IdentifyTomeCode, true));
     REQUIRE(!ShouldCaptureGesture(
-        true, true, true, false, IdentifyTomeCode, true));
+        true, true, true, true, false, IdentifyTomeCode, true));
     REQUIRE(!ShouldCaptureGesture(
-        true, true, true, true, IdentifyTomeCode, false));
+        true, true, true, true, true, IdentifyTomeCode, false));
     REQUIRE(!ShouldCaptureGesture(
-        true, true, true, true, 0x206B6274u, true));
+        true, true, true, true, true, 0x206B6274u, true));
+    REQUIRE(ShouldShowMassIdentifyTooltip(true, false));
+    REQUIRE(!ShouldShowMassIdentifyTooltip(true, true));
+    REQUIRE(!ShouldShowMassIdentifyTooltip(false, false));
 
     REQUIRE(IdentificationBudget(false, -1) == 0);
     REQUIRE(IdentificationBudget(false, 0) == 0);

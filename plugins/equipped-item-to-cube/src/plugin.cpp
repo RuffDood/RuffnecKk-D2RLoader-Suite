@@ -122,7 +122,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-equipped-item-to-cube",
     .name = "Equipped Item to Cube",
-    .version = "1.0.1",
+    .version = "1.0.2",
     .author = "RuffnecKk",
     .description = "Moves Ctrl-clicked equipped items directly to the Horadric Cube.",
     .flags = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
@@ -350,7 +350,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Equipped Item to Cube 1.0.0: %s; diagnostics=%s; rewritten=%llu.",
+        "Equipped Item to Cube 1.0.2: %s; diagnostics=%s; rewritten=%llu.",
         Settings.enabled ? "active" : "disabled",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
         static_cast<unsigned long long>(
@@ -397,7 +397,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "EquippedItemToCube 1.0.0 by RuffnecKk loaded disabled; no hook or service registered.");
+            "EquippedItemToCube 1.0.2 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 
@@ -408,16 +408,14 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "EquippedItemToCube: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "EquippedItemToCube: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
     if (!ValidateRuntime()) {
         context->LogError(
-            "EquippedItemToCube: 92777 hook or helper signature mismatch; plugin refused.");
+            "EquippedItemToCube: native hook or helper fingerprint mismatch; plugin refused.");
         return false;
     }
 
@@ -441,7 +439,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
 
     context->LogInfo(
-        "EquippedItemToCube 1.0.0 by RuffnecKk active; Ctrl-left-click equipped transfers target the Cube.");
+        "EquippedItemToCube 1.0.2 by RuffnecKk active; Ctrl-left-click equipped transfers target the Cube.");
     return true;
 }
 

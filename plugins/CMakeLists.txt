@@ -13,6 +13,7 @@ set(RUFFNECKK_SUITE_PLUGIN_DIRECTORIES
     bulk-currency-deposit
     remote-stash
     floating-damage
+    burn-damage-fix
     larzuk-sockets
     bulk-skill-point-allocation
     progressive-affixes

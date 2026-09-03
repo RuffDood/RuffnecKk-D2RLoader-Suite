@@ -252,11 +252,13 @@ if ($manifestsByName.ContainsKey('Hit Chance Bounds')) {
         Get-WriteValueAtRva -Manifest $manifest -Rva 0x44BD57 -ManifestName 'Hit Chance Bounds'
         Get-WriteValueAtRva -Manifest $manifest -Rva 0x14E8068 -ManifestName 'Hit Chance Bounds'
         Get-WriteValueAtRva -Manifest $manifest -Rva 0x15149C2 -ManifestName 'Hit Chance Bounds'
+        Get-WriteValueAtRva -Manifest $manifest -Rva 0x1514CBF -ManifestName 'Hit Chance Bounds'
     )
     $upperValues = @(
         Get-WriteValueAtRva -Manifest $manifest -Rva 0x44BD45 -ManifestName 'Hit Chance Bounds'
         Get-WriteValueAtRva -Manifest $manifest -Rva 0x14E8073 -ManifestName 'Hit Chance Bounds'
         Get-WriteValueAtRva -Manifest $manifest -Rva 0x15149CD -ManifestName 'Hit Chance Bounds'
+        Get-WriteValueAtRva -Manifest $manifest -Rva 0x1514CCA -ManifestName 'Hit Chance Bounds'
     )
     if (@($lowerValues | Select-Object -Unique).Count -ne 1 -or @($upperValues | Select-Object -Unique).Count -ne 1) {
         throw 'Hit Chance lower values must match each other, and upper values must match each other.'

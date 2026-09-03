@@ -29,6 +29,8 @@ $configParser = Get-Content -Raw -LiteralPath (
     Join-Path $sourceDirectory 'config_parser.cpp')
 $plugin = Get-Content -Raw -LiteralPath (
     Join-Path $sourceDirectory 'plugin.cpp')
+$resource = Get-Content -Raw -LiteralPath (
+    Join-Path $sourceDirectory 'plugin.rc')
 $config = Get-Content -Raw -LiteralPath (
     Join-Path $PluginDirectory 'config\ruffneckk-floating-damage.toml')
 
@@ -143,6 +145,27 @@ Assert-Policy (
     'the vanilla setter check must exist only as the Diagnostics-unavailable fallback'
 Assert-Policy ($plugin -match 'SetUnitStat\s*=\s*reinterpret_cast<SetUnitStatFn>\(Base\s*\+\s*SetUnitStatRva\)') `
     'Floating Damage must call the live STATLIST_SetUnitStat entry so later hooks also compose'
+
+Assert-Policy ($plugin -match 'PeriodicHitpointsCommitCallRva\s*=\s*0x448D4C') `
+    'the governed monster periodic HP commit seam must remain 0x448D4C'
+Assert-Policy ($plugin -match 'PatchCallRel32\([\s\S]*?PeriodicHitpointsCommitCallRva') `
+    'the periodic HP commit call must be patched through the loader transaction'
+Assert-Policy ($plugin -match 'HookPeriodicHitpointsCommit\([\s\S]*?TryGetFixedHitpoints\(target,\s*beforeFixed\)[\s\S]*?SetUnitStat\(target,\s*statId,\s*newFixed,\s*layer\)[\s\S]*?TryGetFixedHitpoints\(target,\s*afterFixed\)[\s\S]*?QueueCommittedVisibleLoss') `
+    'periodic capture must measure the actual visible HP loss around the live setter'
+Assert-Policy ($plugin -match 'ElementFromPeriodicStates\([\s\S]*?BurningStateId[\s\S]*?Element::Fire[\s\S]*?PoisonStateId[\s\S]*?Element::Poison') `
+    'periodic attribution must prioritize Burn, then Poison, from native states'
+Assert-Policy ($plugin -match 'direct=%llu;\s*periodic=%llu') `
+    'runtime status must expose separate direct and periodic counters'
+Assert-Policy (-not ($plugin -match 'strcmp\s*\(\s*runtimeBuild')) `
+    'build-name diagnostics must never become a runtime compatibility allowlist'
+Assert-Policy (-not $plugin.Contains('only D2R builds')) `
+    'compatibility refusal must be based on the native fingerprint, not named builds'
+Assert-Policy ($plugin -match 'validating the complete native fingerprint') `
+    'the observed build name must remain diagnostic while the full fingerprint is checked'
+Assert-Policy ($plugin -match '\.version\s*=\s*"1\.4\.2"') `
+    'the plugin metadata must identify the periodic-capture build as 1.4.2'
+Assert-Policy ($resource -match 'FILEVERSION\s+1,4,2,0') `
+    'the Windows file version must identify the periodic-capture build as 1.4.2'
 
 Assert-Policy ($plugin -match 'LifecycleServiceV1') `
     'Lifecycle service v1 must own the gameplay boundary'

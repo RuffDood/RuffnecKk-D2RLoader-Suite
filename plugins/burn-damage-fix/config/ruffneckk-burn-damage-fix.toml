@@ -1,0 +1,12 @@
+# Burn Damage Fix
+# Restores generic Burn production, Fire defenses, and a target-bound flame.
+
+# File format version. Leave this value unchanged.
+config_version = 1
+
+# Master switch. When false, the plugin loads without installing native hooks.
+enabled = true
+
+[diagnostics]
+# Enables detailed runtime counters in the burn-damage-fix status command.
+enabled = false

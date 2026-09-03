@@ -814,7 +814,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Progressive Affixes 0.3.3: %s; diagnostics=%s; config=%s; categories magic=%zu rare=%zu crafted=%zu; types resolved=%u unresolved=%u; selections magic=%llu rare=%llu crafted=%llu.",
+        "Progressive Affixes 0.3.5: %s; diagnostics=%s; config=%s; categories magic=%zu rare=%zu crafted=%zu; types resolved=%u unresolved=%u; selections magic=%llu rare=%llu crafted=%llu.",
         RuntimeConfigRejected.load(std::memory_order_acquire)
             ? "runtime configuration rejected"
             : (Operational.load(std::memory_order_acquire) ? "active" : "disabled"),
@@ -842,7 +842,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-progressive-affixes",
     .name = "Progressive Affixes",
-    .version = "0.3.4",
+    .version = "0.3.5",
     .author = "RuffnecKk",
     .description = "Increases generated item affix counts as item levels rise.",
     .flags = D2RL::PluginFlags::Server | D2RL::PluginFlags::NativeHooks,
@@ -884,7 +884,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!LoadConfig()) return false;
     if (!Settings.enabled) {
         const auto message = std::string(
-            "Progressive Affixes 0.3.3 by RuffnecKk loaded disabled; config=")
+            "Progressive Affixes 0.3.5 by RuffnecKk loaded disabled; config=")
             + LoadedConfigPath + ".";
         Context->LogInfo(message.c_str());
         static_cast<void>(Context->RegisterConsoleCommand(
@@ -894,13 +894,11 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return true;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        Context->LogError(
-            "ProgressiveAffixes: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "ProgressiveAffixes: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    Context->LogInfo(buildMessage);
     GeneralSeedRoll = At<SeedRollFn>(GeneralSeedRollRva);
     PowerOfTwoSeedRoll = At<SeedRollFn>(PowerOfTwoSeedRollRva);
     GetDataTables = At<GetDataTablesFn>(GetDataTablesRva);
@@ -926,7 +924,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "ProgressiveAffixes: optional status command could not be registered.");
     }
     const auto message = std::string(
-        "Progressive Affixes 0.3.3 by RuffnecKk active; config=")
+        "Progressive Affixes 0.3.5 by RuffnecKk active; config=")
         + LoadedConfigPath + ".";
     Context->LogInfo(message.c_str());
     return true;

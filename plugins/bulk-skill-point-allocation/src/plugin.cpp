@@ -88,7 +88,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-bulk-skill-point-allocation",
     .name = "Bulk Skill Point Allocation",
-    .version = "1.3.3",
+    .version = "1.3.4",
     .author = "RuffnecKk",
     .description =
         "Allocates configurable skill-point batches with Ctrl or all points with Shift.",
@@ -435,7 +435,7 @@ auto CheckBytes(
     std::snprintf(
         message,
         sizeof(message),
-        "BulkSkillPointAllocation: %s signature mismatch for D2R build 92777.",
+        "BulkSkillPointAllocation: %s signature mismatch in the governed native fingerprint.",
         label);
     Context->LogError(message);
     return false;
@@ -607,14 +607,11 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "BulkSkillPointAllocation: only D2R builds 92777 and 93847 are supported.");
-        ResetState();
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "BulkSkillPointAllocation: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
 
     try {
         auto loaded = LoadSettings(context);
@@ -638,12 +635,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ActiveSettings.enabled) {
         try {
             const auto message = std::string(
-                "BulkSkillPointAllocation 1.3.2 by RuffnecKk loaded disabled; no service or hook registered; gameplayConfig=")
+                "BulkSkillPointAllocation 1.3.4 by RuffnecKk loaded disabled; no service or hook registered; gameplayConfig=")
                 + PathForLog(GameplaySource) + ".";
             context->LogInfo(message.c_str());
         } catch (...) {
             context->LogInfo(
-                "BulkSkillPointAllocation 1.3.2 by RuffnecKk loaded disabled; no service or hook registered.");
+                "BulkSkillPointAllocation 1.3.4 by RuffnecKk loaded disabled; no service or hook registered.");
         }
         return true;
     }
@@ -668,7 +665,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
 
     try {
         const auto message = std::string(
-            "BulkSkillPointAllocation 1.3.2 by RuffnecKk loaded; role=Client; ctrl=")
+            "BulkSkillPointAllocation 1.3.4 by RuffnecKk loaded; role=Client; ctrl=")
             + std::to_string(ActiveSettings.skillPointsPerCtrlClick)
             + "; shiftConfirmation="
             + (ActiveSettings.confirmShiftAllocation ? "enabled" : "disabled")
@@ -677,7 +674,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         context->LogInfo(message.c_str());
     } catch (...) {
         context->LogInfo(
-            "BulkSkillPointAllocation 1.3.2 by RuffnecKk loaded.");
+            "BulkSkillPointAllocation 1.3.4 by RuffnecKk loaded.");
     }
     return true;
 }

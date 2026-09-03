@@ -1,6 +1,6 @@
 # Remote Stash — Inventory Button and Migration Guide
 
-Remote Stash 2.0.2 creates its own keyboard-and-mouse Inventory button. The
+Remote Stash 2.3.0 creates its own keyboard-and-mouse Inventory button. The
 default RuffnecKk chest artwork is embedded in the DLL, and its placement is
 calculated from the Inventory layout that is actually loaded by the game.
 
@@ -8,6 +8,65 @@ This 2.x line is the canonical Remote Stash baseline for future releases of
 the RuffnecKk D2RLoader Suite.
 
 No Inventory JSON merge and no sprite copy into a mod MPQ are required.
+
+## Let each active mod skin a global installation
+
+A mod can override only the Inventory-button appearance while keeping one
+global Remote Stash DLL and one global hotkey configuration. Put this optional
+file in the active mod's unpacked MPQ directory:
+
+```text
+<ModName>.mpq/data/global/ui/layouts/ruffneckk-remote-stash/button.toml
+```
+
+The file contains one `[button]` section using the same placement, dimensions,
+sprite paths, and frame keys as the D2RLoader TOML. It does not accept plugin,
+hotkey, close-behavior, or diagnostics settings.
+
+```toml
+[button]
+placement = "custom"
+anchor = "bottomLeft"
+offset_x = 24
+offset_y = -18
+width = 176
+height = 112
+sprite_file = "data/hd/global/ui/panel/inventory/my-skin-remote-stash.sprite"
+lowend_sprite_file = "data/hd/global/ui/panel/inventory/my-skin-remote-stash.lowend.sprite"
+normal_frame = 0
+pressed_frame = 2
+disabled_frame = 1
+hovered_frame = 3
+```
+
+Relative sprite paths in this file start at the `<ModName>.mpq` root. Absolute
+paths and `..` traversal are rejected so the skin remains portable. A valid
+active-MPQ file replaces the complete `[button]` section from the D2RLoader
+TOML; omitted keys use Remote Stash's built-in button defaults. When the MPQ
+file is absent, the D2RLoader TOML is used unchanged. A present but malformed
+MPQ file refuses plugin loading instead of silently mixing two configurations.
+If its referenced sprite is missing or invalid, the existing safe behavior
+uses the embedded RuffnecKk chest, not the TOML sprite.
+
+## Item-routing behavior
+
+Remote Stash keeps D2R's native Inventory companion open whenever the stash
+needs it for item routing. The hotkey setting
+`close_remote_stash_and_inventory_together` controls the optional close action:
+`true` closes both panels when the hotkey closes Remote Stash, while `false`
+leaves Inventory open. The physical Inventory button always closes only Remote
+Stash because Inventory is already open when that button is available.
+
+When the Horadric Cube is visible, the plugin dismisses the Cube companion,
+restores the standalone Inventory panel, opens Remote Stash, and completes the
+native stash transition synchronously. This makes drag, held-item deposit,
+Ctrl-click, and withdrawal routing available on the first open.
+
+Configurations from Remote Stash 2.0.x remain compatible. Legacy
+`hotkey_mode = "remoteOnly"` is read as `false`, and
+`hotkey_mode = "remoteAndInventory"` is read as `true`. Do not declare the
+legacy key and `close_remote_stash_and_inventory_together` together; an
+ambiguous configuration is rejected instead of choosing one silently.
 
 ## Install
 
@@ -56,7 +115,8 @@ positions; the user owns that rectangle.
 
 ## Supply a custom sprite
 
-Set `sprite_file` to a D2R `SpA1` version-31 `.sprite` file. A relative path is
+Set `sprite_file` to a D2R `SpA1` version-31 `.sprite` file. In the D2RLoader
+TOML, a relative path is
 resolved beside `ruffneckk-remote-stash.toml`; an absolute path is also valid.
 Use forward slashes, escaped backslashes, or a TOML literal string.
 

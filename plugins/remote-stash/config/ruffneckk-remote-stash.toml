@@ -19,12 +19,15 @@ hotkey_enabled = true
 # optional. Examples: "SHIFT+R", ";", "CTRL+SHIFT+F5", "ALT+MOUSE4".
 hotkey = "SHIFT+R"
 
-# "remoteOnly" toggles only Remote Stash and preserves the Inventory state
-# that existed before opening it. The physical button always uses this mode.
-# "remoteAndInventory" makes the hotkey open and close both panels together.
-hotkey_mode = "remoteOnly"
+# Controls only the hotkey close action. Remote Stash always opens with the
+# native Inventory companion required for item routing. true closes both
+# panels when the hotkey closes Remote Stash; false leaves Inventory open.
+# The physical Inventory button always closes only Remote Stash.
+close_remote_stash_and_inventory_together = false
 
 [button]
+# This section is the fallback when the active mod does not provide
+# <ModName>.mpq/data/global/ui/layouts/ruffneckk-remote-stash/button.toml.
 # "auto" finds a safe desktop position from the active Inventory layout.
 # "custom" uses anchor and offsets exactly, including intentional overlaps.
 placement = "auto"

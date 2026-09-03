@@ -2,14 +2,39 @@
   "schemaVersion": 1,
   "suite": {
     "id": "ruffneckk-d2rloader-suite",
-    "version": "1.2.0",
-    "targetGameBuild": 92777,
-    "validatedGameBuilds": [
-      92777,
-      93847
-    ],
-    "targetLoader": "D2RLoader 1.1.0-beta",
-    "targetPluginSdk": "v3"
+    "version": "1.3.0",
+    "compatibility": {
+      "policy": "native-fingerprint-fail-closed",
+      "runtimeQualified": [
+        {
+          "version": "3.3",
+          "build": 93847,
+          "evidence": "Burn Damage Fix 1.0 gameplay and full active-stack coexistence qualification; canonical Suite assets validated by two reproducible builds"
+        }
+      ],
+      "nativeEquivalent": [
+        {
+          "version": "3.2",
+          "build": 92777,
+          "evidence": "byte-exact governed native surfaces"
+        }
+      ],
+      "otherBuilds": "eligible only when every native signature, layout witness, ABI contract, RVA and owned range matches"
+    },
+    "targetLoader": "D2RLoader 1.2.0-beta; plugin API v4 is required by MassID 2.1.0 and Vendor Stock Refresh 2.0.0",
+    "targetPluginSdk": "v3",
+    "pluginSdkOverrides": [
+      {
+        "componentId": "ruffneckk-mass-identify",
+        "version": "v4",
+        "commit": "6eb8f8b6192868214706bd6d528c5294f2f551b7"
+      },
+      {
+        "componentId": "ruffneckk-vendor-stock-refresh",
+        "version": "v4",
+        "commit": "6eb8f8b6192868214706bd6d528c5294f2f551b7"
+      }
+    ]
   },
   "distribution": {
     "model": "modular-catalog",
@@ -28,20 +53,20 @@
       "RuffnecKk-All-Patches-v<suite-version>.zip"
     ],
     "expectedGithubAssets": {
-      "individualPluginArchives": 17,
-      "individualPatchFiles": 19,
+      "individualPluginArchives": 18,
+      "individualPatchFiles": 18,
       "optionalBundles": 2,
       "total": 38
     }
   },
   "policy": {
     "expectedCounts": {
-      "pluginDlls": 17,
+      "pluginDlls": 18,
       "pluginReadmes": 0,
       "looseConfigJson": 2,
-      "pluginConfigToml": 15,
-      "memoryPatchJson": 19,
-      "total": 53
+      "pluginConfigToml": 16,
+      "memoryPatchJson": 18,
+      "total": 54
     },
     "selectedGroundItemLabelVariant": 64,
     "readmeIncluded": false,
@@ -58,150 +83,163 @@
       "ProgressiveAffixesPlugin.dll",
       "MeleeSplash.dll",
       "d2rl-ruffneckk-melee-splash.dll",
-      "GroundItemLabelLimit.dll"
+      "GroundItemLabelLimit.dll",
+      "BurnDamage.dll",
+      "BurnDamageFix.dll"
     ]
   },
   "entries": [
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-bulk-skill-point-allocation",
-      "version": "1.3.3",
+      "version": "1.3.4",
       "source": "plugins/d2rl-ruffneckk-bulk-skill-point-allocation.dll",
       "destination": "plugins/d2rl-ruffneckk-bulk-skill-point-allocation.dll",
-      "sha256": "5BD40D900D0749AC653E0066DF6A326B167118504D424FB9B12C67311A6C301D"
+      "sha256": "5DD5124D6FAC5AC9185A1D84529E3715384A1D12EE6AC794077187500D8FE455"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-charm-aura-trigger-fix",
-      "version": "1.6.2",
+      "version": "1.6.3",
       "source": "plugins/d2rl-ruffneckk-charm-aura-trigger-fix.dll",
       "destination": "plugins/d2rl-ruffneckk-charm-aura-trigger-fix.dll",
-      "sha256": "718DEA0CA410BE73ED02C9014738B9E596D407D88B6555AE141A60067BD2639B"
+      "sha256": "B854D7392B1BDA67DDF62262FAE5F5031EBD45E2C945ED87C225470FBDD76024"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-cube-quick-move",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "source": "plugins/d2rl-ruffneckk-cube-quick-move.dll",
       "destination": "plugins/d2rl-ruffneckk-cube-quick-move.dll",
-      "sha256": "314C15215435E58BD9761AC4C565AB145AD484997FE61031A5BCF8BB9C59FB73"
+      "sha256": "21E9FDAEF8B0481C7A74AE07F7A8D818CC8C2D5BF32EE3D499F274A9D6E22403"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-bulk-currency-deposit",
       "pluginInfoId": "bulk-currency-deposit",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "source": "plugins/d2rl-ruffneckk-bulk-currency-deposit.dll",
       "destination": "plugins/d2rl-ruffneckk-bulk-currency-deposit.dll",
-      "sha256": "52B54990773485F98F04F7EC50711F18075D7B5A87785A602E30C400232A2EC5",
+      "sha256": "238A0CB3D0BD69D9DBFB4DFF790750095F3FA50F534588A642E66AB78C75A97D",
       "qualification": "User-validated native and mod-specific currency routing, Controls Shift+D and optional button, interrupted deposits, save, and reload"
     },
     {
       "kind": "plugin-dll",
+      "componentId": "ruffneckk-burn-damage-fix",
+      "version": "1.0.0",
+      "source": "plugins/d2rl-ruffneckk-burn-damage-fix.dll",
+      "destination": "plugins/d2rl-ruffneckk-burn-damage-fix.dll",
+      "sha256": "5EC7F809EF1B61FE3CC1E7555AE289FA09DBFC8C1DCFDB351A79CCDBED91C214",
+      "qualification": "D2R 3.3.93847 full-stack BKVince gameplay: Burn DoT, Fire resistance and immunity, moving fire-hit overlay, periodic Floating Damage numbers, kill credit, and no crash"
+    },
+    {
+      "kind": "plugin-dll",
       "componentId": "ruffneckk-enhanced-damage-min-max-fix",
-      "version": "1.2.2",
+      "version": "1.2.3",
       "source": "plugins/d2rl-ruffneckk-enhanced-damage-min-max-fix.dll",
       "destination": "plugins/d2rl-ruffneckk-enhanced-damage-min-max-fix.dll",
-      "sha256": "8BC69B9EDB4A40F8F4D5B3E566FD8A86C7BB7BE717D22CF97C3CC31046C39202"
+      "sha256": "ED4740AE5F06A750B961C4BEE98CCCC1ECB16741C7E4A5C8E94A88B6C58AC013"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-equipped-item-to-cube",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "source": "plugins/d2rl-ruffneckk-equipped-item-to-cube.dll",
       "destination": "plugins/d2rl-ruffneckk-equipped-item-to-cube.dll",
-      "sha256": "C9A59ACBDF0776C23B341C2C9FB10C80B9DCDA9EAD6E81D638B86F6609F6E63E"
+      "sha256": "3D0DECC4393916F70B48BDBB73CEB6B43E48FDF38425A6FBC80E7C465A75B606"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-ethereal-item-rules",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "source": "plugins/d2rl-ruffneckk-ethereal-item-rules.dll",
       "destination": "plugins/d2rl-ruffneckk-ethereal-item-rules.dll",
-      "sha256": "713E1B897AD4D792140F85BC56DB39CB3FF82A2149F0B49490C1C29F4DAC8AA9"
+      "sha256": "AA5C461EEC08A7CC2D717DBC884BBB6CC77D8C7D11559C70754CFAF6D06B6157"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-floating-damage",
-      "version": "1.4.0",
+      "version": "1.4.2",
       "source": "plugins/d2rl-ruffneckk-floating-damage.dll",
       "destination": "plugins/d2rl-ruffneckk-floating-damage.dll",
-      "sha256": "E7A04F3C33CFCC4A983E0247B4CB30AEAADF55405737C14DA1227A926A59EE83",
-      "qualification": "Native Input v1 Shift+Z action and composable stat-setter build; runtime Controls, full-stack, and Poison Energy Shield qualification pending",
+      "sha256": "D95A7B5C830E4773655CC31A29A842655F4E233C7DAAF1CCA4C05A185670B817",
+      "qualification": "Direct and periodic HP-loss capture, Burn/Poison attribution, native Input v1, composable stat setter, autonomous rendering, and optional MapSense overlay-host coexistence",
       "redistributionPermission": "obtained from locbones; confirmed by Vincent on 2026-08-16"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-item-durability",
-      "version": "1.2.3",
+      "version": "1.2.4",
       "source": "plugins/d2rl-ruffneckk-item-durability.dll",
       "destination": "plugins/d2rl-ruffneckk-item-durability.dll",
-      "sha256": "324921EE44A2A0B4D2FEDEFED64488ABB503C32F875AD227066B42F6AD4E6737"
+      "sha256": "BA93E53416E2632B7A5D5EDDE3F704488A55D843894A7709D93D760723FB4485"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-larzuk-sockets",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "source": "plugins/d2rl-ruffneckk-larzuk-sockets.dll",
       "destination": "plugins/d2rl-ruffneckk-larzuk-sockets.dll",
-      "sha256": "1D544B5C47D8146068263D067595FAE7BFE75D38F08978F1D4D7FD5520FC39B6"
+      "sha256": "894B3FBCBDAA6FF8C46CDBBE6A90E3305715763577C14ACDAA38BDB68478876A"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-mass-identify",
-      "version": "2.0.2",
+      "version": "2.1.0",
       "source": "plugins/d2rl-ruffneckk-mass-identify.dll",
       "destination": "plugins/d2rl-ruffneckk-mass-identify.dll",
-      "sha256": "1EBE48C55BA03DC130B6F2DE8439518B26662CA2EF341BC2F5F413322A0B99AD"
+      "sha256": "21A65C8F840464ECD87630714D01C720EE8879B66847843226B6032ED6E79AE3",
+      "qualification": "strict builds, CTest, manifest API v4, and static ownership validation passed; runtime pending a loader exposing plugin API v4"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-potion-auto-pickup",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "source": "plugins/d2rl-ruffneckk-potion-auto-pickup.dll",
       "destination": "plugins/d2rl-ruffneckk-potion-auto-pickup.dll",
-      "sha256": "9CFB8CD70F6FD962C90A6ED3364CD05DE300580A5E9F1645D89EFDC8DD0930A8"
+      "sha256": "AA07091A566B2A8FBDAFB58D6A788E2D7ADE851C2BB3B5EFDD0EA8F7C5C1321B"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-prevent-merc-death-in-town",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "source": "plugins/d2rl-ruffneckk-prevent-merc-death-in-town.dll",
       "destination": "plugins/d2rl-ruffneckk-prevent-merc-death-in-town.dll",
-      "sha256": "2FA5B94A947C88F80A2F124CB6310A3719413C7AAB5537F28B5D1B0BADB47DB3"
+      "sha256": "F854E2083F42B782C8C88F81769E4483C2B56101EEFFA89490A466D34B4CACE3"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-progressive-affixes",
-      "version": "0.3.4",
+      "version": "0.3.5",
       "source": "plugins/d2rl-ruffneckk-progressive-affixes.dll",
       "destination": "plugins/d2rl-ruffneckk-progressive-affixes.dll",
-      "sha256": "6908C865B8C392EC42E378B05BBCC47C1F014DE3700D6A50908BEDB90B874A92",
+      "sha256": "536FF8C63336B048024624B4D84AFD9BB957701CA23CBCEF54C45DFE2E93049F",
       "qualification": "post-fix global reproducible build, hash pin, and exact runtime hash match passed"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-remote-stash",
-      "version": "2.0.1",
+      "version": "2.2.0",
       "source": "plugins/d2rl-ruffneckk-remote-stash.dll",
       "destination": "plugins/d2rl-ruffneckk-remote-stash.dll",
-      "sha256": "AD2EE7CF252841CD6F3D56E1773872BE9ACEF1DA34D3763D4D9865659AF784DE"
+      "sha256": "5FE934305F2387ED01D805BBDAA000A8443576E3908B2FCEAD5FB175D5F4B4CF"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-repair-costs-cap",
-      "version": "1.4.2",
+      "version": "1.4.3",
       "source": "plugins/d2rl-ruffneckk-repair-costs-cap.dll",
       "destination": "plugins/d2rl-ruffneckk-repair-costs-cap.dll",
-      "sha256": "75CCA8BAEE06B8263D285DF9C46CDA43EFC7C25425D58B6F4E053F5909D0F288"
+      "sha256": "0D7C9D0E7489BC24D5F475358F55D4DC2BCCA013F6AF77317A789191B2B9281F"
     },
     {
       "kind": "plugin-dll",
       "componentId": "ruffneckk-vendor-stock-refresh",
-      "version": "0.2.1",
+      "version": "2.0.0",
       "source": "plugins/d2rl-ruffneckk-vendor-stock-refresh.dll",
       "destination": "plugins/d2rl-ruffneckk-vendor-stock-refresh.dll",
-      "sha256": "B574CAF69F46E309C6A90CF06ADDA560F4899C35BAB7FFD7200A9D9E27FF160E"
+      "sha256": "43518094B75513871FA4403719C6535C589BB61224851FD04818F9D3AC261796",
+      "qualification": "SDK v4 build, CTest, Suite policy and native-write policy passed; equivalent pre-release logic cold-started through the verified D2RCore relay, while exact 2.0.0 runtime hash-match and gameplay refresh remain pending"
     },
     {
       "kind": "loose-config-json",
@@ -237,6 +275,13 @@
       "source": "plugins/bulk-currency-deposit/config/ruffneckk-bulk-currency-deposit.toml",
       "destination": "config/ruffneckk-bulk-currency-deposit.toml",
       "sha256": "747DEA10790FA5F403B81DE74DA9693ECB72C41235FB5E764DADEF90042FBE2A"
+    },
+    {
+      "kind": "plugin-config-toml",
+      "componentId": "ruffneckk-burn-damage-fix",
+      "source": "plugins/burn-damage-fix/config/ruffneckk-burn-damage-fix.toml",
+      "destination": "config/ruffneckk-burn-damage-fix.toml",
+      "sha256": "287802A7356272E47928765E0E88001AB8BCB623B55A0891C9DF40B3219A40A5"
     },
     {
       "kind": "plugin-config-toml",
@@ -278,7 +323,7 @@
       "componentId": "ruffneckk-mass-identify",
       "source": "plugins/mass-identify/config/ruffneckk-mass-identify.toml",
       "destination": "config/ruffneckk-mass-identify.toml",
-      "sha256": "A41CFA580E3B5E0AC11C647461E540F598E07F5759F8775FD69A55CE9EE5FF08"
+      "sha256": "AEB57780752ECA91E63C8D4F208A8E0837616883AF49F1359A96BCCFA38ED243"
     },
     {
       "kind": "plugin-config-toml",
@@ -306,7 +351,7 @@
       "componentId": "ruffneckk-remote-stash",
       "source": "plugins/remote-stash/config/ruffneckk-remote-stash.toml",
       "destination": "config/ruffneckk-remote-stash.toml",
-      "sha256": "AF84F4A26CAF99B51E84F418F74EEFD9614B8374431CB77AD482AD9F515A775A"
+      "sha256": "F6024619D6B62CE0C042AC1D1AB69615E51CB65419EBF6DAAFAE42C6B404CBF1"
     },
     {
       "kind": "plugin-config-toml",
@@ -362,7 +407,7 @@
       "kind": "memory-patch-json",
       "source": "patches/ruffneckk-hit-chance-0-100.json",
       "destination": "patches/ruffneckk-hit-chance-0-100.json",
-      "sha256": "2EAD7E3E310D4FE6FC7EE586509AFE4315D2E5BE5719EF0DACE39A8C2E3294BA"
+      "sha256": "FF859045E8304AC6F5B7C9ECA58453A708A7824857847A8C4E04BEADF2DCED9E"
     },
     {
       "kind": "memory-patch-json",
@@ -405,12 +450,6 @@
       "source": "patches/ruffneckk-no-run-penalties.json",
       "destination": "patches/ruffneckk-no-run-penalties.json",
       "sha256": "E7C069290174F34CD6DF005DB8F244EA1BC552623B52EB67771A74FC12DE6BD4"
-    },
-    {
-      "kind": "memory-patch-json",
-      "source": "patches/ruffneckk-normal-area-scaling.json",
-      "destination": "patches/ruffneckk-normal-area-scaling.json",
-      "sha256": "7967DC5B919839FA16EF31F71EC74FE60CDA00158B4EB1367225AA9CFF87BC98"
     },
     {
       "kind": "memory-patch-json",

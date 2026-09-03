@@ -38,6 +38,7 @@ struct TargetSelection {
 struct Config {
     bool enabled{};
     bool freeIdentification{};
+    bool rightClickMassIdentify{};
     TargetSelection targets{};
     bool diagnosticsEnabled{};
 };
@@ -116,6 +117,7 @@ inline auto ReadInventoryPageFromItemData(const void* itemData) noexcept
 
 constexpr auto ShouldCaptureGesture(
     bool enabled,
+    bool rightClickMassIdentify,
     bool shiftDown,
     bool rightClick,
     bool cursorEmpty,
@@ -123,11 +125,18 @@ constexpr auto ShouldCaptureGesture(
     bool supportedTomeContainer
 ) noexcept -> bool {
     return enabled
-        && shiftDown
+        && (rightClickMassIdentify || shiftDown)
         && rightClick
         && cursorEmpty
         && itemCode == IdentifyTomeCode
         && supportedTomeContainer;
+}
+
+constexpr auto ShouldShowMassIdentifyTooltip(
+    bool enabled,
+    bool rightClickMassIdentify
+) noexcept -> bool {
+    return enabled && !rightClickMassIdentify;
 }
 
 constexpr auto IdentificationBudget(
@@ -193,6 +202,7 @@ inline auto ParseConfig(
     bool diagnosticsSectionSeen{};
     bool enabledSeen{};
     bool freeIdentificationSeen{};
+    bool rightClickMassIdentifySeen{};
     bool includeCubeSeen{};
     bool includePersonalStashSeen{};
     bool includeSharedStashSeen{};
@@ -256,6 +266,9 @@ inline auto ParseConfig(
         } else if (section == "mass_identify" && key == "freeIdentification") {
             seen = &freeIdentificationSeen;
             destination = &parsed.freeIdentification;
+        } else if (section == "mass_identify" && key == "rightClickMassIdentify") {
+            seen = &rightClickMassIdentifySeen;
+            destination = &parsed.rightClickMassIdentify;
         } else if (section == "mass_identify" && key == "includeCube") {
             seen = &includeCubeSeen;
             destination = &parsed.targets.includeCube;

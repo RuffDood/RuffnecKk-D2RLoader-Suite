@@ -31,10 +31,15 @@ namespace D3D12 {
 namespace {
 using Microsoft::WRL::ComPtr;
 
+static_assert(
+    IMGUI_VERSION_NUM == RuffnecKk::OverlayHost::ImGuiVersionNumber,
+    "Floating Damage and the MapSense overlay host must use the same ImGui ABI.");
+
 struct FrameContext {
     ComPtr<ID3D12CommandAllocator> allocator;
     ComPtr<ID3D12Resource> renderTarget;
     D3D12_CPU_DESCRIPTOR_HANDLE descriptor{};
+    std::uint64_t fenceValue{};
 };
 
 using PresentFn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain3*, UINT, UINT);
@@ -48,11 +53,15 @@ ExecuteCommandListsFn OriginalExecuteCommandLists{};
 ResizeBuffersFn OriginalResizeBuffers{};
 
 std::mutex RenderMutex;
+std::mutex HookMutex;
 bool HooksInstalled{};
+bool MinHookInitializedByRenderer{};
 bool RendererInitialized{};
 bool ImGuiContextCreated{};
 bool ImGuiWin32Initialized{};
 bool ImGuiDx12Initialized{};
+ImGuiContext* AutonomousImGuiContext{};
+ImGuiContext* HostedImGuiContext{};
 HWND Window{};
 DXGI_FORMAT BackBufferFormat{DXGI_FORMAT_R8G8B8A8_UNORM};
 
@@ -66,6 +75,8 @@ struct RendererStorage {
     ComPtr<ID3D12GraphicsCommandList> commandList;
     ComPtr<ID3D12DescriptorHeap> rtvHeap;
     ComPtr<ID3D12DescriptorHeap> srvHeap;
+    ComPtr<ID3D12Fence> fence;
+    HANDLE fenceEvent{};
     std::vector<FrameContext> frames;
 };
 
@@ -74,7 +85,12 @@ auto& CommandQueue = ProcessRendererStorage->commandQueue;
 auto& CommandList = ProcessRendererStorage->commandList;
 auto& RtvHeap = ProcessRendererStorage->rtvHeap;
 auto& SrvHeap = ProcessRendererStorage->srvHeap;
+auto& Fence = ProcessRendererStorage->fence;
+auto& FenceEvent = ProcessRendererStorage->fenceEvent;
 auto& Frames = ProcessRendererStorage->frames;
+std::uint64_t NextFenceValue{1};
+std::atomic<ID3D12CommandQueue*> CapturedQueue{};
+std::atomic<std::uint32_t> ActiveHookCalls{};
 std::chrono::steady_clock::time_point LastFrameTime{};
 std::atomic<float> DisplayWidth{1920.0f};
 std::atomic<float> DisplayHeight{1080.0f};
@@ -105,6 +121,19 @@ enum DiagnosticMessage : std::uint32_t {
     RendererInitFailedMessage = 1u << 4,
     KodiaLoadedMessage = 1u << 5,
     KodiaUnavailableMessage = 1u << 6,
+    FenceWaitFailedMessage = 1u << 7,
+    FenceSignalFailedMessage = 1u << 8,
+};
+
+struct HookCallGuard {
+    HookCallGuard() noexcept {
+        ActiveHookCalls.fetch_add(1, std::memory_order_acq_rel);
+    }
+    ~HookCallGuard() {
+        ActiveHookCalls.fetch_sub(1, std::memory_order_acq_rel);
+    }
+    HookCallGuard(const HookCallGuard&) = delete;
+    auto operator=(const HookCallGuard&) -> HookCallGuard& = delete;
 };
 
 void ResetRendererState() noexcept;
@@ -118,6 +147,20 @@ void LogDiagnosticOnce(
         return;
     if (const auto logger = DiagnosticLogger.load(std::memory_order_acquire))
         logger(message);
+}
+
+auto WaitForFenceValueLocked(std::uint64_t value) noexcept -> bool {
+    if (value == 0 || !Fence || !FenceEvent) return true;
+    if (Fence->GetCompletedValue() >= value) return true;
+    if (FAILED(Fence->SetEventOnCompletion(value, FenceEvent))) return false;
+    return WaitForSingleObject(FenceEvent, 5'000U) == WAIT_OBJECT_0;
+}
+
+auto WaitForGpuIdleLocked() noexcept -> bool {
+    if (!CommandQueue || !Fence || !FenceEvent) return true;
+    const std::uint64_t value = NextFenceValue++;
+    if (FAILED(CommandQueue->Signal(Fence.Get(), value))) return false;
+    return WaitForFenceValueLocked(value);
 }
 
 bool FailRendererInitialization(
@@ -145,6 +188,15 @@ constexpr std::array<const char*, SystemFontCount> SystemFontFiles{
 };
 
 void ResetRendererState() noexcept {
+    if (!WaitForGpuIdleLocked()) {
+        LogDiagnosticOnce(
+            FenceWaitFailedMessage,
+            "FloatingDamage overlay: timed out while waiting for submitted GPU work.");
+    }
+
+    auto* const previousContext = ImGui::GetCurrentContext();
+    if (AutonomousImGuiContext != nullptr)
+        ImGui::SetCurrentContext(AutonomousImGuiContext);
     if (ImGuiDx12Initialized) {
         ImGui_ImplDX12_Shutdown();
         ImGuiDx12Initialized = false;
@@ -154,19 +206,35 @@ void ResetRendererState() noexcept {
         ImGuiWin32Initialized = false;
     }
     if (ImGuiContextCreated) {
-        ImGui::DestroyContext();
+        if (AutonomousImGuiContext != nullptr)
+            ImGui::DestroyContext(AutonomousImGuiContext);
         ImGuiContextCreated = false;
     }
+    if (previousContext != nullptr
+        && previousContext != AutonomousImGuiContext) {
+        ImGui::SetCurrentContext(previousContext);
+    }
+    else {
+        ImGui::SetCurrentContext(nullptr);
+    }
+    AutonomousImGuiContext = nullptr;
     RendererInitialized = false;
     Window = nullptr;
     Frames.clear();
     CommandList.Reset();
     RtvHeap.Reset();
     SrvHeap.Reset();
+    Fence.Reset();
+    if (FenceEvent != nullptr) {
+        CloseHandle(FenceEvent);
+        FenceEvent = nullptr;
+    }
+    CapturedQueue.store(nullptr, std::memory_order_release);
     CommandQueue.Reset();
     FloatingFonts.fill(nullptr);
     // ModFontBytes deliberately survives renderer resets and resolution
     // changes. ImGui receives it again when the font atlas is recreated.
+    NextFenceValue = 1;
     LastFrameTime = {};
 }
 
@@ -335,28 +403,45 @@ bool InitializeRenderer(IDXGISwapChain3* swapChain) noexcept {
         return FailRendererInitialization(
             8, "FloatingDamage overlay: renderer initialization failed while closing the command list.");
 
+    if (FAILED(device->CreateFence(
+            0,
+            D3D12_FENCE_FLAG_NONE,
+            IID_PPV_ARGS(&Fence)))) {
+        return FailRendererInitialization(
+            9, "FloatingDamage overlay: renderer initialization failed at fence creation.");
+    }
+    FenceEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    if (FenceEvent == nullptr) {
+        return FailRendererInitialization(
+            10, "FloatingDamage overlay: renderer initialization failed at fence-event creation.");
+    }
+
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    AutonomousImGuiContext = ImGui::CreateContext();
+    if (AutonomousImGuiContext == nullptr) {
+        return FailRendererInitialization(
+            11, "FloatingDamage overlay: renderer initialization failed at ImGui context creation.");
+    }
     ImGuiContextCreated = true;
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;
     ImGui::StyleColorsDark();
     if (!ImGui_ImplWin32_Init(Window))
         return FailRendererInitialization(
-            9, "FloatingDamage overlay: renderer initialization failed at ImGui Win32 startup.");
+            12, "FloatingDamage overlay: renderer initialization failed at ImGui Win32 startup.");
     ImGuiWin32Initialized = true;
     if (!ImGui_ImplDX12_Init(
             device.Get(), swapDesc.BufferCount, BackBufferFormat, SrvHeap.Get(),
             SrvHeap->GetCPUDescriptorHandleForHeapStart(), SrvHeap->GetGPUDescriptorHandleForHeapStart()))
         return FailRendererInitialization(
-            10, "FloatingDamage overlay: renderer initialization failed at ImGui DirectX 12 startup.");
+            13, "FloatingDamage overlay: renderer initialization failed at ImGui DirectX 12 startup.");
     ImGuiDx12Initialized = true;
     if (!LoadFonts())
         return FailRendererInitialization(
-            11, "FloatingDamage overlay: renderer initialization failed while loading fonts.");
+            14, "FloatingDamage overlay: renderer initialization failed while loading fonts.");
     if (!ImGui_ImplDX12_CreateDeviceObjects())
         return FailRendererInitialization(
-            12, "FloatingDamage overlay: renderer initialization failed while creating ImGui device objects.");
+            15, "FloatingDamage overlay: renderer initialization failed while creating ImGui device objects.");
 
     LastFrameTime = std::chrono::steady_clock::now();
     RendererInitialized = true;
@@ -366,32 +451,24 @@ bool InitializeRenderer(IDXGISwapChain3* swapChain) noexcept {
     return true;
 }
 
-HRESULT STDMETHODCALLTYPE HookPresent(IDXGISwapChain3* swapChain, UINT syncInterval, UINT flags) noexcept {
-    PresentCalls.fetch_add(1, std::memory_order_relaxed);
-    LogDiagnosticOnce(
-        PresentInterceptedMessage,
-        "FloatingDamage overlay: intercepted the first game Present call.");
-    std::scoped_lock lock(RenderMutex);
-    if (!CommandQueue) return OriginalPresent(swapChain, syncInterval, flags);
-    if (!RendererInitialized && !InitializeRenderer(swapChain)) {
-        return OriginalPresent(swapChain, syncInterval, flags);
-    }
-
-    const UINT frameIndex = swapChain->GetCurrentBackBufferIndex();
-    if (frameIndex >= Frames.size()) return OriginalPresent(swapChain, syncInterval, flags);
-    FrameContext& frame = Frames[frameIndex];
-
+auto NextFrameDelta() noexcept -> float {
     const auto now = std::chrono::steady_clock::now();
-    const float delta = std::clamp(std::chrono::duration<float>(now - LastFrameTime).count(), 0.0f, 0.1f);
+    const float delta = LastFrameTime.time_since_epoch().count() == 0
+        ? (1.0f / 60.0f)
+        : std::clamp(
+            std::chrono::duration<float>(now - LastFrameTime).count(),
+            0.0f,
+            0.1f);
     LastFrameTime = now;
+    return delta;
+}
 
-    ImGui_ImplDX12_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
-    const ImGuiIO& io = ImGui::GetIO();
+void RenderContentLocked(
+        ImGuiIO& io,
+        HWND window) noexcept {
     DisplayWidth.store(io.DisplaySize.x, std::memory_order_relaxed);
     DisplayHeight.store(io.DisplaySize.y, std::memory_order_relaxed);
-    FloatingDamage::Update(delta);
+    FloatingDamage::Update(NextFrameDelta());
     FloatingDamage::Render(ImGui::GetBackgroundDrawList(), io.DisplaySize);
     std::array<RuffnecKk::FloatingDamageOverlay::OverlayCallback,
         MaximumNamedOverlays> externalCallbacks{};
@@ -401,18 +478,40 @@ HRESULT STDMETHODCALLTYPE HookPresent(IDXGISwapChain3* swapChain, UINT syncInter
             externalCallbacks[index] = NamedOverlays[index].callback;
     }
     for (const auto callback : externalCallbacks) {
-        if (callback) {
+        if (callback != nullptr) {
             callback(
                 ImGui::GetForegroundDrawList(),
                 io.DisplaySize.x,
                 io.DisplaySize.y,
-                Window);
+                window);
         }
     }
+}
+
+void RenderAutonomousFrameLocked(IDXGISwapChain3* swapChain) noexcept {
+    if (!CommandQueue) return;
+    if (!RendererInitialized && !InitializeRenderer(swapChain)) return;
+
+    const UINT frameIndex = swapChain->GetCurrentBackBufferIndex();
+    if (frameIndex >= Frames.size()) return;
+    FrameContext& frame = Frames[frameIndex];
+    if (!WaitForFenceValueLocked(frame.fenceValue)) {
+        LogDiagnosticOnce(
+            FenceWaitFailedMessage,
+            "FloatingDamage overlay: skipped a frame because its command allocator was still in use.");
+        return;
+    }
+
+    ImGui::SetCurrentContext(AutonomousImGuiContext);
+    ImGui_ImplDX12_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+    ImGuiIO& io = ImGui::GetIO();
+    RenderContentLocked(io, Window);
     ImGui::Render();
 
-    if (FAILED(frame.allocator->Reset())) return OriginalPresent(swapChain, syncInterval, flags);
-    if (FAILED(CommandList->Reset(frame.allocator.Get(), nullptr))) return OriginalPresent(swapChain, syncInterval, flags);
+    if (FAILED(frame.allocator->Reset())) return;
+    if (FAILED(CommandList->Reset(frame.allocator.Get(), nullptr))) return;
 
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -427,9 +526,19 @@ HRESULT STDMETHODCALLTYPE HookPresent(IDXGISwapChain3* swapChain, UINT syncInter
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), CommandList.Get());
     std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
     CommandList->ResourceBarrier(1, &barrier);
-    if (FAILED(CommandList->Close())) return OriginalPresent(swapChain, syncInterval, flags);
+    if (FAILED(CommandList->Close())) return;
     ID3D12CommandList* lists[]{CommandList.Get()};
     CommandQueue->ExecuteCommandLists(1, lists);
+    const std::uint64_t fenceValue = NextFenceValue++;
+    if (FAILED(CommandQueue->Signal(Fence.Get(), fenceValue))) {
+        frame.fenceValue = (std::numeric_limits<std::uint64_t>::max)();
+        LogDiagnosticOnce(
+            FenceSignalFailedMessage,
+            "FloatingDamage overlay: failed to fence a submitted ImGui frame.");
+    }
+    else {
+        frame.fenceValue = fenceValue;
+    }
     const std::uint64_t rendered = RenderedFrames.fetch_add(
         1, std::memory_order_relaxed) + 1;
     if (rendered == 1) {
@@ -437,7 +546,24 @@ HRESULT STDMETHODCALLTYPE HookPresent(IDXGISwapChain3* swapChain, UINT syncInter
             FirstFrameRenderedMessage,
             "FloatingDamage overlay: submitted the first ImGui frame to the game command queue.");
     }
-    return OriginalPresent(swapChain, syncInterval, flags);
+}
+
+HRESULT STDMETHODCALLTYPE HookPresent(
+        IDXGISwapChain3* swapChain,
+        UINT syncInterval,
+        UINT flags) noexcept {
+    [[maybe_unused]] const HookCallGuard hookCall;
+    PresentCalls.fetch_add(1, std::memory_order_relaxed);
+    LogDiagnosticOnce(
+        PresentInterceptedMessage,
+        "FloatingDamage overlay: intercepted the first game Present call.");
+    const PresentFn original = OriginalPresent;
+    if (original == nullptr) return DXGI_ERROR_INVALID_CALL;
+    {
+        std::scoped_lock lock(RenderMutex);
+        RenderAutonomousFrameLocked(swapChain);
+    }
+    return original(swapChain, syncInterval, flags);
 }
 
 void STDMETHODCALLTYPE HookExecuteCommandLists(
@@ -445,14 +571,22 @@ void STDMETHODCALLTYPE HookExecuteCommandLists(
     UINT count,
     ID3D12CommandList* const* lists
 ) noexcept {
-    if (!CommandQueue && queue && queue->GetDesc().Type == D3D12_COMMAND_LIST_TYPE_DIRECT) {
-        CommandQueue = queue;
-        DirectQueueCaptures.fetch_add(1, std::memory_order_relaxed);
-        LogDiagnosticOnce(
-            DirectQueueCapturedMessage,
-            "FloatingDamage overlay: captured the game DirectX 12 command queue.");
+    [[maybe_unused]] const HookCallGuard hookCall;
+    const ExecuteCommandListsFn original = OriginalExecuteCommandLists;
+    if (queue
+        && queue->GetDesc().Type == D3D12_COMMAND_LIST_TYPE_DIRECT
+        && CapturedQueue.load(std::memory_order_acquire) == nullptr) {
+        std::scoped_lock lock(RenderMutex);
+        if (!CommandQueue) {
+            CommandQueue = queue;
+            CapturedQueue.store(queue, std::memory_order_release);
+            DirectQueueCaptures.fetch_add(1, std::memory_order_relaxed);
+            LogDiagnosticOnce(
+                DirectQueueCapturedMessage,
+                "FloatingDamage overlay: captured the game DirectX 12 command queue.");
+        }
     }
-    OriginalExecuteCommandLists(queue, count, lists);
+    if (original != nullptr) original(queue, count, lists);
 }
 
 HRESULT STDMETHODCALLTYPE HookResizeBuffers(
@@ -463,8 +597,12 @@ HRESULT STDMETHODCALLTYPE HookResizeBuffers(
     DXGI_FORMAT format,
     UINT flags
 ) noexcept {
+    [[maybe_unused]] const HookCallGuard hookCall;
+    const ResizeBuffersFn original = OriginalResizeBuffers;
     ResetRenderer();
-    return OriginalResizeBuffers(swapChain, bufferCount, width, height, format, flags);
+    return original != nullptr
+        ? original(swapChain, bufferCount, width, height, format, flags)
+        : DXGI_ERROR_INVALID_CALL;
 }
 
 bool BuildMethodTable() noexcept {
@@ -677,48 +815,71 @@ void OverlayAddRectFilled(
 }
 
 bool InstallHooks() noexcept {
+    std::scoped_lock hookLock(HookMutex);
     if (HooksInstalled) return true;
     if (!Module || !BuildMethodTable()) return false;
     const MH_STATUS initialized = MH_Initialize();
     if (initialized != MH_OK && initialized != MH_ERROR_ALREADY_INITIALIZED) return false;
-    if (!CreateHook(54, reinterpret_cast<void*>(HookExecuteCommandLists), reinterpret_cast<void**>(&OriginalExecuteCommandLists))) return false;
+    if (initialized == MH_OK) MinHookInitializedByRenderer = true;
+    const auto failInstall = []() noexcept {
+        OriginalResizeBuffers = nullptr;
+        OriginalPresent = nullptr;
+        OriginalExecuteCommandLists = nullptr;
+        Methods = {};
+        if (MinHookInitializedByRenderer) {
+            MH_Uninitialize();
+            MinHookInitializedByRenderer = false;
+        }
+        return false;
+    };
+    if (!CreateHook(54, reinterpret_cast<void*>(HookExecuteCommandLists), reinterpret_cast<void**>(&OriginalExecuteCommandLists))) {
+        return failInstall();
+    }
     if (!CreateHook(140, reinterpret_cast<void*>(HookPresent), reinterpret_cast<void**>(&OriginalPresent))) {
         MH_DisableHook(Methods[54]);
         MH_RemoveHook(Methods[54]);
-        OriginalExecuteCommandLists = nullptr;
-        return false;
+        return failInstall();
     }
     if (!CreateHook(145, reinterpret_cast<void*>(HookResizeBuffers), reinterpret_cast<void**>(&OriginalResizeBuffers))) {
         MH_DisableHook(Methods[140]);
         MH_RemoveHook(Methods[140]);
         MH_DisableHook(Methods[54]);
         MH_RemoveHook(Methods[54]);
-        OriginalPresent = nullptr;
-        OriginalExecuteCommandLists = nullptr;
-        return false;
+        return failInstall();
     }
     HooksInstalled = true;
     return true;
 }
 
 void RemoveHooks() noexcept {
-    if (!HooksInstalled) return;
-    MH_DisableHook(Methods[145]);
-    MH_RemoveHook(Methods[145]);
-    MH_DisableHook(Methods[140]);
-    MH_RemoveHook(Methods[140]);
-    MH_DisableHook(Methods[54]);
-    MH_RemoveHook(Methods[54]);
+    std::scoped_lock hookLock(HookMutex);
+    if (HooksInstalled) {
+        MH_DisableHook(Methods[145]);
+        MH_DisableHook(Methods[140]);
+        MH_DisableHook(Methods[54]);
+        while (ActiveHookCalls.load(std::memory_order_acquire) != 0)
+            Sleep(1U);
+    }
     ResetRenderer();
+    if (HooksInstalled) {
+        MH_RemoveHook(Methods[145]);
+        MH_RemoveHook(Methods[140]);
+        MH_RemoveHook(Methods[54]);
+    }
     HooksInstalled = false;
     OriginalResizeBuffers = nullptr;
     OriginalPresent = nullptr;
     OriginalExecuteCommandLists = nullptr;
     Methods = {};
-    MH_Uninitialize();
+    if (MinHookInitializedByRenderer) {
+        MH_Uninitialize();
+        MinHookInitializedByRenderer = false;
+    }
 }
 
 OverlayDiagnostics GetOverlayDiagnostics() noexcept {
+    std::scoped_lock hookLock(HookMutex);
+    std::scoped_lock renderLock(RenderMutex);
     return OverlayDiagnostics{
         .presentCalls = PresentCalls.load(std::memory_order_relaxed),
         .directQueueCaptures = DirectQueueCaptures.load(std::memory_order_relaxed),
@@ -734,12 +895,91 @@ OverlayDiagnostics GetOverlayDiagnostics() noexcept {
 
 ImFont* GetFloatingDamageFont(int index) noexcept {
     if (index < 0 || index >= kFloatingDamageFontCount) return nullptr;
-    return FloatingFonts[static_cast<std::size_t>(index)];
+    if (auto* const configured = FloatingFonts[static_cast<std::size_t>(index)])
+        return configured;
+    if (ImGui::GetCurrentContext() != nullptr) {
+        auto* const atlas = ImGui::GetIO().Fonts;
+        if (atlas != nullptr && !atlas->Fonts.empty())
+            return atlas->Fonts.front();
+    }
+    return nullptr;
 }
 
 void GetDisplaySize(float& width, float& height) noexcept {
     width = DisplayWidth.load(std::memory_order_relaxed);
     height = DisplayHeight.load(std::memory_order_relaxed);
+}
+
+bool AttachExternalImGuiContext(
+        const RuffnecKk::OverlayHost::FrameContextV2* frame) noexcept {
+    if (frame == nullptr
+        || frame->structSize < RuffnecKk::OverlayHost::FrameContextV2Size
+        || frame->version != RuffnecKk::OverlayHost::ApiVersion2
+        || frame->imguiContext == nullptr) {
+        return false;
+    }
+
+    std::scoped_lock lock(RenderMutex);
+    auto* const context = static_cast<ImGuiContext*>(frame->imguiContext);
+    if (HostedImGuiContext == context && FloatingFonts[0] != nullptr)
+        return true;
+    if (AutonomousImGuiContext != nullptr) return false;
+
+    auto* const previousContext = ImGui::GetCurrentContext();
+    ImGui::SetCurrentContext(context);
+    FloatingFonts.fill(nullptr);
+    HostedImGuiContext = context;
+    const bool loaded = LoadFonts();
+    if (!loaded) FloatingFonts.fill(nullptr);
+    ImGui::SetCurrentContext(previousContext == context
+        ? context
+        : previousContext);
+    LastFrameTime = {};
+    return loaded;
+}
+
+void DetachExternalImGuiContext(
+        const RuffnecKk::OverlayHost::FrameContextV2* frame) noexcept {
+    std::scoped_lock lock(RenderMutex);
+    if (HostedImGuiContext == nullptr) return;
+    if (frame != nullptr
+        && frame->imguiContext != nullptr
+        && frame->imguiContext != HostedImGuiContext) {
+        return;
+    }
+    if (ImGui::GetCurrentContext() == HostedImGuiContext)
+        ImGui::SetCurrentContext(nullptr);
+    HostedImGuiContext = nullptr;
+    FloatingFonts.fill(nullptr);
+    LastFrameTime = {};
+}
+
+void RenderAsExternalClient(
+        const RuffnecKk::OverlayHost::FrameContextV2* frame) noexcept {
+    if (frame == nullptr
+        || frame->structSize < RuffnecKk::OverlayHost::FrameContextV2Size
+        || frame->version != RuffnecKk::OverlayHost::ApiVersion2
+        || frame->imguiContext == nullptr
+        || frame->window == nullptr) {
+        return;
+    }
+
+    std::scoped_lock lock(RenderMutex);
+    auto* const previousContext = ImGui::GetCurrentContext();
+    ImGui::SetCurrentContext(
+        static_cast<ImGuiContext*>(frame->imguiContext));
+    ImGuiIO& io = ImGui::GetIO();
+    DisplayWidth.store(frame->displayWidth, std::memory_order_relaxed);
+    DisplayHeight.store(frame->displayHeight, std::memory_order_relaxed);
+    RenderContentLocked(io, frame->window);
+    ImGui::SetCurrentContext(previousContext);
+    const std::uint64_t rendered = RenderedFrames.fetch_add(
+        1, std::memory_order_relaxed) + 1;
+    if (rendered == 1) {
+        LogDiagnosticOnce(
+            FirstFrameRenderedMessage,
+            "FloatingDamage overlay: rendered its first frame through the MapSense host.");
+    }
 }
 
 } // namespace D3D12

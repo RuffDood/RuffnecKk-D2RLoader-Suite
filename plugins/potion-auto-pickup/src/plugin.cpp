@@ -182,7 +182,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-potion-auto-pickup",
     .name = "Potion Auto Pickup",
-    .version = "1.3.1",
+    .version = "1.3.2",
     .author = "RuffnecKk",
     .description =
         "Picks up configured potions into preferred belt columns or inventory.",
@@ -721,7 +721,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Potion Auto Pickup 1.3.0: enabled=%s; authority=server; distance=%u; interval=%u; diagnostics=%s; log-scans=%s; actions=%llu; scans=%llu; selections=%llu; belt=%llu; inventory=%llu; picked=%llu; failed=%llu; belt-state-failures=%llu; enumeration-failures=%llu; route-matches=%llu; route-mismatches=%llu.",
+        "Potion Auto Pickup 1.3.2: enabled=%s; authority=server; distance=%u; interval=%u; diagnostics=%s; log-scans=%s; actions=%llu; scans=%llu; selections=%llu; belt=%llu; inventory=%llu; picked=%llu; failed=%llu; belt-state-failures=%llu; enumeration-failures=%llu; route-matches=%llu; route-mismatches=%llu.",
         Settings.enabled ? "true" : "false",
         Settings.distance,
         Settings.interval,
@@ -791,27 +791,25 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     if (!ReadConfiguration()) return false;
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "PotionAutoPickup: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "PotionAutoPickup: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
 
     if (!Settings.enabled) {
         context->LogInfo(
-            "Potion Auto Pickup 1.3.0 by RuffnecKk disabled; no native mutation was installed.");
+            "Potion Auto Pickup 1.3.2 by RuffnecKk disabled; no native mutation was installed.");
     } else {
         if (!ValidateRuntime()) {
             context->LogError(
-                "PotionAutoPickup: 92777 preflight failed; no native mutation was installed.");
+                "PotionAutoPickup: native fingerprint validation failed; no native mutation was installed.");
             return false;
         }
         ResolveRuntime();
         if (!InstallMutations()) return false;
         context->LogInfo(
-            "Potion Auto Pickup 1.3.0 by RuffnecKk active on authoritative player-action callbacks.");
+            "Potion Auto Pickup 1.3.2 by RuffnecKk active on authoritative player-action callbacks.");
     }
 
     if (!context->RegisterConsoleCommand(

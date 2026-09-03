@@ -298,8 +298,8 @@ function Test-RuntimePatchSelection {
     $behaviors = @($Manifest.memoryPatchArtifacts | Where-Object {
         $selected -contains (Normalize-RelativePath -Path ([string]$_.artifact))
     } | ForEach-Object { [string]$_.behaviorId } | Sort-Object -Unique)
-    if ($selected.Count -ne 18 -or $behaviors.Count -ne 18) {
-        throw "RuntimeSelection must contain 18 artifacts implementing 18 behaviors; found $($selected.Count) artifact(s) and $($behaviors.Count) behavior(s)."
+    if ($selected.Count -ne 17 -or $behaviors.Count -ne 17) {
+        throw "RuntimeSelection must contain 17 artifacts implementing 17 behaviors; found $($selected.Count) artifact(s) and $($behaviors.Count) behavior(s)."
     }
 }
 
@@ -335,13 +335,36 @@ function Invoke-NativeWriteValidation {
         (Get-Content -LiteralPath $sdkPinPath -Raw) -notmatch [regex]::Escape([string]$Manifest.target.pluginSdkCommit)) {
         throw 'The vendored PluginSDK pin does not match the native-write manifest.'
     }
+    $sdkV4Commit = '6eb8f8b6192868214706bd6d528c5294f2f551b7'
+    $expectedSdkV4Components = @(
+        'ruffneckk-mass-identify',
+        'ruffneckk-vendor-stock-refresh'
+    )
+    if (-not (Has-Property -Object $Manifest.target -Name 'pluginSdkOverrides')) {
+        throw 'The PluginSDK v4 override registry is missing.'
+    }
+    $actualSdkV4Components = @($Manifest.target.pluginSdkOverrides.PSObject.Properties.Name)
+    if ($actualSdkV4Components.Count -ne $expectedSdkV4Components.Count -or
+        @($expectedSdkV4Components | Where-Object { $_ -notin $actualSdkV4Components }).Count -ne 0) {
+        throw 'PluginSDK v4 overrides must contain exactly MassID and Vendor Stock Refresh.'
+    }
+    foreach ($componentId in $expectedSdkV4Components) {
+        if ([string]$Manifest.target.pluginSdkOverrides.$componentId -ne $sdkV4Commit) {
+            throw "The $componentId PluginSDK v4 override is missing or incorrect."
+        }
+    }
+    $sdkV4PinPath = Join-Path $Root 'third_party\PluginSDK-v4\UPSTREAM.md'
+    if (-not (Test-Path -LiteralPath $sdkV4PinPath -PathType Leaf) -or
+        (Get-Content -LiteralPath $sdkV4PinPath -Raw) -notmatch [regex]::Escape($sdkV4Commit)) {
+        throw 'The vendored PluginSDK v4 pin does not match the governed overrides.'
+    }
     $expectedPluginIds = @($Allowlist.entries | Where-Object {
         [string]$_.kind -eq 'plugin-dll'
     } | ForEach-Object { [string]$_.componentId })
     $manifestPluginIds = @($Manifest.suitePlugins | ForEach-Object { [string]$_.id })
     Assert-SameStringSet -Expected $expectedPluginIds -Actual $manifestPluginIds -Label 'Suite plugin IDs'
-    if ($manifestPluginIds.Count -ne 17) {
-        throw "Native-write manifest must contain 17 Suite plugin IDs; found $($manifestPluginIds.Count)."
+    if ($manifestPluginIds.Count -ne 18) {
+        throw "Native-write manifest must contain 18 Suite plugin IDs; found $($manifestPluginIds.Count)."
     }
 
     $suiteRanges = [System.Collections.Generic.List[object]]::new()
@@ -391,14 +414,14 @@ function Invoke-NativeWriteValidation {
         -Expected $expectedPatchArtifacts `
         -Actual $manifestPatchNames `
         -Label 'Memory patch artifacts'
-    if ($manifestPatchArtifacts.Count -ne 19) {
-        throw "Native-write manifest must contain 19 memory patch artifacts; found $($manifestPatchArtifacts.Count)."
+    if ($manifestPatchArtifacts.Count -ne 18) {
+        throw "Native-write manifest must contain 18 memory patch artifacts; found $($manifestPatchArtifacts.Count)."
     }
     $behaviorIds = @($manifestPatchArtifacts | ForEach-Object {
         [string]$_.behaviorId
     } | Sort-Object -Unique)
-    if ($behaviorIds.Count -ne 18) {
-        throw "Native-write manifest must contain 18 memory patch behaviors; found $($behaviorIds.Count)."
+    if ($behaviorIds.Count -ne 17) {
+        throw "Native-write manifest must contain 17 memory patch behaviors; found $($behaviorIds.Count)."
     }
 
     $patchRanges = [System.Collections.Generic.List[object]]::new()
@@ -437,8 +460,8 @@ function Invoke-NativeWriteValidation {
             $patchOperationCount++
         }
     }
-    if ($patchOperationCount -ne 62) {
-        throw "Expected 62 memory patch operations; found $patchOperationCount."
+    if ($patchOperationCount -ne 63) {
+        throw "Expected 63 memory patch operations; found $patchOperationCount."
     }
 
     $expectedExternalIds = @($ExternalCompatibility.plugins | ForEach-Object { [string]$_.id })
@@ -499,7 +522,6 @@ function Invoke-NativeWriteValidation {
     $requiredCallThroughs = @{
         'EE2A0' = @(
             'ruffneckk-equipped-item-to-cube',
-            'ruffneckk-mass-identify',
             'ruffneckk-remote-stash'
         )
         '373890' = @(

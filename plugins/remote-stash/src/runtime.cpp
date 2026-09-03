@@ -34,6 +34,7 @@
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 namespace {
+using ruffneckk::remote_stash::BuildActiveModMpqRoots;
 using ruffneckk::remote_stash::BuildButtonLayoutJson;
 using ruffneckk::remote_stash::ButtonAnchor;
 using ruffneckk::remote_stash::ButtonAnchorName;
@@ -41,12 +42,8 @@ using ruffneckk::remote_stash::ButtonConfig;
 using ruffneckk::remote_stash::ButtonFramesFit;
 using ruffneckk::remote_stash::ButtonPlacement;
 using ruffneckk::remote_stash::ButtonPlacementName;
-using ruffneckk::remote_stash::ClassifyCubeReplacementClose;
-using ruffneckk::remote_stash::CubeReplacementCloseDisposition;
 using ruffneckk::remote_stash::ExactModifiersMatch;
 using ruffneckk::remote_stash::HasUsableSize;
-using ruffneckk::remote_stash::HotkeyMode;
-using ruffneckk::remote_stash::HotkeyModeName;
 using ruffneckk::remote_stash::HotkeyConfig;
 using ruffneckk::remote_stash::HotkeyDispatch;
 using ruffneckk::remote_stash::IsMouseHotkey;
@@ -56,14 +53,16 @@ using ruffneckk::remote_stash::InspectSpA1Sprite;
 using ruffneckk::remote_stash::PairedCloseOrigin;
 using ruffneckk::remote_stash::PairedInterface;
 using ruffneckk::remote_stash::ParseConfig;
+using ruffneckk::remote_stash::ParseMpqButtonConfig;
 using ruffneckk::remote_stash::PlaceAtAnchor;
 using ruffneckk::remote_stash::PlaceDesktopFooterLeft;
 using ruffneckk::remote_stash::ResolvePairedClosePlan;
 using ruffneckk::remote_stash::ResolveCompanionInventoryClose;
 using ruffneckk::remote_stash::ResolveRemoteOpenRollbackPlan;
 using ruffneckk::remote_stash::ResolveRemoteTogglePlan;
-using ruffneckk::remote_stash::ResolveRemoteStashTransitionFlag;
+using ruffneckk::remote_stash::ShouldBypassRemoteStashProximity;
 using ruffneckk::remote_stash::ShouldSuppressHotkeyMouseReset;
+using ruffneckk::remote_stash::ShouldSuppressRemoteStashTransition;
 using ruffneckk::remote_stash::ShouldKeepInventoryOpenAfterRemoteOpen;
 using ruffneckk::remote_stash::ShouldKeepRemoteOpenRequestPending;
 using ruffneckk::remote_stash::ShouldRestoreIndependentInventory;
@@ -74,7 +73,7 @@ using ruffneckk::remote_stash::WidgetRect;
 
 constexpr std::size_t MaximumConfigBytes = 65'536;
 constexpr std::uint64_t MaximumCustomSpriteBytes = 64ULL * 1024ULL * 1024ULL;
-constexpr char PluginVersion[] = "2.0.2";
+constexpr char PluginVersion[] = "2.3.0";
 
 #define REMOTE_SITE(value) value
 
@@ -124,8 +123,6 @@ constexpr std::uintptr_t ClientStashCleanupTownCheckReturnRva = 0x25A122;
 constexpr std::uintptr_t QuickMoveItemInitTownCheckReturnRva = 0xFEE3B;
 constexpr std::uintptr_t QuickMoveItemPlacementTownCheckReturnRva = 0xFF1DC;
 constexpr std::uintptr_t QuickMoveStashUiStateReturnRva = 0x15F982;
-constexpr std::uintptr_t QuickMoveToStashItemPacketStateReturnRva = 0x473F80;
-constexpr std::uintptr_t QuickMoveFromStashItemPacketStateReturnRva = 0x474257;
 constexpr std::uintptr_t ServerUiCloseStashReturnRva = 0x1F0AD8;
 constexpr std::uintptr_t StashPanelCloseButtonReturnRva = 0x23C150;
 constexpr std::uintptr_t GeneralUiTeardownCloseStashCallRva = 0x22A9F9;
@@ -137,7 +134,6 @@ constexpr std::int32_t CubeInterfaceState = 0x19;
 constexpr std::int32_t InventoryInterfaceState = 1;
 constexpr std::uint64_t HotkeyOpenTransitionWindowMs = 2000;
 constexpr std::uint64_t CompanionInventoryCloseWindowMs = 2000;
-constexpr std::uint64_t CubeReplacementInventoryCloseWindowMs = 2000;
 
 constexpr char ButtonLayoutVirtualPath[] =
     "data/global/ui/layouts/ruffneckk-remote-stash/inventory-button.json";
@@ -145,6 +141,8 @@ constexpr char ButtonSpriteVirtualPath[] =
     "data/hd/global/ui/d2rloader/ruffneckk-remote-stash/inventory-button.sprite";
 constexpr char ButtonLowendSpriteVirtualPath[] =
     "data/hd/global/ui/d2rloader/ruffneckk-remote-stash/inventory-button.lowend.sprite";
+constexpr wchar_t MpqButtonConfigRelativePath[] =
+    L"data/global/ui/layouts/ruffneckk-remote-stash/button.toml";
 constexpr char ButtonChildLocalId[] = "inventory-button";
 constexpr char ButtonWidgetName[] =
     "ruffneckk-remote-stash/inventory-button";
@@ -471,7 +469,9 @@ constexpr D2RL::PluginInfo Info{
 HotkeyConfig HotkeySettings{};
 ButtonConfig EffectiveButtonSettings{};
 std::string LoadedConfigPath{"built-in disabled defaults"};
+std::string ButtonSettingsSource{"D2RLoader TOML [button]"};
 std::string ButtonSpriteSource{"embedded RuffnecKk chest"};
+std::filesystem::path ActiveMpqRoot{};
 HANDLE InputThread{};
 DWORD InputThreadId{};
 std::atomic_bool InputThreadReady{};
@@ -489,8 +489,7 @@ std::atomic<std::uint64_t> HotkeyRefusedRequests{};
 std::atomic<std::uint64_t> HotkeyFailedRequests{};
 std::atomic<std::uint64_t> HotkeyOpenTransitionDeadline{};
 std::atomic<std::uint64_t> CompanionInventoryCloseDeadline{};
-std::atomic<std::uint64_t> CubeReplacementCloseDeadline{};
-std::atomic_bool CubeReplacementInventoryCloseObserved{};
+std::atomic_bool RemoteClientCubeInterferenceBeforeOpen{};
 std::atomic<std::uint64_t> HotkeyOpenTransitionTickets{};
 std::atomic<std::uint64_t> HotkeyOpenTransitionApplications{};
 std::atomic<std::uint64_t> HotkeyOpenTransitionExpirations{};
@@ -586,6 +585,10 @@ void TryMarkUiDirty() noexcept {
     }
 }
 
+void LogCubeLiveTrace(const char* stage) noexcept;
+bool DismissCubeCompanionBeforeRemoteStashOpen() noexcept;
+bool FinalizeRemoteStashRoutingAfterCubeOpen() noexcept;
+
 template<class Function>
 bool InstallNamedInlineHook(
     const D2RL::PluginContext* context,
@@ -637,6 +640,90 @@ bool MatchesAll(const std::array<RelativeCallSite, Count>& sites) noexcept {
     return true;
 }
 
+bool LoadActiveMpqButtonConfig() noexcept {
+    ActiveMpqRoot.clear();
+    ButtonSettingsSource = "D2RLoader TOML [button]";
+    if (!Context || !Context->activeMod || Context->activeMod[0] == '\0') {
+        return true;
+    }
+
+    try {
+        const auto roots = BuildActiveModMpqRoots(
+            Context->activeMod,
+            Context->modDirectory
+                ? std::filesystem::path(Context->modDirectory)
+                : std::filesystem::path{},
+            Context->modSupportDirectory
+                ? std::filesystem::path(Context->modSupportDirectory)
+                : std::filesystem::path{},
+            Context->scopeRootDirectory
+                ? std::filesystem::path(Context->scopeRootDirectory)
+                : std::filesystem::path{},
+            Context->loadScope == D2RL::LoadScope::Global
+        );
+        for (const auto& root : roots) {
+            const auto path = root / MpqButtonConfigRelativePath;
+            std::error_code fileError;
+            const auto status = std::filesystem::status(path, fileError);
+            if (fileError) {
+                const auto message = std::string(
+                    "RemoteStash: active-MPQ button configuration could not be inspected (")
+                    + path.string() + ").";
+                Context->LogError(message.c_str());
+                return false;
+            }
+            if (!std::filesystem::exists(status)) continue;
+            if (!std::filesystem::is_regular_file(status)) {
+                const auto message = std::string(
+                    "RemoteStash: active-MPQ button configuration is not a regular file (")
+                    + path.string() + ").";
+                Context->LogError(message.c_str());
+                return false;
+            }
+
+            const auto byteCount = std::filesystem::file_size(path, fileError);
+            if (fileError || byteCount == 0
+                || byteCount >= MaximumConfigBytes) {
+                const auto message = std::string(
+                    "RemoteStash: active-MPQ button configuration is empty or exceeds 65535 bytes (")
+                    + path.string() + ").";
+                Context->LogError(message.c_str());
+                return false;
+            }
+            std::ifstream file(path, std::ios::binary);
+            std::string text(static_cast<std::size_t>(byteCount), '\0');
+            if (!file || !file.read(
+                    text.data(), static_cast<std::streamsize>(text.size()))) {
+                const auto message = std::string(
+                    "RemoteStash: active-MPQ button configuration could not be read (")
+                    + path.string() + ").";
+                Context->LogError(message.c_str());
+                return false;
+            }
+
+            ButtonConfig parsed{};
+            std::string error;
+            if (!ParseMpqButtonConfig(text, parsed, error)) {
+                const auto message = std::string(
+                    "RemoteStash: invalid active-MPQ button TOML (")
+                    + error + "); no service, listener, or hook was registered.";
+                Context->LogError(message.c_str());
+                return false;
+            }
+            HotkeySettings.button = std::move(parsed);
+            ActiveMpqRoot = root;
+            ButtonSettingsSource = std::string("active MPQ ") + path.string();
+            return true;
+        }
+        return true;
+    } catch (...) {
+        Context->LogError(
+            "RemoteStash: active-MPQ button configuration path could not be resolved."
+        );
+        return false;
+    }
+}
+
 bool LoadConfig() noexcept {
     std::array<char, MaximumConfigBytes> buffer{};
     std::uint32_t requiredSize{};
@@ -660,7 +747,7 @@ bool LoadConfig() noexcept {
     }
     HotkeySettings = parsed;
     LoadedConfigPath = "config/ruffneckk-remote-stash.toml";
-    return true;
+    return LoadActiveMpqButtonConfig();
 }
 
 bool LoadEmbeddedResource(
@@ -692,6 +779,9 @@ std::filesystem::path ResolveConfiguredSpritePath(
     std::string_view configured
 ) {
     std::filesystem::path path{std::string(configured)};
+    if (!ActiveMpqRoot.empty()) {
+        return (ActiveMpqRoot / path).lexically_normal();
+    }
     if (path.is_absolute()) return path.lexically_normal();
     if (Context && Context->pluginConfigPath) {
         return (std::filesystem::path(Context->pluginConfigPath).parent_path()
@@ -856,7 +946,9 @@ bool LoadButtonSpriteBytes(
 
     sprite = std::move(customSprite);
     lowend = std::move(customLowend);
-    ButtonSpriteSource = "custom file";
+    ButtonSpriteSource = ActiveMpqRoot.empty()
+        ? "custom TOML file"
+        : "active MPQ custom file";
     return true;
 }
 
@@ -953,6 +1045,7 @@ bool ValidateRuntime() noexcept {
             ConfigurePlayerInventoryRva,
             ConfigurePlayerInventoryExpected
         )
+        && Matches(FindTopLevelPanelRva, FindTopLevelPanelExpected)
         && Matches(FindChildWidgetRva, FindChildWidgetExpected)
         && Matches(GetWidgetRectRva, GetWidgetRectExpected)
         // These are composable live entries: call the current executable entry
@@ -1002,10 +1095,6 @@ bool ValidateRuntime() noexcept {
         && MatchesAll(MovementUiCloseCallSites)
         && MatchesAll(IsRoomInTownCallSites)
         && MatchesAll(TransferItemToInventoryPageCallSites);
-}
-
-bool ValidateHotkeyRuntime() noexcept {
-    return Matches(FindTopLevelPanelRva, FindTopLevelPanelExpected);
 }
 
 bool IsRemoteControlRequest(
@@ -1119,8 +1208,10 @@ void DeactivateRemoteClientSession(
     RemoteQuickMoveWithdrawalDeadline.store(0, std::memory_order_release);
     HotkeyOpenTransitionDeadline.store(0, std::memory_order_release);
     CompanionInventoryCloseDeadline.store(0, std::memory_order_release);
-    CubeReplacementCloseDeadline.store(0, std::memory_order_release);
-    CubeReplacementInventoryCloseObserved.store(false, std::memory_order_release);
+    RemoteClientCubeInterferenceBeforeOpen.store(
+        false,
+        std::memory_order_release
+    );
     bool closeQueued{};
     if (notifyServer && wasActive && QueueOutgoingPacket) {
         __try {
@@ -1458,7 +1549,6 @@ bool __fastcall HookValidateItemPacketState(
     const void* packetState,
     bool bypassStashProximity
 ) noexcept {
-    const auto returnAddress = reinterpret_cast<std::uintptr_t>(_ReturnAddress());
     bool remoteStashState{};
     std::int32_t page{-1};
     if (packetState) {
@@ -1468,15 +1558,11 @@ bool __fastcall HookValidateItemPacketState(
                 static_cast<const std::uint8_t*>(packetState) + 4,
                 sizeof(page)
             );
-            remoteStashState = page == 4
-                && (RemoteItemScope
-                    || (RemoteClientSessionActive.load(std::memory_order_acquire)
-                        && (returnAddress == reinterpret_cast<std::uintptr_t>(
-                                Base + QuickMoveToStashItemPacketStateReturnRva
-                            )
-                            || returnAddress == reinterpret_cast<std::uintptr_t>(
-                                Base + QuickMoveFromStashItemPacketStateReturnRva
-                            ))));
+            remoteStashState = ShouldBypassRemoteStashProximity(
+                page,
+                RemoteItemScope,
+                RemoteClientSessionActive.load(std::memory_order_acquire)
+            );
         } __except (EXCEPTION_EXECUTE_HANDLER) {
             page = -1;
             remoteStashState = false;
@@ -1716,9 +1802,13 @@ bool __fastcall HookOpenInterfaceState(
 
     // The native stash open may also open Inventory. The session records whether
     // Inventory belongs to this toggle: the SDK button never couples it, while
-    // the hotkey follows hotkey_mode.
+    // the hotkey follows close_remote_stash_and_inventory_together.
     if (state == StashInterfaceState
         && RemoteClientSessionActive.load(std::memory_order_acquire)) {
+        const auto cubeInterference =
+            RemoteClientCubeInterferenceBeforeOpen.load(
+                std::memory_order_acquire
+            );
         const auto inventoryIsCoupled = RemoteClientInventoryCoupled.load(
             std::memory_order_acquire
         );
@@ -1749,6 +1839,27 @@ bool __fastcall HookOpenInterfaceState(
             }
             stashIsOpen = OriginalGetUiState(StashInterfaceState) != 0;
             result = stashIsOpen && (!inventoryMustRemainOpen || inventoryIsOpen);
+
+            if (!result && cubeInterference && stashIsOpen) {
+                LogCubeLiveTrace("open_recover_before_fail");
+                if (DismissCubeCompanionBeforeRemoteStashOpen()) {
+                    stashIsOpen =
+                        OriginalGetUiState(StashInterfaceState) != 0;
+                    inventoryIsOpen =
+                        OriginalGetUiState(InventoryInterfaceState) != 0;
+                    result = stashIsOpen && inventoryIsOpen;
+                }
+            }
+            if (result && cubeInterference) {
+                LogCubeLiveTrace("open_success_before_finalize");
+                result = FinalizeRemoteStashRoutingAfterCubeOpen();
+                if (result) {
+                    RemoteClientCubeInterferenceBeforeOpen.store(
+                        false,
+                        std::memory_order_release
+                    );
+                }
+            }
             if (result) {
                 ProcessCompanionInventoryCloseAfterOpen(state);
             }
@@ -1756,6 +1867,9 @@ bool __fastcall HookOpenInterfaceState(
             result = false;
         }
         if (!result) {
+            if (cubeInterference) {
+                LogCubeLiveTrace("open_failed");
+            }
             const auto keepRemoteRequestPending =
                 ShouldKeepRemoteOpenRequestPending(
                     scopedHotkeyTransition,
@@ -1806,14 +1920,15 @@ void __fastcall HookStashInterfaceTransition(
     std::int32_t mode,
     bool transitionFlag
 ) noexcept {
-    const auto resolvedFlag = ResolveRemoteStashTransitionFlag(
-        RemoteHotkeyOpenTransitionScope && mode == 2,
-        transitionFlag
-    );
-    if (resolvedFlag != transitionFlag) {
+    if (ShouldSuppressRemoteStashTransition(
+            RemoteHotkeyOpenTransitionScope,
+            mode
+        )) {
         HotkeyOpenTransitionApplications.fetch_add(1, std::memory_order_relaxed);
+        OriginalStashInterfaceTransition(mode, false);
+        return;
     }
-    OriginalStashInterfaceTransition(mode, resolvedFlag);
+    OriginalStashInterfaceTransition(mode, transitionFlag);
 }
 
 void __fastcall HookResetMouseInputState() noexcept {
@@ -1919,46 +2034,6 @@ const char* PairedCloseOriginReason(PairedCloseOrigin origin) noexcept {
     }
 }
 
-CubeReplacementCloseDisposition ResolveCubeReplacementCloseDisposition(
-    PairedInterface interfaceToClose,
-    PairedCloseOrigin origin
-) noexcept {
-    const auto now = GetTickCount64();
-    const auto deadline = CubeReplacementCloseDeadline.load(
-        std::memory_order_acquire
-    );
-    const auto inventoryCloseObserved =
-        CubeReplacementInventoryCloseObserved.load(std::memory_order_acquire);
-    const auto disposition = ClassifyCubeReplacementClose(
-        deadline,
-        now,
-        inventoryCloseObserved,
-        interfaceToClose,
-        origin
-    );
-    if (deadline != 0 && now > deadline) {
-        CubeReplacementCloseDeadline.store(0, std::memory_order_release);
-        CubeReplacementInventoryCloseObserved.store(
-            false,
-            std::memory_order_release
-        );
-    } else if (disposition
-            == CubeReplacementCloseDisposition::AllowInventoryClose) {
-        CubeReplacementInventoryCloseObserved.store(
-            true,
-            std::memory_order_release
-        );
-    } else if (disposition
-            == CubeReplacementCloseDisposition::SuppressStashTeardown) {
-        CubeReplacementCloseDeadline.store(0, std::memory_order_release);
-        CubeReplacementInventoryCloseObserved.store(
-            false,
-            std::memory_order_release
-        );
-    }
-    return disposition;
-}
-
 void __fastcall HookMovementUiClose(
     std::int32_t closeMode,
     std::int32_t secondary
@@ -1987,11 +2062,6 @@ void __fastcall HookCloseInterfaceState(
         returnAddress,
         escapeIsDown
     );
-    const auto cubeReplacementClose =
-        ResolveCubeReplacementCloseDisposition(
-            interfaceToClose,
-            origin
-        );
     bool stashInterfaceIsOpen{};
     __try {
         stashInterfaceIsOpen = OriginalGetUiState(StashInterfaceState) != 0;
@@ -2003,27 +2073,10 @@ void __fastcall HookCloseInterfaceState(
         inventoryIsCoupled,
         stashInterfaceIsOpen,
         interfaceToClose,
-        origin,
-        cubeReplacementClose
+        origin
     );
-    if (remoteSessionIsActive && Context && HotkeySettings.diagnostics) {
-        if (cubeReplacementClose
-                == CubeReplacementCloseDisposition::AllowInventoryClose) {
-            Context->LogInfo(
-                "RemoteStash: Cube replacement Inventory close observed."
-            );
-        } else if (cubeReplacementClose
-                == CubeReplacementCloseDisposition::SuppressStashTeardown) {
-            Context->LogInfo(
-                "RemoteStash: Cube replacement general-teardown Stash close suppressed; transition completed."
-            );
-        }
-    }
     if (plan.suppress) {
-        if (cubeReplacementClose
-                != CubeReplacementCloseDisposition::SuppressStashTeardown) {
-            RemoteMovementCloseSuppressions.fetch_add(1, std::memory_order_relaxed);
-        }
+        RemoteMovementCloseSuppressions.fetch_add(1, std::memory_order_relaxed);
         return;
     }
     if (!plan.deactivate) {
@@ -2243,16 +2296,131 @@ std::int32_t __fastcall HookSharedGoldDeposit(
     return result;
 }
 
+bool TryReadWidgetVisibility(void* widget, bool& visible) noexcept {
+    visible = false;
+    if (!widget) return true;
+    __try {
+        visible = *(static_cast<std::uint8_t*>(widget) + WidgetVisibleOffset) != 0;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 bool TryReadTopLevelPanelVisibility(const char* name, bool& visible) noexcept {
     visible = false;
     if (!FindTopLevelPanel || !name) return false;
     __try {
-        auto* widget = FindTopLevelPanel(name);
-        if (widget) {
-            visible = *(static_cast<std::uint8_t*>(widget) + WidgetVisibleOffset) != 0;
+        return TryReadWidgetVisibility(FindTopLevelPanel(name), visible);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool IsHoradricCubeUiVisible() noexcept {
+    if (!OriginalGetUiState || !FindTopLevelPanel || !FindChildWidget) {
+        return false;
+    }
+    __try {
+        if (OriginalGetUiState(CubeInterfaceState) != 0) return true;
+
+        constexpr const char* cubePanels[]{
+            "HoradricCubeLayout",
+            "HoradricCubePanel",
+        };
+        for (const auto* name : cubePanels) {
+            bool visible{};
+            if (TryReadTopLevelPanelVisibility(name, visible) && visible) {
+                return true;
+            }
         }
+
+        auto* bankPanel = FindTopLevelPanel("BankPanel");
+        bool bankVisible{};
+        if (!TryReadWidgetVisibility(bankPanel, bankVisible) || !bankVisible) {
+            return false;
+        }
+        auto* convert = FindChildWidget(bankPanel, "convert");
+        bool convertVisible{};
+        return TryReadWidgetVisibility(convert, convertVisible)
+            && convertVisible;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+void LogCubeLiveTrace(const char* stage) noexcept {
+    if (!Context || !stage || !OriginalGetUiState) return;
+    std::int32_t inventory{-1};
+    std::int32_t stash{-1};
+    std::int32_t remote{-1};
+    std::int32_t cube{-1};
+    __try {
+        inventory = OriginalGetUiState(InventoryInterfaceState);
+        stash = OriginalGetUiState(StashInterfaceState);
+        remote = OriginalGetUiState(0x16);
+        cube = OriginalGetUiState(CubeInterfaceState);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+    }
+    char message[256]{};
+    std::snprintf(
+        message,
+        sizeof(message),
+        "RemoteStash live[%s]: session=%d inv=%d stash=%d remote=%d cube=%d.",
+        stage,
+        RemoteClientSessionActive.load(std::memory_order_acquire) ? 1 : 0,
+        inventory,
+        stash,
+        remote,
+        cube
+    );
+    Context->LogInfo(message);
+}
+
+bool DismissCubeCompanionBeforeRemoteStashOpen() noexcept {
+    if (!OriginalGetUiState || !OriginalCloseInterfaceState
+        || !OriginalOpenInterfaceState) {
+        return false;
+    }
+    __try {
+        if (OriginalGetUiState(CubeInterfaceState) != 0) {
+            OriginalCloseInterfaceState(CubeInterfaceState, false);
+        }
+        if (OriginalGetUiState(InventoryInterfaceState) == 0) {
+            (void)OriginalOpenInterfaceState(InventoryInterfaceState, false);
+        }
+        TryMarkUiDirty();
+        return OriginalGetUiState(CubeInterfaceState) == 0
+            && OriginalGetUiState(InventoryInterfaceState) != 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        TryMarkUiDirty();
+        if (Context) {
+            Context->LogError(
+                "RemoteStash: Cube companion dismissal raised an exception."
+            );
+        }
+        return false;
+    }
+}
+
+bool FinalizeRemoteStashRoutingAfterCubeOpen() noexcept {
+    if (!OriginalGetUiState || !OriginalStashInterfaceTransition) {
+        LogCubeLiveTrace("finalize_skipped_panels");
+        return false;
+    }
+    __try {
+        if (OriginalGetUiState(StashInterfaceState) == 0
+            || OriginalGetUiState(InventoryInterfaceState) == 0) {
+            LogCubeLiveTrace("finalize_skipped_panels");
+            return false;
+        }
+        OriginalStashInterfaceTransition(2, true);
+        TryMarkUiDirty();
+        LogCubeLiveTrace("finalize_transition");
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
+        TryMarkUiDirty();
+        LogCubeLiveTrace("finalize_exception");
         return false;
     }
 }
@@ -2289,30 +2457,32 @@ bool TryQueueRemoteOpenRequest(
 ) noexcept {
     HotkeyOpenTransitionDeadline.store(0, std::memory_order_release);
     CompanionInventoryCloseDeadline.store(0, std::memory_order_release);
-    CubeReplacementCloseDeadline.store(0, std::memory_order_release);
-    CubeReplacementInventoryCloseObserved.store(false, std::memory_order_release);
+    RemoteClientCubeInterferenceBeforeOpen.store(
+        false,
+        std::memory_order_release
+    );
     if (!QueueOutgoingPacket || !LocalPlayerIsAvailable()) return false;
-    bool replacesCube{};
-    if (OriginalGetUiState) {
-        __try {
-            replacesCube = OriginalGetUiState(CubeInterfaceState) != 0;
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            replacesCube = false;
+
+    const auto replacesCube = IsHoradricCubeUiVisible();
+    if (replacesCube) {
+        LogCubeLiveTrace("queue_before_dismiss");
+        if (!DismissCubeCompanionBeforeRemoteStashOpen()) {
+            LogCubeLiveTrace("queue_after_dismiss");
+            if (Context) {
+                Context->LogError(
+                    "RemoteStash: Cube companion could not be dismissed before the remote open."
+                );
+            }
+            return false;
         }
+        LogCubeLiveTrace("queue_after_dismiss");
+        RemoteClientCubeInterferenceBeforeOpen.store(
+            true,
+            std::memory_order_release
+        );
     }
     __try {
         const auto now = GetTickCount64();
-        if (replacesCube) {
-            CubeReplacementCloseDeadline.store(
-                now + CubeReplacementInventoryCloseWindowMs,
-                std::memory_order_release
-            );
-            if (Context && HotkeySettings.diagnostics) {
-                Context->LogInfo(
-                    "RemoteStash: native Cube replacement Inventory-close ticket armed."
-                );
-            }
-        }
         if (plan.closeCompanionInventoryAfterOpen) {
             CompanionInventoryCloseDeadline.store(
                 now + CompanionInventoryCloseWindowMs,
@@ -2490,10 +2660,9 @@ RemoteToggleExecution TryExecuteRemoteToggle(
     }
     const auto plan = ResolveRemoteTogglePlan(
         source,
-        HotkeySettings.mode,
+        HotkeySettings.closeRemoteStashAndInventoryTogether,
         RemoteClientSessionActive.load(std::memory_order_acquire),
-        knownInputIsBlocked,
-        inventoryIsOpen
+        knownInputIsBlocked
     );
     if (plan.dispatch == HotkeyDispatch::Refuse) {
         return RemoteToggleExecution::Refused;
@@ -3375,11 +3544,12 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
         message,
         sizeof(message),
         "Remote Stash %s: enabled=%s; diagnostics=%s; hotkeyEnabled=%s; "
-        "hotkey=%s; hotkeyMode=%s; hotkeyInput=%s; hotkeyUiDispatch=%s; "
+        "hotkey=%s; closeRemoteStashAndInventoryTogether=%s; "
+        "hotkeyInput=%s; hotkeyUiDispatch=%s; "
         "inventoryButtonEnabled=%s; buttonListener=%s; buttonChild=%s; "
         "buttonResources=%s; buttonPlacement=%s; buttonAnchor=%s; "
         "buttonOffset=%d,%d; buttonSize=%dx%d; buttonFrames=%u/%u/%u/%u; "
-        "buttonSprite=%s; buttonPlacements=%llu; buttonPlacementFailures=%llu; "
+        "buttonSettings=%s; buttonSprite=%s; buttonPlacements=%llu; buttonPlacementFailures=%llu; "
         "legacyButtonsNeutralized=%llu; config=%s; hotkeyAccepted=%llu; "
         "hotkeyCoalesced=%llu; hotkeyDispatched=%llu; hotkeyRefused=%llu; "
         "hotkeyFailed=%llu; sdkButtonActivations=%llu; sdkButtonFailures=%llu; "
@@ -3398,7 +3568,8 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
         HotkeySettings.diagnostics ? "true" : "false",
         HotkeySettings.hotkeyEnabled ? "true" : "false",
         HotkeySettings.hotkeyText.c_str(),
-        HotkeyModeName(HotkeySettings.mode),
+        HotkeySettings.closeRemoteStashAndInventoryTogether
+            ? "true" : "false",
         !HotkeySettings.hotkeyEnabled ? "disabled"
             : (UsesSdkInput ? "SDK Input v1" : "native compatibility fallback"),
         UiDispatchReady.load(std::memory_order_acquire) ? "ready" : "disabled",
@@ -3421,6 +3592,7 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
         EffectiveButtonSettings.pressedFrame,
         EffectiveButtonSettings.disabledFrame,
         EffectiveButtonSettings.hoveredFrame,
+        ButtonSettingsSource.c_str(),
         ButtonSpriteSource.c_str(),
         static_cast<unsigned long long>(
             ButtonPlacements.load(std::memory_order_relaxed)),
@@ -3557,7 +3729,9 @@ bool Load(
     HotkeySettings = {};
     EffectiveButtonSettings = {};
     LoadedConfigPath = "config/ruffneckk-remote-stash.toml";
+    ButtonSettingsSource = "D2RLoader TOML [button]";
     ButtonSpriteSource = "embedded RuffnecKk chest";
+    ActiveMpqRoot.clear();
     InputService = nullptr;
     ThreadService = nullptr;
     LifecycleService = nullptr;
@@ -3617,8 +3791,10 @@ bool Load(
     RemoteClientInventoryCoupled.store(false, std::memory_order_relaxed);
     RemoteClientInventoryWasOpenBeforeOpen.store(false, std::memory_order_relaxed);
     RemoteQuickMoveWithdrawalDeadline.store(0, std::memory_order_relaxed);
-    CubeReplacementCloseDeadline.store(0, std::memory_order_relaxed);
-    CubeReplacementInventoryCloseObserved.store(false, std::memory_order_relaxed);
+    RemoteClientCubeInterferenceBeforeOpen.store(
+        false,
+        std::memory_order_relaxed
+    );
     RemoteMovementCloseSuppressions.store(0, std::memory_order_relaxed);
     RemoteGeneralUiCloses.store(0, std::memory_order_relaxed);
     RemoteServerUiCloses.store(0, std::memory_order_relaxed);
@@ -3652,25 +3828,20 @@ bool Load(
     if (!HotkeySettings.enabled) {
         RegisterStatusCommand();
         context->LogInfo(
-            "Remote Stash 2.0.2 by RuffnecKk disabled; no hook, input action, listener, resource, or child layout was registered.");
+            "Remote Stash 2.3.0 by RuffnecKk disabled; no hook, input action, listener, resource, or child layout was registered.");
         return true;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "RemoteStash: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    const auto* reportedBuild = runtimeBuild && runtimeBuild[0] != '\0'
+        ? runtimeBuild
+        : "unknown";
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "RemoteStash: observed D2R build-name=%s; validating the complete native fingerprint.",
+        reportedBuild);
+    context->LogInfo(buildMessage);
     if (!QuerySdkServices() || !ValidateRuntime()) {
-        context->LogError("RemoteStash: 92777 native signature mismatch; plugin refused.");
-        return false;
-    }
-    if (HotkeySettings.hotkeyEnabled && !ValidateHotkeyRuntime()) {
-        context->LogError(
-            "RemoteStash: 92777 hotkey UI/input signature mismatch; plugin refused."
-        );
+        context->LogError("RemoteStash: native fingerprint mismatch; plugin refused.");
         return false;
     }
     if (!RegisterLifecycleListeners()) return false;
@@ -3683,14 +3854,12 @@ bool Load(
 
     OriginalOpenInterfaceState = At<OpenInterfaceStateFn>(OpenInterfaceStateRva);
     MarkUiDirty = At<MarkUiDirtyFn>(MarkUiDirtyRva);
+    FindTopLevelPanel = At<FindTopLevelPanelFn>(FindTopLevelPanelRva);
     FindChildWidget = At<FindChildWidgetFn>(FindChildWidgetRva);
     GetWidgetRect = At<GetWidgetRectFn>(GetWidgetRectRva);
-    if (HotkeySettings.hotkeyEnabled) {
-        FindTopLevelPanel = At<FindTopLevelPanelFn>(FindTopLevelPanelRva);
-        OriginalStashInterfaceTransition = At<StashInterfaceTransitionFn>(
-            StashInterfaceTransitionRva
-        );
-    }
+    OriginalStashInterfaceTransition = At<StashInterfaceTransitionFn>(
+        StashInterfaceTransitionRva
+    );
     SendServerUi = At<SendServerUiFn>(SendServerUiRva);
     GetClientFromPlayer = At<GetClientFromPlayerFn>(GetClientFromPlayerRva);
     GetLocalDataContext = At<GetLocalDataContextFn>(GetLocalDataContextRva);
@@ -3903,16 +4072,17 @@ bool Load(
 
     RegisterStatusCommand();
 
-    char message[820]{};
+    char message[1400]{};
     std::snprintf(
         message,
         sizeof(message),
         "Remote Stash %s by RuffnecKk active for D2R %s; "
         "button=%s; placement=%s/%s offset=%d,%d size=%dx%d frames=%u/%u/%u/%u; "
-        "sprite=%s; lifecycle=independent; hotkey=%s; binding=%s; mode=%s; "
+        "buttonSettings=%s; sprite=%s; lifecycle=independent; hotkey=%s; binding=%s; "
+        "closeTogether=%s; "
         "input=%s; config=%s.",
         PluginVersion,
-        runtimeBuild,
+        reportedBuild,
         HotkeySettings.inventoryButtonEnabled
             ? "plugin-owned (remote only)" : "disabled",
         ButtonPlacementName(EffectiveButtonSettings.placement),
@@ -3925,10 +4095,12 @@ bool Load(
         EffectiveButtonSettings.pressedFrame,
         EffectiveButtonSettings.disabledFrame,
         EffectiveButtonSettings.hoveredFrame,
+        ButtonSettingsSource.c_str(),
         ButtonSpriteSource.c_str(),
         HotkeySettings.hotkeyEnabled ? "enabled" : "disabled",
         HotkeySettings.hotkeyText.c_str(),
-        HotkeyModeName(HotkeySettings.mode),
+        HotkeySettings.closeRemoteStashAndInventoryTogether
+            ? "true" : "false",
         !HotkeySettings.hotkeyEnabled ? "disabled"
             : (UsesSdkInput ? "SDK Input v1" : "native compatibility fallback"),
         LoadedConfigPath.c_str()
@@ -4015,7 +4187,9 @@ void Unload() noexcept {
     }
     HotkeySettings = {};
     EffectiveButtonSettings = {};
+    ButtonSettingsSource = "D2RLoader TOML [button]";
     ButtonSpriteSource = "embedded RuffnecKk chest";
+    ActiveMpqRoot.clear();
     InputService = nullptr;
     ThreadService = nullptr;
     LifecycleService = nullptr;

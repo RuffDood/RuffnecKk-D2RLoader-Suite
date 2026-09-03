@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 
 project(
     RuffnecKkD2RLoaderSuite
-    VERSION 1.2.0
+    VERSION 1.3.0
     DESCRIPTION "Independent RuffnecKk plugins for D2RLoader"
     LANGUAGES CXX
 )
@@ -63,6 +63,14 @@ if(BUILD_TESTING)
             -ExecutionPolicy Bypass
             -File "${CMAKE_CURRENT_SOURCE_DIR}/scripts/Test-Suite.ps1"
             -RequireAll
+    )
+    add_test(
+        NAME ruffneckk-next-release-registry
+        COMMAND
+            "${RUFFNECKK_POWERSHELL_EXECUTABLE}"
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File "${CMAKE_CURRENT_SOURCE_DIR}/scripts/Test-NextRelease.ps1"
     )
     add_test(
         NAME ruffneckk-native-write-ownership

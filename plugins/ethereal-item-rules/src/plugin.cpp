@@ -100,7 +100,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-ethereal-item-rules",
     .name = "Ethereal Item Rules",
-    .version = "1.0.1",
+    .version = "1.0.2",
     .author = "RuffnecKk",
     .description = "Controls ethereal item chance and eligibility.",
     .flags = D2RL::PluginFlags::Server | D2RL::PluginFlags::NativeHooks,
@@ -431,7 +431,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Ethereal Item Rules 1.0.0: enabled=%s; exclusions=%s types=[%s] "
+        "Ethereal Item Rules 1.0.2: enabled=%s; exclusions=%s types=[%s] "
         "resolved=%u unresolved=%u prevented=%llu; generation=%s "
         "chance=%u%% set=%s indestructible=%s; diagnostics=%s.",
         Settings.enabled ? "true" : "false",
@@ -478,13 +478,11 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     if (!ReadConfiguration()) return false;
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "EtherealItemRules: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "EtherealItemRules: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
     if (!ValidateRuntime()) return false;
     if (!InstallRulePatches() || !InstallExclusionHook()) return false;
 
@@ -500,7 +498,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Ethereal Item Rules 1.0.0 by RuffnecKk loaded: enabled=%s; exclusions=%s "
+        "Ethereal Item Rules 1.0.2 by RuffnecKk loaded: enabled=%s; exclusions=%s "
         "(%zu types); generation=%s; chance=%u%%; set=%s; "
         "indestructible=%s; diagnostics=%s.",
         Settings.enabled ? "true" : "false",

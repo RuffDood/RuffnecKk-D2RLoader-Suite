@@ -6,8 +6,6 @@
 
 namespace RuffnecKk::BulkSkillPointAllocation::NativeContract {
 
-inline constexpr std::uint32_t SupportedBuild = 92777;
-
 inline constexpr std::uintptr_t SendFiveBytePacketRva = 0x000EC700;
 inline constexpr std::uintptr_t IsVirtualKeyDownRva = 0x0120A100;
 inline constexpr std::uintptr_t GetLocalizedStringByKeyRva = 0x005F4B90;

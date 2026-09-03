@@ -87,7 +87,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-enhanced-damage-min-max-fix",
     .name = "Enhanced Damage Min/Max Fix",
-    .version = "1.2.2",
+    .version = "1.2.3",
     .author = "RuffnecKk",
     .description = "Restores off-weapon Enhanced Damage when an item also adds minimum or maximum damage.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -168,7 +168,7 @@ void LogCorrection(
     std::snprintf(
         message,
         sizeof(message),
-        "Enhanced Damage Min/Max Fix 1.2.1 restored an off-weapon update "
+        "Enhanced Damage Min/Max Fix 1.2.3 restored an off-weapon update "
         "(stat=%u, retained=%d, evaluated=%d).",
         static_cast<unsigned>(static_cast<std::uint32_t>(packedStat) >> 16U),
         retainedValue,
@@ -251,7 +251,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Enhanced Damage Min/Max Fix 1.2.1: %s; diagnostics=%s; restored=%llu; "
+        "Enhanced Damage Min/Max Fix 1.2.3: %s; diagnostics=%s; restored=%llu; "
         "maximum=%llu; minimum=%llu; weapons left vanilla=%llu; "
         "post-write failures=%llu.",
         Settings.enabled ? "active" : "disabled",
@@ -396,7 +396,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "Enhanced Damage Min/Max Fix 1.2.1 by RuffnecKk loaded disabled; no hook or service registered.");
+            "Enhanced Damage Min/Max Fix 1.2.3 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 
@@ -408,16 +408,14 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "EnhancedDamageMinMaxFix: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "EnhancedDamageMinMaxFix: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
     if (!ValidateRuntime()) {
         context->LogError(
-            "EnhancedDamageMinMaxFix: 92777 preflight failed; no hook installed.");
+            "EnhancedDamageMinMaxFix: native fingerprint validation failed; no hook installed.");
         return false;
     }
 
@@ -444,7 +442,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "EnhancedDamageMinMaxFix: status command could not be registered.");
     }
     context->LogInfo(
-        "Enhanced Damage Min/Max Fix 1.2.1 by RuffnecKk active for D2R 3.2.92777.");
+        "Enhanced Damage Min/Max Fix by RuffnecKk active after complete native fingerprint validation.");
     return true;
 }
 

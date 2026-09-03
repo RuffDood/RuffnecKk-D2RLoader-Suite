@@ -116,7 +116,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-prevent-merc-death-in-town",
     .name = "Prevent Merc Death in Town",
-    .version = "1.0.1",
+    .version = "1.0.2",
     .author = "RuffnecKk",
     .description = "Prevents mercenaries from dying to lingering damage while in town.",
     .flags = D2RL::PluginFlags::Server | D2RL::PluginFlags::NativeHooks,
@@ -311,7 +311,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Prevent Merc Death in Town 1.0.0: %s; diagnostics=%s; "
+        "Prevent Merc Death in Town 1.0.2: %s; diagnostics=%s; "
         "prevented lethal ticks=%llu.",
         Settings.enabled ? "active" : "disabled",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
@@ -344,7 +344,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "Prevent Merc Death in Town 1.0.0 by RuffnecKk loaded disabled; no hook or service registered.");
+            "Prevent Merc Death in Town 1.0.2 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 
@@ -356,16 +356,14 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "PreventMercDeathInTown: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "PreventMercDeathInTown: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
     if (!ValidateRuntime()) {
         context->LogError(
-            "PreventMercDeathInTown: 92777 preflight failed; no hook installed.");
+            "PreventMercDeathInTown: native fingerprint validation failed; no hook installed.");
         return false;
     }
 
@@ -394,7 +392,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "PreventMercDeathInTown: status command could not be registered.");
     }
     context->LogInfo(
-        "Prevent Merc Death in Town 1.0.0 by RuffnecKk active for D2R 3.2.92777.");
+        "Prevent Merc Death in Town by RuffnecKk active after complete native fingerprint validation.");
     return true;
 }
 

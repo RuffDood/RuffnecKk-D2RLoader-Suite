@@ -7,6 +7,10 @@
     "canonicalSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715",
     "analysisSha256": "673E8C0B2E89563E75525B24D137098EFD07B2DB4ED42ADEC56AA1ADDF0E63AB",
     "pluginSdkCommit": "4933e2c42cb2592958cd0df3b6dc5003102252d1",
+    "pluginSdkOverrides": {
+      "ruffneckk-mass-identify": "6eb8f8b6192868214706bd6d528c5294f2f551b7",
+      "ruffneckk-vendor-stock-refresh": "6eb8f8b6192868214706bd6d528c5294f2f551b7"
+    },
     "loaderArchiveSha256": "923B4933476A8649B7D7C4B50286C0E7FC64CE013B561A446C152A41868C4EDB",
     "d2rCoreSha256": "013B047612BFF0EB564891037508FD43D03AFDFB20BFEB9B5BC683B36559FFC6"
   },
@@ -112,10 +116,14 @@
       "id": "ruffneckk-mass-identify",
       "source": "plugins/mass-identify/src/plugin.cpp",
       "fixedWrites": [
-        {"rva": "0x1C7A30", "size": 5, "kind": "sdk-inline-hook"},
+        {"rva": "0x2C51A9", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x2C5455", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x2C55F2", "size": 5, "kind": "sdk-patch-call-rel32"},
         {"rva": "0x4C6C90", "size": 5, "kind": "sdk-inline-hook"}
       ],
-      "dynamicAllocations": []
+      "dynamicAllocations": [
+        {"kind": "rel32-relay-page", "allocation": "one system page near the vendor/trade tooltip call sites", "usedBytes": 64}
+      ]
     },
     {
       "id": "ruffneckk-cube-quick-move",
@@ -221,11 +229,29 @@
       "source": "plugins/floating-damage/src/plugin.cpp",
       "fixedWrites": [
         {"rva": "0x0B9B90", "size": 5, "kind": "sdk-inline-hook"},
-        {"rva": "0x44D093", "size": 5, "kind": "sdk-patch-call-rel32"}
+        {"rva": "0x44D093", "size": 5, "kind": "sdk-patch-call-rel32"},
+        {"rva": "0x448D4C", "size": 5, "kind": "sdk-patch-call-rel32"}
       ],
       "dynamicAllocations": [
         {"kind": "rel32-relay-page", "allocation": "one system page near 0x44D093", "usedBytes": 31},
+        {"kind": "rel32-relay-page", "allocation": "one system page near 0x448D4C", "usedBytes": 21},
         {"kind": "resolved-system-vtable-hooks", "allocation": "MinHook-owned detours outside D2R.exe", "targets": ["ID3D12CommandQueue::ExecuteCommandLists", "IDXGISwapChain::Present", "IDXGISwapChain::ResizeBuffers"]}
+      ]
+    },
+    {
+      "id": "ruffneckk-burn-damage-fix",
+      "source": "plugins/burn-damage-fix/src/plugin.cpp",
+      "fixedWrites": [
+        {"rva": "0x44CB32", "size": 6, "kind": "sdk-patch-jmp-rel32", "condition": "generic Burn normalization enabled"},
+        {"rva": "0x451380", "size": 5, "kind": "sdk-inline-hook", "condition": "Fire resistance resolution enabled"},
+        {"rva": "0x42CE30", "size": 5, "kind": "sdk-inline-hook", "condition": "periodic fire-hit overlay enabled"},
+        {"rva": "0x447420", "size": 5, "kind": "sdk-inline-hook", "condition": "periodic fire-hit overlay enabled"}
+      ],
+      "dynamicAllocations": [
+        {"kind": "rel32-relay-page", "allocation": "one system page near 0x44CB32", "usedBytes": 14}
+      ],
+      "processDataWrites": [
+        {"target": "compiled StatesTxt state 115 overlay1", "size": 2, "condition": "native burning suppression enabled and value is exactly 224", "restore": "restore 224 only while the plugin still owns the exact 0xFFFF replacement"}
       ]
     },
     {
@@ -305,9 +331,11 @@
       {"rva": "0x44BD57", "size": 4, "kind": "memory-patch-write-u32"},
       {"rva": "0x14E8068", "size": 1, "kind": "memory-patch-write-u8"},
       {"rva": "0x15149C2", "size": 1, "kind": "memory-patch-write-u8"},
+      {"rva": "0x1514CBF", "size": 1, "kind": "memory-patch-write-u8"},
       {"rva": "0x44BD45", "size": 4, "kind": "memory-patch-write-u32"},
       {"rva": "0x14E8073", "size": 4, "kind": "memory-patch-write-u32"},
-      {"rva": "0x15149CD", "size": 4, "kind": "memory-patch-write-u32"}
+      {"rva": "0x15149CD", "size": 4, "kind": "memory-patch-write-u32"},
+      {"rva": "0x1514CCA", "size": 4, "kind": "memory-patch-write-u32"}
     ]},
     {"artifact": "patches/ruffneckk-infinite-quantities.json", "behaviorId": "infinite-quantities", "fixedWrites": [
       {"rva": "0x43921F", "size": 1, "kind": "memory-patch-write-u8"},
@@ -339,9 +367,6 @@
       {"rva": "0x44B7E1", "size": 1, "kind": "memory-patch-write-u8"},
       {"rva": "0x44B9B9", "size": 1, "kind": "memory-patch-write-u8"},
       {"rva": "0x14E5F3E", "size": 1, "kind": "memory-patch-write-u8"}
-    ]},
-    {"artifact": "patches/ruffneckk-normal-area-scaling.json", "behaviorId": "normal-area-scaling", "fixedWrites": [
-      {"rva": "0x543D32", "size": 5, "kind": "memory-patch-bytes"}
     ]},
     {"artifact": "patches/ruffneckk-player-difficulty-overrides.json", "behaviorId": "player-difficulty-overrides", "fixedWrites": [
       {"rva": "0x425A69", "size": 3, "kind": "memory-patch-bytes"},
@@ -422,7 +447,7 @@
     {
       "entryRva": "0x0EE2A0",
       "ownerPluginId": "ruffneckk-equipped-item-to-cube",
-      "consumerPluginIds": ["ruffneckk-mass-identify", "ruffneckk-remote-stash"],
+      "consumerPluginIds": ["ruffneckk-remote-stash"],
       "consumerContract": "call-current-live-entry",
       "requiresVanillaEntry": false
     },

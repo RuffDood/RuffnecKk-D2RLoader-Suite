@@ -246,7 +246,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-charm-aura-trigger-fix",
     .name = "Charm Aura Trigger Fix",
-    .version = "1.6.2",
+    .version = "1.6.3",
     .author = "RuffnecKk",
     .description = "Reactivates inventory charm auras after death, corpse recovery, and zone changes.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -499,7 +499,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Charm Aura Trigger Fix 1.6.2: %s; diagnostics=%s; transitions=%llu; "
+        "Charm Aura Trigger Fix 1.6.3: %s; diagnostics=%s; transitions=%llu; "
         "corpse recoveries=%llu; native corpse refreshes=%llu; town respawns=%llu; "
         "native town refreshes=%llu; items scanned=%llu; aura charms refreshed=%llu; "
         "non-aura charms skipped=%llu; inactive charms skipped=%llu; active skills restored=%llu; active skill "
@@ -796,7 +796,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "Charm Aura Trigger Fix 1.6.2 by RuffnecKk loaded disabled; no hook or service registered.");
+            "Charm Aura Trigger Fix 1.6.3 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 
@@ -808,16 +808,14 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "CharmAuraTriggerFix: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "CharmAuraTriggerFix: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
     if (!ValidateRuntime()) {
         context->LogError(
-            "CharmAuraTriggerFix: 92777 preflight failed; no hook installation attempted.");
+            "CharmAuraTriggerFix: native fingerprint validation failed; no hook installation attempted.");
         return false;
     }
 
@@ -844,7 +842,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "CharmAuraTriggerFix: status command could not be registered.");
     }
     context->LogInfo(
-        "Charm Aura Trigger Fix 1.6.2 by RuffnecKk active for D2R 3.2.92777 and respects canonical charm eligibility supplied by compatible zone plugins.");
+        "Charm Aura Trigger Fix by RuffnecKk active after complete native fingerprint validation and respecting canonical charm eligibility supplied by compatible zone plugins.");
     return true;
 }
 

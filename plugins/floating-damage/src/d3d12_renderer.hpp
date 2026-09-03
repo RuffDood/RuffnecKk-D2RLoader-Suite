@@ -10,6 +10,7 @@
 #include <cstdint>
 
 #include "external_overlay_api.hpp"
+#include "overlay_host_api.hpp"
 
 struct ImFont;
 
@@ -64,5 +65,11 @@ void RemoveHooks() noexcept;
 OverlayDiagnostics GetOverlayDiagnostics() noexcept;
 ImFont* GetFloatingDamageFont(int index) noexcept;
 void GetDisplaySize(float& width, float& height) noexcept;
+bool AttachExternalImGuiContext(
+    const RuffnecKk::OverlayHost::FrameContextV2* frame) noexcept;
+void DetachExternalImGuiContext(
+    const RuffnecKk::OverlayHost::FrameContextV2* frame) noexcept;
+void RenderAsExternalClient(
+    const RuffnecKk::OverlayHost::FrameContextV2* frame) noexcept;
 
 } // namespace D3D12

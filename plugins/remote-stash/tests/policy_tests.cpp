@@ -37,6 +37,10 @@ int main(int argc, char** argv) {
     REQUIRE(configFile.good());
     std::ostringstream configStream;
     configStream << configFile.rdbuf();
+    REQUIRE(configStream.str().find(
+        "close_remote_stash_and_inventory_together = false")
+        != std::string::npos);
+    REQUIRE(configStream.str().find("hotkey_mode") == std::string::npos);
 
     HotkeyConfig config{};
     std::string error;
@@ -49,7 +53,7 @@ int main(int argc, char** argv) {
     REQUIRE(config.hotkey.virtualKey == 'R');
     REQUIRE(config.hotkey.shift);
     REQUIRE(IsSdkInputCompatible(config.hotkey));
-    REQUIRE(config.mode == HotkeyMode::RemoteOnly);
+    REQUIRE(!config.closeRemoteStashAndInventoryTogether);
     REQUIRE(config.button.placement == ButtonPlacement::Automatic);
     REQUIRE(config.button.anchor == ButtonAnchor::BottomLeft);
     REQUIRE(config.button.offsetX == 0 && config.button.offsetY == 0);
@@ -72,16 +76,27 @@ int main(int argc, char** argv) {
     REQUIRE(enabled.hotkey.virtualKey == 0x7B);
     REQUIRE(enabled.hotkey.alt);
     REQUIRE(SdkModifierValue(enabled.hotkey) == 3);
-    REQUIRE(enabled.mode == HotkeyMode::RemoteOnly);
+    REQUIRE(!enabled.closeRemoteStashAndInventoryTogether);
 
     auto invalid = configStream.str();
     invalid += "\nunknown = true\n";
     REQUIRE(!ParseConfig(invalid, config, error));
     REQUIRE(ParseConfig(
+        "enabled = true\nhotkey = \";\"\n"
+        "close_remote_stash_and_inventory_together = true\n",
+        config,
+        error));
+    REQUIRE(config.closeRemoteStashAndInventoryTogether);
+    REQUIRE(ParseConfig(
         "enabled = true\nhotkey = \";\"\nhotkey_mode = \"remoteAndInventory\"\n",
         config,
         error));
-    REQUIRE(config.mode == HotkeyMode::RemoteAndInventory);
+    REQUIRE(config.closeRemoteStashAndInventoryTogether);
+    REQUIRE(ParseConfig(
+        "enabled = true\nhotkey = \";\"\nhotkey_mode = \"remoteOnly\"\n",
+        config,
+        error));
+    REQUIRE(!config.closeRemoteStashAndInventoryTogether);
     REQUIRE(ParseConfig(
         "enabled = true\ninventory_button_enabled = false\n"
         "hotkey_enabled = true\nhotkey = \"SHIFT+R\"\n"
@@ -120,6 +135,29 @@ int main(int argc, char** argv) {
         config,
         error));
     REQUIRE(!ParseConfig(
+        "enabled = true\nhotkey = \";\"\n"
+        "close_remote_stash_and_inventory_together = false\n"
+        "close_remote_stash_and_inventory_together = true\n",
+        config,
+        error));
+    REQUIRE(!ParseConfig(
+        "enabled = true\nhotkey = \";\"\n"
+        "hotkey_mode = \"remoteOnly\"\n"
+        "close_remote_stash_and_inventory_together = true\n",
+        config,
+        error));
+    REQUIRE(!ParseConfig(
+        "enabled = true\nhotkey = \";\"\n"
+        "close_remote_stash_and_inventory_together = true\n"
+        "hotkey_mode = \"remoteOnly\"\n",
+        config,
+        error));
+    REQUIRE(!ParseConfig(
+        "enabled = true\nhotkey = \";\"\n"
+        "close_remote_stash_and_inventory_together = maybe\n",
+        config,
+        error));
+    REQUIRE(!ParseConfig(
         "enabled = true\nhotkey = \";\"\nhotkey = \"F1\"\n",
         config,
         error));
@@ -144,6 +182,83 @@ int main(int argc, char** argv) {
     REQUIRE(config.button.pressedFrame == 5);
     REQUIRE(config.button.disabledFrame == 6);
     REQUIRE(config.button.hoveredFrame == 7);
+
+    ButtonConfig mpqButton{};
+    REQUIRE(ParseMpqButtonConfig(
+        "# Per-skin Remote Stash button\n"
+        "[button]\n"
+        "placement = \"custom\"\n"
+        "anchor = \"topRight\"\n"
+        "offset_x = -77\n"
+        "offset_y = 31\n"
+        "width = 220\n"
+        "height = 96\n"
+        "sprite_file = \"data/hd/global/ui/panel/inventory/skin.sprite\"\n"
+        "lowend_sprite_file = 'data\\hd\\global\\ui\\panel\\inventory\\skin.lowend.sprite'\n"
+        "normal_frame = 4\n"
+        "pressed_frame = 5\n"
+        "disabled_frame = 6\n"
+        "hovered_frame = 7\n",
+        mpqButton,
+        error));
+    REQUIRE(mpqButton.placement == ButtonPlacement::Custom);
+    REQUIRE(mpqButton.anchor == ButtonAnchor::TopRight);
+    REQUIRE(mpqButton.offsetX == -77 && mpqButton.offsetY == 31);
+    REQUIRE(mpqButton.width == 220 && mpqButton.height == 96);
+    REQUIRE(mpqButton.spriteFile
+        == "data/hd/global/ui/panel/inventory/skin.sprite");
+    REQUIRE(mpqButton.lowendSpriteFile
+        == "data\\hd\\global\\ui\\panel\\inventory\\skin.lowend.sprite");
+    REQUIRE(mpqButton.normalFrame == 4);
+    REQUIRE(mpqButton.pressedFrame == 5);
+    REQUIRE(mpqButton.disabledFrame == 6);
+    REQUIRE(mpqButton.hoveredFrame == 7);
+    REQUIRE(ParseMpqButtonConfig(
+        "[button]\noffset_x = 12\n",
+        mpqButton,
+        error));
+    REQUIRE(mpqButton.placement == ButtonPlacement::Automatic);
+    REQUIRE(mpqButton.anchor == ButtonAnchor::BottomLeft);
+    REQUIRE(mpqButton.offsetX == 12 && mpqButton.offsetY == 0);
+    REQUIRE(mpqButton.width == 176 && mpqButton.height == 112);
+    REQUIRE(mpqButton.spriteFile.empty());
+    REQUIRE(!ParseMpqButtonConfig(
+        "offset_x = 12\n",
+        mpqButton,
+        error));
+    REQUIRE(!ParseMpqButtonConfig(
+        "[diagnostics]\nenabled = true\n",
+        mpqButton,
+        error));
+    REQUIRE(!ParseMpqButtonConfig(
+        "[button]\nsprite_file = \"C:/skin.sprite\"\n",
+        mpqButton,
+        error));
+    REQUIRE(!ParseMpqButtonConfig(
+        "[button]\nsprite_file = \"../skin.sprite\"\n",
+        mpqButton,
+        error));
+    REQUIRE(!ParseMpqButtonConfig(
+        "[button]\noffset_x = 1\noffset_x = 2\n",
+        mpqButton,
+        error));
+
+    const auto mpqRoots = BuildActiveModMpqRoots(
+        "SkinA",
+        "C:/D2R/mods/SkinA",
+        "C:/D2R/mods/SkinA/d2rloader",
+        "C:/D2R",
+        true);
+    REQUIRE(mpqRoots.size() == 1);
+    REQUIRE(mpqRoots[0].generic_string()
+        == "C:/D2R/mods/SkinA/SkinA.mpq");
+    const auto globalFallbackRoot = BuildActiveModMpqRoots(
+        "SkinA", {}, {}, "C:/D2R", true);
+    REQUIRE(globalFallbackRoot.size() == 1);
+    REQUIRE(globalFallbackRoot[0].generic_string()
+        == "C:/D2R/mods/SkinA/SkinA.mpq");
+    REQUIRE(BuildActiveModMpqRoots(
+        "../SkinA", {}, {}, {}, true).empty());
     REQUIRE(!ParseConfig(
         "enabled = true\nhotkey = \"SHIFT+R\"\n"
         "[button]\nwidth = 0\n",
@@ -166,28 +281,44 @@ int main(int argc, char** argv) {
 
     auto plan = ResolveRemoteTogglePlan(
         ToggleSource::Hotkey,
-        HotkeyMode::RemoteOnly,
         false,
         false,
         false);
     REQUIRE(plan.dispatch == HotkeyDispatch::Open);
-    REQUIRE(plan.closeCompanionInventoryAfterOpen);
+    REQUIRE(!plan.closeCompanionInventoryAfterOpen);
     REQUIRE(!plan.coupleInventory);
 
     plan = ResolveRemoteTogglePlan(
         ToggleSource::Hotkey,
-        HotkeyMode::RemoteAndInventory,
         true,
         false,
-        true);
+        false);
+    REQUIRE(plan.dispatch == HotkeyDispatch::Open);
+    REQUIRE(!plan.closeCompanionInventoryAfterOpen);
+    REQUIRE(plan.coupleInventory);
+
+    plan = ResolveRemoteTogglePlan(
+        ToggleSource::Hotkey,
+        true,
+        true,
+        false);
     REQUIRE(plan.dispatch == HotkeyDispatch::Close);
     REQUIRE(plan.closeInventoryAfterClose);
     REQUIRE(!plan.preserveInventoryAfterClose);
     REQUIRE(plan.coupleInventory);
 
     plan = ResolveRemoteTogglePlan(
+        ToggleSource::Hotkey,
+        false,
+        true,
+        false);
+    REQUIRE(plan.dispatch == HotkeyDispatch::Close);
+    REQUIRE(!plan.closeInventoryAfterClose);
+    REQUIRE(plan.preserveInventoryAfterClose);
+    REQUIRE(!plan.coupleInventory);
+
+    plan = ResolveRemoteTogglePlan(
         ToggleSource::Button,
-        HotkeyMode::RemoteAndInventory,
         true,
         true,
         true);
@@ -198,11 +329,10 @@ int main(int argc, char** argv) {
 
     plan = ResolveRemoteTogglePlan(
         ToggleSource::Hotkey,
-        HotkeyMode::RemoteOnly,
         false,
         false,
         true);
-    REQUIRE(plan.dispatch == HotkeyDispatch::Open);
+    REQUIRE(plan.dispatch == HotkeyDispatch::Refuse);
     REQUIRE(!plan.closeCompanionInventoryAfterOpen);
     REQUIRE(!plan.coupleInventory);
 
@@ -240,36 +370,14 @@ int main(int argc, char** argv) {
     REQUIRE(!IsRemoteStashUiMessage(
         "PanelManager", "OpenPanel", "SettingsPanel"));
 
-    REQUIRE(ClassifyCubeReplacementClose(
-        200, 100, false,
-        PairedInterface::Inventory,
-        PairedCloseOrigin::Inventory)
-        == CubeReplacementCloseDisposition::AllowInventoryClose);
-    REQUIRE(ClassifyCubeReplacementClose(
-        200, 100, true,
-        PairedInterface::Stash,
-        PairedCloseOrigin::GeneralTeardown)
-        == CubeReplacementCloseDisposition::SuppressStashTeardown);
-    REQUIRE(ClassifyCubeReplacementClose(
-        200, 100, false,
-        PairedInterface::Stash,
-        PairedCloseOrigin::GeneralTeardown)
-        == CubeReplacementCloseDisposition::None);
-    REQUIRE(ClassifyCubeReplacementClose(
-        0, 100, false,
-        PairedInterface::Inventory,
-        PairedCloseOrigin::Inventory)
-        == CubeReplacementCloseDisposition::None);
-    REQUIRE(ClassifyCubeReplacementClose(
-        99, 100, false,
-        PairedInterface::Inventory,
-        PairedCloseOrigin::Inventory)
-        == CubeReplacementCloseDisposition::None);
-    REQUIRE(ClassifyCubeReplacementClose(
-        200, 100, false,
-        PairedInterface::Inventory,
-        PairedCloseOrigin::Movement)
-        == CubeReplacementCloseDisposition::None);
+    REQUIRE(ShouldBypassRemoteStashProximity(4, true, false));
+    REQUIRE(ShouldBypassRemoteStashProximity(4, false, true));
+    REQUIRE(ShouldBypassRemoteStashProximity(4, true, true));
+    REQUIRE(!ShouldBypassRemoteStashProximity(4, false, false));
+    REQUIRE(!ShouldBypassRemoteStashProximity(0, true, true));
+    REQUIRE(!ShouldSuppressRemoteStashTransition(false, 2));
+    REQUIRE(!ShouldSuppressRemoteStashTransition(true, 2));
+    REQUIRE(!ShouldSuppressRemoteStashTransition(true, 1));
 
     auto closePlan = ResolvePairedClosePlan(
         true,
@@ -329,43 +437,6 @@ int main(int argc, char** argv) {
     REQUIRE(closePlan.deactivate);
     REQUIRE(closePlan.notifyServer);
     REQUIRE(closePlan.closeStash && closePlan.closeInventory);
-
-    closePlan = ResolvePairedClosePlan(
-        true,
-        true,
-        false,
-        PairedInterface::Inventory,
-        PairedCloseOrigin::Inventory,
-        CubeReplacementCloseDisposition::AllowInventoryClose);
-    REQUIRE(!closePlan.suppress);
-    REQUIRE(!closePlan.deactivate);
-    REQUIRE(!closePlan.notifyServer);
-    REQUIRE(!closePlan.closeStash);
-    REQUIRE(!closePlan.closeInventory);
-
-    closePlan = ResolvePairedClosePlan(
-        true,
-        true,
-        true,
-        PairedInterface::Stash,
-        PairedCloseOrigin::Server,
-        CubeReplacementCloseDisposition::AllowInventoryClose);
-    REQUIRE(closePlan.deactivate);
-    REQUIRE(closePlan.notifyServer);
-    REQUIRE(closePlan.closeStash && closePlan.closeInventory);
-
-    closePlan = ResolvePairedClosePlan(
-        true,
-        true,
-        true,
-        PairedInterface::Stash,
-        PairedCloseOrigin::GeneralTeardown,
-        CubeReplacementCloseDisposition::SuppressStashTeardown);
-    REQUIRE(closePlan.suppress);
-    REQUIRE(!closePlan.deactivate);
-    REQUIRE(!closePlan.notifyServer);
-    REQUIRE(!closePlan.closeStash);
-    REQUIRE(!closePlan.closeInventory);
 
     closePlan = ResolvePairedClosePlan(
         true,
@@ -488,6 +559,13 @@ int main(int argc, char** argv) {
         != std::string::npos);
     REQUIRE(runtime.find("registerChildLayout") != std::string::npos);
     REQUIRE(runtime.find("registerResource") != std::string::npos);
+    REQUIRE(runtime.find("LoadActiveMpqButtonConfig") != std::string::npos);
+    REQUIRE(runtime.find(
+        "data/global/ui/layouts/ruffneckk-remote-stash/button.toml")
+        != std::string::npos);
+    REQUIRE(runtime.find("BuildActiveModMpqRoots") != std::string::npos);
+    REQUIRE(runtime.find("ParseMpqButtonConfig") != std::string::npos);
+    REQUIRE(runtime.find("ActiveMpqRoot / path") != std::string::npos);
     REQUIRE(runtime.find("HookConfigurePlayerInventory") != std::string::npos);
     REQUIRE(runtime.find("ruffneckk-remote-stash/inventory-button")
         != std::string::npos);
@@ -496,5 +574,29 @@ int main(int argc, char** argv) {
         != std::string::npos);
     REQUIRE(runtime.find("FindNamedWidget(panel, \"gold_button\")")
         != std::string::npos);
+    REQUIRE(runtime.find("D2RL::GetBuildName(context)")
+        != std::string::npos);
+    REQUIRE(runtime.find("validating the complete native fingerprint")
+        != std::string::npos);
+    REQUIRE(runtime.find("strcmp(runtimeBuild") == std::string::npos);
+    REQUIRE(runtime.find("only D2R builds") == std::string::npos);
+    REQUIRE(runtime.find("92777") == std::string::npos);
+    REQUIRE(runtime.find("93847") == std::string::npos);
+    REQUIRE(runtime.find("ShouldBypassRemoteStashProximity")
+        != std::string::npos);
+    REQUIRE(runtime.find("ShouldSuppressRemoteStashTransition")
+        != std::string::npos);
+    REQUIRE(runtime.find("RemoteClientCubeInterferenceBeforeOpen")
+        != std::string::npos);
+    REQUIRE(runtime.find("HoradricCubeLayout") != std::string::npos);
+    REQUIRE(runtime.find("HoradricCubePanel") != std::string::npos);
+    REQUIRE(runtime.find("FindChildWidget(bankPanel, \"convert\")")
+        != std::string::npos);
+    REQUIRE(runtime.find("OriginalStashInterfaceTransition(2, true)")
+        != std::string::npos);
+    REQUIRE(runtime.find("CubeReplacementCloseDeadline")
+        == std::string::npos);
+    REQUIRE(runtime.find("CubeReplacementInventoryCloseObserved")
+        == std::string::npos);
     return 0;
 }

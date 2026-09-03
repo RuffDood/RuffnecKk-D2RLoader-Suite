@@ -2,13 +2,18 @@
 
 
 
-This Suite contains 17 independent plugins and 18 optional memory-patch
-features for D2RLoader. You can install one component, a few
-favorites, or the complete bundles.
+This Suite contains 24 independent plugins and 17 optional memory patches. The
+ISC12 download also includes the offline D2R Save Converter. You can install
+one component, a few favorites, or the complete bundles.
+
 ## Requirements
 
-- Diablo II: Resurrected build **3.2** or **3.3**
-- **D2RLoader 1.1.0-beta**
+- Diablo II: Resurrected **3.3.93847**, **3.2.92777**, or Steam **3.3.93787**.
+  Steam was not play-tested for this release, but plugins no longer reject it
+  because of its channel, build name, or version number.
+
+- **D2RLoader 1.2.0-beta**
+
 
 Download D2RLoader from [D2RLoader.net](https://d2rloader.net/).
 
@@ -20,7 +25,7 @@ Open the GitHub **Releases** page and choose one of these options:
   features.
 - **Individual patch JSON files** : same as above.
 - **All Plugins** : downloads every Suite plugin.
-- **All Patches** : downlaods every Suite patch
+- **All Patches** : downloads every Suite patch.
 
 ## Quick installation
 
@@ -38,29 +43,36 @@ Then:
 
 Never install the same plugin globally and inside a mod at the same time.
 
-Every plugin download includes its configuration. Copy both the `plugins/` and
-`config/` folders into the same D2RLoader installation. Existing configuration
-files are never overwritten when a plugin starts. If a TOML file is missing,
-the plugin can still recreate its default configuration as a fallback.
+When a plugin includes a configuration, copy both the `plugins/` and `config/`
+folders into the same D2RLoader installation. Plugins without settings are
+active by the presence of their DLL. Existing configuration files are never
+overwritten when a plugin starts.
 
-### Upgrading from Suite 1.1.x
+### D2RMM Custom for D2RLoader
 
-D2RLoader now includes its own `Transmute Horadric Cube` Controls action. The
-RuffnecKk Transmute Hotkey plugin was therefore retired. An archive cannot
-remove files left by an older installation, so delete both legacy files when
-upgrading:
+Suite plugin ZIPs and patch downloads use the paths expected by D2RMM Custom
+1.9.6 for D2RLoader. Put ZIP archives or loose patch JSON files in D2RMM
+Custom's `d2rloader/` folder, then restart D2RMM Custom or choose
+**Plugins > Refresh**. Required companion files such as the MapSense map
+generator are imported automatically.
+
+The ISC12 ZIP also contains the offline D2R Save Converter in its own folder.
+D2RMM Custom installs ISC12, but the Converter must be extracted and launched
+manually when you need it.
+
+### Upgrading to Suite 1.3.0
+
+D2RLoader 1.2 now provides the ground-item label limit feature natively. Remove
+all older copies of these files before upgrading:
 
 ```text
-d2rloader/plugins/d2rl-ruffneckk-transmute-hotkey.dll
-d2rloader/config/ruffneckk-transmute-hotkey.toml
+d2rloader/patches/ruffneckk-ground-item-label-limit-64.json
+d2rloader/patches/ruffneckk-ground-item-label-limit-128.json
 ```
 
-Floating Damage 1.4.0 moves its toggle to D2RLoader Controls. Existing 1.3.x
-TOML files remain accepted, but their legacy `[hotkey]` table is ignored. Set
-or clear `Toggle Floating Damage` in the Controls menu instead.
+Normal Area Scaling is also no longer distributed by the Suite because Yinyin
+has a working patch and mine apparently didn't work.
 
-Release downloads contain only the files needed by the game. Usage changes are
-summarized in the GitHub release notes.
 
 ## Important compatibility note
 
@@ -78,8 +90,9 @@ Feel free to install back Eezstreet's plugin pack : https://github.com/eezstreet
 
 ## Plugins
 
-All plugins are enabled by default. Install only the features you want, or set
-a plugin's `enabled` option to `false` in its configuration.
+Install only the features you want. A plugin is active when its DLL is present;
+plugins with real settings may also provide an in-game or file-based master
+control.
 
 | Plugin | What it does | Main options |
 |---|---|---|
@@ -88,7 +101,7 @@ a plugin's `enabled` option to `false` in its configuration.
 | Equipped Item to Cube | Moves a Ctrl-clicked equipped item directly into the Cube. | No extra options. |
 | Mass Identify | Identifies items by Shift-right-clicking a Tome of Identify. | Free identification and optional Cube or stash coverage. |
 | Potion Auto Pickup | Sends ground potions to matching belt columns or inventory. | Potion priorities, belt columns, and inventory overflow. |
-| Remote Stash | Opens personal and shared stash pages from anywhere. | Hotkey, Inventory button, placement, size, and custom sprites. |
+| Remote Stash | Opens personal and shared stash pages from anywhere. | Hotkey, Inventory button, placement, size, custom sprites, and active-MPQ skin overrides. |
 | Vendor Stock Refresh | Adds a button that refreshes normal vendor stock. | No extra options. |
 | Bulk Skill Point Allocation | Uses Ctrl+Click for a batch and Shift+Click for all usable skill points. | Batch size and confirmation text. |
 | Charm Aura Trigger Fix | Restores inventory charm auras after respawns and zone transitions | No extra options. |
@@ -98,8 +111,15 @@ a plugin's `enabled` option to `false` in its configuration.
 | Progressive Affixes | Controls how many affixes Magic, Rare, and Crafted items receive. | Automatic or progressive item-level rules. |
 | Repair Costs Cap | Limits repair prices and can add permanent durability wear. | Gold cap and wear chance. |
 | Enhanced Damage Min/Max Fix | Fixes off-weapon Enhanced Damage with flat damage bonuses. | No extra options. |
+| Burn Damage Fix **NEW** | Restores and fixes Burn damage, adds a new overlay from Burning state, now goes through resistances and fire mastery is applied.| No extra options. |
 | Floating Damage | Shows damage numbers and an optional DPS counter. | Colors, size, animation, layout, font, combining, and Controls binding. |
 | Prevent Merc Death in Town | Stops supported lingering damage from killing mercenaries in town (Open wounds, poison). | No extra options. |
+| Cast Triggers **NEW** | Unlocks new CtC ideas : X% CtC X Skill when X skill is cast, CtC from OW, CB, Attack attempts and more | Trigger families, conditions, skills |
+| Armageddon-Hurricane CtC Fix **NEW** | Lets Armageddon and Hurricane start correctly from chance-to-cast effects. | Supported skills |
+| Resistance Floor **NEW** | Lets configured units fall below the vanilla resistance floor. | Player, companion, monster, and Character Screen limits. |
+| MapSense **NEW** | Reveals maps, marks important targets, and draws navigation lines on D2R's native automap. | In-game menu, colors, markers, navigation, themes, and custom destinations. |
+| Extended Act Level IDs **NEW** | Allows custom levels to belong to any act. | No extra options. |
+| ISC12 **NEW** | Extends ItemStatCost IDs to 12 bits for larger mod stat catalogs (4095 max rows) and includes D2R Save Converter. | No extra options. |
 
 ### Default hotkeys
 
@@ -109,6 +129,13 @@ a plugin's `enabled` option to `false` in its configuration.
 
 These bindings are configurable in D2RLoader Controls. D2RLoader's current
 Input service supports keyboard bindings, but not mouse buttons.
+
+## D2R Save Converter
+
+D2R Save Converter 1.0.0 is included only in the individual ISC12 ZIP. Extract
+its folder before running the executable. It converts standard D2R and ISC12
+saves without launching the game. Back up characters and shared stashes, close
+the game, and review the source and destination shown before converting.
 
 ## Memory patches
 
@@ -120,9 +147,8 @@ enables the complete behavior; removing the file disables it after a restart.
 | -% to Enemy Resistance vs Immunes | -% to enemy res can affect immune monsters. |
 | Gamble Screen Limit | Raises Gamble screen from 14 items to 32. |
 | Gold Capacities | Greatly raises carried-gold and stash-gold limits. |
-| Ground Item Label Limit | Raises the simultaneous ground-label limit from 32 to either 64 or 128. Choose one preset. |
 | Ranged Hireling AI | Improves following, activity, and retreat behavior for ranged mercenaries. |
-| Hit Chance 0% to 100% | Replaces the normal 5%-95% hit-chance limits with 0%-100%. |
+| Hit Chance 0% to 100% | Replaces the normal 5%-95% gameplay and Character Screen hit-chance limits with 0%-100%. |
 | Infinite Quantities | Stops ammunition, throwing weapons, and tomes from consuming quantity. |
 | Infinite Quest Rewards | Allows the Anya, Charsi, and Larzuk rewards to be reused. |
 | ITD vs Champions and Uniques | Extends Ignore Target Defense to champions and unique monsters. |
@@ -130,28 +156,17 @@ enables the complete behavior; removing the file disables it after a restart.
 | Linear Magic Find | Uses a linear Magic Find formula without diminishing returns. |
 | Maximum Staffmods | Gives eligible items three random +1 to +3 staffmods. |
 | No Run Penalties | Keeps full defense and block chance while running. |
-| Normal Area Scaling | Uses each area's `levels.txt` level for Normal monsters. |
 | Player Difficulty Overrides | Allows `/players` values above 8, up to 65,535. |
 | Preserve Terror Zone Music | Keeps an area's normal music while it is terrorized. |
 | Quantity Display Fix | Restores quantity display on affected stackable items. |
+| Shadow Master AI Fix **NEW** | Keeps Shadow Warrior and Shadow Master targeting independent from their owner. |
 | Thorns/Burn Kill Credit | Restores experience and kill credit for reflected or burning kills. |
 
-`Player Difficulty Overrides` only raises the allowed maximum. Choose the
-active difficulty in game with commands such as `/players 16` or `/players 64`.
-Do not enable it together with another feature that changes the same command
-limit.
+For complete Burn damage behavior, install Burn Damage Fix together with the
+independent Thorns/Burn Kill Credit patch. The DLL owns damage behavior and visual replay; Floating Damage owns periodic numbers, and the JSON patch owns
+experience and kill attribution.
 
-Progressive Affixes replaces the older Force Affixes patches for Magic, Rare,
-Crafted, and Jewel items. Remove those older patches before enabling the
-plugin.
 
-Three earlier standalone DLLs are now simpler JSON patches:
-
-- `GambleScreenLimit.dll` became `ruffneckk-gamble-screen-limit.json`.
-- `GroundItemLabelLimit.dll` became
-  `ruffneckk-ground-item-label-limit-64.json` and
-  `ruffneckk-ground-item-label-limit-128.json`; **install only one**.
-- `QtyDisplayIssue.dll` became `ruffneckk-quantity-display-fix.json`.
 
 ## Changing or removing features
 
@@ -164,9 +179,9 @@ Three earlier standalone DLLs are now simpler JSON patches:
 
 ## Credits
 
-- **RuffnecKk** — Suite integration, D2R 3.2 ports, configuration, and testing.
+- **RuffnecKk** — Suite integration, D2R 3.2 ports, configuration, and testing (Assisted with AI)
 - **eezstreet** — [D2R data documentation](https://eezstreet.github.io/d2rdoc/).
-- **D2RLoader contributors** — D2RLoader and PluginSDK v3.
+- **D2RLoader contributors** — D2RLoader and PluginSDK v3/v4.
 - **Fr4nsson** — original [D2R Damage Numbers](https://github.com/Fr4nsson/D2RDamageNumbers) project and feature design.
 - **locbones / D2RHUD-2.4** — direct implementation source used for the Suite's D3D12/ImGui port
 - **D2MOO contributors** — semantic reference for applicable historical Diablo II behavior.

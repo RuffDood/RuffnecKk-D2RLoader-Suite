@@ -152,7 +152,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-repair-costs-cap",
     .name = "Repair Costs Cap",
-    .version = "1.4.2",
+    .version = "1.4.3",
     .author = "RuffnecKk",
     .description = "Controls NPC repair prices and optional permanent durability wear.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -513,7 +513,7 @@ auto Status(
     std::snprintf(
         pricing,
         sizeof(pricing),
-        "Repair Costs Cap 1.4.1: enabled=%s; repairCosts=%s; maximumGold=%d "
+        "Repair Costs Cap 1.4.3: enabled=%s; repairCosts=%s; maximumGold=%d "
         "(per item and Repair All); diagnostics=%s.",
         Settings.pluginEnabled ? "true" : "false",
         Settings.enabled ? "true" : "false",
@@ -584,13 +584,11 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     if (!ReadConfiguration()) return false;
     const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (runtimeBuild == nullptr
-        || (std::strcmp(runtimeBuild, "92777") != 0
-            && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "RepairCostsCap: only D2R builds 92777 and 93847 are supported.");
-        return false;
-    }
+    char buildMessage[192]{};
+    std::snprintf(buildMessage, sizeof(buildMessage),
+        "RepairCostsCap: observed D2R build-name=%s; validating the complete native fingerprint.",
+        runtimeBuild && runtimeBuild[0] != '\0' ? runtimeBuild : "unknown");
+    context->LogInfo(buildMessage);
     if (!ValidateRuntime()) return false;
     BindWearHelpers();
     if (!InstallChanges()) return false;
@@ -607,7 +605,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Repair Costs Cap 1.4.1 by RuffnecKk loaded: enabled=%s; repairCosts=%s; "
+        "Repair Costs Cap 1.4.3 by RuffnecKk loaded: enabled=%s; repairCosts=%s; "
         "maximumGold=%d (per item and Repair All); durability wear=%s "
         "at %.2f%%; diagnostics=%s.",
         Settings.pluginEnabled ? "true" : "false",

@@ -96,6 +96,7 @@
     "Bind And Summon binding and summoning behavior remains usable, including Larzuk Sockets coexistence.",
     "Cube Output Quantity still produces configured cube quantities while Mass Identify and Item Durability remain active.",
     "Monster Display renders and shuts down normally while Floating Damage and other UI plugins remain active.",
+    "Burn Damage Fix composes with Monster Display's tracked Fire Resistance resolver, leaves Bind And Summon behavior intact, and feeds periodic Burn losses to Floating Damage.",
     "Poison Energy Shield and Floating Damage load in both relevant orders; poison absorption and Floating Damage HP-loss popups remain functional.",
     "No Suite component requires vanilla bytes at a yinyin-owned entry or silently skips an enabled feature."
   ]
