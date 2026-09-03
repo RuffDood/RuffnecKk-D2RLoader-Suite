@@ -9,8 +9,9 @@ one component, a few favorites, or the complete bundles.
 ## Requirements
 
 - Diablo II: Resurrected **3.3.93847**, **3.2.92777**, or Steam **3.3.93787**.
-  Steam was not play-tested for this release, but plugins no longer reject it
-  because of its channel, build name, or version number.
+  Steam was not play-tested for this release. Suite plugins no longer reject
+  Steam users running D2RLoader on the latest Steam patch solely because Steam
+  uses a different D2R build number.
 
 - **D2RLoader 1.2.0-beta**
 

@@ -20,7 +20,7 @@ Suite 1.3.0 includes 24 plugins, 17 patches, and two bundles.
 
 ### Changed
 
-- Plugins no longer reject Steam because of its version number.
+- Suite plugins no longer reject Steam users running D2RLoader on the latest Steam patch solely because Steam uses a different D2R build number.
 - Remote Stash 2.3.0 fixes behavior inconsistencies and lets each active mod use its MPQ to automatically apply its own placement and sprites to the global Remote Stash button.
 - Vendor Stock Refresh 2.0.0 now works with D2RLoader 1.2.
 - Bulk Currency Deposit 1.1.1 fixes a tooltip conflict with D2RLoader's native Stat Ranges feature and updates its button sprite to better match the regular Inventory panel.
