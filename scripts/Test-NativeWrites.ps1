@@ -18,13 +18,10 @@ if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
 }
 $RepositoryRoot = [IO.Path]::GetFullPath($RepositoryRoot)
 if ([string]::IsNullOrWhiteSpace($ManifestPath)) {
-    $ManifestPath = Join-Path $RepositoryRoot 'manifests\native-writes-3.2.92777.json'
-}
-if ([string]::IsNullOrWhiteSpace($AllowlistPath)) {
-    $AllowlistPath = Join-Path $RepositoryRoot 'manifests\release-allowlist.json'
+    $ManifestPath = Join-Path $RepositoryRoot 'tests\data\compatibility\native-writes-3.2.92777.json'
 }
 if ([string]::IsNullOrWhiteSpace($ExternalCompatibilityPath)) {
-    $ExternalCompatibilityPath = Join-Path $RepositoryRoot 'manifests\external-compatibility.json'
+    $ExternalCompatibilityPath = Join-Path $RepositoryRoot 'tests\data\compatibility\external-compatibility.json'
 }
 
 function Read-JsonFile {
@@ -306,7 +303,7 @@ function Test-RuntimePatchSelection {
 function Invoke-NativeWriteValidation {
     param(
         [Parameter(Mandatory)][object]$Manifest,
-        [Parameter(Mandatory)][object]$Allowlist,
+        [AllowNull()][object]$Allowlist,
         [Parameter(Mandatory)][object]$ExternalCompatibility,
         [Parameter(Mandatory)][string]$Root
     )
@@ -357,11 +354,13 @@ function Invoke-NativeWriteValidation {
         (Get-Content -LiteralPath $sdkV4PinPath -Raw) -notmatch [regex]::Escape($sdkV4Commit)) {
         throw 'The vendored PluginSDK v4 pin does not match the governed overrides.'
     }
-    $expectedPluginIds = @($Allowlist.entries | Where-Object {
-        [string]$_.kind -eq 'plugin-dll'
-    } | ForEach-Object { [string]$_.componentId })
     $manifestPluginIds = @($Manifest.suitePlugins | ForEach-Object { [string]$_.id })
-    Assert-SameStringSet -Expected $expectedPluginIds -Actual $manifestPluginIds -Label 'Suite plugin IDs'
+    if ($null -ne $Allowlist) {
+        $expectedPluginIds = @($Allowlist.entries | Where-Object {
+            [string]$_.kind -eq 'plugin-dll'
+        } | ForEach-Object { [string]$_.componentId })
+        Assert-SameStringSet -Expected $expectedPluginIds -Actual $manifestPluginIds -Label 'Suite plugin IDs'
+    }
     if ($manifestPluginIds.Count -ne 18) {
         throw "Native-write manifest must contain 18 Suite plugin IDs; found $($manifestPluginIds.Count)."
     }
@@ -634,10 +633,13 @@ function Assert-Throws {
 }
 
 $ManifestPath = [IO.Path]::GetFullPath($ManifestPath)
-$AllowlistPath = [IO.Path]::GetFullPath($AllowlistPath)
 $ExternalCompatibilityPath = [IO.Path]::GetFullPath($ExternalCompatibilityPath)
 $manifest = Read-JsonFile -Path $ManifestPath -Label 'native-write manifest'
-$allowlist = Read-JsonFile -Path $AllowlistPath -Label 'release allowlist'
+$allowlist = $null
+if (-not [string]::IsNullOrWhiteSpace($AllowlistPath)) {
+    $AllowlistPath = [IO.Path]::GetFullPath($AllowlistPath)
+    $allowlist = Read-JsonFile -Path $AllowlistPath -Label 'release allowlist'
+}
 $externalCompatibility = Read-JsonFile `
     -Path $ExternalCompatibilityPath `
     -Label 'external compatibility manifest'
@@ -744,6 +746,7 @@ if ($SelfTest) {
     ExternalPlugins = $summary.ExternalPlugins
     ExternalWrites = $summary.ExternalWrites
     ComposableCallThroughs = $summary.ComposableCallThroughs
+    AllowlistCompared = $null -ne $allowlist
     RuntimeSelection = [bool]$RuntimeSelection
     SelfTests = $selfTestCount
     Result = 'VALID'

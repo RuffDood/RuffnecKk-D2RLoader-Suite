@@ -14,16 +14,18 @@ $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $pluginsRoot = Join-Path $repositoryRoot 'plugins'
-if ([string]::IsNullOrWhiteSpace($AllowlistPath)) {
-    $AllowlistPath = Join-Path $repositoryRoot 'manifests\release-allowlist.json'
-}
-$AllowlistPath = [IO.Path]::GetFullPath($AllowlistPath)
+$hasReleaseAllowlist = -not [string]::IsNullOrWhiteSpace($AllowlistPath)
+$expectedSdkV4Components = @(
+    'ruffneckk-vendor-stock-refresh'
+)
 
-if (-not (Test-Path -LiteralPath $AllowlistPath -PathType Leaf)) {
-    throw "Release allowlist not found: $AllowlistPath"
-}
-
-$allowlist = Get-Content -LiteralPath $AllowlistPath -Raw | ConvertFrom-Json
+if ($hasReleaseAllowlist) {
+    $AllowlistPath = [IO.Path]::GetFullPath($AllowlistPath)
+    if (-not (Test-Path -LiteralPath $AllowlistPath -PathType Leaf)) {
+        throw "Release allowlist not found: $AllowlistPath"
+    }
+    $allowlist = Get-Content -LiteralPath $AllowlistPath -Raw | ConvertFrom-Json
+    $sourcePolicyCatalog = $AllowlistPath
 $compatibility = $allowlist.suite.compatibility
 if ([string]$compatibility.policy -ne 'native-fingerprint-fail-closed' -or
     @($compatibility.runtimeQualified | Where-Object {
@@ -43,9 +45,6 @@ if ([string]$distribution.model -ne 'modular-catalog' -or
     throw 'Release allowlist does not declare the approved modular catalog contract.'
 }
 $sdkV4Commit = '6eb8f8b6192868214706bd6d528c5294f2f551b7'
-$expectedSdkV4Components = @(
-    'ruffneckk-vendor-stock-refresh'
-)
 $sdkV4Overrides = @($allowlist.suite.pluginSdkOverrides)
 $actualSdkV4Components = @($sdkV4Overrides | ForEach-Object { [string]$_.componentId })
 if ($sdkV4Overrides.Count -ne $expectedSdkV4Components.Count -or
@@ -211,6 +210,27 @@ foreach ($executable in $embeddedToolExecutableEntries) {
         throw "Embedded tool '$componentId' must have one README, one semantic version and one approved plugin archive owner."
     }
 }
+}
+else {
+    $sourcePolicyCatalog = Join-Path $repositoryRoot 'tests\data\compatibility\native-writes-3.2.92777.json'
+    if (-not (Test-Path -LiteralPath $sourcePolicyCatalog -PathType Leaf)) {
+        throw "Public source-policy catalog not found: $sourcePolicyCatalog"
+    }
+    try {
+        $sourcePolicyDocument = Get-Content -LiteralPath $sourcePolicyCatalog -Raw | ConvertFrom-Json
+    }
+    catch {
+        throw "Invalid public source-policy catalog '$sourcePolicyCatalog': $($_.Exception.Message)"
+    }
+    $pluginEntries = @($sourcePolicyDocument.suitePlugins | ForEach-Object {
+        [pscustomobject]@{ componentId = [string]$_.id }
+    })
+    $pluginIds = @($pluginEntries | ForEach-Object { [string]$_.componentId })
+    if ($pluginIds.Count -eq 0 -or @($pluginIds | Sort-Object -Unique).Count -ne $pluginIds.Count) {
+        throw 'The public source-policy catalog is empty or contains duplicate plugin IDs.'
+    }
+    $pluginReadmeEntries = @()
+}
 
 $errors = [System.Collections.Generic.List[string]]::new()
 $present = 0
@@ -234,27 +254,29 @@ foreach ($entry in $pluginEntries) {
 
     $readmes = @(Get-ChildItem -LiteralPath $pluginDirectory -File -Recurse |
         Where-Object Name -Match '^README(?:\..+)?$')
-    $releaseReadmes = @($pluginReadmeEntries | Where-Object { [string]$_.componentId -eq $pluginId })
-    if ($releaseReadmes.Count -eq 1) {
-        $expectedReadmeSource = "plugins/$slug/README.md"
-        if ($readmes.Count -ne 1 -or $readmes[0].Name -cne 'README.md' -or
-            [string]$releaseReadmes[0].source -cne $expectedReadmeSource -or
-            [string]$releaseReadmes[0].destination -cne 'README.md' -or
-            ([string]$releaseReadmes[0].sha256).ToUpperInvariant() -cne
-                (Get-FileHash -Algorithm SHA256 -LiteralPath $readmes[0].FullName).Hash) {
-            $errors.Add("$slug must contain exactly the reviewed README.md pinned by its release entry.")
+    if ($hasReleaseAllowlist) {
+        $releaseReadmes = @($pluginReadmeEntries | Where-Object { [string]$_.componentId -eq $pluginId })
+        if ($releaseReadmes.Count -eq 1) {
+            $expectedReadmeSource = "plugins/$slug/README.md"
+            if ($readmes.Count -ne 1 -or $readmes[0].Name -cne 'README.md' -or
+                [string]$releaseReadmes[0].source -cne $expectedReadmeSource -or
+                [string]$releaseReadmes[0].destination -cne 'README.md' -or
+                ([string]$releaseReadmes[0].sha256).ToUpperInvariant() -cne
+                    (Get-FileHash -Algorithm SHA256 -LiteralPath $readmes[0].FullName).Hash) {
+                $errors.Add("$slug must contain exactly the reviewed README.md pinned by its release entry.")
+            }
         }
-    }
-    elseif ($releaseReadmes.Count -gt 1) {
-        $errors.Add("$slug has more than one release README entry.")
-    }
-    elseif ($slug -eq 'remote-stash') {
-        if ($readmes.Count -ne 1 -or $readmes[0].Name -ne 'README.md') {
-            $errors.Add('remote-stash must contain exactly its approved button and migration README.md.')
+        elseif ($releaseReadmes.Count -gt 1) {
+            $errors.Add("$slug has more than one release README entry.")
         }
-    }
-    elseif ($readmes.Count -ne 0) {
-        $errors.Add("$slug contains an unapproved per-plugin README; documentation must stay central.")
+        elseif ($slug -eq 'remote-stash') {
+            if ($readmes.Count -ne 1 -or $readmes[0].Name -ne 'README.md') {
+                $errors.Add('remote-stash must contain exactly its approved button and migration README.md.')
+            }
+        }
+        elseif ($readmes.Count -ne 0) {
+            $errors.Add("$slug contains an unapproved per-plugin README; documentation must stay central.")
+        }
     }
 
     $nestedBuilds = @(Get-ChildItem -LiteralPath $pluginDirectory -Directory -Recurse |
@@ -318,14 +340,20 @@ foreach ($entry in $pluginEntries) {
         $errors.Add("$slug contains forbidden dependency marker 'GetProcAddress'.")
     }
     $pluginEntry = @($pluginEntries | Where-Object { [string]$_.componentId -eq $pluginId })[0]
-    $expectedPluginInfoId = if ($null -ne $pluginEntry.PSObject.Properties['pluginInfoId']) {
+    $expectedPluginInfoId = if ($hasReleaseAllowlist -and $null -ne $pluginEntry.PSObject.Properties['pluginInfoId']) {
         [string]$pluginEntry.pluginInfoId
+    }
+    elseif (-not $hasReleaseAllowlist -and $pluginId -in @(
+        'ruffneckk-bulk-currency-deposit',
+        'ruffneckk-resistance-floor'
+    )) {
+        $pluginId.Substring('ruffneckk-'.Length)
     }
     else {
         $pluginId
     }
     if ($expectedPluginInfoId -notmatch '^[a-z0-9-]+$') {
-        $errors.Add("$slug declares invalid PluginInfo id $expectedPluginInfoId in the release allowlist.")
+        $errors.Add("$slug declares invalid PluginInfo id $expectedPluginInfoId.")
     }
     elseif ($sourceText -notmatch [regex]::Escape(".id = `"$expectedPluginInfoId`"")) {
         $errors.Add("$slug does not expose PluginInfo id $expectedPluginInfoId.")
@@ -349,10 +377,13 @@ foreach ($entry in $pluginEntries) {
 
     $tomlFiles = @(Get-ChildItem -LiteralPath $pluginDirectory -Filter '*.toml' -File -Recurse)
     $jsonFiles = @(Get-ChildItem -LiteralPath $pluginDirectory -Filter '*.json' -File -Recurse)
-    $manifestConfigs = @($allowlist.entries | Where-Object {
-        [string]$_.kind -in 'plugin-config-toml', 'loose-config-json' -and
-        [string]$_.componentId -eq $pluginId
-    })
+    $manifestConfigs = @()
+    if ($hasReleaseAllowlist) {
+        $manifestConfigs = @($allowlist.entries | Where-Object {
+            [string]$_.kind -in 'plugin-config-toml', 'loose-config-json' -and
+            [string]$_.componentId -eq $pluginId
+        })
+    }
     if ($manifestConfigs.Count -gt 1) {
         $errors.Add("$slug may have at most one justified public configuration entry in the release allowlist.")
     }
@@ -420,9 +451,11 @@ loader chain, so the plugin must keep its deferred runtime lookup.
 
 [pscustomobject]@{
     Repository = $repositoryRoot
+    SourcePolicyCatalog = $sourcePolicyCatalog
     DeclaredPlugins = $pluginEntries.Count
     PresentPlugins = $present
     RequireAll = [bool]$RequireAll
+    ReleaseAllowlistCompared = $hasReleaseAllowlist
     FloatingDamageBinaryChecked = $floatingDamageBinaryChecked
     Result = 'VALID'
 }

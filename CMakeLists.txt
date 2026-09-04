@@ -19,6 +19,18 @@ option(
     "Treat warnings from RuffnecKk Suite targets as errors"
     OFF
 )
+set(
+    RUFFNECKK_RELEASE_PLAN_PATH "" CACHE FILEPATH
+    "External path to the private next-release registry"
+)
+set(
+    RUFFNECKK_RELEASE_SCHEMA_PATH "" CACHE FILEPATH
+    "External path to the private next-release schema"
+)
+set(
+    RUFFNECKK_RELEASE_ALLOWLIST_PATH "" CACHE FILEPATH
+    "External path to the private release allowlist"
+)
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/PluginSDK/CMakeLists.txt")
     message(FATAL_ERROR "The pinned D2RLoader PluginSDK v3 source is missing.")
@@ -64,14 +76,51 @@ if(BUILD_TESTING)
             -File "${CMAKE_CURRENT_SOURCE_DIR}/scripts/Test-Suite.ps1"
             -RequireAll
     )
-    add_test(
-        NAME ruffneckk-next-release-registry
-        COMMAND
-            "${RUFFNECKK_POWERSHELL_EXECUTABLE}"
-            -NoProfile
-            -ExecutionPolicy Bypass
-            -File "${CMAKE_CURRENT_SOURCE_DIR}/scripts/Test-NextRelease.ps1"
+    if(
+        RUFFNECKK_RELEASE_PLAN_PATH OR
+        RUFFNECKK_RELEASE_SCHEMA_PATH OR
+        RUFFNECKK_RELEASE_ALLOWLIST_PATH
     )
+        if(
+            NOT EXISTS "${RUFFNECKK_RELEASE_PLAN_PATH}" OR
+            NOT EXISTS "${RUFFNECKK_RELEASE_SCHEMA_PATH}" OR
+            NOT EXISTS "${RUFFNECKK_RELEASE_ALLOWLIST_PATH}"
+        )
+            message(FATAL_ERROR
+                "Release governance requires explicit existing plan, schema, and allowlist paths."
+            )
+        endif()
+        add_test(
+            NAME ruffneckk-next-release-registry
+            COMMAND
+                "${RUFFNECKK_POWERSHELL_EXECUTABLE}"
+                -NoProfile
+                -ExecutionPolicy Bypass
+                -File "${CMAKE_CURRENT_SOURCE_DIR}/scripts/Test-NextRelease.ps1"
+                -PlanPath "${RUFFNECKK_RELEASE_PLAN_PATH}"
+                -SchemaPath "${RUFFNECKK_RELEASE_SCHEMA_PATH}"
+                -AllowlistPath "${RUFFNECKK_RELEASE_ALLOWLIST_PATH}"
+        )
+        add_test(
+            NAME ruffneckk-release-source-policy
+            COMMAND
+                "${RUFFNECKK_POWERSHELL_EXECUTABLE}"
+                -NoProfile
+                -ExecutionPolicy Bypass
+                -File "${CMAKE_CURRENT_SOURCE_DIR}/scripts/Test-Suite.ps1"
+                -RequireAll
+                -AllowlistPath "${RUFFNECKK_RELEASE_ALLOWLIST_PATH}"
+        )
+        add_test(
+            NAME ruffneckk-release-native-write-ownership
+            COMMAND
+                "${RUFFNECKK_POWERSHELL_EXECUTABLE}"
+                -NoProfile
+                -ExecutionPolicy Bypass
+                -File "${CMAKE_CURRENT_SOURCE_DIR}/scripts/Test-NativeWrites.ps1"
+                -AllowlistPath "${RUFFNECKK_RELEASE_ALLOWLIST_PATH}"
+        )
+    endif()
     add_test(
         NAME ruffneckk-native-write-ownership
         COMMAND

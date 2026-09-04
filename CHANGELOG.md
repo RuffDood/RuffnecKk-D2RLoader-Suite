@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Kept release planning and package allowlists in private versioned governance
+  instead of the public repository.
+- Moved public native-write and external-compatibility test data under
+  `tests/data/compatibility/`.
+- Release validation and packaging now require explicit external governance
+  paths and fail closed when those inputs are unavailable.
+
 ## [1.3.0] - 2026-09-03
 
 Suite 1.3.0 includes 24 plugins, 17 patches, and two bundles.

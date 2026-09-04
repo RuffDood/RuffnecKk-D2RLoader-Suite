@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$PlanPath,
-    [string]$SchemaPath,
+    [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$PlanPath,
+    [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$SchemaPath,
     [string]$AllowlistPath,
     [switch]$RequirePackageReady,
     [string]$WriteReleaseNotesPath,
@@ -10,14 +10,6 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-
-$repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-if ([string]::IsNullOrWhiteSpace($PlanPath)) {
-    $PlanPath = Join-Path $repositoryRoot 'manifests\next-release.json'
-}
-if ([string]::IsNullOrWhiteSpace($SchemaPath)) {
-    $SchemaPath = Join-Path $repositoryRoot 'manifests\next-release.schema.json'
-}
 
 function Read-JsonDocument {
     param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Label)
@@ -48,7 +40,7 @@ function Get-PropertyValue {
 
 function Add-SetDifferenceErrors {
     param(
-        [Parameter(Mandatory)][Collections.Generic.List[string]]$Errors,
+        [Parameter(Mandatory)][AllowEmptyCollection()][Collections.Generic.List[string]]$Errors,
         [Parameter(Mandatory)][string]$Label,
         [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Expected,
         [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Actual
@@ -62,6 +54,9 @@ function Add-SetDifferenceErrors {
 
 $resolvedPlan = [IO.Path]::GetFullPath($PlanPath)
 $resolvedSchema = [IO.Path]::GetFullPath($SchemaPath)
+if ($RequirePackageReady -and [string]::IsNullOrWhiteSpace($AllowlistPath)) {
+    throw 'RequirePackageReady requires an explicit external release allowlist path.'
+}
 $plan = Read-JsonDocument -Path $resolvedPlan -Label 'next-release registry'
 $null = Read-JsonDocument -Path $resolvedSchema -Label 'next-release schema'
 $errors = [Collections.Generic.List[string]]::new()

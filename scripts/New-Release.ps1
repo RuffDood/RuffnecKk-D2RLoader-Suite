@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory = $true)][string]$SourceRoot,
     [Parameter(Mandatory = $true)][string]$AllowlistPath,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
-    [string]$ReleasePlanPath,
+    [Parameter(Mandatory = $true)][string]$ReleasePlanPath,
+    [Parameter(Mandatory = $true)][string]$ReleaseSchemaPath,
     [string]$ReleaseNotesPath
 )
 
@@ -112,13 +113,12 @@ $resolvedSourceRoot = (Resolve-Path -LiteralPath $SourceRoot).Path
 $resolvedAllowlist = (Resolve-Path -LiteralPath $AllowlistPath).Path
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $absoluteOutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
-if ([string]::IsNullOrWhiteSpace($ReleasePlanPath)) {
-    $ReleasePlanPath = Join-Path $repositoryRoot 'manifests\next-release.json'
-}
 $resolvedReleasePlan = (Resolve-Path -LiteralPath $ReleasePlanPath).Path
+$resolvedReleaseSchema = (Resolve-Path -LiteralPath $ReleaseSchemaPath).Path
 $releasePlanValidator = Join-Path $PSScriptRoot 'Test-NextRelease.ps1'
 & $releasePlanValidator `
     -PlanPath $resolvedReleasePlan `
+    -SchemaPath $resolvedReleaseSchema `
     -AllowlistPath $resolvedAllowlist `
     -RequirePackageReady | Out-Null
 
@@ -466,6 +466,7 @@ try {
         }
         & $releasePlanValidator `
             -PlanPath $resolvedReleasePlan `
+            -SchemaPath $resolvedReleaseSchema `
             -AllowlistPath $resolvedAllowlist `
             -RequirePackageReady `
             -WriteReleaseNotesPath $absoluteReleaseNotes | Out-Null

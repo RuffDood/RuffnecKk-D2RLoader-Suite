@@ -204,7 +204,7 @@ independently established against the governed 64-bit game image.
 
 All Suite memory patch JSON manifests are RuffnecKk-authored ports for D2R
 3.2.92777. The JSON files contain strict expected bytes and do not contain
-third-party program source. `manifests/native-writes-3.2.92777.json` is the
+third-party program source. `tests/data/compatibility/native-writes-3.2.92777.json` is the
 central write index. The table below records the conceptual lineage and the
 local governed evidence for every shipped patch feature.
 
