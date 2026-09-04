@@ -76,6 +76,15 @@ if(BUILD_TESTING)
             -File "${CMAKE_CURRENT_SOURCE_DIR}/scripts/Test-Suite.ps1"
             -RequireAll
     )
+    add_test(
+        NAME ruffneckk-packaged-plugin-build-policy
+        COMMAND
+            "${RUFFNECKK_POWERSHELL_EXECUTABLE}"
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File "${CMAKE_CURRENT_SOURCE_DIR}/scripts/Test-PackagedPluginBuildPolicy.ps1"
+            -SelfTest
+    )
     if(
         RUFFNECKK_RELEASE_PLAN_PATH OR
         RUFFNECKK_RELEASE_SCHEMA_PATH OR

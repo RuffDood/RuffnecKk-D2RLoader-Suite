@@ -1,11 +1,16 @@
 # Resistance Floor validation
 
-The completed gameplay evidence below belongs to candidate 0.3.0. Version 1.0.1
-keeps the same native behavior and adds D2RLoader multiplayer metadata handling.
+The completed gameplay evidence below belongs to candidate 0.3.0. Version 1.0.2
+keeps the same native behavior and removes build-number admission in favor of
+the complete native fingerprint. Its exact DLL has passed source and build
+gates only; Battle.net runtime qualification and release packaging are pending.
+
+Version 1.0.2 source/build date: 2026-09-04
+Version 1.0.2 DLL SHA-256: `28B1B934E180C3863077B478017A310D0880212A50CCC1B0CB557B7ABF6540B6`
 
 Validation date: 2026-08-25
 Targets: Diablo II: Resurrected 3.2.92777 and 3.3.93847
-Plugin SHA-256: `A3685451B8E5D1119AD10F75F5EE70760C0387E8FA42E8E2A540C0C929F642BB`
+Candidate 0.3.0 plugin SHA-256: `A3685451B8E5D1119AD10F75F5EE70760C0387E8FA42E8E2A540C0C929F642BB`
 Configuration SHA-256: `063AF09EAF5BBF5ADCD4E11A88FA1C2B1F93AD13826789E04B25A10C037224B0`
 Candidate ZIP SHA-256: `6724100183AD4EE79FE2D8E86972EE64CD33034E8CB5557CC07BFA8477653C71`
 

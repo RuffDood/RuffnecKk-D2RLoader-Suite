@@ -127,7 +127,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "resistance-floor",
     .name = "Resistance Floor",
-    .version = "1.0.1",
+    .version = "1.0.2",
     .author = "RuffnecKk",
     .description = "Lets configured units fall below the vanilla resistance floor.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -503,7 +503,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Resistance Floor 1.0.1: active=%s; players=%s/%d; companions=%s/%d; monsters=%s/%d; character-screen=%s; usage-counters=%s; selections=%llu/%llu/%llu; vanilla=%llu; config=%s.",
+        "Resistance Floor 1.0.2: active=%s; players=%s/%d; companions=%s/%d; monsters=%s/%d; character-screen=%s; usage-counters=%s; selections=%llu/%llu/%llu; vanilla=%llu; config=%s.",
         Operational.load(std::memory_order_acquire) ? "true" : "false",
         Settings.players.enabled ? "on" : "off", Settings.players.floor,
         Settings.playerOwnedUnits.enabled ? "on" : "off",
@@ -565,7 +565,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     Context = context;
     Base = reinterpret_cast<std::uint8_t*>(context->exeBase);
     ResetState();
-    TraceLoad("Resistance Floor 1.0.1 load started.", true);
+    TraceLoad("Resistance Floor 1.0.2 load started.", true);
     if (!Base) {
         TraceLoad("Load refused: D2R executable base is unavailable.");
         return false;
@@ -584,19 +584,20 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     if (!Settings.enabled) {
         context->LogInfo(
-            "Resistance Floor 1.0.1 by RuffnecKk loaded disabled; no patch was installed.");
+            "Resistance Floor 1.0.2 by RuffnecKk loaded disabled; no patch was installed.");
         return true;
     }
-    const auto* runtimeBuild = D2RL::GetBuildName(context);
-    if (!runtimeBuild
-            || (std::strcmp(runtimeBuild, "92777") != 0
-                && std::strcmp(runtimeBuild, "93847") != 0)) {
-        context->LogError(
-            "ResistanceFloor: only governed D2R builds 92777 and 93847 are supported.");
-        TraceLoad("Load refused: unsupported D2R build identity.");
-        return false;
-    }
-    TraceLoad("Governed D2R build accepted.");
+    const auto* const observedBuild = D2RL::GetBuildName(context);
+    const auto* const runtimeBuild = observedBuild && observedBuild[0] != '\0'
+        ? observedBuild : "<unavailable>";
+    char compatibilityMessage[256]{};
+    std::snprintf(
+        compatibilityMessage,
+        sizeof(compatibilityMessage),
+        "ResistanceFloor: observed D2R build-name=%s; diagnostic only; validating the complete native fingerprint.",
+        runtimeBuild);
+    context->LogInfo(compatibilityMessage);
+    TraceLoad(compatibilityMessage);
     if (!ValidateCoreRuntime()) return false;
     TraceLoad("Core runtime signatures validated.");
 
@@ -610,7 +611,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Resistance Floor 1.0.1 by RuffnecKk active for D2R %s; players=%d; companions=%d; monsters=%s/%d; Character Screen=%s; installation=%s; TOML=%s.",
+        "Resistance Floor 1.0.2 by RuffnecKk active for D2R %s; players=%d; companions=%d; monsters=%s/%d; Character Screen=%s; installation=%s; TOML=%s.",
         runtimeBuild,
         SelectConfiguredFloor(Settings, UnitClass::Player, FireResistanceStat),
         SelectConfiguredFloor(

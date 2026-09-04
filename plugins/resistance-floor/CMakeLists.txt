@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(RuffnecKkResistanceFloor VERSION 1.0.1 LANGUAGES CXX RC ASM_MASM)
+    project(RuffnecKkResistanceFloor VERSION 1.0.2 LANGUAGES CXX RC ASM_MASM)
     include(CTest)
     option(RUFFNECKK_SUITE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
@@ -63,6 +63,10 @@ if(BUILD_TESTING)
         RESISTANCE_FLOOR_PLUGIN_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/src/plugin.cpp"
         RESISTANCE_FLOOR_RELAY_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/src/floor_relays.asm"
         RESISTANCE_FLOOR_TOML_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/config/ruffneckk-resistance-floor.toml"
+        RESISTANCE_FLOOR_CMAKE_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt"
+        RESISTANCE_FLOOR_RC_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/src/plugin.rc"
+        RESISTANCE_FLOOR_README_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/README.md"
+        RESISTANCE_FLOOR_VALIDATION_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/VALIDATION.md"
     )
     if(MSVC)
         target_compile_options(ruffneckk_resistance_floor_tests PRIVATE

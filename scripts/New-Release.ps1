@@ -116,11 +116,17 @@ $absoluteOutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $resolvedReleasePlan = (Resolve-Path -LiteralPath $ReleasePlanPath).Path
 $resolvedReleaseSchema = (Resolve-Path -LiteralPath $ReleaseSchemaPath).Path
 $releasePlanValidator = Join-Path $PSScriptRoot 'Test-NextRelease.ps1'
+$suiteSourcePolicyValidator = Join-Path $PSScriptRoot 'Test-Suite.ps1'
+$packagedPluginPolicyValidator = Join-Path $PSScriptRoot `
+    'Test-PackagedPluginBuildPolicy.ps1'
 & $releasePlanValidator `
     -PlanPath $resolvedReleasePlan `
     -SchemaPath $resolvedReleaseSchema `
     -AllowlistPath $resolvedAllowlist `
     -RequirePackageReady | Out-Null
+& $suiteSourcePolicyValidator `
+    -RequireAll `
+    -AllowlistPath $resolvedAllowlist | Out-Null
 
 try { $document = Get-Content -LiteralPath $resolvedAllowlist -Raw | ConvertFrom-Json }
 catch { throw "Invalid release allowlist JSON '$resolvedAllowlist': $($_.Exception.Message)" }
@@ -442,6 +448,12 @@ try {
         }
     )
     $generated.Add([pscustomobject]@{ Name = $pluginBundleName; Path = $pluginBundlePath; SHA256 = $pluginBundleHash; Kind = 'plugin-bundle' })
+
+    $packagedPluginArtifacts = @($generated | Where-Object {
+        $_.Kind -in 'individual-plugin', 'plugin-bundle'
+    } | ForEach-Object Path)
+    & $packagedPluginPolicyValidator `
+        -Path $packagedPluginArtifacts | Out-Null
 
     $patchBundleName = "RuffnecKk-All-Patches-v$suiteVersion.zip"
     $patchBundlePath = Join-Path $absoluteOutputDirectory $patchBundleName

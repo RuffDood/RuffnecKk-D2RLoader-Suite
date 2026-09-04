@@ -304,14 +304,24 @@ foreach ($entry in $pluginEntries) {
         $errors.Add("$slug links PluginSDK v4 without a governed release override.")
     }
 
-    $sourceFiles = @(Get-ChildItem -LiteralPath $pluginDirectory -File -Recurse -Include '*.cpp','*.c','*.h','*.hpp','*.rc')
+    $sourceFiles = @(Get-ChildItem -LiteralPath $pluginDirectory -File -Recurse -Include '*.cpp','*.c','*.h','*.hpp','*.rc' |
+        Where-Object {
+            $_.Name -notmatch '(?i)test' -and
+            $_.FullName -notmatch '(?i)[\\/]tests[\\/]' -and
+            $_.FullName -notmatch '(?i)[\\/]build[^\\/]*[\\/]'
+        })
     if ($sourceFiles.Count -eq 0) {
         $errors.Add("$slug has no native source files.")
         continue
     }
     $sourceText = ($sourceFiles | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n"
     $runtimeSourceRoot = Join-Path $pluginDirectory 'src'
-    $runtimeSourceFiles = @(Get-ChildItem -LiteralPath $runtimeSourceRoot -File -Recurse -Include '*.cpp','*.c','*.h','*.hpp','*.rc')
+    $runtimeSourceFiles = @(Get-ChildItem -LiteralPath $runtimeSourceRoot -File -Recurse -Include '*.cpp','*.c','*.h','*.hpp','*.rc' |
+        Where-Object {
+            $_.Name -notmatch '(?i)test' -and
+            $_.FullName -notmatch '(?i)[\\/]tests[\\/]' -and
+            $_.FullName -notmatch '(?i)[\\/]build[^\\/]*[\\/]'
+        })
     $runtimeSourceText = ($runtimeSourceFiles | ForEach-Object {
         Get-Content -LiteralPath $_.FullName -Raw
     }) -join "`n"
@@ -364,14 +374,28 @@ foreach ($entry in $pluginEntries) {
     if ($sourceText -notmatch '\.apiVersion\s*=\s*D2RL_PLUGIN_API_VERSION') {
         $errors.Add("$slug does not expose the SDK API version macro.")
     }
-    if ($runtimeSourceText -match 'strcmp\s*\(\s*runtimeBuild' -or
-        $runtimeSourceText -match 'only D2R builds' -or
-        $runtimeSourceText -match '\bIsSupportedBuild\b' -or
-        $runtimeSourceText -match '\bSupportedBuild\b') {
+    $forbiddenBuildPolicyPatterns = @(
+        '(?i)(?:strcmp|strncmp)\s*\(\s*(?:D2RL::)?GetBuildName\s*\(',
+        '(?i)(?:strcmp|strncmp)\s*\(\s*[A-Za-z_][A-Za-z0-9_]*build[A-Za-z0-9_]*',
+        '(?i)(?:strcmp|strncmp)\s*\([^,\r\n]+,\s*[A-Za-z_][A-Za-z0-9_]*build[A-Za-z0-9_]*',
+        '(?i)(?:string|string_view)\s*\(\s*[A-Za-z_][A-Za-z0-9_]*build[A-Za-z0-9_]*\s*\)\s*(?:==|!=|<=|>=|<|>)',
+        '(?i)\b[A-Za-z_][A-Za-z0-9_]*build(?:name)?\b\s*(?:==|!=|<=|>=|<|>)',
+        '(?i)\b(?:atoi|atol|strtol|strtoul|from_chars)\s*\([^;\r\n]*\b[A-Za-z_][A-Za-z0-9_]*build[A-Za-z0-9_]*',
+        '(?i)\bonly\s+(?:governed\s+)?D2R\s+builds?\b',
+        '(?i)\bunsupported\s+D2R\s+build(?:\s+identity)?\b',
+        '(?i)\b(?:Is)?(?:Allowed|Supported)Build\b'
+    )
+    if (@($forbiddenBuildPolicyPatterns | Where-Object {
+        $runtimeSourceText -match $_
+    }).Count -ne 0) {
         $errors.Add("$slug contains a forbidden D2R build-name allowlist.")
     }
-    if ($runtimeSourceText -notmatch 'GetBuildName\s*\(\s*context\s*\)' -or
-        $runtimeSourceText -notmatch 'validating (?:the complete )?native fingerprint') {
+    $hasBuildDiagnostic = $runtimeSourceText -match 'GetBuildName\s*\('
+    $hasFingerprintDiagnostic = $runtimeSourceText -match 'validating (?:the complete )?native fingerprint' -or
+        $runtimeSourceText -match 'validating the native foundation' -or
+        $runtimeSourceText -match 'native fingerprint accepted' -or
+        $runtimeSourceText -match 'complete fail-closed fingerprint'
+    if (-not $hasBuildDiagnostic -or -not $hasFingerprintDiagnostic) {
         $errors.Add("$slug must log the observed build name and gate native work through its complete fingerprint.")
     }
 
