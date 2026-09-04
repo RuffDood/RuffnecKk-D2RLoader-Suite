@@ -302,6 +302,12 @@ foreach ($entry in $entries) {
     if ($actualHash -ne $expectedHash) {
         throw "SHA-256 mismatch for '$source': expected $expectedHash, found $actualHash."
     }
+    if ($kind -eq 'plugin-companion-exe' -and
+        $componentId -eq 'ruffneckk-mapsense') {
+        $portableCpuValidator = Join-Path $repositoryRoot `
+            'plugins\mapsense\mapgen\verify-portable-cpu.ps1'
+        & $portableCpuValidator -Executable $absoluteSource
+    }
     $validated.Add([pscustomobject]@{
         Source = $absoluteSource; SourceRelative = $source; Destination = $destination; SHA256 = $expectedHash
         Kind = $kind; ComponentId = $componentId; ArchiveComponentId = $archiveComponentId; Version = $version

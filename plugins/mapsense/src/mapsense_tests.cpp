@@ -120,18 +120,24 @@ void MixAtlasU32(std::uint64_t& digest, std::uint32_t value) {
     }
 }
 
-auto BuildExternalAtlasGeometryFixture() -> std::vector<std::uint8_t> {
+auto BuildExternalAtlasGeometryFixture(
+        std::int32_t scopeLevelId = 0) -> std::vector<std::uint8_t> {
     auto output = std::vector<std::uint8_t>{'M', 'S', 'A', '1'};
     AppendAtlasU16(
         output,
         RuffnecKk::MapSense::ExternalAtlasGeometryProtocolVersion);
-    AppendAtlasU16(output, 1U);
+    AppendAtlasU16(
+        output,
+        scopeLevelId == 0
+            ? RuffnecKk::MapSense::ExternalAtlasStandardCampaignFlag
+            : RuffnecKk::MapSense::ExternalAtlasExactLevelFlag);
     AppendAtlasU32(output, 1'395'822'899U);
     output.push_back(2U);
     output.push_back(2U);
     AppendAtlasU16(output, 0U);
-    AppendAtlasU32(output, 2U);
-    AppendAtlasU32(output, 3U);
+    AppendAtlasI32(output, scopeLevelId);
+    AppendAtlasU32(output, scopeLevelId == 0 ? 2U : 1U);
+    AppendAtlasU32(output, scopeLevelId == 0 ? 3U : 2U);
     for (std::size_t index = 0U; index < 8U; ++index) {
         output.push_back(0U);
     }
@@ -166,12 +172,14 @@ auto BuildExternalAtlasGeometryFixture() -> std::vector<std::uint8_t> {
         MixAtlasByte(digest, wallTree ? 1U : 0U);
         MixAtlasByte(digest, raised ? 1U : 0U);
     };
-    appendLevel(75, 0U, 2U);
+    appendLevel(scopeLevelId == 0 ? 75 : scopeLevelId, 0U, 2U);
     appendCell(101, 4'000, 5'000, false, false);
     appendCell(102, 4'001, 5'000, true, false);
-    appendLevel(76, 0U, 1U);
-    appendCell(103, 4'002, 5'001, true, true);
-    StoreAtlasU64(output, 24U, digest);
+    if (scopeLevelId == 0) {
+        appendLevel(76, 0U, 1U);
+        appendCell(103, 4'002, 5'001, true, true);
+    }
+    StoreAtlasU64(output, 28U, digest);
     return output;
 }
 
@@ -1272,6 +1280,10 @@ void CheckExternalAtlasGeometryContract() {
     CHECK(!IsExternalAtlasStandardCampaignLevel(4U, 136));
     CHECK(!IsExternalAtlasStandardCampaignLevel(4U, 138));
     CHECK(!IsExternalAtlasStandardCampaignLevel(5U, 109));
+    CHECK(ExternalAtlasGeometryScopeMatchesLevel(4U, 0, 131));
+    CHECK(!ExternalAtlasGeometryScopeMatchesLevel(4U, 0, 256));
+    CHECK(ExternalAtlasGeometryScopeMatchesLevel(4U, 256, 256));
+    CHECK(!ExternalAtlasGeometryScopeMatchesLevel(4U, 256, 131));
 
     const auto fixture = BuildExternalAtlasGeometryFixture();
     ExternalAtlasGeometry atlas;
@@ -1281,12 +1293,15 @@ void CheckExternalAtlasGeometryContract() {
         1'395'822'899U,
         2U,
         2U,
+        0,
         atlas,
         &error));
     CHECK(error == ExternalAtlasGeometryParseError::None);
     CHECK(atlas.seed == 1'395'822'899U);
     CHECK(atlas.difficulty == 2U);
     CHECK(atlas.act == 2U);
+    CHECK(atlas.flags == ExternalAtlasStandardCampaignFlag);
+    CHECK(atlas.scopeLevelId == 0);
     CHECK(atlas.levels.size() == 2U);
     CHECK(atlas.cells.size() == 3U);
     CHECK(atlas.levels[0].levelId == 75);
@@ -1308,6 +1323,7 @@ void CheckExternalAtlasGeometryContract() {
         1'395'822'898U,
         2U,
         2U,
+        0,
         atlas,
         &error));
     CHECK(error == ExternalAtlasGeometryParseError::IdentityMismatch);
@@ -1321,17 +1337,19 @@ void CheckExternalAtlasGeometryContract() {
         1'395'822'899U,
         2U,
         2U,
+        0,
         atlas,
         &error));
     CHECK(error == ExternalAtlasGeometryParseError::UnsupportedVersion);
 
     corrupt = fixture;
-    corrupt[44U] ^= 1U;
+    corrupt[48U] ^= 1U;
     CHECK(!ParseExternalAtlasGeometry(
         corrupt,
         1'395'822'899U,
         2U,
         2U,
+        0,
         atlas,
         &error));
     CHECK(error == ExternalAtlasGeometryParseError::DigestMismatch);
@@ -1343,39 +1361,43 @@ void CheckExternalAtlasGeometryContract() {
         1'395'822'899U,
         2U,
         2U,
+        0,
         atlas,
         &error));
     CHECK(error == ExternalAtlasGeometryParseError::InvalidReservedBytes);
 
     corrupt = fixture;
-    corrupt[56U] = 2U;
+    corrupt[60U] = 2U;
     CHECK(!ParseExternalAtlasGeometry(
         corrupt,
         1'395'822'899U,
         2U,
         2U,
+        0,
         atlas,
         &error));
     CHECK(error == ExternalAtlasGeometryParseError::InvalidCell);
 
     corrupt = fixture;
-    corrupt[57U] = 2U;
+    corrupt[61U] = 2U;
     CHECK(!ParseExternalAtlasGeometry(
         corrupt,
         1'395'822'899U,
         2U,
         2U,
+        0,
         atlas,
         &error));
     CHECK(error == ExternalAtlasGeometryParseError::InvalidCell);
 
     corrupt = fixture;
-    corrupt[58U] = 1U;
+    corrupt[62U] = 1U;
     CHECK(!ParseExternalAtlasGeometry(
         corrupt,
         1'395'822'899U,
         2U,
         2U,
+        0,
         atlas,
         &error));
     CHECK(error == ExternalAtlasGeometryParseError::InvalidCell);
@@ -1387,9 +1409,34 @@ void CheckExternalAtlasGeometryContract() {
         1'395'822'899U,
         2U,
         2U,
+        0,
         atlas,
         &error));
     CHECK(error == ExternalAtlasGeometryParseError::InvalidLength);
+
+    const auto exactFixture = BuildExternalAtlasGeometryFixture(733);
+    CHECK(ParseExternalAtlasGeometry(
+        exactFixture,
+        1'395'822'899U,
+        2U,
+        2U,
+        733,
+        atlas,
+        &error));
+    CHECK(atlas.flags == ExternalAtlasExactLevelFlag);
+    CHECK(atlas.scopeLevelId == 733);
+    CHECK(atlas.levels.size() == 1U);
+    CHECK(atlas.levels[0].levelId == 733);
+    CHECK(atlas.cells.size() == 2U);
+    CHECK(!ParseExternalAtlasGeometry(
+        exactFixture,
+        1'395'822'899U,
+        2U,
+        2U,
+        0,
+        atlas,
+        &error));
+    CHECK(error == ExternalAtlasGeometryParseError::IdentityMismatch);
 }
 
 void CheckAtlasProjectionContract() {
@@ -1565,6 +1612,22 @@ void CheckNativeAutomapAtlasPolicy() {
     CHECK(!NativeAutomapLevelsShareReadyLayer(catalog, 84, 84));
     catalog.readyLayers.push_back(58);
     CHECK(NativeAutomapLevelsShareReadyLayer(catalog, 84, 84));
+
+    catalog.geometryScopeLevelId = 256;
+    catalog.levels.push_back({.levelId = 131, .layer = 57});
+    catalog.levels.push_back({.levelId = 256, .layer = 57});
+    std::sort(
+        catalog.levels.begin(),
+        catalog.levels.end(),
+        [](const auto& left, const auto& right) noexcept {
+            return left.levelId < right.levelId;
+        });
+    CHECK(NativeAutomapLevelIsReady(catalog, 256, 57));
+    CHECK(!NativeAutomapLevelIsReady(catalog, 131, 57));
+    CHECK(!NativeAutomapLevelsShareReadyLayer(catalog, 75, 76));
+    CHECK(NativeAutomapLevelsShareReadyLayer(catalog, 256, 256));
+    CHECK(!NativeAutomapLevelsShareReadyLayer(catalog, 256, 131));
+    CHECK(!NativeAutomapLevelsShareReadyLayer(catalog, 131, 256));
 }
 
 void CheckAutomapSpritePackageContract(const char* path) {
@@ -1617,7 +1680,7 @@ void CheckExternalAtlasCacheContract() {
     };
     std::filesystem::path path;
     CHECK(BuildExternalAtlasCachePath(directory.Path(), key, path));
-    CHECK(path.filename() == L"act-2-r4.msa");
+    CHECK(path.filename() == L"act-2-r5.msa");
     CHECK(path.parent_path().filename() == L"difficulty-2");
 
     auto moddedKey = key;
@@ -1640,7 +1703,7 @@ void CheckExternalAtlasCacheContract() {
     CHECK(atlas.cells.size() == 3U);
 
     auto corrupt = fixture;
-    corrupt[44U] ^= 1U;
+    corrupt[48U] ^= 1U;
     CHECK(!StoreExternalAtlasGeometryCache(
         directory.Path(), key, corrupt));
     CHECK(LoadExternalAtlasGeometryCache(directory.Path(), key, atlas)
@@ -1659,6 +1722,22 @@ void CheckExternalAtlasCacheContract() {
     CHECK(parseError == ExternalAtlasGeometryParseError::DigestMismatch);
     CHECK(atlas.levels.empty());
     CHECK(atlas.cells.empty());
+
+    auto exactKey = key;
+    exactKey.scopeLevelId = 733;
+    std::filesystem::path exactPath;
+    CHECK(BuildExternalAtlasCachePath(
+        directory.Path(), exactKey, exactPath));
+    CHECK(exactPath.filename() == L"act-2-level-733-r5.msa");
+    const auto exactFixture = BuildExternalAtlasGeometryFixture(733);
+    CHECK(StoreExternalAtlasGeometryCache(
+        directory.Path(), exactKey, exactFixture));
+    CHECK(LoadExternalAtlasGeometryCache(
+            directory.Path(), exactKey, atlas)
+        == ExternalAtlasCacheResult::Hit);
+    CHECK(atlas.scopeLevelId == 733);
+    CHECK(atlas.levels.size() == 1U);
+    CHECK(atlas.levels[0].levelId == 733);
 
     CHECK(!HasExternalAtlasRevealMapIntent(
         directory.Path(), key.seed, key.difficulty));
@@ -4758,6 +4837,15 @@ int main(int argc, char** argv) {
         UiTextId::RevealMap,
         UiLanguage::French)) == "Révéler la carte");
     CHECK(std::string_view(UiText(
+        UiTextId::Appearance,
+        UiLanguage::English)) == "Menu Appearance and Size");
+    CHECK(std::string_view(UiText(
+        UiTextId::InterfaceScale,
+        UiLanguage::English)) == "Interface Scale");
+    CHECK(std::string_view(UiText(
+        UiTextId::Automatic,
+        UiLanguage::French)) == "Automatique");
+    CHECK(std::string_view(UiText(
         UiTextId::CustomTomlHint,
         UiLanguage::English))
         == "(to add more custom destinations, configure in TOML)");
@@ -4792,8 +4880,16 @@ int main(int argc, char** argv) {
     CheckAutomapLevelCatalogContract();
     CheckTownWaypointLabelPolicy();
 
-    static_assert(CurrentConfigSchemaVersion == 16);
+    static_assert(CurrentConfigSchemaVersion == 17);
     static_assert(MenuThemes.size() == 10U);
+    static_assert(MenuScales.size() == 6U);
+    static_assert(ResolveMenuScale(MenuScale::Automatic, 4.0F / 3.0F)
+        == 4.0F / 3.0F);
+    static_assert(ResolveMenuScale(MenuScale::Percent100, 2.0F) == 1.0F);
+    static_assert(ResolveMenuScale(MenuScale::Percent125, 2.0F) == 1.25F);
+    static_assert(ResolveMenuScale(MenuScale::Percent150, 1.0F) == 1.5F);
+    static_assert(ResolveMenuScale(MenuScale::Percent175, 1.0F) == 1.75F);
+    static_assert(ResolveMenuScale(MenuScale::Percent200, 1.0F) == 2.0F);
     static_assert(DeriveDrlgStartSeed(1U) == 1'791'398'751U);
     static_assert(DeriveDrlgStartSeed(1'337U) == 2'802'456'439U);
     static_assert(DeriveDrlgStartSeed(0x12345678U) == 62'524'658U);
@@ -5489,8 +5585,12 @@ theme = "arcane_sanctuary"
     CHECK(!schema16FeatureMastersAndTheme.monsters.enabled);
     CHECK(schema16FeatureMastersAndTheme.menu.theme
         == MenuTheme::ArcaneSanctuary);
+    CHECK(schema16FeatureMastersAndTheme.menu.interfaceScale
+        == MenuScale::Automatic);
     const auto serializedSchema16 = SerializeConfig(
         schema16FeatureMastersAndTheme);
+    CHECK(serializedSchema16.find("schema_version = 17")
+        != std::string::npos);
     CHECK(serializedSchema16.find("features_enabled") == std::string::npos);
     CHECK(serializedSchema16.find("[overlay]\nenabled")
         == std::string::npos);
@@ -5499,10 +5599,29 @@ theme = "arcane_sanctuary"
     CHECK(serializedSchema16.find(
         "[menu]\ntheme = \"arcane_sanctuary\"")
         != std::string::npos);
+    CHECK(serializedSchema16.find("interface_scale = \"automatic\"")
+        != std::string::npos);
     const auto roundTripSchema16 = ParseConfig(serializedSchema16);
     CHECK(roundTripSchema16.enabled);
     CHECK(!roundTripSchema16.monsters.enabled);
     CHECK(roundTripSchema16.menu.theme == MenuTheme::ArcaneSanctuary);
+    CHECK(roundTripSchema16.menu.interfaceScale == MenuScale::Automatic);
+
+    const auto schema17MenuScale = ParseConfig(R"toml(
+schema_version = 17
+[menu]
+theme = "sanctuary_gold"
+interface_scale = "150%"
+)toml");
+    CHECK(schema17MenuScale.menu.theme == MenuTheme::SanctuaryGold);
+    CHECK(schema17MenuScale.menu.interfaceScale == MenuScale::Percent150);
+    CHECK(ResolveMenuScale(schema17MenuScale.menu.interfaceScale, 2.0F)
+        == 1.5F);
+    const auto serializedSchema17 = SerializeConfig(schema17MenuScale);
+    CHECK(serializedSchema17.find("interface_scale = \"150%\"")
+        != std::string::npos);
+    const auto roundTripSchema17 = ParseConfig(serializedSchema17);
+    CHECK(roundTripSchema17.menu.interfaceScale == MenuScale::Percent150);
 
     const auto legacyOverlayDisabled = ParseConfig(R"toml(
 schema_version = 15
@@ -6017,9 +6136,12 @@ show_with_automap_only = true
     for (const auto theme : MenuThemes) {
         CHECK(ParseMenuTheme(MenuThemeToString(theme)) == theme);
     }
+    for (const auto scale : MenuScales) {
+        CHECK(ParseMenuScale(MenuScaleToString(scale)) == scale);
+    }
 
     CHECK(Throws([] { ParseConfig(""); }));
-    CHECK(Throws([] { ParseConfig("schema_version = 17"); }));
+    CHECK(Throws([] { ParseConfig("schema_version = 18"); }));
     CHECK(Throws([] { ParseConfig("schema_version = true"); }));
     CHECK(Throws([] {
         ParseConfig(
@@ -6041,6 +6163,17 @@ show_with_automap_only = true
     }));
     CHECK(Throws([] {
         ParseConfig("schema_version = 16\n[menu]\ntheme = 1");
+    }));
+    CHECK(Throws([] {
+        ParseConfig(
+            "schema_version = 16\n[menu]\ninterface_scale = \"150%\"");
+    }));
+    CHECK(Throws([] {
+        ParseConfig(
+            "schema_version = 17\n[menu]\ninterface_scale = \"unknown\"");
+    }));
+    CHECK(Throws([] {
+        ParseConfig("schema_version = 17\n[menu]\ninterface_scale = 150");
     }));
     CHECK(Throws([] {
         ParseConfig(
@@ -6685,6 +6818,17 @@ thickness = 5
     CHECK(!ShouldSubmitD3D12DrawData(0, 0));
     CHECK(!ShouldSubmitD3D12DrawData(1, 0));
     CHECK(ShouldSubmitD3D12DrawData(1, 3));
+    static_assert(ComputeMapSenseMenuScale(0U) == 1.0F);
+    static_assert(ComputeMapSenseMenuScale(720U) == 1.0F);
+    static_assert(ComputeMapSenseMenuScale(1'080U) == 1.0F);
+    static_assert(ComputeMapSenseMenuScale(1'620U) == 1.5F);
+    static_assert(ComputeMapSenseMenuScale(2'160U) == 2.0F);
+    static_assert(ComputeMapSenseMenuScale(4'320U) == 2.0F);
+    constexpr auto scale1440 = ComputeMapSenseMenuScale(1'440U);
+    static_assert(scale1440 > 1.333F && scale1440 < 1.334F);
+    CHECK(ComputeMapSenseMenuScale(720U) == 1.0F);
+    CHECK(scale1440 > 1.333F && scale1440 < 1.334F);
+    CHECK(ComputeMapSenseMenuScale(2'160U) == 2.0F);
     constexpr auto regularChestPlacement =
         ComputePrimeMhChestImagePlacement(100.0F, 200.0F, 58.0F, false);
     static_assert(regularChestPlacement.left == 71.0F);
@@ -7142,6 +7286,7 @@ thickness = 5
                 shipped.navigation.customLevels.targets[3]) == 119);
             CHECK(shipped.menu.showLauncher);
             CHECK(shipped.menu.theme == MenuTheme::SanctuaryGold);
+            CHECK(shipped.menu.interfaceScale == MenuScale::Automatic);
             CHECK(!shipped.menu.startExpanded);
             CHECK(shipped.menu.rememberPosition);
             CHECK(shipped.menu.positionX == 0.86F);

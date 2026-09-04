@@ -1,11 +1,18 @@
 # RuffnecKk MapSense
 
 RuffnecKk MapSense is a D2RLoader client plugin for Diablo II: Resurrected.
-Version 1.0.1 keeps the first public Suite identity and removes MapSense's
-callable dependency on the `UNITS_GetClassId` entry owned by Bind And Summon
-1.4.4. After an independent fail-closed unit-layout witness passes, MapSense
-reads the governed class-ID field directly. It also resolves Floating Damage's
-canonical public DLL name for renderer ownership handoff. The plugin combines
+Version 1.0.2 rebuilds the required map-generator companion for Zig's portable
+x86-64 baseline and adds a release gate that rejects VEX/EVEX instructions, so
+the packaged helper cannot inherit AVX, AVX2, or AVX-512 from its build host.
+It also keeps the COM-owning swap-chain registry in process-lifetime renderer
+storage. Normal unload still releases it deterministically, while process exit
+can no longer run those releases from the CRT exit table after D3D12 teardown.
+The settings menu now defaults to scaling from the actual D3D12 back-buffer
+height and exposes crisp 100%, 125%, 150%, 175%, and 200% overrides while
+leaving automap additions and external overlay clients unchanged.
+It preserves 1.0.1's removal of the callable `UNITS_GetClassId` dependency owned
+by Bind And Summon 1.4.4 and its canonical Floating Damage renderer handoff.
+The plugin combines
 native map reveal, a compact in-game
 settings panel, hostile-monster markers, immunity indicators, Direct
 navigation, localized exit/waypoint/shrine/boss labels, and data-driven
@@ -18,6 +25,37 @@ the single DirectX 12 owner, initialized its in-frame ImGui host, and accepted
 Floating Damage's first rendered frame without touching the Bind-owned
 `UNITS_GetClassId` entry. The broader visual gameplay matrix was not rerun for
 this compatibility-only hotfix.
+
+The 1.0.2 CPU-portability candidate was rebuilt twice with Zig 0.16.0 from
+independent caches and produced the same byte-exact helper. Its release gate
+found no VEX/EVEX instruction and no YMM, ZMM, or opmask register. The complete
+five-act deterministic matrix passed for the embedded dataset, the active mod
+dataset, and an arbitrary synthetic custom LevelId.
+
+The 1.0.2 shutdown candidate also passed two Battle.net D2R 3.3.93847 cold
+starts and normal process exits. Without Floating Damage, MapSense owned and
+initialized the D3D12/ImGui renderer with 37 loaded plugins. With Floating
+Damage 1.4.3 restored, 38 plugins loaded and Floating Damage rendered its first
+frame through the priority MapSense host. Both runs reached 24/24 with 17
+memory patches, exited without a crash report or Windows application error and
+left no D2R process behind. The reporter's exact D2R 3.2.92777 `FatalExit` path
+and `zyb` mod profile were not reproduced locally.
+
+The selectable-menu-scale source candidate produced two byte-identical Release
+x64 DLLs of 3,559,424 bytes with SHA-256
+`64A69F7CC065C503141FF238CD5309368F5C43BCB87168D19D53AE85BC6A3B4D`.
+Both strict builds passed the MapSense CTest target. The Suite source-policy
+validator requires the active picker, schema-17 automatic default, and exact
+**Menu Appearance and Size** label while rejecting any settings-panel
+dependency on shared `FontGlobalScale` or automap `[overlay].scale`. Runtime
+qualification at 3840×2160 passed both the 37-plugin diagnostic without
+Floating Damage and the final 38-plugin stack with Floating Damage 1.4.3.
+Every fixed size changed live through its true-raster font, schema 16 migrated
+to schema 17, and the final `automatic` choice persisted. The full stack also
+rendered Floating Damage's first shared-host frame and first visible HP-loss
+popup. Both runs reached 24/24 with 17 patches and exited normally without a
+new crash report or Windows application error. Other render resolutions and a
+live `ResizeBuffers` transition remain visual regression gates.
 
 ## Native seed atlas in 1.0.0
 
@@ -45,7 +83,14 @@ does not call D2RCore's `revealmap` command. D2R therefore owns Tab visibility,
 pan, zoom and clipping. MapSense owns persistence through the exact
 seed/difficulty reveal intent and regenerates only the active native layer.
 
-MSA1 geometry protocol v2 keeps two native tile facts independent. `wallTree`
+MSA1 geometry protocol v3 binds every artifact to an explicit publication
+scope. Scope `0` contains the reusable standard-campaign geometry for one act;
+a positive scope contains exactly that custom LevelId. The cache path, parser,
+native catalog, label readiness and reveal persistence all preserve this scope,
+so a stock level such as 131 can no longer satisfy a custom rift such as 256
+merely because both rows reuse `Levels.Layer = 98`.
+
+The protocol also keeps two native tile facts independent. `wallTree`
 selects D2R's floor (`owner+0x08`) or wall (`owner+0x30`) tree from the actual
 room tile-array provenance; `raised` alone applies the orientation `>=0x10`
 vertical offset. Version 0.13.24 incorrectly used the offset predicate for
@@ -216,7 +261,9 @@ standard-campaign filter. Act V geometry intentionally contains levels
 portal-gated Pandemonium levels 133-136. Those optional labels no longer cause
 the complete valid Act V geometry snapshot to be rejected; any missing level
 inside 109-132 still fails closed. This does not claim generation for
-mod-defined levels beyond the packaged libd2 dataset.
+mod-defined levels beyond the packaged libd2 dataset. MSA1 v3 supersedes that
+limitation for an active mod dataset by emitting an exact-current-level custom
+artifact while retaining the original standard-campaign range behavior.
 
 Version 0.13.32 was the first mod-data-aware experiment. It discovered active
 `Levels.txt` members in the DLL, but could place only fixed-size records and
@@ -704,8 +751,27 @@ MapSense renders Dear ImGui inside D2R's existing DirectX 12 frame. It creates
 no second game-sized window, external overlay process, OpenGL/WGL context, or
 independent render thread.
 
+The **Menu Appearance and Size** section exposes **Interface Scale** with
+**Automatic**, **100%**, **125%**, **150%**, **175%**, and **200%** choices.
+Automatic uses the actual D3D12 back-buffer height to calculate
+`clamp(height / 1080, 1.0, 2.0)` when the renderer is initialized. At 1080p
+and below it resolves to 100%, at 1440p to about 133%, and at 2160p or above to
+200%; ultrawide aspect ratios follow their render height. A manual choice takes
+effect immediately and is saved as `[menu].interface_scale`. The existing
+`ResizeBuffers` recovery path rebuilds the ImGui context, font atlas, and
+automatic factor after a live resolution change.
+
+MapSense rasterizes separate crisp menu fonts at every selectable size, plus
+the exact automatic size when it is not one of those choices, and scopes the
+selected font, window dimensions, spacing, scrollbars, and interactive padding
+to the settings callback. The shared 15 px fallback, the Exocet automap font,
+all automap markers/labels/lines, and fonts attached by Floating Damage remain
+unchanged. The larger font atlas contains only glyphs used by MapSense's twelve
+menu localizations rather than duplicating the complete CJK label ranges. The
+menu setting is independent from automap `[overlay].scale`.
+
 The movable launcher appears only after D2R reports `LocalPlayerReady` and is
-hidden again on `GameLeft`. It expands into a deliberately small accordion
+hidden again on `GameLeft`. It expands into a compact accordion
 panel. The current candidate contains:
 
 - one **Enable MapSense** master switch that suspends or resumes every feature
@@ -731,9 +797,10 @@ panel. The current candidate contains:
 
 Each color opens in a compact picker; permanent technical RGBA fields are not
 shown in the panel. Hovering the color preview displays a custom technical
-tooltip above the pointer. The panel text itself is currently English. Gameplay
-names come from D2R's active localized data catalog, except that the composed
-waypoint label still appends the fixed English suffix ` Waypoint`.
+tooltip above the pointer. The panel follows D2R's active language across its
+twelve supported localizations. Gameplay names come from D2R's active localized
+data catalog, except that the composed waypoint label still appends the fixed
+English suffix ` Waypoint`.
 
 Closing or collapsing the panel returns to the launcher. Appearance, position,
 and opacity changes are saved to the active MapSense configuration
@@ -778,7 +845,7 @@ fluidity gates remain to be measured.
 
 ## Configuration migration
 
-MapSense 0.13.41 writes configuration schema 16. Existing schemas 1 through 15 are
+MapSense 1.0.2 writes configuration schema 17. Existing schemas 1 through 16 are
 accepted only when they do not contain a removed key. Schemas 1 through 3
 migrate with `x` for every category, preserving
 the earlier hollow angular-cross appearance instead of silently changing marker
@@ -813,7 +880,7 @@ red quest family and
 exposes its switch and color in the in-game menu. Because schema 7 kept the
 reserved quest switch hidden and disabled, its exact old false value migrates
 once to enabled; schema 8 then preserves the player's explicit choice. Saving
-any accepted legacy configuration writes schema 16.
+any accepted legacy configuration writes schema 17.
 
 Schema 10 adds the optional boss-name fields and the complete `objects`
 section. Older schemas migrate to the documented 0.13.0 defaults: yellow exit
@@ -857,6 +924,11 @@ disabling monsters, immunities, missiles, objects, and every navigation-line
 family; the retired overlay key is never written again. The ten stable theme
 identifiers are independent from their English display names so a future menu
 localization can translate labels without breaking existing TOML files.
+
+Schema 17 adds `[menu].interface_scale`. Older configurations migrate to
+`automatic`, which follows the render height. The five explicit percentage
+values are stable string identifiers selected from the in-game
+**Menu Appearance and Size** section; saving preserves the chosen override.
 
 The current defaults are 28 px for exit, waypoint, shrine, and boss text and
 36 px for chest/rack markers. The in-game sliders extend to 72 px for text

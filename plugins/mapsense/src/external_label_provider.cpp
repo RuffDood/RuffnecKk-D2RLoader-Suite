@@ -672,10 +672,18 @@ void RememberFailedRequestLocked(const RequestKey& key) noexcept {
                 != ExternalLabelProviderOperation::PrewarmGeometry)) {
         return GeometryPreparationResult::Failed;
     }
+    const auto scopeLevelId = operation
+                == ExternalLabelProviderOperation::PrimaryGeometry
+            && act == static_cast<std::uint8_t>(request.act)
+            && !IsExternalAtlasStandardCampaignLevel(
+                act, request.currentLevelId)
+        ? request.currentLevelId
+        : 0;
     const ExternalAtlasCacheKey key{
         .seed = request.seed,
         .difficulty = request.difficulty,
         .act = act,
+        .scopeLevelId = scopeLevelId,
         .dataFingerprint = request.dataFingerprint,
     };
     ExternalAtlasGeometry cached;
@@ -760,6 +768,7 @@ void RememberFailedRequestLocked(const RequestKey& key) noexcept {
                 key.seed,
                 key.difficulty,
                 key.act,
+                key.scopeLevelId,
                 generated)
             && StoreExternalAtlasGeometryCache(
                 GeometryCacheRoot,
@@ -774,10 +783,11 @@ void RememberFailedRequestLocked(const RequestKey& key) noexcept {
                 std::snprintf(
                     message,
                     sizeof(message),
-                    "MapSense external atlas geometry: FAIL seed=%u difficulty=%u act=%u launched=%u timed-out=%u artifact-bytes=%zu helper='%.*s'.",
+                    "MapSense external atlas geometry: FAIL seed=%u difficulty=%u act=%u scope-level=%d launched=%u timed-out=%u artifact-bytes=%zu helper='%.*s'.",
                     request.seed,
                     static_cast<unsigned>(request.difficulty),
                     static_cast<unsigned>(act),
+                    key.scopeLevelId,
                     static_cast<unsigned>(helperResult.succeeded),
                     static_cast<unsigned>(helperResult.timedOut),
                     bytes.size(),
@@ -796,10 +806,11 @@ void RememberFailedRequestLocked(const RequestKey& key) noexcept {
             std::snprintf(
                 message,
                 sizeof(message),
-                "MapSense external atlas geometry: PASS seed=%u difficulty=%u act=%u bytes=%zu source=generated-cache.",
+                "MapSense external atlas geometry: PASS seed=%u difficulty=%u act=%u scope-level=%d bytes=%zu source=generated-cache.",
                 request.seed,
                 static_cast<unsigned>(request.difficulty),
                 static_cast<unsigned>(act),
+                key.scopeLevelId,
                 bytes.size());
             Context->LogInfo(message);
         }
@@ -829,6 +840,7 @@ void PrewarmGeometryCache(const Request& request) noexcept {
             .seed = request.seed,
             .difficulty = request.difficulty,
             .act = act,
+            .scopeLevelId = 0,
             .dataFingerprint = request.dataFingerprint,
         };
         std::filesystem::path path;
@@ -1456,16 +1468,27 @@ void WorkerMain() noexcept {
                     return level.levelId == levelId;
                 }) != geometry.levels.end();
         };
-        const auto missingRequiredLevel = std::find_if(
-            publication.visibleLevels.begin(),
-            publication.visibleLevels.end(),
-            [&geometry, &containsGeometryLevel](
-                    std::int32_t levelId) noexcept {
-                return IsExternalAtlasStandardCampaignLevel(
-                        geometry.act, levelId)
-                    && !containsGeometryLevel(levelId);
-            });
-        if (missingRequiredLevel != publication.visibleLevels.end()) {
+        const bool exactScope = geometry.scopeLevelId > 0;
+        const bool scopeMatchesCurrent =
+            ExternalAtlasGeometryScopeMatchesLevel(
+                geometry.act,
+                geometry.scopeLevelId,
+                request.currentLevelId);
+        const auto missingRequiredLevel = exactScope
+            ? publication.visibleLevels.end()
+            : std::find_if(
+                publication.visibleLevels.begin(),
+                publication.visibleLevels.end(),
+                [&geometry, &containsGeometryLevel](
+                        std::int32_t levelId) noexcept {
+                    return IsExternalAtlasStandardCampaignLevel(
+                            geometry.act, levelId)
+                        && !containsGeometryLevel(levelId);
+                });
+        if (!scopeMatchesCurrent
+            || (exactScope
+                && !containsGeometryLevel(request.currentLevelId))
+            || missingRequiredLevel != publication.visibleLevels.end()) {
             GeometryFailures.fetch_add(1U, std::memory_order_relaxed);
             {
                 std::scoped_lock lock(StateMutex);

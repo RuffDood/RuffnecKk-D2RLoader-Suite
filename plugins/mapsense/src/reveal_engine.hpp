@@ -120,6 +120,7 @@ struct NativeAutomapLayerCatalog final {
     std::uint8_t difficulty{};
     std::uint8_t act{};
     std::uint64_t geometryDigest{};
+    std::int32_t geometryScopeLevelId{};
     std::vector<NativeAutomapLevelLayer> levels;
     std::vector<std::int32_t> readyLayers;
 };
@@ -154,6 +155,15 @@ struct NativeAutomapLayerCatalog final {
         layer);
 }
 
+[[nodiscard]] inline auto NativeAutomapLevelIsReady(
+        const NativeAutomapLayerCatalog& catalog,
+        std::int32_t levelId,
+        std::int32_t layer) noexcept -> bool {
+    return NativeAutomapLayerIsReady(catalog, layer)
+        && (catalog.geometryScopeLevelId == 0
+            || catalog.geometryScopeLevelId == levelId);
+}
+
 [[nodiscard]] inline auto NativeAutomapLevelsShareLayer(
         const NativeAutomapLayerCatalog& catalog,
         std::int32_t currentLevelId,
@@ -173,7 +183,10 @@ struct NativeAutomapLayerCatalog final {
     return NativeAutomapLevelsShareLayer(
             catalog, currentLevelId, anchoredLevelId)
         && FindNativeAutomapLayer(catalog, currentLevelId, currentLayer)
-        && NativeAutomapLayerIsReady(catalog, currentLayer);
+        && NativeAutomapLevelIsReady(
+            catalog, currentLevelId, currentLayer)
+        && (catalog.geometryScopeLevelId == 0
+            || catalog.geometryScopeLevelId == anchoredLevelId);
 }
 
 enum class NativeAutomapAtlasPublicationStatus : std::uint8_t {

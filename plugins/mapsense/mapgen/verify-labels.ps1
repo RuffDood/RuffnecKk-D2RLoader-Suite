@@ -6,7 +6,10 @@ param(
     [string]$ActiveDataRoot,
 
     [Parameter(Mandatory = $false)]
-    [string]$NodeExecutable = 'node'
+    [string]$NodeExecutable = 'node',
+
+    [Parameter(Mandatory = $false)]
+    [string]$DumpbinPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,6 +26,9 @@ $seeds = @(6, 1337, 1395822899, 2147483647)
 if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) {
     throw "Map generator not found: $Executable"
 }
+
+$portableCpuValidator = Join-Path $scriptDirectory 'verify-portable-cpu.ps1'
+& $portableCpuValidator -Executable $Executable -DumpbinPath $DumpbinPath
 
 function Invoke-MapGenerator {
     param(
@@ -205,31 +211,37 @@ function Test-GeometryBinary {
         [Parameter(Mandatory = $true)]
         [uint32]$Seed,
         [Parameter(Mandatory = $true)]
-        [int]$Act
+        [int]$Act,
+        [Parameter(Mandatory = $false)]
+        [int]$ScopeLevel = 0
     )
 
     [byte[]]$bytes = [System.IO.File]::ReadAllBytes($Path)
-    if ($bytes.Length -lt 32 -or
+    $expectedFlags = if ($ScopeLevel -eq 0) { 1 } else { 2 }
+    if ($bytes.Length -lt 36 -or
         [System.Text.Encoding]::ASCII.GetString($bytes, 0, 4) -ne 'MSA1' -or
-        [BitConverter]::ToUInt16($bytes, 4) -ne 2 -or
-        [BitConverter]::ToUInt16($bytes, 6) -ne 1 -or
+        [BitConverter]::ToUInt16($bytes, 4) -ne 3 -or
+        [BitConverter]::ToUInt16($bytes, 6) -ne $expectedFlags -or
         [BitConverter]::ToUInt32($bytes, 8) -ne $Seed -or
         $bytes[12] -ne 2 -or $bytes[13] -ne $Act -or
-        $bytes[14] -ne 0 -or $bytes[15] -ne 0) {
-        throw "Invalid MSA1 v2 header for seed=$Seed act=$Act"
+        $bytes[14] -ne 0 -or $bytes[15] -ne 0 -or
+        [BitConverter]::ToInt32($bytes, 16) -ne $ScopeLevel) {
+        throw "Invalid MSA1 v3 header for seed=$Seed act=$Act scope=$ScopeLevel"
     }
-    $levelCount = [BitConverter]::ToUInt32($bytes, 16)
-    $expectedCellCount = [BitConverter]::ToUInt32($bytes, 20)
-    if ($levelCount -eq 0 -or $expectedCellCount -eq 0) {
+    $levelCount = [BitConverter]::ToUInt32($bytes, 20)
+    $expectedCellCount = [BitConverter]::ToUInt32($bytes, 24)
+    if ($levelCount -eq 0 -or $expectedCellCount -eq 0 -or
+        ($ScopeLevel -gt 0 -and $levelCount -ne 1)) {
         throw "Empty geometry artifact for seed=$Seed act=$Act"
     }
 
-    $offset = 32
+    $offset = 36
     [uint64]$parsedCells = 0
     [uint64]$floorTreeCells = 0
     [uint64]$wallTreeCells = 0
     [uint64]$raisedCells = 0
     [uint64]$wallWithoutRaise = 0
+    $levelIds = @()
     for ($levelIndex = 0; $levelIndex -lt $levelCount; ++$levelIndex) {
         if ($offset + 12 -gt $bytes.Length) {
             throw "Truncated MSA1 level record for seed=$Seed act=$Act"
@@ -242,6 +254,7 @@ function Test-GeometryBinary {
             $bytes[$offset + 7] -ne 0) {
             throw "Invalid MSA1 level record for seed=$Seed act=$Act"
         }
+        $levelIds += $levelId
         $offset += 12
         for ($cellIndex = 0; $cellIndex -lt $cellsInLevel; ++$cellIndex) {
             if ($offset + 16 -gt $bytes.Length) {
@@ -269,11 +282,16 @@ function Test-GeometryBinary {
         }
     }
     if ($offset -ne $bytes.Length -or $parsedCells -ne $expectedCellCount -or
-        $floorTreeCells -eq 0 -or $wallTreeCells -eq 0 -or
-        $wallWithoutRaise -eq 0) {
+        ($ScopeLevel -eq 0 -and
+            ($floorTreeCells -eq 0 -or $wallTreeCells -eq 0 -or
+                $wallWithoutRaise -eq 0)) -or
+        ($ScopeLevel -gt 0 -and
+            ($levelIds.Count -ne 1 -or $levelIds[0] -ne $ScopeLevel))) {
         throw "MSA1 floor/wall provenance contract failed for seed=$Seed act=$Act"
     }
     return [pscustomobject]@{
+        ScopeLevel = $ScopeLevel
+        LevelIds = @($levelIds)
         Cells = $parsedCells
         FloorTree = $floorTreeCells
         WallTree = $wallTreeCells
@@ -536,27 +554,54 @@ if (-not [string]::IsNullOrWhiteSpace($ActiveDataRoot)) {
 
     $syntheticExcel = Join-Path $validationRoot 'synthetic-excel'
     Copy-Item -LiteralPath $activeExcel -Destination $syntheticExcel -Recurse
-    $workspaceRoot = [System.IO.Path]::GetFullPath(
-        (Join-Path $scriptDirectory '..\..\..'))
     $fixtureScript = @'
 const fs = require('fs');
-const path = require('path');
-const [workspaceRoot, excelRoot, targetText] = process.argv.slice(1);
+const [excelRoot, targetText] = process.argv.slice(1);
 const target = Number(targetText);
-const api = require(path.join(workspaceRoot, 'scripts/build-data/tsv'));
+const ENCODING = 'latin1';
+
+function parseTable(filePath) {
+    const raw = fs.readFileSync(filePath, ENCODING);
+    const eol = raw.includes('\r\n') ? '\r\n' : '\n';
+    const hasFinalEol = raw.endsWith(eol);
+    const body = hasFinalEol ? raw.slice(0, -eol.length) : raw;
+    const lines = body.length === 0 ? [] : body.split(eol);
+    return {
+        headers: lines.length ? lines[0].split('\t') : [],
+        rows: lines.slice(1).map(line => line.split('\t')),
+        eol,
+        hasFinalEol,
+    };
+}
+
+function serializeTable(table) {
+    const lines = [
+        table.headers.join('\t'),
+        ...table.rows.map(row => row.join('\t')),
+    ];
+    let output = lines.join(table.eol);
+    if (table.hasFinalEol) output += table.eol;
+    return output;
+}
+
+function writeTable(filePath, table) {
+    const temporaryPath = filePath + '.tmp';
+    fs.writeFileSync(temporaryPath, serializeTable(table), ENCODING);
+    fs.renameSync(temporaryPath, filePath);
+}
 
 function mutate(fileName, callback) {
-    const filePath = path.join(excelRoot, fileName);
-    const before = fs.readFileSync(filePath, api.ENCODING);
-    const table = api.parseTable(filePath);
-    if (api.serializeTable(table) !== before || table.eol !== '\r\n') {
+    const filePath = `${excelRoot}\\${fileName}`;
+    const before = fs.readFileSync(filePath, ENCODING);
+    const table = parseTable(filePath);
+    if (serializeTable(table) !== before || table.eol !== '\r\n') {
         throw new Error(`non-exact source round-trip: ${fileName}`);
     }
     callback(table);
-    api.writeTable(filePath, table);
-    const after = fs.readFileSync(filePath, api.ENCODING);
-    const reparsed = api.parseTable(filePath);
-    if (api.serializeTable(reparsed) !== after || reparsed.eol !== '\r\n') {
+    writeTable(filePath, table);
+    const after = fs.readFileSync(filePath, ENCODING);
+    const reparsed = parseTable(filePath);
+    if (serializeTable(reparsed) !== after || reparsed.eol !== '\r\n') {
         throw new Error(`non-exact fixture round-trip: ${fileName}`);
     }
 }
@@ -599,7 +644,7 @@ for (const [fileName, columnName] of [
     });
 }
 '@
-    & $NodeExecutable -e $fixtureScript $workspaceRoot $syntheticExcel 733
+    & $NodeExecutable -e $fixtureScript $syntheticExcel 733
     if ($LASTEXITCODE -ne 0) {
         throw 'Could not create the synthetic mod-data fixture'
     }
@@ -622,7 +667,21 @@ for (const [fileName, columnName] of [
     if ($syntheticEdge.Count -ne 1 -or $syntheticLevel.Count -ne 1) {
         throw 'Synthetic arbitrary custom level was not generated exactly'
     }
-    Write-Output "PASS synthetic-custom exact-entry=$($syntheticEdge[0]) level-id=733"
+    $syntheticGeometryName = 'synthetic-level-733.msa'
+    $syntheticAtlas = Invoke-PrimaryAtlasBinary `
+        -Seed 1337 `
+        -Act 4 `
+        -CurrentLevel 733 `
+        -Directory $validationRoot `
+        -FileName $syntheticGeometryName `
+        -ExcelRoot $syntheticExcel `
+        -TilesRoot $activeTiles
+    $syntheticGeometry = Test-GeometryBinary `
+        -Path (Join-Path $validationRoot $syntheticGeometryName) `
+        -Seed ([uint32]1337) `
+        -Act 4 `
+        -ScopeLevel 733
+    Write-Output "PASS synthetic-custom exact-entry=$($syntheticEdge[0]) level-id=733 geometry-levels=$($syntheticGeometry.LevelIds -join ',') geometry-cells=$($syntheticGeometry.Cells) elapsed-ms=$($syntheticAtlas.ElapsedMilliseconds)"
 }
 } finally {
     if (Test-Path -LiteralPath $validationRoot -PathType Container) {

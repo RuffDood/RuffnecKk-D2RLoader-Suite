@@ -279,7 +279,7 @@ void DrawMapTab(Config& draft) {
         1.0F,
         "%.2f");
     ImGui::SliderFloat(
-        "Interface scale",
+        "Overlay scale",
         &draft.overlay.scale,
         0.50F,
         2.0F,

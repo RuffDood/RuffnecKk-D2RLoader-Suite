@@ -22,7 +22,7 @@
 
 namespace RuffnecKk::MapSense {
 
-inline constexpr std::int64_t CurrentConfigSchemaVersion = 16;
+inline constexpr std::int64_t CurrentConfigSchemaVersion = 17;
 
 inline constexpr float MinimumMonsterMarkerSize = 3.0F;
 inline constexpr float MaximumMonsterMarkerSize = 40.0F;
@@ -393,8 +393,60 @@ inline auto ParseMenuTheme(std::string_view text) -> MenuTheme {
     throw std::runtime_error("Unsupported MapSense menu theme");
 }
 
+enum class MenuScale : std::uint8_t {
+    Automatic,
+    Percent100,
+    Percent125,
+    Percent150,
+    Percent175,
+    Percent200,
+};
+
+inline constexpr std::array<MenuScale, 6> MenuScales{
+    MenuScale::Automatic,
+    MenuScale::Percent100,
+    MenuScale::Percent125,
+    MenuScale::Percent150,
+    MenuScale::Percent175,
+    MenuScale::Percent200,
+};
+
+inline auto MenuScaleToString(MenuScale scale) noexcept -> std::string_view {
+    switch (scale) {
+        case MenuScale::Automatic: return "automatic";
+        case MenuScale::Percent100: return "100%";
+        case MenuScale::Percent125: return "125%";
+        case MenuScale::Percent150: return "150%";
+        case MenuScale::Percent175: return "175%";
+        case MenuScale::Percent200: return "200%";
+    }
+    return "automatic";
+}
+
+inline auto ParseMenuScale(std::string_view text) -> MenuScale {
+    for (const auto scale : MenuScales) {
+        if (text == MenuScaleToString(scale)) return scale;
+    }
+    throw std::runtime_error("Unsupported MapSense interface scale");
+}
+
+[[nodiscard]] constexpr auto ResolveMenuScale(
+        MenuScale scale,
+        float automaticScale) noexcept -> float {
+    switch (scale) {
+        case MenuScale::Automatic: return automaticScale;
+        case MenuScale::Percent100: return 1.0F;
+        case MenuScale::Percent125: return 1.25F;
+        case MenuScale::Percent150: return 1.5F;
+        case MenuScale::Percent175: return 1.75F;
+        case MenuScale::Percent200: return 2.0F;
+    }
+    return automaticScale;
+}
+
 struct MenuOptions {
     MenuTheme theme{MenuTheme::SanctuaryGold};
+    MenuScale interfaceScale{MenuScale::Automatic};
     bool showLauncher{true};
     bool startExpanded{};
     bool rememberPosition{true};
@@ -514,6 +566,21 @@ inline auto ReadOptionalMenuTheme(
             "MapSense menu theme must be a string: " + std::string(key));
     }
     return ParseMenuTheme(*value);
+}
+
+inline auto ReadOptionalMenuScale(
+        const toml::table& table,
+        std::string_view key,
+        MenuScale fallback) -> MenuScale {
+    const auto* node = table.get(key);
+    if (node == nullptr) return fallback;
+    const auto value = node->value<std::string>();
+    if (!value) {
+        throw std::runtime_error(
+            "MapSense interface scale must be a string: "
+            + std::string(key));
+    }
+    return ParseMenuScale(*value);
 }
 
 inline auto HexNibble(char character) -> std::uint8_t {
@@ -1442,7 +1509,20 @@ inline auto ParseConfig(const toml::table& root) -> Config {
             *hud, "show_with_automap_only", config.hud.showWithAutomapOnly);
     }
     if (const auto* menu = ReadOptionalTable(root, "menu")) {
-        if (*schemaVersion >= 16) {
+        if (*schemaVersion >= 17) {
+            RejectUnknownKeys(
+                *menu,
+                {"theme", "interface_scale", "show_launcher", "start_expanded", "remember_position", "position_x", "position_y"},
+                "menu");
+            config.menu.theme = ReadOptionalMenuTheme(
+                *menu,
+                "theme",
+                config.menu.theme);
+            config.menu.interfaceScale = ReadOptionalMenuScale(
+                *menu,
+                "interface_scale",
+                config.menu.interfaceScale);
+        } else if (*schemaVersion >= 16) {
             RejectUnknownKeys(
                 *menu,
                 {"theme", "show_launcher", "start_expanded", "remember_position", "position_x", "position_y"},
@@ -1746,6 +1826,8 @@ inline auto SerializeConfig(const Config& config) -> std::string {
         << "\n"
         << "[menu]\n"
         << "theme = \"" << MenuThemeToString(config.menu.theme) << "\"\n"
+        << "interface_scale = \""
+        << MenuScaleToString(config.menu.interfaceScale) << "\"\n"
         << "show_launcher = " << config.menu.showLauncher << "\n"
         << "start_expanded = " << config.menu.startExpanded << "\n"
         << "remember_position = " << config.menu.rememberPosition << "\n"

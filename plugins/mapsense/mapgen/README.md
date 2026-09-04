@@ -12,8 +12,16 @@ priority by MapSense; players do not launch it themselves.
 4. Build with Zig 0.16.0:
 
    ```powershell
-   zig build -Doptimize=ReleaseSafe
+   zig build --seed 0 -Doptimize=ReleaseSafe
    ```
+
+The build script fixes the public target to `x86_64-windows-gnu` with Zig's
+`baseline` CPU model. It intentionally does not expose native CPU selection:
+release helpers must not inherit AVX, AVX2, AVX-512, or another optional ISA
+extension from the workstation that builds them. Release output is stripped,
+uses no linker-selected build ID, and is built with seed `0`; two clean builds
+with independent caches and the same output path must therefore be
+byte-identical.
 
 The patch is the complete diff used by this candidate. It adds the immutable
 label/waypoint and automap-geometry surfaces consumed by MapSense; it does not
@@ -45,15 +53,19 @@ custom numeric ID is generated without a per-mod code change.
 The DLL passes these roots automatically when it starts the helper. This is a
 developer interface; players still launch only D2R.
 
-Binary geometry protocol MSA1 v2 records the native tile-array provenance and
-the orientation-based vertical offset as separate `wallTree` and `raised`
-bits. The distinction is required because D2R chooses the floor/wall owner tree
-from the source tile array, not from `orientation >= 0x10`.
+Binary geometry protocol MSA1 v3 records an explicit scope in addition to the
+native tile-array provenance. Scope `0` emits the reusable standard campaign
+for an act; a positive scope emits exactly the requested custom LevelId. This
+prevents two unrelated levels that reuse one `Levels.Layer` from sharing reveal
+completion. The `wallTree` and `raised` bits remain separate because D2R
+chooses the floor/wall owner tree from the source tile array, not from
+`orientation >= 0x10`.
 
 The packaged executable is a generated release artifact. Its hash must match
 the value recorded in the MapSense mission before deployment or publication.
-Run `verify-labels.ps1` against the built executable to exercise deterministic
-MS1 and MSA1 v2 output, all five acts, exact waypoint coverage, valid floor/wall
+Run `verify-labels.ps1` against the built executable to reject any VEX/EVEX
+instruction and then exercise deterministic MS1 and MSA1 v3 output, all five
+acts, exact waypoint coverage, valid floor/wall
 provenance, unique physical seams and reciprocal one-subtile adjacency across
 four governed seeds. The matrix also
 pins the observed Spider Forest/Flayer Jungle crossing for seed `1395822899`
@@ -63,5 +75,7 @@ cannot silently return.
 Pass `-ActiveDataRoot <mod-data-root>` to add two mod-awareness gates. The
 first requires the active dataset's real source-to-custom entrance and exact
 waypoint coverage. The second rewrites that custom target to arbitrary
-LevelId `733` in a temporary fixture and requires the same source coordinate,
-proving that no BKVince or Rift identifier is hard-coded.
+LevelId `733` in a temporary fixture and requires the same source coordinate
+plus an exact-scope geometry artifact containing only level `733`, proving that
+neither labels nor terrain depend on a BKVince or Rift identifier hard-coded in
+the helper.

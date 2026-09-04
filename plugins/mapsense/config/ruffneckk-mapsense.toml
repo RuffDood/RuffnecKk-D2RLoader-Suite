@@ -2,7 +2,7 @@
 # Configure normal settings in the in-game MapSense menu.
 # Only navigation.custom_levels.targets is intended for manual editing.
 
-schema_version = 16
+schema_version = 17
 
 [general]
 # Master switch for every MapSense feature. The settings panel remains available.
@@ -168,6 +168,8 @@ targets = [
 [menu]
 # Changes only the MapSense settings panel palette.
 theme = "sanctuary_gold"
+# Scales only the MapSense settings panel. Use automatic for backbuffer-based scaling.
+interface_scale = "automatic"
 # Keeps a small movable MapSense launcher visible while the panel is collapsed.
 show_launcher = true
 # Opens the full settings panel at startup instead of the launcher.

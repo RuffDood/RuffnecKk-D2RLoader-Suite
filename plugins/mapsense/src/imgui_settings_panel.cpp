@@ -21,6 +21,7 @@ constexpr auto LauncherHeight = 68.0F;
 struct PositionRuntimeState {
     ImGuiContext* context{};
     ImVec2 displaySize{};
+    float previousScale{1.0F};
     bool initialized{};
     bool previousExpanded{};
     bool positionDirty{};
@@ -178,11 +179,58 @@ struct MenuPanelPalette final {
 
 class ScopedPanelStyle final {
 public:
-    explicit ScopedPanelStyle(MenuTheme theme) noexcept {
+    explicit ScopedPanelStyle(MenuTheme theme, float menuScale) noexcept {
+        const auto scale = std::clamp(menuScale, 1.0F, 2.0F);
+        const auto baseStyle = ImGui::GetStyle();
         const auto palette = PaletteFor(theme);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 2.0F);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0F);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0F);
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_WindowPadding,
+            ImVec2{
+                baseStyle.WindowPadding.x * scale,
+                baseStyle.WindowPadding.y * scale});
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 2.0F * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0F * scale);
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_FramePadding,
+            ImVec2{
+                baseStyle.FramePadding.x * scale,
+                baseStyle.FramePadding.y * scale});
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0F * scale);
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_ItemSpacing,
+            ImVec2{
+                baseStyle.ItemSpacing.x * scale,
+                baseStyle.ItemSpacing.y * scale});
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_ItemInnerSpacing,
+            ImVec2{
+                baseStyle.ItemInnerSpacing.x * scale,
+                baseStyle.ItemInnerSpacing.y * scale});
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_IndentSpacing,
+            baseStyle.IndentSpacing * scale);
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_CellPadding,
+            ImVec2{
+                baseStyle.CellPadding.x * scale,
+                baseStyle.CellPadding.y * scale});
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_ScrollbarSize,
+            baseStyle.ScrollbarSize * scale);
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_ScrollbarRounding,
+            baseStyle.ScrollbarRounding * scale);
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_GrabMinSize,
+            baseStyle.GrabMinSize * scale);
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_GrabRounding,
+            baseStyle.GrabRounding * scale);
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_SeparatorTextPadding,
+            ImVec2{
+                baseStyle.SeparatorTextPadding.x * scale,
+                baseStyle.SeparatorTextPadding.y * scale});
 
         ImGui::PushStyleColor(
             ImGuiCol_Text,
@@ -239,7 +287,7 @@ public:
 
     ~ScopedPanelStyle() noexcept {
         ImGui::PopStyleColor(17);
-        ImGui::PopStyleVar(3);
+        ImGui::PopStyleVar(14);
     }
 
     ScopedPanelStyle(const ScopedPanelStyle&) = delete;
@@ -278,6 +326,18 @@ void Invoke(
             return UiText(UiTextId::ThemeHighContrast);
     }
     return UiText(UiTextId::ThemeSanctuaryGold);
+}
+
+[[nodiscard]] auto MenuScaleLabel(MenuScale scale) noexcept -> const char* {
+    switch (scale) {
+        case MenuScale::Automatic: return UiText(UiTextId::Automatic);
+        case MenuScale::Percent100: return "100%";
+        case MenuScale::Percent125: return "125%";
+        case MenuScale::Percent150: return "150%";
+        case MenuScale::Percent175: return "175%";
+        case MenuScale::Percent200: return "200%";
+    }
+    return UiText(UiTextId::Automatic);
 }
 
 void UpdateRememberedPosition(
@@ -799,11 +859,12 @@ auto DrawImGuiSettingsPanel(
         Config& config,
         bool& expanded,
         bool revealMapEnabled,
+        float menuScale,
         const ImGuiSettingsActionCallback actionCallback) noexcept
         -> ImGuiSettingsBounds {
-    const ScopedPanelStyle style{config.menu.theme};
+    const auto dpiScale = std::clamp(menuScale, 1.0F, 2.0F);
+    const ScopedPanelStyle style{config.menu.theme, dpiScale};
     const auto& io = ImGui::GetIO();
-    const auto dpiScale = std::max(1.0F, io.FontGlobalScale);
     const auto frameExpanded = expanded;
     auto& positionState = GetPositionRuntimeState();
     auto* const currentContext = ImGui::GetCurrentContext();
@@ -816,9 +877,12 @@ auto DrawImGuiSettingsPanel(
             || positionState.displaySize.y != io.DisplaySize.y);
     const auto sizeModeChanged = positionState.initialized
         && positionState.previousExpanded != frameExpanded;
+    const auto menuScaleChanged = positionState.initialized
+        && positionState.previousScale != dpiScale;
     const auto reanchorPosition = !positionState.initialized
         || displaySizeChanged
-        || sizeModeChanged;
+        || sizeModeChanged
+        || menuScaleChanged;
     const auto oldPositionX = config.menu.positionX;
     const auto oldPositionY = config.menu.positionY;
     const auto requestedSize = frameExpanded
@@ -902,6 +966,22 @@ auto DrawImGuiSettingsPanel(
                                 MenuThemeLabel(theme),
                                 selected)) {
                             config.menu.theme = theme;
+                            saveRequested = true;
+                        }
+                        if (selected) ImGui::SetItemDefaultFocus();
+                    }
+                    ImGui::EndCombo();
+                }
+                if (ImGui::BeginCombo(
+                        UiText(UiTextId::InterfaceScale),
+                        MenuScaleLabel(config.menu.interfaceScale))) {
+                    for (const auto scale : MenuScales) {
+                        const auto selected =
+                            config.menu.interfaceScale == scale;
+                        if (ImGui::Selectable(
+                                MenuScaleLabel(scale),
+                                selected)) {
+                            config.menu.interfaceScale = scale;
                             saveRequested = true;
                         }
                         if (selected) ImGui::SetItemDefaultFocus();
@@ -1121,6 +1201,7 @@ auto DrawImGuiSettingsPanel(
     bounds.saveRequested = saveRequested;
 
     positionState.displaySize = io.DisplaySize;
+    positionState.previousScale = dpiScale;
     positionState.previousExpanded = frameExpanded;
     positionState.initialized = true;
 

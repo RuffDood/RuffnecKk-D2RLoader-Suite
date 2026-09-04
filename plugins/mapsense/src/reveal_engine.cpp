@@ -331,6 +331,8 @@ auto At(std::uintptr_t rva) noexcept -> Function {
         catalog->difficulty = NativeAtlasPublication.difficulty;
         catalog->act = NativeAtlasPublication.act;
         catalog->geometryDigest = NativeAtlasPublication.geometryDigest;
+        catalog->geometryScopeLevelId =
+            NativeAtlasPublication.snapshot->geometry->scopeLevelId;
         catalog->levels.assign(
             NativeAtlasPublication.catalogLevels.begin(),
             NativeAtlasPublication.catalogLevels.end());
@@ -367,6 +369,8 @@ auto At(std::uintptr_t rva) noexcept -> Function {
         && NativeAtlasPublication.snapshot != nullptr
         && NativeAtlasPublication.snapshot->geometry != nullptr
         && snapshot.geometry != nullptr
+        && NativeAtlasPublication.snapshot->geometry->scopeLevelId
+            == snapshot.geometry->scopeLevelId
         && NativeAtlasPublication.geometryDigest
             == snapshot.geometry->digest;
 }
@@ -638,6 +642,10 @@ void RecordMaximumNativeTreeCellCount(
     if (current.mapSeed != NativeAtlasPublication.seed
         || current.difficulty != NativeAtlasPublication.difficulty
         || current.levelId <= 0
+        || !ExternalAtlasGeometryScopeMatchesLevel(
+            geometry.act,
+            geometry.scopeLevelId,
+            current.levelId)
         || !ResolveNativeAutomapLayer(
             current.dataContext, current.levelId, currentLayer)) {
         return NativeAutomapAtlasPublicationStatus::Stale;
@@ -1355,6 +1363,10 @@ auto BeginNativeAutomapAtlasPublication(
         || snapshot->geometry->seed != snapshot->seed
         || snapshot->geometry->difficulty != snapshot->difficulty
         || snapshot->geometry->act != snapshot->act
+        || !ExternalAtlasGeometryScopeMatchesLevel(
+            snapshot->geometry->act,
+            snapshot->geometry->scopeLevelId,
+            current.levelId)
         || snapshot->visibleLevelIds.empty()
         || snapshot->geometry->levels.empty()
         || snapshot->geometry->cells.empty()) {
@@ -1561,7 +1573,12 @@ auto QueryNativeAutomapAtlasPublication(
         || NativeAtlasPublication.difficulty != current.difficulty
         || resolvedAct < 0
         || NativeAtlasPublication.act != resolvedAct
-        || NativeAtlasPublication.snapshot == nullptr) {
+        || NativeAtlasPublication.snapshot == nullptr
+        || NativeAtlasPublication.snapshot->geometry == nullptr
+        || !ExternalAtlasGeometryScopeMatchesLevel(
+            NativeAtlasPublication.act,
+            NativeAtlasPublication.snapshot->geometry->scopeLevelId,
+            current.levelId)) {
         return NativeAutomapAtlasPublicationStatus::Unavailable;
     }
     const bool layerReady = std::binary_search(

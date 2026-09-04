@@ -80,11 +80,13 @@ auto ParseExternalAtlasGeometry(
         std::uint32_t expectedSeed,
         std::uint8_t expectedDifficulty,
         std::uint8_t expectedAct,
+        std::int32_t expectedScopeLevelId,
         ExternalAtlasGeometry& output,
         ExternalAtlasGeometryParseError* error) -> bool {
     output = {};
     SetError(error, ExternalAtlasGeometryParseError::None);
-    if (expectedSeed == 0U || expectedDifficulty > 2U || expectedAct >= 5U) {
+    if (expectedSeed == 0U || expectedDifficulty > 2U || expectedAct >= 5U
+        || expectedScopeLevelId < 0) {
         SetError(error, ExternalAtlasGeometryParseError::InvalidRequest);
         return false;
     }
@@ -103,15 +105,17 @@ auto ParseExternalAtlasGeometry(
         return false;
     }
     const auto flags = ReadU16(bytes, 6U);
-    if (flags != ExternalAtlasStandardCampaignFlag) {
+    if (flags != ExternalAtlasStandardCampaignFlag
+        && flags != ExternalAtlasExactLevelFlag) {
         SetError(error, ExternalAtlasGeometryParseError::UnsupportedFlags);
         return false;
     }
     const auto seed = ReadU32(bytes, 8U);
     const auto difficulty = bytes[12U];
     const auto act = bytes[13U];
+    const auto scopeLevelId = ReadI32(bytes, 16U);
     if (seed != expectedSeed || difficulty != expectedDifficulty
-        || act != expectedAct) {
+        || act != expectedAct || scopeLevelId != expectedScopeLevelId) {
         SetError(error, ExternalAtlasGeometryParseError::IdentityMismatch);
         return false;
     }
@@ -119,11 +123,18 @@ auto ParseExternalAtlasGeometry(
         SetError(error, ExternalAtlasGeometryParseError::InvalidReservedBytes);
         return false;
     }
-    const auto levelCount = ReadU32(bytes, 16U);
-    const auto cellCount = ReadU32(bytes, 20U);
-    const auto expectedDigest = ReadU64(bytes, 24U);
+    const bool exactLevelScope = flags == ExternalAtlasExactLevelFlag;
+    if ((exactLevelScope && scopeLevelId <= 0)
+        || (!exactLevelScope && scopeLevelId != 0)) {
+        SetError(error, ExternalAtlasGeometryParseError::UnsupportedFlags);
+        return false;
+    }
+    const auto levelCount = ReadU32(bytes, 20U);
+    const auto cellCount = ReadU32(bytes, 24U);
+    const auto expectedDigest = ReadU64(bytes, 28U);
     if (levelCount == 0U
         || levelCount > ExternalAtlasGeometryMaximumLevels
+        || (exactLevelScope && levelCount != 1U)
         || cellCount == 0U
         || cellCount > ExternalAtlasGeometryMaximumCells) {
         SetError(error, ExternalAtlasGeometryParseError::InvalidCount);
@@ -151,6 +162,7 @@ auto ParseExternalAtlasGeometry(
         .difficulty = difficulty,
         .act = act,
         .flags = flags,
+        .scopeLevelId = scopeLevelId,
         .digest = expectedDigest,
     };
     try {
@@ -170,7 +182,11 @@ auto ParseExternalAtlasGeometry(
         const auto levelId = ReadI32(bytes, offset);
         const auto layer = bytes[offset + 4U];
         const auto cellsInLevel = ReadU32(bytes, offset + 8U);
-        if (levelId <= 0 || layer > 3U || cellsInLevel == 0U
+        const bool levelMatchesScope = exactLevelScope
+            ? levelId == scopeLevelId
+            : IsExternalAtlasStandardCampaignLevel(act, levelId);
+        if (levelId <= 0 || !levelMatchesScope || layer > 3U
+            || cellsInLevel == 0U
             || !AllZero(bytes, offset + 5U, 3U)
             || std::find_if(
                 candidate.levels.begin(),

@@ -15,7 +15,8 @@ namespace RuffnecKk::MapSense {
 namespace {
 
 [[nodiscard]] auto ValidKey(ExternalAtlasCacheKey key) noexcept -> bool {
-    return key.seed != 0U && key.difficulty <= 2U && key.act < 5U;
+    return key.seed != 0U && key.difficulty <= 2U && key.act < 5U
+        && key.scopeLevelId >= 0;
 }
 
 [[nodiscard]] auto BuildRevealMapIntentPath(
@@ -110,7 +111,7 @@ auto BuildExternalAtlasCachePath(
     if (root.empty() || !ValidKey(key)) return false;
     std::array<wchar_t, 64U> seedDirectory{};
     std::array<wchar_t, 32U> difficultyDirectory{};
-    std::array<wchar_t, 32U> actFile{};
+    std::array<wchar_t, 64U> actFile{};
     if (swprintf_s(
             seedDirectory.data(),
             seedDirectory.size(),
@@ -121,14 +122,24 @@ auto BuildExternalAtlasCachePath(
             difficultyDirectory.size(),
             L"difficulty-%u",
             static_cast<unsigned>(key.difficulty)) <= 0
-        || swprintf_s(
+        ) {
+        return false;
+    }
+    const auto fileLength = key.scopeLevelId == 0
+        ? swprintf_s(
             actFile.data(),
             actFile.size(),
             L"act-%u-r%u.msa",
             static_cast<unsigned>(key.act),
-            ExternalAtlasGeometryCacheRevision) <= 0) {
-        return false;
-    }
+            ExternalAtlasGeometryCacheRevision)
+        : swprintf_s(
+            actFile.data(),
+            actFile.size(),
+            L"act-%u-level-%d-r%u.msa",
+            static_cast<unsigned>(key.act),
+            key.scopeLevelId,
+            ExternalAtlasGeometryCacheRevision);
+    if (fileLength <= 0) return false;
     try {
         auto base = root
             / (L"v" + std::to_wstring(ExternalAtlasCacheRevision));
@@ -177,6 +188,7 @@ auto LoadExternalAtlasGeometryCache(
             key.seed,
             key.difficulty,
             key.act,
+            key.scopeLevelId,
             output,
             parseError)
             ? ExternalAtlasCacheResult::Hit
@@ -200,6 +212,7 @@ auto StoreExternalAtlasGeometryCache(
                 key.seed,
                 key.difficulty,
                 key.act,
+                key.scopeLevelId,
                 validated)) {
             return false;
         }

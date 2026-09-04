@@ -374,6 +374,7 @@ fn writeGeometryBinaryWithContext(
     seed: u32,
     difficulty_value: u32,
     act_no: i32,
+    scope_level_id: i32,
     output_path: []const u8,
 ) !void {
     const difficulty: drlg.Difficulty = switch (difficulty_value) {
@@ -382,7 +383,7 @@ fn writeGeometryBinaryWithContext(
         2 => .hell,
         else => return error.InvalidDifficulty,
     };
-    if (act_no < 0 or act_no >= 5 or output_path.len == 0) {
+    if (act_no < 0 or act_no >= 5 or scope_level_id < 0 or output_path.len == 0) {
         return error.InvalidGeometryRequest;
     }
     const started = performanceCounter();
@@ -400,7 +401,11 @@ fn writeGeometryBinaryWithContext(
     var cell_count: u32 = 0;
     var digest: u64 = 14695981039346656037;
     for (result.levels) |level| {
-        if (!isStandardCampaignLevel(act_no, level.level_id)) continue;
+        const selected = if (scope_level_id == 0)
+            isStandardCampaignLevel(act_no, level.level_id)
+        else
+            level.level_id == scope_level_id;
+        if (!selected) continue;
         level_count += 1;
         cell_count = std.math.add(
             u32,
@@ -417,10 +422,15 @@ fn writeGeometryBinaryWithContext(
             digestInt(&digest, cell.raised);
         }
     }
+    if (level_count == 0 or cell_count == 0 or
+        (scope_level_id != 0 and level_count != 1))
+    {
+        return error.MissingScopedGeometry;
+    }
 
     const total_size = std.math.add(
         usize,
-        32,
+        36,
         std.math.add(
             usize,
             @as(usize, level_count) * 12,
@@ -432,17 +442,27 @@ fn writeGeometryBinaryWithContext(
     defer output.deinit(allocator);
     try output.ensureTotalCapacity(allocator, total_size);
     try output.appendSlice(allocator, "MSA1");
-    try appendUnsignedLe(u16, &output, allocator, 2); // protocol version
-    try appendUnsignedLe(u16, &output, allocator, 1); // standard-campaign filter
+    try appendUnsignedLe(u16, &output, allocator, 3); // protocol version
+    try appendUnsignedLe(
+        u16,
+        &output,
+        allocator,
+        if (scope_level_id == 0) 1 else 2,
+    );
     try appendUnsignedLe(u32, &output, allocator, seed);
     try output.append(allocator, @intCast(difficulty_value));
     try output.append(allocator, @intCast(act_no));
     try appendUnsignedLe(u16, &output, allocator, 0);
+    try appendSignedLe(i32, &output, allocator, scope_level_id);
     try appendUnsignedLe(u32, &output, allocator, level_count);
     try appendUnsignedLe(u32, &output, allocator, cell_count);
     try appendUnsignedLe(u64, &output, allocator, digest);
     for (result.levels) |level| {
-        if (!isStandardCampaignLevel(act_no, level.level_id)) continue;
+        const selected = if (scope_level_id == 0)
+            isStandardCampaignLevel(act_no, level.level_id)
+        else
+            level.level_id == scope_level_id;
+        if (!selected) continue;
         try appendSignedLe(i32, &output, allocator, level.level_id);
         try output.append(allocator, level.layer);
         try output.appendSlice(allocator, &[_]u8{ 0, 0, 0 });
@@ -464,11 +484,12 @@ fn writeGeometryBinaryWithContext(
         .data = output.items,
     });
     std.debug.print(
-        "MSA1 seed={d} difficulty={d} act={d} levels={d} cells={d} bytes={d} digest={x} elapsed_ms={d:.3}\n",
+        "MSA1 seed={d} difficulty={d} act={d} scope-level={d} levels={d} cells={d} bytes={d} digest={x} elapsed_ms={d:.3}\n",
         .{
             seed,
             difficulty_value,
             act_no,
+            scope_level_id,
             level_count,
             cell_count,
             output.items.len,
@@ -495,6 +516,7 @@ fn writeGeometryBinary(
         seed,
         difficulty_value,
         act_no,
+        0,
         output_path,
     );
 }
@@ -752,10 +774,7 @@ fn findPresetFacadeOpening(
     // a collision opening elsewhere on the long shared level boundary is not.
     const facade_level_id: i32 = 26;
     const outside_level_id: i32 = 7;
-    if (!((source_level_id == facade_level_id
-            and target_level_id == outside_level_id)
-        or (source_level_id == outside_level_id
-            and target_level_id == facade_level_id))) return null;
+    if (!((source_level_id == facade_level_id and target_level_id == outside_level_id) or (source_level_id == outside_level_id and target_level_id == facade_level_id))) return null;
     const facade_index = findFullLevel(result, facade_level_id) orelse return null;
     const facade = &result.levels[facade_index];
     var anchor: ?PhysicalOpening = null;
@@ -774,10 +793,8 @@ fn findPresetFacadeOpening(
     // Keep reciprocal definitions one subtile apart as the native automap
     // contract expects. Move the outside-owned sample one subtile from the
     // facade object toward the generated facade level's centre.
-    const center_x = facade.meta.origin_x * 5
-        + @divTrunc(facade.meta.width * 5, 2);
-    const center_y = facade.meta.origin_y * 5
-        + @divTrunc(facade.meta.height * 5, 2);
+    const center_x = facade.meta.origin_x * 5 + @divTrunc(facade.meta.width * 5, 2);
+    const center_y = facade.meta.origin_y * 5 + @divTrunc(facade.meta.height * 5, 2);
     const dx = center_x - anchor.?.x;
     const dy = center_y - anchor.?.y;
     if (@abs(dx) >= @abs(dy)) {
@@ -939,8 +956,7 @@ fn emitLabelAtlasWithContext(
             waypoint_count += 1;
         }
         if (permanentPortalTarget(level.meta.level_id)) |target_level_id| {
-            if (findFullLevel(&physical, target_level_id) != null
-                and permanent_portal_class_id != null) {
+            if (findFullLevel(&physical, target_level_id) != null and permanent_portal_class_id != null) {
                 const physical_level_index = findFullLevel(
                     &physical,
                     level.meta.level_id,
@@ -1059,6 +1075,7 @@ fn writePrimaryAtlasBinary(
         seed,
         difficulty_value,
         act_no,
+        if (isStandardCampaignLevel(act_no, current_level)) 0 else current_level,
         output_path,
     );
 }

@@ -39,6 +39,7 @@ struct ImGuiSettingsBounds {
     Config& config,
     bool& expanded,
     bool revealMapEnabled,
+    float menuScale,
     ImGuiSettingsActionCallback actionCallback) noexcept
     -> ImGuiSettingsBounds;
 

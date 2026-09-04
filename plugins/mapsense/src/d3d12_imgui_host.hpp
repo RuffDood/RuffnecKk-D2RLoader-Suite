@@ -61,6 +61,20 @@ namespace RuffnecKk::MapSense {
     return commandListCount > 0 && vertexCount > 0;
 }
 
+// Scale only MapSense's settings surface from the actual D3D12 back buffer.
+// The shared ImGui context, automap and external clients keep their own fonts
+// and metrics. A zero height is treated like a sub-1080p surface so renderer
+// recovery can never manufacture an oversized menu from incomplete metadata.
+[[nodiscard]] constexpr auto ComputeMapSenseMenuScale(
+        std::uint64_t backBufferHeight) noexcept -> float {
+    constexpr std::uint64_t ReferenceHeight = 1'080U;
+    constexpr std::uint64_t MaximumScaledHeight = 2'160U;
+    if (backBufferHeight <= ReferenceHeight) return 1.0F;
+    if (backBufferHeight >= MaximumScaledHeight) return 2.0F;
+    return static_cast<float>(backBufferHeight)
+        / static_cast<float>(ReferenceHeight);
+}
+
 // Client-space bounds of the one interactive MapSense surface drawn during
 // the current ImGui frame. The host publishes these through atomics for the
 // D2R window subclass; no separate overlay HWND is created.
@@ -129,6 +143,12 @@ struct PrimeMhChestImagePlacement {
 // must return the complete interactive bounds of the rendered surface.
 using D3D12ImGuiDrawPanelCallback = D3D12ImGuiPanelBounds (*)(
     bool* open,
+    float menuScale,
+    void* userData) noexcept;
+// Resolves the menu-only scale for the next panel frame. The automatic value
+// is derived from the real back buffer; returning it preserves automatic mode.
+using D3D12ImGuiResolveMenuScaleCallback = float (*)(
+    float automaticScale,
     void* userData) noexcept;
 // Draws MapSense-owned, non-interactive additions into the current ImGui
 // frame. Unlike drawPanel, this callback never publishes input bounds.
@@ -150,6 +170,7 @@ using D3D12ImGuiQueueUiTaskCallback = bool (*)(
 
 struct D3D12ImGuiHostCallbacks {
     D3D12ImGuiDrawPanelCallback drawPanel{};
+    D3D12ImGuiResolveMenuScaleCallback resolveMenuScale{};
     D3D12ImGuiDrawOwnedOverlayCallback drawOwnedOverlay{};
     D3D12ImGuiWantsOwnedOverlayCallback wantsOwnedOverlay{};
     D3D12ImGuiOwnedOverlayDismissalCallback ownedOverlayDismissal{};

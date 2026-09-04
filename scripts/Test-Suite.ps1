@@ -333,7 +333,7 @@ foreach ($entry in $pluginEntries) {
     }
     $getProcAddressMatches = @([regex]::Matches(
         $sourceText,
-        'GetProcAddress\s*\('))
+        '(?<![A-Za-z0-9_])GetProcAddress\s*\('))
     if ($slug -eq 'floating-damage') {
         $approvedD3D12Lookup =
             $sourceText -match 'GetProcAddress\s*\(\s*d3d12Module\s*,\s*"D3D12CreateDevice"\s*\)'
@@ -344,6 +344,55 @@ foreach ($entry in $pluginEntries) {
             (-not $approvedMapSenseLookup)) {
             $errors.Add(
                 'floating-damage may resolve only D3D12CreateDevice and the optional versioned MapSense overlay-host API.')
+        }
+    }
+    elseif ($slug -eq 'mapsense') {
+        $approvedD3D12Lookup = $sourceText -match 'GetProcAddress\s*\(\s*d3d12Module\s*,\s*"D3D12CreateDevice"\s*\)'
+        $approvedIsInGameLookup = $sourceText -match 'GetProcAddress\s*\(\s*core\s*,\s*D2RL::CoreExports::IsInGameInfo\.name\s*\)'
+        $approvedCommandLookup = $sourceText -match 'GetProcAddress\s*\(\s*core\s*,\s*D2RL::CoreExports::ExecuteConsoleCommandInfo\.name\s*\)'
+        $approvedFloatingDamageLookup = $sourceText -match 'GetProcAddress\s*\(\s*floatingDamage\s*,\s*"RuffnecKkFloatingDamageUseMapSenseOverlayHost"\s*\)'
+        if ($getProcAddressMatches.Count -ne 4 -or -not $approvedD3D12Lookup -or
+            -not $approvedIsInGameLookup -or -not $approvedCommandLookup -or
+            -not $approvedFloatingDamageLookup) {
+            $errors.Add('mapsense may resolve only D3D12CreateDevice, two governed D2RCore exports and the versioned Floating Damage handoff.')
+        }
+        $rendererStorageOwnsSwapChainRegistry = $sourceText -match
+            '(?s)struct\s+RendererStorage\s*\{\s*std::vector<SwapChainQueueBinding>\s+swapChainQueueBindings\s*;'
+        $swapChainRegistryUsesProcessStorage = $sourceText -match
+            'ProcessRendererStorage->swapChainQueueBindings'
+        $hasStaticSwapChainRegistry = $sourceText -match
+            'std::vector<SwapChainQueueBinding>\s+SwapChainQueueBindings\s*\{'
+        if (-not $rendererStorageOwnsSwapChainRegistry -or
+            -not $swapChainRegistryUsesProcessStorage -or
+            $hasStaticSwapChainRegistry) {
+            $errors.Add('mapsense must keep its COM-owning swap-chain registry in process-lifetime RendererStorage.')
+        }
+        $activeSettingsPanelPath = Join-Path $pluginDirectory 'src\imgui_settings_panel.cpp'
+        $activeSettingsPanelText = Get-Content -LiteralPath $activeSettingsPanelPath -Raw
+        if ($activeSettingsPanelText -match '(?<![A-Za-z0-9_])FontGlobalScale(?![A-Za-z0-9_])') {
+            $errors.Add('mapsense settings-panel scaling must not mutate or consume shared ImGui FontGlobalScale.')
+        }
+        if ($activeSettingsPanelText -match 'config\s*\.\s*overlay\s*\.\s*scale') {
+            $errors.Add('mapsense settings-panel scaling must remain independent from the automap overlay scale.')
+        }
+        if ($activeSettingsPanelText -notmatch 'UiTextId::InterfaceScale' -or
+            $activeSettingsPanelText -notmatch '(?<![A-Za-z0-9_])MenuScales(?![A-Za-z0-9_])') {
+            $errors.Add('mapsense must expose its selectable interface scale in the active settings panel.')
+        }
+        if ($sourceText -notmatch '\.resolveMenuScale\s*=\s*ResolveMapSensePanelScale' -or
+            $sourceText -notmatch 'MenuScale\s+interfaceScale') {
+            $errors.Add('mapsense selectable interface scale must use the menu-only renderer callback and configuration field.')
+        }
+        $localizationPath = Join-Path $pluginDirectory 'src\ui_localization.cpp'
+        $localizationText = Get-Content -LiteralPath $localizationPath -Raw
+        if ($localizationText -notmatch [regex]::Escape('Menu Appearance and Size')) {
+            $errors.Add('mapsense English appearance section must be named Menu Appearance and Size.')
+        }
+        $shippedConfigPath = Join-Path $pluginDirectory 'config\ruffneckk-mapsense.toml'
+        $shippedConfigText = Get-Content -LiteralPath $shippedConfigPath -Raw
+        if ($shippedConfigText -notmatch '(?m)^schema_version\s*=\s*17\s*$' -or
+            $shippedConfigText -notmatch '(?m)^interface_scale\s*=\s*"automatic"\s*$') {
+            $errors.Add('mapsense shipped configuration must default schema-17 interface scaling to automatic.')
         }
     }
     elseif ($getProcAddressMatches.Count -ne 0) {

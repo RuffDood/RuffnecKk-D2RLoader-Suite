@@ -7,9 +7,10 @@
 
 namespace RuffnecKk::MapSense {
 
-inline constexpr std::uint16_t ExternalAtlasGeometryProtocolVersion = 2U;
+inline constexpr std::uint16_t ExternalAtlasGeometryProtocolVersion = 3U;
 inline constexpr std::uint16_t ExternalAtlasStandardCampaignFlag = 1U;
-inline constexpr std::size_t ExternalAtlasGeometryHeaderBytes = 32U;
+inline constexpr std::uint16_t ExternalAtlasExactLevelFlag = 2U;
+inline constexpr std::size_t ExternalAtlasGeometryHeaderBytes = 36U;
 inline constexpr std::size_t ExternalAtlasGeometryMaximumBytes =
     16U * 1'024U * 1'024U;
 inline constexpr std::size_t ExternalAtlasGeometryMaximumLevels = 512U;
@@ -32,6 +33,19 @@ inline constexpr std::size_t ExternalAtlasGeometryMaximumCells = 1'000'000U;
     }
 }
 
+// Standard atlases remain reusable while the player moves within the governed
+// campaign range. Exact atlases are bound to one requested custom LevelId so a
+// reused native Levels.Layer can never make unrelated terrain look complete.
+[[nodiscard]] constexpr auto ExternalAtlasGeometryScopeMatchesLevel(
+        std::uint8_t act,
+        std::int32_t scopeLevelId,
+        std::int32_t currentLevelId) noexcept -> bool {
+    if (scopeLevelId < 0 || currentLevelId <= 0) return false;
+    return scopeLevelId == 0
+        ? IsExternalAtlasStandardCampaignLevel(act, currentLevelId)
+        : scopeLevelId == currentLevelId;
+}
+
 struct ExternalAtlasGeometryCell final {
     std::int32_t frame{};
     std::int32_t tileX{};
@@ -52,6 +66,10 @@ struct ExternalAtlasGeometry final {
     std::uint8_t difficulty{};
     std::uint8_t act{};
     std::uint16_t flags{};
+    // Zero selects the complete standard-campaign geometry for this act. A
+    // positive value selects exactly that custom LevelId and no other level,
+    // even when several Levels.txt rows reuse the same native automap layer.
+    std::int32_t scopeLevelId{};
     std::uint64_t digest{};
     std::vector<ExternalAtlasGeometryLevel> levels;
     std::vector<ExternalAtlasGeometryCell> cells;
@@ -81,6 +99,7 @@ enum class ExternalAtlasGeometryParseError : std::uint8_t {
     std::uint32_t expectedSeed,
     std::uint8_t expectedDifficulty,
     std::uint8_t expectedAct,
+    std::int32_t expectedScopeLevelId,
     ExternalAtlasGeometry& output,
     ExternalAtlasGeometryParseError* error = nullptr) -> bool;
 

@@ -36,6 +36,8 @@ enum class UiTextId : std::uint16_t {
     EnableMapSense,
     Appearance,
     MenuTheme,
+    InterfaceScale,
+    Automatic,
     MapAndReveal,
     RevealMap,
     AdditionsOpacity,

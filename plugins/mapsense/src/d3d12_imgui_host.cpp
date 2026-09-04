@@ -1,5 +1,6 @@
 #include "d3d12_imgui_host.hpp"
 #include "automap_sprite_package.hpp"
+#include "ui_localization.hpp"
 
 // The D3D12 interception and ImGui submission path is an adapted derivative
 // of locbones/D2RHUD-2.4 at b9373f8508282948ceb3e2b56f892d9eba475744,
@@ -401,12 +402,13 @@ struct SwapChainQueueBinding {
     ComPtr<ID3D12CommandQueue> commandQueue;
 };
 
-std::vector<SwapChainQueueBinding> SwapChainQueueBindings{};
-
 // Process-lifetime storage avoids releasing D3D12 references during static
 // destruction after D2R has already unloaded D3D12Core. Explicit shutdown and
-// ResizeBuffers still release every live reference deterministically.
+// ResizeBuffers still release every live reference deterministically. Every
+// COM-owning container belongs here too: a namespace-scope vector would run its
+// element destructors from the CRT exit table after D3D12 teardown has begun.
 struct RendererStorage {
+    std::vector<SwapChainQueueBinding> swapChainQueueBindings;
     ComPtr<ID3D12CommandQueue> commandQueue;
     ComPtr<ID3D12GraphicsCommandList> commandList;
     ComPtr<ID3D12DescriptorHeap> rtvHeap;
@@ -422,6 +424,8 @@ struct RendererStorage {
 };
 
 RendererStorage* const ProcessRendererStorage = new RendererStorage{};
+auto& SwapChainQueueBindings =
+    ProcessRendererStorage->swapChainQueueBindings;
 auto& CommandQueue = ProcessRendererStorage->commandQueue;
 auto& CommandList = ProcessRendererStorage->commandList;
 auto& RtvHeap = ProcessRendererStorage->rtvHeap;
@@ -481,7 +485,23 @@ std::atomic<bool> ConfiguredPublished{};
 std::atomic<D3D12ImGuiLogCallback> InfoLogger{};
 std::atomic<D3D12ImGuiLogCallback> WarningLogger{};
 
+void LogInfo(const char* message) noexcept;
+
 constexpr float MapSenseDefaultFontSize = 15.0F;
+constexpr std::array SelectableMapSenseMenuScales{
+    1.0F,
+    1.25F,
+    1.5F,
+    1.75F,
+    2.0F,
+};
+static constexpr ImWchar ExtendedLatinAndPunctuationRanges[]{
+    0x0100, 0x024F, // Latin Extended A/B and IPA additions
+    0x1E00, 0x1EFF, // Latin Extended Additional
+    0x2000, 0x206F, // General punctuation, including typographic quotes
+    0x20A0, 0x20CF, // Currency symbols
+    0,
+};
 constexpr std::size_t MaximumMapSenseSystemFontBytes =
     64U * 1'024U * 1'024U;
 std::vector<std::uint8_t> MapSenseBaseFontBytes;
@@ -492,7 +512,16 @@ std::vector<std::uint8_t> MapSenseTraditionalChineseFontBytes;
 std::wstring MapSenseAutomapFontPath;
 std::wstring MapSenseAutomapSpritePath;
 std::vector<std::uint8_t> MapSenseAutomapFontBytes;
+struct MapSenseMenuFontEntry {
+    float scale{};
+    ImFont* font{};
+};
+std::array<MapSenseMenuFontEntry,
+    SelectableMapSenseMenuScales.size() + 1U> MapSenseMenuFonts{};
+std::size_t MapSenseMenuFontCount{};
 ImFont* MapSenseAutomapFont{};
+float MapSenseAutomaticMenuScale{1.0F};
+float LastRenderedMapSenseMenuScale{};
 D3D12ImGuiTextureView PrimeMhChestTextureView{};
 D3D12ImGuiTextureView PrimeMhSuperChestTextureView{};
 D3D12ImGuiTextureView AutomapSpriteTextureView{};
@@ -598,6 +627,7 @@ void PreloadLocalizedMapSenseFonts() noexcept {
         ImFontAtlas& atlas,
         const std::vector<std::uint8_t>& bytes,
         const ImWchar* ranges,
+        float pixelSize,
         bool merge) noexcept -> ImFont* {
     if (bytes.empty()
         || bytes.size()
@@ -614,7 +644,7 @@ void PreloadLocalizedMapSenseFonts() noexcept {
     return atlas.AddFontFromMemoryTTF(
         const_cast<std::uint8_t*>(bytes.data()),
         static_cast<int>(bytes.size()),
-        MapSenseDefaultFontSize,
+        pixelSize,
         &config,
         ranges);
 }
@@ -624,15 +654,10 @@ void PreloadLocalizedMapSenseFonts() noexcept {
 // strings, so build one merged atlas from fonts already installed by Windows.
 // No font is redistributed with the plugin. Missing optional language fonts
 // degrade independently while the Latin/Cyrillic UI remains available.
-[[nodiscard]] auto AddLocalizedMapSenseFont(ImFontAtlas& atlas) noexcept
+[[nodiscard]] auto AddLocalizedMapSenseFont(
+        ImFontAtlas& atlas,
+        float pixelSize) noexcept
         -> ImFont* {
-    static constexpr ImWchar ExtendedLatinAndPunctuationRanges[]{
-        0x0100, 0x024F, // Latin Extended A/B and IPA additions
-        0x1E00, 0x1EFF, // Latin Extended Additional
-        0x2000, 0x206F, // General punctuation, including typographic quotes
-        0x20A0, 0x20CF, // Currency symbols
-        0,
-    };
     // ImFontConfig retains GlyphRanges until the atlas is built later by the
     // renderer backend. Keep this generated range alive across that deferred
     // build instead of handing ImGui a pointer into a local ImVector.
@@ -651,8 +676,13 @@ void PreloadLocalizedMapSenseFonts() noexcept {
         atlas,
         MapSenseBaseFontBytes,
         baseRanges.Data,
+        pixelSize,
         false);
-    if (font == nullptr) font = atlas.AddFontDefault();
+    if (font == nullptr) {
+        ImFontConfig fallback{};
+        fallback.SizePixels = pixelSize;
+        font = atlas.AddFontDefault(&fallback);
+    }
     if (font == nullptr) return nullptr;
 
     // Every merge targets the first font. ImGui skips duplicate codepoints and
@@ -661,23 +691,158 @@ void PreloadLocalizedMapSenseFonts() noexcept {
         atlas,
         MapSenseJapaneseFontBytes,
         atlas.GetGlyphRangesJapanese(),
+        pixelSize,
         true));
     static_cast<void>(AddSystemFont(
         atlas,
         MapSenseKoreanFontBytes,
         atlas.GetGlyphRangesKorean(),
+        pixelSize,
         true));
     static_cast<void>(AddSystemFont(
         atlas,
         MapSenseSimplifiedChineseFontBytes,
         atlas.GetGlyphRangesChineseFull(),
+        pixelSize,
         true));
     static_cast<void>(AddSystemFont(
         atlas,
         MapSenseTraditionalChineseFontBytes,
         atlas.GetGlyphRangesChineseFull(),
+        pixelSize,
         true));
     return font;
+}
+
+// The shared 15 px fallback retains broad D2R label coverage. The larger menu
+// font needs only MapSense's own translated UI strings, otherwise a 4K context
+// would duplicate every CJK glyph at twice the linear resolution.
+[[nodiscard]] auto AddLocalizedMapSenseMenuFont(
+        ImFontAtlas& atlas,
+        float pixelSize) noexcept -> ImFont* {
+    static auto* const menuRanges = new ImVector<ImWchar>{};
+    if (menuRanges->empty()) {
+        ImFontGlyphRangesBuilder builder;
+        builder.AddRanges(atlas.GetGlyphRangesDefault());
+        builder.AddRanges(atlas.GetGlyphRangesGreek());
+        builder.AddRanges(atlas.GetGlyphRangesCyrillic());
+        builder.AddRanges(atlas.GetGlyphRangesVietnamese());
+        builder.AddRanges(ExtendedLatinAndPunctuationRanges);
+        for (std::size_t languageIndex = 0U;
+                languageIndex < UiLanguageCount;
+                ++languageIndex) {
+            const auto language = static_cast<UiLanguage>(languageIndex);
+            for (std::size_t textIndex = 0U;
+                    textIndex < UiTextCount;
+                    ++textIndex) {
+                builder.AddText(UiText(
+                    static_cast<UiTextId>(textIndex),
+                    language));
+            }
+        }
+        builder.BuildRanges(menuRanges);
+    }
+
+    ImFont* font = AddSystemFont(
+        atlas,
+        MapSenseBaseFontBytes,
+        menuRanges->Data,
+        pixelSize,
+        false);
+    if (font == nullptr) {
+        ImFontConfig fallback{};
+        fallback.SizePixels = pixelSize;
+        font = atlas.AddFontDefault(&fallback);
+    }
+    if (font == nullptr) return nullptr;
+
+    static_cast<void>(AddSystemFont(
+        atlas,
+        MapSenseJapaneseFontBytes,
+        menuRanges->Data,
+        pixelSize,
+        true));
+    static_cast<void>(AddSystemFont(
+        atlas,
+        MapSenseKoreanFontBytes,
+        menuRanges->Data,
+        pixelSize,
+        true));
+    static_cast<void>(AddSystemFont(
+        atlas,
+        MapSenseSimplifiedChineseFontBytes,
+        menuRanges->Data,
+        pixelSize,
+        true));
+    static_cast<void>(AddSystemFont(
+        atlas,
+        MapSenseTraditionalChineseFontBytes,
+        menuRanges->Data,
+        pixelSize,
+        true));
+    return font;
+}
+
+[[nodiscard]] auto AddMapSenseMenuFont(
+        ImFontAtlas& atlas,
+        ImFont* defaultFont,
+        float scale) noexcept -> bool {
+    for (std::size_t index = 0U;
+            index < MapSenseMenuFontCount;
+            ++index) {
+        if (MapSenseMenuFonts[index].scale == scale) return true;
+    }
+    if (MapSenseMenuFontCount >= MapSenseMenuFonts.size()) return false;
+    auto* const font = scale == 1.0F
+        ? defaultFont
+        : AddLocalizedMapSenseMenuFont(
+            atlas,
+            MapSenseDefaultFontSize * scale);
+    if (font == nullptr) return false;
+    MapSenseMenuFonts[MapSenseMenuFontCount++] = {scale, font};
+    return true;
+}
+
+[[nodiscard]] auto ResolveActiveMapSenseMenuScale() noexcept -> float {
+    auto scale = MapSenseAutomaticMenuScale;
+    if (Callbacks.resolveMenuScale != nullptr) {
+        scale = Callbacks.resolveMenuScale(
+            MapSenseAutomaticMenuScale,
+            Callbacks.userData);
+    }
+    if (!(scale >= 1.0F && scale <= 2.0F)) {
+        return MapSenseAutomaticMenuScale;
+    }
+    for (std::size_t index = 0U;
+            index < MapSenseMenuFontCount;
+            ++index) {
+        if (MapSenseMenuFonts[index].scale == scale) return scale;
+    }
+    return MapSenseAutomaticMenuScale;
+}
+
+[[nodiscard]] auto FindMapSenseMenuFont(float scale) noexcept -> ImFont* {
+    for (std::size_t index = 0U;
+            index < MapSenseMenuFontCount;
+            ++index) {
+        if (MapSenseMenuFonts[index].scale == scale) {
+            return MapSenseMenuFonts[index].font;
+        }
+    }
+    return nullptr;
+}
+
+void LogMapSenseMenuScaleSelection(float scale) noexcept {
+    if (LastRenderedMapSenseMenuScale == scale) return;
+    LastRenderedMapSenseMenuScale = scale;
+    std::array<char, 128> message{};
+    const int written = std::snprintf(
+        message.data(),
+        message.size(),
+        "MapSense: settings menu selected scale %.3f; font rasterized at %.1f px.",
+        static_cast<double>(scale),
+        static_cast<double>(MapSenseDefaultFontSize * scale));
+    if (written > 0) LogInfo(message.data());
 }
 
 // D2R ships Exocet in the active mod package. Load it from that player-owned
@@ -700,6 +865,7 @@ void PreloadLocalizedMapSenseFonts() noexcept {
         atlas,
         MapSenseAutomapFontBytes,
         WesternAutomapRanges,
+        MapSenseDefaultFontSize,
         false);
 }
 
@@ -1790,7 +1956,11 @@ void ResetRendererStateLocked(bool clearInputSubclassState = true) noexcept {
         ImGui::DestroyContext();
         ImGuiContextCreated = false;
     }
+    MapSenseMenuFonts = {};
+    MapSenseMenuFontCount = 0U;
     MapSenseAutomapFont = nullptr;
+    MapSenseAutomaticMenuScale = 1.0F;
+    LastRenderedMapSenseMenuScale = 0.0F;
     PrimeMhChestTextureView = {};
     PrimeMhSuperChestTextureView = {};
     PrimeMhChestTexture.Reset();
@@ -2103,6 +2273,8 @@ auto InitializeRenderer(
                 frame.renderTarget.Get(), nullptr, descriptor);
             descriptor.ptr += descriptorSize;
         }
+        const auto backBufferDesc = Frames.front().renderTarget->GetDesc();
+        const auto menuScale = ComputeMapSenseMenuScale(backBufferDesc.Height);
 
         if (FAILED(device->CreateCommandList(
                 0U,
@@ -2148,13 +2320,33 @@ auto InitializeRenderer(
         // input without asking the Win32 backend to show a second OS cursor.
         io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
         ImFont* const mapSenseDefaultFont =
-            AddLocalizedMapSenseFont(*io.Fonts);
+            AddLocalizedMapSenseFont(*io.Fonts, MapSenseDefaultFontSize);
         if (mapSenseDefaultFont == nullptr) {
             return FailRendererInitialization(
                 13,
                 "MapSense: renderer initialization failed while adding its localized font atlas.");
         }
         io.FontDefault = mapSenseDefaultFont;
+        MapSenseAutomaticMenuScale = menuScale;
+        MapSenseMenuFontCount = 0U;
+        auto menuFontsReady = true;
+        for (const auto selectableScale : SelectableMapSenseMenuScales) {
+            menuFontsReady = menuFontsReady
+                && AddMapSenseMenuFont(
+                    *io.Fonts,
+                    mapSenseDefaultFont,
+                    selectableScale);
+        }
+        menuFontsReady = menuFontsReady
+            && AddMapSenseMenuFont(
+                *io.Fonts,
+                mapSenseDefaultFont,
+                MapSenseAutomaticMenuScale);
+        if (!menuFontsReady) {
+            return FailRendererInitialization(
+                13,
+                "MapSense: renderer initialization failed while adding its selectable settings-menu fonts.");
+        }
         MapSenseAutomapFont = AddAutomapMapSenseFont(*io.Fonts);
         if (!MapSenseAutomapFontPath.empty()
             && MapSenseAutomapFont == nullptr) {
@@ -2223,6 +2415,16 @@ auto InitializeRenderer(
             LogWarning(
                 "MapSense: input subclass installation could not be queued on D2R's UI thread.");
         }
+        std::array<char, 192> menuScaleMessage{};
+        const int menuScaleWritten = std::snprintf(
+            menuScaleMessage.data(),
+            menuScaleMessage.size(),
+            "MapSense: settings menu automatic scale %.3f for the %llux%llu D3D12 back buffer; %zu selectable font sizes are ready.",
+            static_cast<double>(MapSenseAutomaticMenuScale),
+            static_cast<unsigned long long>(backBufferDesc.Width),
+            static_cast<unsigned long long>(backBufferDesc.Height),
+            MapSenseMenuFontCount);
+        if (menuScaleWritten > 0) LogInfo(menuScaleMessage.data());
         LogInfo("MapSense: in-frame D3D12/ImGui host initialized on D2R's window.");
         return true;
     }
@@ -2277,8 +2479,17 @@ auto RenderPanelFrame(
     bool open = MenuOpen.load(std::memory_order_acquire);
     const bool inputReady = InputSubclassInstalled.load(
         std::memory_order_acquire);
-    if (open && inputReady && Callbacks.drawPanel)
-        bounds = Callbacks.drawPanel(&open, Callbacks.userData);
+    if (open && inputReady && Callbacks.drawPanel) {
+        const auto menuScale = ResolveActiveMapSenseMenuScale();
+        auto* const menuFont = FindMapSenseMenuFont(menuScale);
+        if (menuFont != nullptr) ImGui::PushFont(menuFont);
+        bounds = Callbacks.drawPanel(
+            &open,
+            menuScale,
+            Callbacks.userData);
+        if (menuFont != nullptr) ImGui::PopFont();
+        LogMapSenseMenuScaleSelection(menuScale);
+    }
     if (!open) bounds = {};
     MenuOpen.store(open, std::memory_order_release);
     PublishPanelBounds(bounds);

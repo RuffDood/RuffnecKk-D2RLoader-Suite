@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- MapSense 1.0.2 now reveals the exact current custom level even when its
+  `Levels.Layer` value is also used by a standard campaign level.
+
 ## [1.3.2] - 2026-09-04
 
 This hotfix updates four plugins for D2RLoader 1.2.1. All other Suite 1.3.1
