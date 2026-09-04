@@ -87,7 +87,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-enhanced-damage-min-max-fix",
     .name = "Enhanced Damage Min/Max Fix",
-    .version = "1.2.3",
+    .version = "1.2.4",
     .author = "RuffnecKk",
     .description = "Restores off-weapon Enhanced Damage when an item also adds minimum or maximum damage.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -168,7 +168,7 @@ void LogCorrection(
     std::snprintf(
         message,
         sizeof(message),
-        "Enhanced Damage Min/Max Fix 1.2.3 restored an off-weapon update "
+        "Enhanced Damage Min/Max Fix 1.2.4 restored an off-weapon update "
         "(stat=%u, retained=%d, evaluated=%d).",
         static_cast<unsigned>(static_cast<std::uint32_t>(packedStat) >> 16U),
         retainedValue,
@@ -251,7 +251,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Enhanced Damage Min/Max Fix 1.2.3: %s; diagnostics=%s; restored=%llu; "
+        "Enhanced Damage Min/Max Fix 1.2.4: %s; diagnostics=%s; restored=%llu; "
         "maximum=%llu; minimum=%llu; weapons left vanilla=%llu; "
         "post-write failures=%llu.",
         Settings.enabled ? "active" : "disabled",
@@ -396,7 +396,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "Enhanced Damage Min/Max Fix 1.2.3 by RuffnecKk loaded disabled; no hook or service registered.");
+            "Enhanced Damage Min/Max Fix 1.2.4 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 

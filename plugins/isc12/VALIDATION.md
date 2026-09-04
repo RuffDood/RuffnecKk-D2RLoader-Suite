@@ -1,7 +1,10 @@
 # ISC12 validation gates
 
-The completed evidence below belongs to candidate 0.2.1. Version 1.0.0 must be
-rebuilt and requalified as the exact final artifact before release.
+The historical completed evidence below belongs to candidate 0.2.1. Version
+1.0.1 includes the exact D2RLoader 1.2.1 beta preview 10 D2RCore profile;
+its native startup and schema lifecycle are qualified below. The historical
+gameplay, persistence and TCP/IP evidence is not silently reassigned to the new
+binary.
 
 ## Foundation and governance
 
@@ -14,7 +17,8 @@ rebuilt and requalified as the exact final artifact before release.
   all five eezstreet DLLs without a competing owner on any ISC12 surface.
 - [x] API v3, manifest resource, three exports and hybrid flags are scaffolded.
 - [x] No build-name/version allowlist exists.
-- [x] Admit D2RLoader 1.1/1.2 composition only through exact D2RCore
+- [x] Admit D2RLoader 1.1, 1.2 and 1.2.1 beta preview 10 composition only
+  through exact D2RCore
   providers: bounded relay, export/body, live PDATA/unwind, forward slot and
   exact native destination; retain every provider CALL.
 - [x] The config-free 0.2.1 candidate is active by DLL presence and retains no
@@ -23,6 +27,33 @@ rebuilt and requalified as the exact final artifact before release.
   config-free archive is explicitly a public-test candidate.
 - [x] Duplicate-scope mutex is PID-qualified: one owner per D2R process without
   blocking a second local host/joiner process.
+
+## D2RLoader 1.2.1 beta preview 10 compatibility — 2026-09-03
+
+- [x] Audited the supplied `D2RCore.dll` version
+  `1.2.1-beta+preview.10`, SHA-256
+  `667241D494F6A73E940E9EE89544872482B6083A08060BB539CFCDE5FADE7125`.
+- [x] Added exact fail-closed profiles for `LoadExcelTable`,
+  `WritePlayerSaveStatId`, `WriteItemSaveStatId`,
+  `WritePlayerSaveWithEnvironmentCapture`, `ReadItemsByVersion`,
+  `WriteD2sFileWithEnvironment` and `CloseD2sFileWithEnvironment`.
+  Each profile binds the provider bytes or complete body hash, PDATA/unwind
+  metadata, forward slot and governed native destination. The write/close pair
+  must belong to the same 1.2.1 generation.
+- [x] Preserved the exact D2RLoader 1.1 and 1.2 profiles; no build, channel or
+  version-number allowlist was added.
+- [x] Release `/W4 /WX` build and all five ISC12 tests pass. The final candidate
+  is 334,848 bytes, version 1.0.1, SHA-256
+  `B75FA5F17EC3B25D049399BDFB13E8F3958079EEEB077FEF01974F6AF861DD17`.
+- [x] A first full-stack mod-local cold start exposed four ItemStatCost builds
+  while D2RLoader rebuilt its missing 3.3.0 compiler snapshot. The original
+  three-slot staging bound stopped fail-closed before publication. The bound is
+  now eight: repeating the missing-cache start publishes the authoritative
+  400-row schema with `G0-builds=4` and reaches `D2R startup complete`.
+- [x] A second full-stack cold start validates the newly generated snapshot,
+  publishes the same schema with `G0-builds=2` and again reaches startup 24/24.
+  Both runs load 36 plugins, all five eezstreet plugins and 17 patches; only the
+  two pre-existing Stash Search and Revive Overhaul failures remain.
 
 ## G0 — loader and DescFunc
 
@@ -148,7 +179,7 @@ rebuilt and requalified as the exact final artifact before release.
 - [x] Attest the dynamic caller as one indivisible pair: canonical
   `0x8000 + direct D2R+0x52F090`, or D2RLoader
   `0xFFFF + WritePlayerSaveWithEnvironmentCapture`. Validate the provider's
-  complete 1.1/1.2 body hash, PDATA/unwind, bounded relay and native forward
+  complete 1.1/1.2/1.2.1 body hash, PDATA/unwind, bounded relay and native forward
   slot; preserve both the capacity and CALL.
 - [x] Reject the native schema fail-closed when `CsvBits > 32` or
   `CsvParamBits > 16`, matching the native 32-bit value and 16-bit parameter

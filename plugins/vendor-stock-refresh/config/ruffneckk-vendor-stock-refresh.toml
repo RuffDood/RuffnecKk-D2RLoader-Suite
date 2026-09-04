@@ -11,3 +11,7 @@ enabled = true
 # Logs a bounded sample of button placement and normal-stock refresh requests.
 # Leave this false for normal play; failures are always reported.
 enabled = false
+
+# Lets D2RLoader verify that multiplayer peers use matching settings.
+[d2rl]
+match = true

@@ -4,6 +4,7 @@
 #include "policy.hpp"
 
 #include <Windows.h>
+#include <bcrypt.h>
 
 #include <array>
 #include <atomic>
@@ -166,7 +167,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-vendor-stock-refresh",
     .name = "Vendor Stock Refresh",
-    .version = "2.0.0",
+    .version = "2.0.1",
     .author = "RuffnecKk",
     .description = "Refreshes a vendor's stock with one click.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -282,6 +283,159 @@ bool ReadPointer(const void* address, std::uintptr_t& value) noexcept {
     return true;
 }
 
+bool ComputeSha256(
+    const std::uint8_t* data,
+    std::size_t size,
+    NativeContract::Sha256Digest& output
+) noexcept {
+    if (!data || size == 0 || size > (std::numeric_limits<ULONG>::max)()) {
+        return false;
+    }
+
+    BCRYPT_ALG_HANDLE algorithm{};
+    BCRYPT_HASH_HANDLE hash{};
+    std::array<std::uint8_t, 512> hashObject{};
+    ULONG objectSize{};
+    ULONG returned{};
+    bool success{};
+
+    if (BCryptOpenAlgorithmProvider(
+            &algorithm,
+            BCRYPT_SHA256_ALGORITHM,
+            nullptr,
+            0) < 0) {
+        return false;
+    }
+    if (BCryptGetProperty(
+            algorithm,
+            BCRYPT_OBJECT_LENGTH,
+            reinterpret_cast<PUCHAR>(&objectSize),
+            sizeof(objectSize),
+            &returned,
+            0) >= 0
+        && returned == sizeof(objectSize)
+        && objectSize <= hashObject.size()
+        && BCryptCreateHash(
+            algorithm,
+            &hash,
+            hashObject.data(),
+            objectSize,
+            nullptr,
+            0,
+            0) >= 0
+        && BCryptHashData(
+            hash,
+            const_cast<PUCHAR>(data),
+            static_cast<ULONG>(size),
+            0) >= 0
+        && BCryptFinishHash(
+            hash,
+            output.data(),
+            static_cast<ULONG>(output.size()),
+            0) >= 0) {
+        success = true;
+    }
+    if (hash) BCryptDestroyHash(hash);
+    BCryptCloseAlgorithmProvider(algorithm, 0);
+    return success;
+}
+
+bool ValidateD2RCoreProviderAbi(
+    HMODULE d2rCore,
+    std::size_t d2rCoreImageSize,
+    const std::uint8_t* provider,
+    NativeContract::D2RCoreProviderProfile profile
+) noexcept {
+    using namespace NativeContract;
+
+    std::uintptr_t providerRva{};
+    std::size_t providerSize{};
+    std::uint32_t providerUnwindRva{};
+    std::uintptr_t providerFuncInfoRva{};
+    const Sha256Digest* expectedHash{};
+    const std::array<std::uint8_t, 32>* expectedUnwind{};
+    const std::array<std::uint8_t, 40>* expectedFuncInfo{};
+
+    switch (profile) {
+    case D2RCoreProviderProfile::D2RLoader12:
+        providerRva = D2RCoreProviderRva12;
+        providerSize = D2RCoreProviderSize12;
+        providerUnwindRva = D2RCoreProviderUnwindRva12;
+        providerFuncInfoRva = D2RCoreProviderFuncInfoRva12;
+        expectedHash = &D2RCoreProviderHash12;
+        expectedUnwind = &D2RCoreProviderUnwind12;
+        expectedFuncInfo = &D2RCoreProviderFuncInfo12;
+        break;
+    case D2RCoreProviderProfile::D2RLoader121:
+        providerRva = D2RCoreProviderRva121;
+        providerSize = D2RCoreProviderSize121;
+        providerUnwindRva = D2RCoreProviderUnwindRva121;
+        providerFuncInfoRva = D2RCoreProviderFuncInfoRva121;
+        expectedHash = &D2RCoreProviderHash121;
+        expectedUnwind = &D2RCoreProviderUnwind121;
+        expectedFuncInfo = &D2RCoreProviderFuncInfo121;
+        break;
+    default:
+        return false;
+    }
+
+    const auto coreBase = reinterpret_cast<std::uintptr_t>(d2rCore);
+    if (!coreBase
+        || coreBase > (std::numeric_limits<std::uintptr_t>::max)() - providerRva
+        || coreBase > (std::numeric_limits<std::uintptr_t>::max)()
+            - providerUnwindRva
+        || coreBase > (std::numeric_limits<std::uintptr_t>::max)()
+            - providerFuncInfoRva
+        || reinterpret_cast<std::uintptr_t>(provider) != coreBase + providerRva
+        || !IsWithinImage(provider, providerSize, d2rCore, d2rCoreImageSize)
+        || providerRva > (std::numeric_limits<DWORD>::max)() - providerSize) {
+        return false;
+    }
+
+    NativeContract::Sha256Digest liveHash{};
+    if (!ComputeSha256(provider, providerSize, liveHash)
+        || liveHash != *expectedHash) {
+        return false;
+    }
+
+    DWORD64 functionImageBase{};
+    const auto* liveFunction = RtlLookupFunctionEntry(
+        static_cast<DWORD64>(reinterpret_cast<std::uintptr_t>(provider)),
+        &functionImageBase,
+        nullptr);
+    RUNTIME_FUNCTION function{};
+    if (!liveFunction
+        || functionImageBase != static_cast<DWORD64>(coreBase)
+        || !IsReadableRange(liveFunction, sizeof(function))) {
+        return false;
+    }
+    std::memcpy(&function, liveFunction, sizeof(function));
+    if (function.BeginAddress != providerRva
+        || function.EndAddress != providerRva + providerSize
+        || function.UnwindData != providerUnwindRva
+        || !IsWithinImage(
+            reinterpret_cast<const void*>(coreBase + providerUnwindRva),
+            expectedUnwind->size(),
+            d2rCore,
+            d2rCoreImageSize)
+        || !NativeContract::Matches(
+            reinterpret_cast<const std::uint8_t*>(
+                coreBase + providerUnwindRva),
+            *expectedUnwind)
+        || !IsWithinImage(
+            reinterpret_cast<const void*>(coreBase + providerFuncInfoRva),
+            expectedFuncInfo->size(),
+            d2rCore,
+            d2rCoreImageSize)
+        || !NativeContract::Matches(
+            reinterpret_cast<const std::uint8_t*>(
+                coreBase + providerFuncInfoRva),
+            *expectedFuncInfo)) {
+        return false;
+    }
+    return true;
+}
+
 PacketRoute ValidateSendNineBytePacketRoute() noexcept {
     const auto mainModule = reinterpret_cast<HMODULE>(Base);
     const auto mainImageSize = ModuleImageSize(mainModule);
@@ -344,13 +498,20 @@ PacketRoute ValidateSendNineBytePacketRoute() noexcept {
     if (!IsWithinImage(
             provider,
             NativeContract::ProviderForwardingOffset
-                + NativeContract::D2RCoreForwardingWitness.size(),
+                + NativeContract::D2RCoreForwardingWitness12.size(),
             d2rCore,
-            d2rCoreImageSize)
-        || !NativeContract::Matches(provider, NativeContract::D2RCoreProviderEntry)
-        || !NativeContract::Matches(
-            provider + NativeContract::ProviderForwardingOffset,
-            NativeContract::D2RCoreForwardingWitness)) {
+            d2rCoreImageSize)) {
+        return PacketRoute::Invalid;
+    }
+    const auto providerProfile = NativeContract::IdentifyD2RCoreProviderProfile(
+        provider,
+        provider + NativeContract::ProviderForwardingOffset);
+    if (providerProfile == NativeContract::D2RCoreProviderProfile::Invalid
+        || !ValidateD2RCoreProviderAbi(
+            d2rCore,
+            d2rCoreImageSize,
+            provider,
+            providerProfile)) {
         return PacketRoute::Invalid;
     }
 
@@ -722,7 +883,7 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
     std::snprintf(
         message,
         sizeof(message),
-        "Vendor Stock Refresh 2.0.0: %s; diagnostics=%s; placed=%llu; "
+        "Vendor Stock Refresh 2.0.1: %s; diagnostics=%s; placed=%llu; "
         "placementFailures=%llu; sent=%llu; received=%llu; armed=%llu; rejected=%llu.",
         Settings.enabled ? "active" : "disabled",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
@@ -768,7 +929,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "VendorStockRefresh 2.0.0 by RuffnecKk loaded disabled; no hook or service registered.");
+            "VendorStockRefresh 2.0.1 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 
@@ -855,7 +1016,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
 
     context->LogInfo(
-        "VendorStockRefresh 2.0.0 by RuffnecKk active; native button uses the runtime gold anchor.");
+        "VendorStockRefresh 2.0.1 by RuffnecKk active; native button uses the runtime gold anchor.");
     return true;
 }
 

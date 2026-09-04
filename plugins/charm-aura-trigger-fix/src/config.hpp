@@ -65,12 +65,14 @@ inline auto ParseConfig(
         None,
         Plugin,
         Diagnostics,
+        D2rl,
     };
 
     Config parsed{};
     Section section{Section::None};
     bool pluginSectionSeen{};
     bool diagnosticsSectionSeen{};
+    bool d2rlSectionSeen{};
     bool pluginEnabledSeen{};
     bool diagnosticsEnabledSeen{};
 
@@ -109,11 +111,20 @@ inline auto ParseConfig(
                 }
                 diagnosticsSectionSeen = true;
                 section = Section::Diagnostics;
+            } else if (name == "d2rl") {
+                if (d2rlSectionSeen) {
+                    return SetConfigError(
+                        error, lineNumber, "duplicate section");
+                }
+                d2rlSectionSeen = true;
+                section = Section::D2rl;
             } else {
                 return SetConfigError(error, lineNumber, "unknown section");
             }
             continue;
         }
+
+        if (section == Section::D2rl) continue;
 
         const auto equal = line.find('=');
         if (equal == std::string_view::npos

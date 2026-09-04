@@ -313,7 +313,7 @@ inline bool ParseToml(
         const auto root = toml::parse(input);
         for (const auto& [key, value] : root) {
             (void)value;
-            if (key != "deposit" && key != "button") {
+            if (key != "deposit" && key != "button" && key != "d2rl") {
                 error = "unknown top-level setting or section: "
                     + std::string(key.str());
                 return false;

@@ -61,6 +61,10 @@ show_resistances_below_minus_100 = true
 [troubleshooting]
 # Adds usage counters to the resistance-floor console status.
 show_usage_counters = false
+
+# Lets D2RLoader verify that multiplayer peers use matching settings.
+[d2rl]
+match = true
 )toml";
 
 constexpr std::uintptr_t FirstFloorSiteRva = 0x4524C4;
@@ -123,7 +127,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "resistance-floor",
     .name = "Resistance Floor",
-    .version = "1.0.0",
+    .version = "1.0.1",
     .author = "RuffnecKk",
     .description = "Lets configured units fall below the vanilla resistance floor.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -499,7 +503,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Resistance Floor 1.0.0: active=%s; players=%s/%d; companions=%s/%d; monsters=%s/%d; character-screen=%s; usage-counters=%s; selections=%llu/%llu/%llu; vanilla=%llu; config=%s.",
+        "Resistance Floor 1.0.1: active=%s; players=%s/%d; companions=%s/%d; monsters=%s/%d; character-screen=%s; usage-counters=%s; selections=%llu/%llu/%llu; vanilla=%llu; config=%s.",
         Operational.load(std::memory_order_acquire) ? "true" : "false",
         Settings.players.enabled ? "on" : "off", Settings.players.floor,
         Settings.playerOwnedUnits.enabled ? "on" : "off",
@@ -561,7 +565,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     Context = context;
     Base = reinterpret_cast<std::uint8_t*>(context->exeBase);
     ResetState();
-    TraceLoad("Resistance Floor 1.0.0 load started.", true);
+    TraceLoad("Resistance Floor 1.0.1 load started.", true);
     if (!Base) {
         TraceLoad("Load refused: D2R executable base is unavailable.");
         return false;
@@ -580,7 +584,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     if (!Settings.enabled) {
         context->LogInfo(
-            "Resistance Floor 1.0.0 by RuffnecKk loaded disabled; no patch was installed.");
+            "Resistance Floor 1.0.1 by RuffnecKk loaded disabled; no patch was installed.");
         return true;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
@@ -606,7 +610,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Resistance Floor 1.0.0 by RuffnecKk active for D2R %s; players=%d; companions=%d; monsters=%s/%d; Character Screen=%s; installation=%s; TOML=%s.",
+        "Resistance Floor 1.0.1 by RuffnecKk active for D2R %s; players=%d; companions=%d; monsters=%s/%d; Character Screen=%s; installation=%s; TOML=%s.",
         runtimeBuild,
         SelectConfiguredFloor(Settings, UnitClass::Player, FireResistanceStat),
         SelectConfiguredFloor(

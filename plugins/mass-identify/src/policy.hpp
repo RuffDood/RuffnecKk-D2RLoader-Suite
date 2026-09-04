@@ -191,6 +191,7 @@ inline auto ParseConfig(
     std::string section;
     bool massSectionSeen{};
     bool diagnosticsSectionSeen{};
+    bool d2rlSectionSeen{};
     bool enabledSeen{};
     bool freeIdentificationSeen{};
     bool includeCubeSeen{};
@@ -221,6 +222,7 @@ inline auto ParseConfig(
             bool* seen{};
             if (name == "mass_identify") seen = &massSectionSeen;
             else if (name == "diagnostics") seen = &diagnosticsSectionSeen;
+            else if (name == "d2rl") seen = &d2rlSectionSeen;
             else {
                 return SetConfigError(error, lineNumber, "unknown section");
             }
@@ -231,6 +233,8 @@ inline auto ParseConfig(
             section.assign(name);
             continue;
         }
+
+        if (section == "d2rl") continue;
 
         const auto equal = line.find('=');
         if (equal == std::string_view::npos

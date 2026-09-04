@@ -332,7 +332,8 @@ foreach ($entry in $embeddedToolEntries) {
 }
 foreach ($tool in $plannedEmbeddedTools) {
     $embedding = $tool.archiveEmbedding
-    $matches = @($embeddedToolEntries | Where-Object ComponentId -eq [string]$tool.id)
+    $toolId = [string]$tool.id
+    $matches = @($embeddedToolEntries | Where-Object { $_.ComponentId -eq $toolId })
     if ($matches.Count -ne 2 -or
         @($matches | Where-Object Kind -eq 'embedded-tool-exe').Count -ne 1 -or
         @($matches | Where-Object Kind -eq 'embedded-tool-readme').Count -ne 1 -or

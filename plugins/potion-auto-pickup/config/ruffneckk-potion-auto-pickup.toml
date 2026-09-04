@@ -52,3 +52,7 @@ enabled = false
 # Also log rate-limited scan summaries, including scans selecting no potion.
 # This option has no effect unless diagnostics.enabled is true.
 log_scans = false
+
+# Lets D2RLoader verify that multiplayer peers use matching settings.
+[d2rl]
+match = true

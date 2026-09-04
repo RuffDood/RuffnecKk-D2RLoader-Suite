@@ -232,7 +232,7 @@ inline auto ParseToml(
         if (!ValidateKeys(
                 root, {},
                 {"config_version", "enabled", "players", "companions",
-                 "monsters", "character_screen", "troubleshooting"},
+                 "monsters", "character_screen", "troubleshooting", "d2rl"},
                 error)) {
             return false;
         }

@@ -11,3 +11,7 @@ enabled = true
 # Logs the first few suppressed Enhanced Damage updates restored by the fix.
 # Leave this false unless you are verifying an affected item.
 enabled = false
+
+# Lets D2RLoader verify that multiplayer peers use matching settings.
+[d2rl]
+match = true

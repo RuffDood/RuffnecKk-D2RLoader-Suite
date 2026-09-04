@@ -1,4 +1,4 @@
-# Resistance Floor 1.0.0
+# Resistance Floor 1.0.1
 
 Lets configured units fall below D2R's vanilla `-100` resistance floor.
 
@@ -70,7 +70,7 @@ Character Screen options are grouped separately:
 show_resistances_below_minus_100 = true
 ```
 
-Version 1.0.0 uses `config_version = 3`. Replace an earlier candidate TOML
+Version 1.0.1 uses `config_version = 3`. Replace an earlier candidate TOML
 instead of mixing removed settings with this format.
 
 Unknown keys, missing required settings and out-of-range values make the plugin
@@ -82,7 +82,7 @@ the lower bound.
 
 - Runtime identities are diagnostic only; the DLL loads from its complete
   native fingerprint rather than a build or channel allowlist.
-- Steam 3.3.93787 remains pending until the exact 1.0.0 artifact passes the
+- Steam 3.3.93787 remains pending until the exact 1.0.1 artifact passes the
   complete Suite qualification.
 - Loader: governed D2RLoader/PluginSDK v3 baseline.
 - Scope: global or mod-local; the plugin is not mod-scoped-only.

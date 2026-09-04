@@ -292,7 +292,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-mass-identify",
     .name = "MassID",
-    .version = "2.0.2",
+    .version = "2.0.3",
     .author = "RuffnecKk",
     .description = "Identifies selected item containers from an Identify Tome.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,

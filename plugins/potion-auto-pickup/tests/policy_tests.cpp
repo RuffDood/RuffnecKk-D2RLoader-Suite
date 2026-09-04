@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
         enabledHealing, Classify("hp5"), belt, 16) == -1);
 
     auto invalid = stream.str();
-    invalid += "\nunknown = true\n";
+    invalid += "\n[unknown]\nenabled = true\n";
     REQUIRE(!ParseConfig(invalid, config, error));
     REQUIRE(!ParseConfig(
         "enabled = true\npickup_distance = 5\n", config, error));

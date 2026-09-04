@@ -15,6 +15,13 @@
 
 namespace ruffneckk::remote_stash {
 
+inline bool IsMissingFilesystemEntryError(
+    const std::error_code& error
+) noexcept {
+    return error == std::errc::no_such_file_or_directory
+        || error == std::errc::not_a_directory;
+}
+
 enum class InputDevice : std::uint8_t {
     Keyboard,
     Mouse,
@@ -1008,6 +1015,7 @@ inline bool ParseConfig(
         Root,
         Button,
         Diagnostics,
+        D2rl,
     };
 
     HotkeyConfig parsed{};
@@ -1020,6 +1028,7 @@ inline bool ParseConfig(
     bool diagnosticsSeen{};
     bool diagnosticsTableSeen{};
     bool buttonTableSeen{};
+    bool d2rlTableSeen{};
     ButtonParseState buttonState{};
     Section section{Section::Root};
 
@@ -1040,12 +1049,17 @@ inline bool ParseConfig(
             } else if (line == "[diagnostics]" && !diagnosticsTableSeen) {
                 diagnosticsTableSeen = true;
                 section = Section::Diagnostics;
+            } else if (line == "[d2rl]" && !d2rlTableSeen) {
+                d2rlTableSeen = true;
+                section = Section::D2rl;
             } else {
                 return SetError(
                     error, lineNumber, "unknown or duplicate section");
             }
             continue;
         }
+
+        if (section == Section::D2rl) continue;
 
         const auto equal = line.find('=');
         if (equal == std::string_view::npos

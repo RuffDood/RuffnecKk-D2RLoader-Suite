@@ -139,6 +139,8 @@ config_version = 1
 enabled = true
 [diagnostics]
 enabled = false
+[d2rl]
+match = true
 )toml";
     std::string error;
     CHECK(ParseToml(validToml, config, error));

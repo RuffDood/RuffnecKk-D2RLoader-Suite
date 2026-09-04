@@ -102,7 +102,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-isc12",
     .name = "ISC12",
-    .version = "1.0.0",
+    .version = "1.0.1",
     .author = "RuffnecKk",
     .description = "Extends ItemStatCost.txt capacity to 4,095 rows. Requires ISC12-compatible save files.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -1033,7 +1033,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "ISC12 1.0.0 active for observed D2R %s; max-stat-id=%u; foundation-patterns=%zu; codec-sites=%zu; codec-mutations=%zu; scope=%s; activation=presence.",
+        "ISC12 1.0.1 active for observed D2R %s; max-stat-id=%u; foundation-patterns=%zu; codec-sites=%zu; codec-mutations=%zu; scope=%s; activation=presence.",
         RuntimeBuild.c_str(),
         static_cast<unsigned>(MaximumStatId),
         FoundationPatterns.size(),

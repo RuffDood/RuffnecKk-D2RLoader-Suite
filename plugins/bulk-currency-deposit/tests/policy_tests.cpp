@@ -296,7 +296,7 @@ tooltip = 'Deposit "Currency" \ Now'
         != std::string::npos);
     REQUIRE(source.find(".displayName = \"Bulk Currency Deposit\"")
         != std::string::npos);
-    REQUIRE(source.find(".version = \"1.1.1\"") != std::string::npos);
+    REQUIRE(source.find(".version = \"1.1.2\"") != std::string::npos);
     REQUIRE(source.find(".category = \"RuffnecKk Suite\"")
         != std::string::npos);
     REQUIRE(source.find("D2RL::Input::Key::D") != std::string::npos);

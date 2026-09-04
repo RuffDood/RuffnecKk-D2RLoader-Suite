@@ -59,7 +59,7 @@ d2rlplugin_embed_config(
 )
 if(MSVC)
     target_compile_options(ruffneckk_bulk_currency_deposit PRIVATE
-        /utf-8 /W4 /permissive-
+        /EHsc /utf-8 /W4 /permissive-
         $<$<BOOL:${RUFFNECKK_SUITE_WARNINGS_AS_ERRORS}>:/WX>
     )
     target_link_options(ruffneckk_bulk_currency_deposit PRIVATE
@@ -90,7 +90,7 @@ if(BUILD_TESTING)
     )
     if(MSVC)
         target_compile_options(ruffneckk_bulk_currency_deposit_tests PRIVATE
-            /utf-8 /W4 /permissive-
+            /EHsc /utf-8 /W4 /permissive-
             $<$<BOOL:${RUFFNECKK_SUITE_WARNINGS_AS_ERRORS}>:/WX>
         )
     endif()

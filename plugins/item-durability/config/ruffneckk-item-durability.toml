@@ -35,3 +35,7 @@ bows_and_crossbows_have_durability = false
 # Startup, warnings, errors, and the "item-durability" status command remain
 # available even when this option is false.
 enabled = false
+
+# Lets D2RLoader verify that multiplayer peers use matching settings.
+[d2rl]
+match = true

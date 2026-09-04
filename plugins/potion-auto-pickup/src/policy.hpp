@@ -522,6 +522,7 @@ inline auto ParseConfig(
         RejuvenationPotions,
         Advanced,
         Diagnostics,
+        D2rl,
     } section{Section::Root};
 
     bool rootEnabled{};
@@ -533,6 +534,7 @@ inline auto ParseConfig(
     bool advancedSection{};
     bool advancedInterval{};
     bool diagnosticsSection{};
+    bool d2rlSection{};
     bool diagnosticsEnabled{};
     bool diagnosticsScans{};
     std::array<FamilySeen, 3> familySeen{};
@@ -611,6 +613,13 @@ inline auto ParseConfig(
                 diagnosticsSection = true;
                 section = Section::Diagnostics;
                 continue;
+            } else if (name == "d2rl") {
+                if (d2rlSection) {
+                    return SetError(error, lineNumber, "duplicate section");
+                }
+                d2rlSection = true;
+                section = Section::D2rl;
+                continue;
             } else {
                 return SetError(error, lineNumber, "unknown section");
             }
@@ -629,6 +638,8 @@ inline auto ParseConfig(
             }
             continue;
         }
+
+        if (section == Section::D2rl) continue;
 
         const auto equal = line.find('=');
         if (equal == std::string_view::npos

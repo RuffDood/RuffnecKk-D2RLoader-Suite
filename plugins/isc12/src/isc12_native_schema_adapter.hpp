@@ -57,7 +57,10 @@ enum class NativeSchemaGateDecision : std::uint8_t {
         : NativeSchemaGateDecision::FailClosed;
 }
 
-inline constexpr std::size_t NativeSchemaCandidateCapacity = 3;
+// A loader may rebuild its persistent base compiler snapshot before compiling
+// the active game banks. Keep enough bounded slots for both phases until the
+// authoritative RotW TableView selects the exact records allocation.
+inline constexpr std::size_t NativeSchemaCandidateCapacity = 8;
 
 enum class NativeSchemaStageResult : std::uint8_t {
     Staged,

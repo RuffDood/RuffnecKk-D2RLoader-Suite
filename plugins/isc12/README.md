@@ -1,4 +1,4 @@
-# ISC12 1.0.0
+# ISC12 1.0.1
 
 > Config-free public release. Installing the DLL activates ISC12 after
 > its complete native fingerprint passes.
@@ -7,8 +7,9 @@ ISC12 is a clean-sheet D2RLoader format for overhaul mods that need more than
 511 `ItemStatCost` rows. It reserves serialized IDs `0..4094` for stats and
 `0xFFF` as the list terminator.
 
-Version 1.0.0 promotes the proven 0.2.1 candidate and its narrowly attested
-coexistence contract for `ExtendedItemStats.dll` 0.3.14. It uses a same-thread
+Version 1.0.1 adds D2RLoader 1.2.1 support and handles the extra table builds
+created while D2RLoader prepares a fresh compiler cache. It keeps the narrowly
+attested coexistence contract for `ExtendedItemStats.dll` 0.3.14 and uses a same-thread
 authority bounded to the
 synchronous initial
 `D2RLoaderLoadPlugin` callback, preflights every G0, G10 and codec surface before
@@ -75,9 +76,10 @@ before any write. Fourteen new exact witnesses cover the owner frame, its sole
 caller, the 511-DWORD clear, adjacent snapshot layout and all eight low-ID
 compound writes.
 
-D2RLoader 1.2 also composes the governed compiler, G3 stat writer and dynamic
-player-save caller through D2RCore. ISC12 accepts either each canonical direct
-native target or the corresponding exactly attested provider. Admission binds
+D2RLoader 1.1, 1.2 and 1.2.1 beta preview 10 may compose the governed compiler,
+G3 stat writer and dynamic player-save caller through D2RCore. ISC12 accepts
+either each canonical direct native target or the corresponding exactly
+attested provider. Admission binds
 the export/body, live PDATA and unwind contract, a bounded unconditional relay
 chain, the live forward slot and the exact native destination. The dynamic
 caller is accepted only as an indivisible pair: vanilla `0x8000` capacity plus
@@ -86,6 +88,20 @@ direct serializer, or D2RLoader `0xFFFF` capacity plus
 provider CALLs. The save-stat providers still forward IDs above 511 unchanged;
 only D2RLoader's private 512-bit compatibility census omits those IDs, which is
 a separate metadata/network-hardening gap.
+
+The 1.2.1 beta preview 10 profile was derived byte-for-byte from the supplied
+`D2RCore.dll` (SHA-256
+`667241D494F6A73E940E9EE89544872482B6083A08060BB539CFCDE5FADE7125`).
+It preserves the existing 1.1 and 1.2 profiles and remains fail-closed for any
+provider that does not match one complete known ABI. Runtime qualification of
+the 1.2.1 profile is recorded separately in `VALIDATION.md`.
+
+D2RLoader may rebuild its persistent base compiler snapshot before loading the
+active game banks. ISC12 therefore retains up to eight unpublished ItemStatCost
+captures until the RotW table view selects the authoritative allocation. A
+fresh-cache 1.2.1 cold start exercised four captures, and the following normal
+cold start exercised two; both published the 400-row schema and completed all
+24 startup stages.
 
 The complete prepared source plan now contains 24 mutable sites, 102
 differing-byte mutations and 77 witnesses. G1–G4 retain 20 sites and 84 slots;
@@ -305,16 +321,16 @@ including all five eezstreet DLLs, applied 17 patches, compiled 190 TXT tables,
 selected the authoritative 400-row schema and reached `D2R startup complete`.
 Only the two known unrelated Stash Search and Revive Overhaul failures remained.
 
-The current public-metadata build changes only the PluginInfo and Windows
-resource description in source to `Extends ItemStatCost.txt capacity to 4,095
-rows. Requires ISC12-compatible save files.` Two byte-identical Release `/W4
-/WX` builds remain 451,072 bytes and have SHA-256
-`AFB4B2D1F779A368C3139BB5AF9EDC59CFD4B83042C88AD2EE7991C9E62DFF00`.
-CTest passes `5/5`, and the exact DLL completes the full-stack mod-local and
-global cold starts with 36 plugins, all five eezstreet DLLs and 17 patches. It
-is restored mod-local with no global duplicate and no running game process.
-Gameplay and TCP/IP were not rerun for this description-only source change;
-those behavioral proofs remain attached to the preceding candidate.
+The current public build keeps the PluginInfo and Windows resource description
+`Extends ItemStatCost.txt capacity to 4,095 rows. Requires ISC12-compatible save
+files.`, adds the exact D2RLoader 1.2.1 provider generation and expands the
+bounded schema staging set for first-run compiler snapshot creation. It is
+334,848 bytes with SHA-256
+`59C46E13158C1E03D54BC378AF27E78333FD692F6D648B9AA200EE25DC3B7767`.
+CTest passes `5/5`. Missing-cache and normal-cache full-stack mod-local starts
+both reach `D2R startup complete` with 36 plugins, all five eezstreet DLLs and
+17 patches. Gameplay and TCP/IP were not rerun for this binary; those behavioral
+proofs remain attached to the preceding qualified candidates.
 
 ## Planned release installation contract
 
@@ -340,7 +356,7 @@ is unsupported. D2RLoader's native `.d2rl` environment record provides the visib
 plugin/mod compatibility warning; it is not a cryptographic schema marker and
 ISC12 does not promise to hard-block every misuse. Backups remain mandatory.
 
-The config-free 1.0.0 plugin is distributed with D2R Save Converter 1.0.0 as a
+The config-free 1.0.1 plugin is distributed with D2R Save Converter 1.0.0 as a
 separate companion tool. Rebuild and validate both final artifacts before
 publishing them.
 

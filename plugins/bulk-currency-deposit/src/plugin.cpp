@@ -87,6 +87,10 @@ y = 813
 # Literal UTF-8 tooltip for the optional Inventory button. Mod-owned layouts
 # set their own literal tooltipString and do not depend on a global string ID.
 tooltip = "Deposit Currency"
+
+# Lets D2RLoader verify that multiplayer peers use matching settings.
+[d2rl]
+match = true
 )toml";
 
 constexpr std::uintptr_t GetLocalDataContextRva = 0x08B2D0;
@@ -338,7 +342,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "bulk-currency-deposit",
     .name = "Bulk Currency Deposit",
-    .version = "1.1.1",
+    .version = "1.1.2",
     .author = "RuffnecKk",
     .description = "Auto transfers all your stackable currency items into their respective stash slots.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -1593,7 +1597,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Bulk Currency Deposit 1.1.1: enabled=%s; Controls=%s; defaultBinding=SHIFT+D; UI=%s; buttonResources=%s; inventoryButton=%s; buttonPosition=%d,%d; delay=%ums; include=%llu; exclude=%llu; batch=%s; pending=%llu; requests=%llu; buttonRequests=%llu; coalesced=%llu; refused=%llu; stale=%llu; empty=%llu; started=%llu; completed=%llu; cancelled=%llu; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; dispatchFailures=%llu; TOML=%s.",
+        "Bulk Currency Deposit 1.1.2: enabled=%s; Controls=%s; defaultBinding=SHIFT+D; UI=%s; buttonResources=%s; inventoryButton=%s; buttonPosition=%d,%d; delay=%ums; include=%llu; exclude=%llu; batch=%s; pending=%llu; requests=%llu; buttonRequests=%llu; coalesced=%llu; refused=%llu; stale=%llu; empty=%llu; started=%llu; completed=%llu; cancelled=%llu; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; dispatchFailures=%llu; TOML=%s.",
         Settings.enabled ? "true" : "false",
         DepositAction.load(std::memory_order_acquire)
                 != D2RL::Input::InvalidHandle
@@ -1664,7 +1668,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
                 "BulkCurrencyDeposit: optional status command was not registered.");
         }
         context->LogInfo(
-            "Bulk Currency Deposit 1.1.1 by RuffnecKk loaded disabled; no Controls action, SDK listeners or resources installed.");
+            "Bulk Currency Deposit 1.1.2 by RuffnecKk loaded disabled; no Controls action, SDK listeners or resources installed.");
         return true;
     }
 
@@ -1740,7 +1744,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Bulk Currency Deposit 1.1.1 by RuffnecKk active; native fingerprint accepted; Controls action=Bulk Currency Deposit (default SHIFT+D); buttonResources=ready; inventoryButton=%s at %d,%d; delay=%ums; routing=native Advanced Stash registry; installation=%s; TOML=%s.",
+        "Bulk Currency Deposit 1.1.2 by RuffnecKk active; native fingerprint accepted; Controls action=Bulk Currency Deposit (default SHIFT+D); buttonResources=ready; inventoryButton=%s at %d,%d; delay=%ums; routing=native Advanced Stash registry; installation=%s; TOML=%s.",
         Settings.inventoryButtonEnabled ? "injected" : "external-ready",
         Settings.button.x,
         Settings.button.y,

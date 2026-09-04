@@ -96,14 +96,40 @@ int main(int argc, char** argv) {
     auto invalidRelay = RelayStubOpcode;
     invalidRelay[1] = 0x15;
     CHECK(!Matches(invalidRelay.data(), RelayStubOpcode));
-    CHECK(Matches(D2RCoreProviderEntry.data(), D2RCoreProviderEntry));
-    auto invalidProvider = D2RCoreProviderEntry;
+    CHECK(Matches(D2RCoreProviderEntry12.data(), D2RCoreProviderEntry12));
+    auto invalidProvider = D2RCoreProviderEntry12;
     invalidProvider[0x20] ^= 0x01;
-    CHECK(!Matches(invalidProvider.data(), D2RCoreProviderEntry));
-    CHECK(Matches(D2RCoreForwardingWitness.data(), D2RCoreForwardingWitness));
-    auto invalidForwarding = D2RCoreForwardingWitness;
+    CHECK(!Matches(invalidProvider.data(), D2RCoreProviderEntry12));
+    CHECK(Matches(
+        D2RCoreForwardingWitness12.data(),
+        D2RCoreForwardingWitness12));
+    auto invalidForwarding = D2RCoreForwardingWitness12;
     invalidForwarding[0x0B] ^= 0x01;
-    CHECK(!Matches(invalidForwarding.data(), D2RCoreForwardingWitness));
+    CHECK(!Matches(invalidForwarding.data(), D2RCoreForwardingWitness12));
+    CHECK(Matches(D2RCoreProviderEntry121.data(), D2RCoreProviderEntry121));
+    CHECK(Matches(
+        D2RCoreForwardingWitness121.data(),
+        D2RCoreForwardingWitness121));
+    CHECK(IdentifyD2RCoreProviderProfile(
+        D2RCoreProviderEntry12.data(),
+        D2RCoreForwardingWitness12.data())
+        == D2RCoreProviderProfile::D2RLoader12);
+    CHECK(IdentifyD2RCoreProviderProfile(
+        D2RCoreProviderEntry121.data(),
+        D2RCoreForwardingWitness121.data())
+        == D2RCoreProviderProfile::D2RLoader121);
+    CHECK(IdentifyD2RCoreProviderProfile(
+        D2RCoreProviderEntry12.data(),
+        D2RCoreForwardingWitness121.data())
+        == D2RCoreProviderProfile::Invalid);
+    CHECK(IdentifyD2RCoreProviderProfile(
+        invalidProvider.data(),
+        D2RCoreForwardingWitness12.data())
+        == D2RCoreProviderProfile::Invalid);
+    static_assert(D2RCoreProviderSize12 == 0x19A);
+    static_assert(D2RCoreProviderSize121 == 0x170);
+    static_assert(D2RCoreProviderHash12.size() == 32);
+    static_assert(D2RCoreProviderHash121.size() == 32);
     CHECK(Matches(DownstreamQueueEntry.data(), DownstreamQueueEntry));
     auto invalidDownstream = DownstreamQueueEntry;
     invalidDownstream[0x14] ^= 0x01;

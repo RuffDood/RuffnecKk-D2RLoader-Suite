@@ -403,7 +403,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-burn-damage-fix",
     .name = "Burn Damage Fix",
-    .version = "1.0.0",
+    .version = "1.0.1",
     .author = "RuffnecKk",
     .description = "Restores Burn damage and Fire defenses with a moving periodic flame.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -1435,7 +1435,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Burn Damage Fix 1.0.0: active=%s; build=%s; generic=%s; resistance=%s; overlay=%s/fire_hit/%df; native-burning=%s/%llu/%llu/%llu/%llu/%llu removed/already-none/custom/fail/restored; diagnostics=%s; production=%llu/%llu; resolved=%llu/%llu/%llu applied/cancelled/fail; burning-state=%llu/%llu active/missing; overlay-replay=%llu/%llu/%llu replayed/cadence/foreign-replaced; config=%s.",
+        "Burn Damage Fix 1.0.1: active=%s; build=%s; generic=%s; resistance=%s; overlay=%s/fire_hit/%df; native-burning=%s/%llu/%llu/%llu/%llu/%llu removed/already-none/custom/fail/restored; diagnostics=%s; production=%llu/%llu; resolved=%llu/%llu/%llu applied/cancelled/fail; burning-state=%llu/%llu active/missing; overlay-replay=%llu/%llu/%llu replayed/cadence/foreign-replaced; config=%s.",
         Operational.load(std::memory_order_acquire) ? "true" : "false",
         RuntimeBuild.c_str(),
         Settings.normalizeGenericBurn ? "on" : "off",
@@ -1596,7 +1596,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     if (!Settings.enabled) {
         context->LogInfo(
-            "Burn Damage Fix 1.0.0 by RuffnecKk loaded disabled; no hook was installed.");
+            "Burn Damage Fix 1.0.1 by RuffnecKk loaded disabled; no hook was installed.");
         return true;
     }
 
@@ -1665,7 +1665,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Burn Damage Fix 1.0.0 by RuffnecKk active for observed D2R %s; generic=%s; resistance=%s; overlay=%s/fire_hit/%df; native-burning=%s; installation=%s; TOML=%s.",
+        "Burn Damage Fix 1.0.1 by RuffnecKk active for observed D2R %s; generic=%s; resistance=%s; overlay=%s/fire_hit/%df; native-burning=%s; installation=%s; TOML=%s.",
         RuntimeBuild.c_str(),
         Settings.normalizeGenericBurn ? "enabled" : "disabled",
         Settings.applyFireResistance ? "enabled" : "disabled",

@@ -50,6 +50,7 @@ using ruffneckk::remote_stash::IsMouseHotkey;
 using ruffneckk::remote_stash::IsRemoteStashUiMessage;
 using ruffneckk::remote_stash::IsSdkInputCompatible;
 using ruffneckk::remote_stash::InspectSpA1Sprite;
+using ruffneckk::remote_stash::IsMissingFilesystemEntryError;
 using ruffneckk::remote_stash::PairedCloseOrigin;
 using ruffneckk::remote_stash::PairedInterface;
 using ruffneckk::remote_stash::ParseConfig;
@@ -73,7 +74,7 @@ using ruffneckk::remote_stash::WidgetRect;
 
 constexpr std::size_t MaximumConfigBytes = 65'536;
 constexpr std::uint64_t MaximumCustomSpriteBytes = 64ULL * 1024ULL * 1024ULL;
-constexpr char PluginVersion[] = "2.3.0";
+constexpr char PluginVersion[] = "2.3.1";
 
 #define REMOTE_SITE(value) value
 
@@ -666,6 +667,7 @@ bool LoadActiveMpqButtonConfig() noexcept {
             std::error_code fileError;
             const auto status = std::filesystem::status(path, fileError);
             if (fileError) {
+                if (IsMissingFilesystemEntryError(fileError)) continue;
                 const auto message = std::string(
                     "RemoteStash: active-MPQ button configuration could not be inspected (")
                     + path.string() + ").";
@@ -3828,7 +3830,7 @@ bool Load(
     if (!HotkeySettings.enabled) {
         RegisterStatusCommand();
         context->LogInfo(
-            "Remote Stash 2.3.0 by RuffnecKk disabled; no hook, input action, listener, resource, or child layout was registered.");
+            "Remote Stash 2.3.1 by RuffnecKk disabled; no hook, input action, listener, resource, or child layout was registered.");
         return true;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);

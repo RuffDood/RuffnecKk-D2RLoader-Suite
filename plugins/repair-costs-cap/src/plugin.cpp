@@ -152,7 +152,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-repair-costs-cap",
     .name = "Repair Costs Cap",
-    .version = "1.4.3",
+    .version = "1.4.4",
     .author = "RuffnecKk",
     .description = "Controls NPC repair prices and optional permanent durability wear.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -513,7 +513,7 @@ auto Status(
     std::snprintf(
         pricing,
         sizeof(pricing),
-        "Repair Costs Cap 1.4.3: enabled=%s; repairCosts=%s; maximumGold=%d "
+        "Repair Costs Cap 1.4.4: enabled=%s; repairCosts=%s; maximumGold=%d "
         "(per item and Repair All); diagnostics=%s.",
         Settings.pluginEnabled ? "true" : "false",
         Settings.enabled ? "true" : "false",
@@ -605,7 +605,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Repair Costs Cap 1.4.3 by RuffnecKk loaded: enabled=%s; repairCosts=%s; "
+        "Repair Costs Cap 1.4.4 by RuffnecKk loaded: enabled=%s; repairCosts=%s; "
         "maximumGold=%d (per item and Repair All); durability wear=%s "
         "at %.2f%%; diagnostics=%s.",
         Settings.pluginEnabled ? "true" : "false",

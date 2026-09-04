@@ -4643,6 +4643,10 @@ int main() {
         != std::string::npos);
     CHECK(loaderText.find("GetProcAddress(core, \"ReadItemsByVersion\")")
         != std::string::npos);
+    CHECK(loaderText.find("ProviderBytes121.size() == 0x6CU")
+        != std::string::npos);
+    CHECK(loaderText.find("ProviderBytes121.size() == 0x6BU")
+        != std::string::npos);
     CHECK(loaderText.find("ProviderBytes12.size() == 0x6CU")
         != std::string::npos);
     CHECK(loaderText.find("ProviderBytes12.size() == 0x6BU")
@@ -4651,11 +4655,23 @@ int main() {
         != std::string::npos);
     CHECK(loaderText.find("function.UnwindData != unwindRva")
         != std::string::npos);
-    CHECK(loaderText.find("liveUnwind != (provider12 ? UnwindBytes12")
+    CHECK(loaderText.find("liveUnwind != (provider121")
+        != std::string::npos);
+    CHECK(loaderText.find("NativeForwarder121Offset = 0x961U")
         != std::string::npos);
     CHECK(loaderText.find("NativeForwarder12Offset = 0x935U")
         != std::string::npos);
     CHECK(loaderText.find("NativeForwarder11Offset = 0x901U")
+        != std::string::npos);
+    CHECK(loaderText.find("ProviderRva121 = 0x696210U")
+        != std::string::npos);
+    CHECK(loaderText.find("ProviderSize121 = 0x1C04U")
+        != std::string::npos);
+    CHECK(loaderText.find("ProviderUnwindRva121 = 0x56D0CCU")
+        != std::string::npos);
+    CHECK(loaderText.find("ProviderFuncInfoRva121 = 0x56D2B0U")
+        != std::string::npos);
+    CHECK(loaderText.find("NativeForwardSlotRva121 = 0x597DC0U")
         != std::string::npos);
     CHECK(loaderText.find("ProviderRva12 = 0x634650U")
         != std::string::npos);
@@ -4676,6 +4692,14 @@ int main() {
     CHECK(loaderText.find("ProviderFuncInfoRva12 = 0x50F1B4U")
         != std::string::npos);
     CHECK(loaderText.find("ProviderFuncInfoRva11 = 0x452648U")
+        != std::string::npos);
+    CHECK(loaderText.find("ProviderRva121 = 0x69CE20U")
+        != std::string::npos);
+    CHECK(loaderText.find("ProviderUnwindRva121 = 0x56F6C0U")
+        != std::string::npos);
+    CHECK(loaderText.find("ProviderFuncInfoRva121 = 0x56F6FCU")
+        != std::string::npos);
+    CHECK(loaderText.find("NativeForwardSlotRva121 = 0x597E38U")
         != std::string::npos);
     CHECK(loaderText.find("ProviderRva12 = 0x63BE60U")
         != std::string::npos);
@@ -4856,6 +4880,10 @@ int main() {
     CHECK(loaderText.find("0x2129AFCU") != std::string::npos);
     CHECK(loaderText.find("0x2129B18U") != std::string::npos);
     CHECK(loaderText.find("matchingProviderGeneration")
+        != std::string::npos);
+    CHECK(loaderText.find("writerProviderRva == 0x698390U")
+        != std::string::npos);
+    CHECK(loaderText.find("closeProviderRva == 0x69B270U")
         != std::string::npos);
     CHECK(loaderText.find("writerProviderRva == 0x6365E0U")
         != std::string::npos);

@@ -28,3 +28,7 @@ show_resistances_below_minus_100 = true
 [troubleshooting]
 # Adds usage counters to the resistance-floor console status.
 show_usage_counters = false
+
+# Lets D2RLoader verify that multiplayer peers use matching settings.
+[d2rl]
+match = true

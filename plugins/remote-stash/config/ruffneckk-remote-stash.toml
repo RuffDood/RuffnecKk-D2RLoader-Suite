@@ -65,3 +65,7 @@ hovered_frame = 3
 # Errors, warnings, startup messages, and the status command remain available
 # when this is false. Leave disabled for normal play.
 enabled = false
+
+# Lets D2RLoader verify that multiplayer peers use matching settings.
+[d2rl]
+match = true

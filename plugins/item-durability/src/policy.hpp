@@ -85,6 +85,7 @@ inline auto ParseConfig(
     bool etherealSection{};
     bool rangedSection{};
     bool diagnosticsSection{};
+    bool d2rlSection{};
     bool pluginEnabled{};
     bool lossEnabled{};
     bool normalResistance{};
@@ -117,11 +118,14 @@ inline auto ParseConfig(
             else if (section == "ethereal") seen = &etherealSection;
             else if (section == "ranged_weapons") seen = &rangedSection;
             else if (section == "diagnostics") seen = &diagnosticsSection;
+            else if (section == "d2rl") seen = &d2rlSection;
             else return SetError(error, lineNumber, "unknown section");
             if (*seen) return SetError(error, lineNumber, "duplicate section");
             *seen = true;
             continue;
         }
+
+        if (section == "d2rl") continue;
 
         const auto equal = line.find('=');
         if (equal == std::string_view::npos

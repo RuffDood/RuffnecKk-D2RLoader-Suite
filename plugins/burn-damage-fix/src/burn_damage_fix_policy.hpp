@@ -187,7 +187,7 @@ inline auto ParseToml(
         for (const auto& [key, value] : root) {
             (void)value;
             if (key != "config_version" && key != "enabled"
-                    && key != "diagnostics") {
+                    && key != "diagnostics" && key != "d2rl") {
                 error = "unknown top-level setting or section: "
                     + std::string(key.str());
                 return false;

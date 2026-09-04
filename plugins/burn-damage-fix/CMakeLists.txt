@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(RuffnecKkBurnDamageFix VERSION 1.0.0 LANGUAGES CXX RC ASM_MASM)
+    project(RuffnecKkBurnDamageFix VERSION 1.0.1 LANGUAGES CXX RC ASM_MASM)
     include(CTest)
     option(
         RUFFNECKK_SUITE_WARNINGS_AS_ERRORS

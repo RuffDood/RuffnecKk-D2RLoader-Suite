@@ -20,6 +20,18 @@ auto Require(bool value, const char* expression, int line) -> bool {
 int main(int argc, char** argv) {
     using namespace ruffneckk::remote_stash;
 
+    const auto missingMpqButtonConfig =
+        std::filesystem::temp_directory_path()
+        / "ruffneckk-remote-stash-missing-test"
+        / "nested"
+        / "button.toml";
+    std::error_code missingMpqButtonConfigError;
+    const auto missingMpqButtonConfigStatus = std::filesystem::status(
+        missingMpqButtonConfig, missingMpqButtonConfigError);
+    REQUIRE(!std::filesystem::exists(missingMpqButtonConfigStatus));
+    REQUIRE(!missingMpqButtonConfigError
+        || IsMissingFilesystemEntryError(missingMpqButtonConfigError));
+
     Hotkey hotkey{};
     REQUIRE(ParseHotkey("F24", hotkey));
     REQUIRE(hotkey.virtualKey == 0x87 && !IsMouseHotkey(hotkey));
@@ -79,7 +91,7 @@ int main(int argc, char** argv) {
     REQUIRE(!enabled.closeRemoteStashAndInventoryTogether);
 
     auto invalid = configStream.str();
-    invalid += "\nunknown = true\n";
+    invalid += "\n[unknown]\nenabled = true\n";
     REQUIRE(!ParseConfig(invalid, config, error));
     REQUIRE(ParseConfig(
         "enabled = true\nhotkey = \";\"\n"
@@ -560,6 +572,9 @@ int main(int argc, char** argv) {
     REQUIRE(runtime.find("registerChildLayout") != std::string::npos);
     REQUIRE(runtime.find("registerResource") != std::string::npos);
     REQUIRE(runtime.find("LoadActiveMpqButtonConfig") != std::string::npos);
+    REQUIRE(runtime.find(
+        "if (IsMissingFilesystemEntryError(fileError)) continue;")
+        != std::string::npos);
     REQUIRE(runtime.find(
         "data/global/ui/layouts/ruffneckk-remote-stash/button.toml")
         != std::string::npos);

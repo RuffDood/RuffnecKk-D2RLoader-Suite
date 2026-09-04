@@ -106,7 +106,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-item-durability",
     .name = "Item Durability",
-    .version = "1.2.4",
+    .version = "1.2.5",
     .author = "RuffnecKk",
     .description = "Controls durability loss, ethereal durability, and bow durability.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -366,7 +366,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Item Durability 1.2.4: enabled=%s; loss=%s; normal=%u%% (weapon %s, armor %s); "
+        "Item Durability 1.2.5: enabled=%s; loss=%s; normal=%u%% (weapon %s, armor %s); "
         "ethereal=%u%% (weapon %s, armor %s); ethereal maximum=%u%s; "
         "bows/crossbows=%s; item records=%llu; repair types=%llu; "
         "compile passes=%llu failures=%llu; prevented normal=%llu ethereal=%llu; diagnostics=%s.",
@@ -494,7 +494,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Item Durability 1.2.4 by RuffnecKk loaded: enabled=%s; loss=%s; normal=%u%%; "
+        "Item Durability 1.2.5 by RuffnecKk loaded: enabled=%s; loss=%s; normal=%u%%; "
         "ethereal=%u%%; ethereal maximum=%u%s; bows/crossbows=%s; "
         "compiled-table hook=%s; diagnostics=%s.",
         Settings.enabled ? "true" : "false",

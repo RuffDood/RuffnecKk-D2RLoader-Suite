@@ -1,7 +1,7 @@
 # Resistance Floor validation
 
-The completed evidence below belongs to candidate 0.3.0. Version 1.0.0 must be
-rebuilt and requalified as the exact final artifact before release.
+The completed gameplay evidence below belongs to candidate 0.3.0. Version 1.0.1
+keeps the same native behavior and adds D2RLoader multiplayer metadata handling.
 
 Validation date: 2026-08-25
 Targets: Diablo II: Resurrected 3.2.92777 and 3.3.93847

@@ -12,8 +12,9 @@ inside each process.
 
 ## D2RCore provider composition
 
-D2RLoader 1.1/1.2 may redirect the governed compiler and save callsites through
-D2RCore. ISC12 accepts either the canonical direct native target or an exactly
+D2RLoader 1.1, 1.2 and 1.2.1 beta preview 10 may redirect the governed compiler
+and save callsites through D2RCore. ISC12 accepts either the canonical direct
+native target or an exactly
 attested provider. Provider admission validates the export/body, live
 PDATA/unwind tuple, a bounded loop-free chain of unconditional `E9`/`FF25`
 relays, the live forward slot and the exact native destination. Exact canonical
@@ -29,13 +30,17 @@ not a reason to mutate D2RCore's private bitmap.
 The dynamic player-save caller is admitted only as one of two indivisible
 contracts: canonical `R13D=0x8000` with a direct call to `D2R+0x52F090`, or
 D2RLoader `R13D=0xFFFF` with a relay to
-`D2RCore!WritePlayerSaveWithEnvironmentCapture`. The 1.2 provider is exact at
+`D2RCore!WritePlayerSaveWithEnvironmentCapture`. The 1.2.1 beta preview 10
+provider is exact at `[0x696210,0x697E14)`, has unwind RVA `0x56D0CC`, body
+SHA-256
+`B8AACB053FF84E6E482082186F5742EA33A877DA263B3313BEB6E6D837DB4B00`
+and forwards through `D2RCore+0x597DC0`. The 1.2 provider is exact at
 `[0x634650,0x636068)`, has unwind RVA `0x50EFD0`, body SHA-256
 `A4A0E2A5E70AEFB613016739E914225CEE2A20BB06F13197CEAC182E11648667`
 and forwards through `D2RCore+0x5372C0`. The 1.1 provider is exact at
 `[0x563D80,0x565103)`, has unwind RVA `0x452480`, body SHA-256
 `66C61BC1678375C9E373FD2141F409244B450D1411906B7FF8C27C1241E69F6A`
-and forwards through `D2RCore+0x480DE8`. Both live slots must resolve exactly
+and forwards through `D2RCore+0x480DE8`. All live slots must resolve exactly
 to `D2R+0x52F090`; ISC12 preserves the larger D2RLoader buffer and provider.
 
 Version 0.2.0 fingerprints the complete loader/count/DescFunc seam, signed
@@ -160,8 +165,10 @@ an arbitrary retarget is not compatible.
 ## G10 persistence boundary
 
 The schema snapshot is a two-phase lifecycle contract. Every G0 compiler call
-copies the exact record array and linker-owned `Stat` names into one of three
-bounded candidates while holding `SchemaReady=false`; it does not publish the
+copies the exact record array and linker-owned `Stat` names into one of eight
+bounded candidates while holding `SchemaReady=false`; the extra bounded
+capacity covers a persistent base compiler snapshot refresh followed by the
+active data-bank compiles. It does not publish the
 first compile opportunistically. The required PluginSDK
 `LifecycleServiceV1::registerDataTablesLoadedListener` callback then runs on
 the game thread after table loading and asks `DataTableServiceV1` for

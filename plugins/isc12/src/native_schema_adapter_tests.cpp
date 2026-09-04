@@ -206,7 +206,7 @@ int main() {
     static_assert(MaximumSerializedCsvBits == 32);
     static_assert(MaximumSerializedCsvParamBits == 16);
     static_assert(MaximumNativeStatNameLength == 0xFFFF);
-    static_assert(NativeSchemaCandidateCapacity == 3);
+    static_assert(NativeSchemaCandidateCapacity == 8);
 
     Sha256Digest publishedHash{};
     Sha256Digest candidateHash{};
@@ -545,12 +545,10 @@ int main() {
     {
         std::array<int, NativeSchemaCandidateCapacity + 1> sourceDataTables{};
         std::array<std::vector<std::uint8_t>,
-            NativeSchemaCandidateCapacity + 1> bankRecords{
-                MakeRecords(1),
-                MakeRecords(1),
-                MakeRecords(1),
-                MakeRecords(1),
-            };
+            NativeSchemaCandidateCapacity + 1> bankRecords{};
+        for (auto& recordBuffer : bankRecords) {
+            recordBuffer = MakeRecords(1);
+        }
         NativeSchemaCandidateSet candidates;
         for (std::size_t index{};
                 index < NativeSchemaCandidateCapacity;

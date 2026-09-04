@@ -9,11 +9,8 @@ one component, a few favorites, or the complete bundles.
 ## Requirements
 
 - Diablo II: Resurrected **3.3.93847**, **3.2.92777**, or Steam **3.3.93787**.
-  Steam was not play-tested for this release. Suite plugins no longer reject
-  Steam users running D2RLoader on the latest Steam patch solely because Steam
-  uses a different D2R build number.
 
-- **D2RLoader 1.2.0-beta**
+- **D2RLoader 1.2.1** (tested with beta preview 10)
 
 
 Download D2RLoader from [D2RLoader.net](https://d2rloader.net/).
@@ -72,7 +69,7 @@ The ISC12 ZIP also contains the offline D2R Save Converter in its own folder.
 D2RMM Custom installs ISC12, but the Converter must be extracted and launched
 manually when you need it.
 
-### Upgrading to Suite 1.3.0
+### Upgrading to Suite 1.3.x
 
 D2RLoader 1.2 now provides the ground-item label limit feature natively. Remove
 all older copies of these files before upgrading:

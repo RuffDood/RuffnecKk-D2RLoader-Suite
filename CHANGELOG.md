@@ -1,15 +1,42 @@
 # Changelog
 
 ## [Unreleased]
+## [1.3.1] - 2026-09-03
 
-### Changed
+This complete release includes 24 plugins, 17 patches, and two bundles.
+It contains 7 new plugins and 1 new patch.
 
-- Kept release planning and package allowlists in private versioned governance
-  instead of the public repository.
-- Moved public native-write and external-compatibility test data under
-  `tests/data/compatibility/`.
-- Release validation and packaging now require explicit external governance
-  paths and fail closed when those inputs are unavailable.
+### Hotfix
+
+- ISC12 1.0.1 and Vendor Stock Refresh 2.0.1 are now compatible with D2RLoader 1.2.1.
+- Multiplayer setup checks now cover all 12 configurable Suite plugins.
+
+### New plugins
+
+- Cast Triggers 1.0.0.
+- Armageddon-Hurricane CtC Fix 1.0.0.
+- Resistance Floor 1.0.1.
+- MapSense 1.0.0.
+- Extended Act Level IDs 1.0.0.
+- ISC12 1.0.1 with D2R Save Converter 1.0.0.
+- Burn Damage Fix 1.0.1.
+
+### New patch
+
+- Shadow Master AI Fix.
+
+### Updated
+
+- Steam users on latest patch will now be able to load plugins.
+- Remote Stash 2.3.1 fixes behavior inconsistencies and lets each active mod use its MPQ to automatically apply its own placement and sprites to the global Remote Stash button.
+- Bulk Currency Deposit 1.1.2 fixes a tooltip conflict with D2RLoader's native Stat Ranges feature and updates its button sprite to better match the regular Inventory panel.
+- Suite downloads now use paths supported by D2RMM Custom for D2RLoader.
+- D2R Save Converter is included inside the ISC12 download.
+
+### Removed
+
+- Ground Item Label Limit 64 and 128 are no longer included because D2RLoader provides this feature natively.
+- Normal Area Scaling is no longer included because Yinyin has a working patch and mine apparently didn't work.
 
 ## [1.3.0] - 2026-09-03
 

@@ -28,3 +28,7 @@ chance = 0.0
 # Startup, warnings, errors, and the "repair-costs-cap" status command remain
 # available even when this option is false.
 enabled = false
+
+# Lets D2RLoader verify that multiplayer peers use matching settings.
+[d2rl]
+match = true
