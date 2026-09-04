@@ -396,7 +396,7 @@
   "externalPlugins": [
     {
       "id": "bindandsummon",
-      "sha256": "AEEABBE6371510859E2CA1117BBE116B98691FA3F45FC4A9BF616B43F7A6EB7A",
+      "sha256": "8416C7908753ED3D35DB43BECE0CFAE9EF768F520C41ECEDFD570C8A4E6B70B0",
       "fixedWrites": [
         {"rva": "0x349860", "size": 5, "kind": "external-inline-hook"},
         {"rva": "0x432B70", "size": 5, "kind": "external-inline-hook"},

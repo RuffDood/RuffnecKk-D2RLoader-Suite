@@ -162,10 +162,16 @@ Assert-Policy (-not $plugin.Contains('only D2R builds')) `
     'compatibility refusal must be based on the native fingerprint, not named builds'
 Assert-Policy ($plugin -match 'validating the complete native fingerprint') `
     'the observed build name must remain diagnostic while the full fingerprint is checked'
-Assert-Policy ($plugin -match '\.version\s*=\s*"1\.4\.2"') `
-    'the plugin metadata must identify the periodic-capture build as 1.4.2'
-Assert-Policy ($resource -match 'FILEVERSION\s+1,4,2,0') `
-    'the Windows file version must identify the periodic-capture build as 1.4.2'
+Assert-Policy ($plugin -match '\.version\s*=\s*"1\.4\.3"') `
+    'the plugin metadata must identify the MapSense handoff hotfix as 1.4.3'
+Assert-Policy ($resource -match 'FILEVERSION\s+1,4,3,0') `
+    'the Windows file version must identify the MapSense handoff hotfix as 1.4.3'
+Assert-Policy ($plugin -match 'GetModuleHandleW\(\s*L"d2rl-ruffneckk-mapsense\.dll"\)') `
+    'the renderer handoff must resolve the canonical public MapSense module name'
+Assert-Policy ($plugin -match 'GetModuleHandleW\(L"RuffnecKkMapSense\.dll"\)') `
+    'the renderer handoff must retain the legacy MapSense module-name fallback'
+Assert-Policy ($plugin -match 'canonicalMapSense\s*!=\s*legacyMapSense') `
+    'two distinct canonical and legacy MapSense modules must fail closed'
 
 Assert-Policy ($plugin -match 'LifecycleServiceV1') `
     'Lifecycle service v1 must own the gameplay boundary'

@@ -1,6 +1,36 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.3.2] - 2026-09-04
+
+This hotfix updates four plugins for D2RLoader 1.2.1. All other Suite 1.3.1
+files remain unchanged.
+
+### Fixed
+
+- MapSense 1.0.1 now loads alongside Bind And Summon 1.4.4 and works with
+  D2RLoader 1.2.1.
+- Floating Damage 1.4.3 now works correctly when MapSense is installed. They
+  can work together or separately.
+- ISC12 1.0.2 now loads with D2RLoader 1.2.1.
+- Vendor Stock Refresh 2.0.2 now works with D2RLoader 1.2.1.
+
+### Important ISC12 notice
+
+**Important : most users should not install ISC12.**
+
+Install ISC12 only when a mod specifically requires it. Your existing
+characters and shared stashes will not load while ISC12 is installed because
+it uses a different save format.
+
+ISC12 is intended only for mods that need more item-stat entries than the base
+game supports (ItemStatCost IDs above 511). The mod author will tell you
+whether ISC12 is required and whether your existing save files must be
+converted.
+
+**If you are unsure, do not install it.**
+
 ## [1.3.1] - 2026-09-03
 
 This complete release includes 24 plugins, 17 patches, and two bundles.

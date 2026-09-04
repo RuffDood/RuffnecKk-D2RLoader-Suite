@@ -15,11 +15,11 @@
       "id": "bindandsummon",
       "name": "Bind And Summon",
       "author": "yinyin333333",
-      "version": "1.2.3",
+      "version": "1.4.4-embedded110",
       "apiVersion": 2,
       "flagsHex": "0x0000000E",
-      "sha256": "AEEABBE6371510859E2CA1117BBE116B98691FA3F45FC4A9BF616B43F7A6EB7A",
-      "size": 196096,
+      "sha256": "8416C7908753ED3D35DB43BECE0CFAE9EF768F520C41ECEDFD570C8A4E6B70B0",
+      "size": 168448,
       "file": "BindAndSummon.dll",
       "scope": "global",
       "inlineHookRvas": [
@@ -35,7 +35,7 @@
         "0x533AE0",
         "0x55A5D0"
       ],
-      "evidence": "D2RLoader 1.1 runtime log plus byte-identical live and isolated DLLs on 2026-08-15"
+      "evidence": "Supplied 1.4.4 DLL static audit confirms all 11 pinned inline-hook RVAs; supplied public D2RLoader 1.2.1 runtime log confirms it loads globally and exposes the 0x349860 ownership collision fixed by MapSense 1.0.1 on 2026-09-04"
     },
     {
       "id": "cube-output-quantity",

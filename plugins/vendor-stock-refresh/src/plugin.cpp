@@ -167,7 +167,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-vendor-stock-refresh",
     .name = "Vendor Stock Refresh",
-    .version = "2.0.1",
+    .version = "2.0.2",
     .author = "RuffnecKk",
     .description = "Refreshes a vendor's stock with one click.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -374,6 +374,15 @@ bool ValidateD2RCoreProviderAbi(
         expectedHash = &D2RCoreProviderHash121;
         expectedUnwind = &D2RCoreProviderUnwind121;
         expectedFuncInfo = &D2RCoreProviderFuncInfo121;
+        break;
+    case D2RCoreProviderProfile::D2RLoader121Release:
+        providerRva = D2RCoreProviderRva121Release;
+        providerSize = D2RCoreProviderSize121Release;
+        providerUnwindRva = D2RCoreProviderUnwindRva121Release;
+        providerFuncInfoRva = D2RCoreProviderFuncInfoRva121Release;
+        expectedHash = &D2RCoreProviderHash121Release;
+        expectedUnwind = &D2RCoreProviderUnwind121Release;
+        expectedFuncInfo = &D2RCoreProviderFuncInfo121Release;
         break;
     default:
         return false;
@@ -883,7 +892,7 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
     std::snprintf(
         message,
         sizeof(message),
-        "Vendor Stock Refresh 2.0.1: %s; diagnostics=%s; placed=%llu; "
+        "Vendor Stock Refresh 2.0.2: %s; diagnostics=%s; placed=%llu; "
         "placementFailures=%llu; sent=%llu; received=%llu; armed=%llu; rejected=%llu.",
         Settings.enabled ? "active" : "disabled",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
@@ -929,7 +938,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "VendorStockRefresh 2.0.1 by RuffnecKk loaded disabled; no hook or service registered.");
+            "VendorStockRefresh 2.0.2 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 
@@ -1016,7 +1025,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
 
     context->LogInfo(
-        "VendorStockRefresh 2.0.1 by RuffnecKk active; native button uses the runtime gold anchor.");
+        "VendorStockRefresh 2.0.2 by RuffnecKk active; native button uses the runtime gold anchor.");
     return true;
 }
 

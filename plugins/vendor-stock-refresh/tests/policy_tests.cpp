@@ -110,6 +110,12 @@ int main(int argc, char** argv) {
     CHECK(Matches(
         D2RCoreForwardingWitness121.data(),
         D2RCoreForwardingWitness121));
+    CHECK(Matches(
+        D2RCoreProviderEntry121Release.data(),
+        D2RCoreProviderEntry121Release));
+    CHECK(Matches(
+        D2RCoreForwardingWitness121Release.data(),
+        D2RCoreForwardingWitness121Release));
     CHECK(IdentifyD2RCoreProviderProfile(
         D2RCoreProviderEntry12.data(),
         D2RCoreForwardingWitness12.data())
@@ -118,6 +124,10 @@ int main(int argc, char** argv) {
         D2RCoreProviderEntry121.data(),
         D2RCoreForwardingWitness121.data())
         == D2RCoreProviderProfile::D2RLoader121);
+    CHECK(IdentifyD2RCoreProviderProfile(
+        D2RCoreProviderEntry121Release.data(),
+        D2RCoreForwardingWitness121Release.data())
+        == D2RCoreProviderProfile::D2RLoader121Release);
     CHECK(IdentifyD2RCoreProviderProfile(
         D2RCoreProviderEntry12.data(),
         D2RCoreForwardingWitness121.data())
@@ -128,8 +138,10 @@ int main(int argc, char** argv) {
         == D2RCoreProviderProfile::Invalid);
     static_assert(D2RCoreProviderSize12 == 0x19A);
     static_assert(D2RCoreProviderSize121 == 0x170);
+    static_assert(D2RCoreProviderSize121Release == 0x170);
     static_assert(D2RCoreProviderHash12.size() == 32);
     static_assert(D2RCoreProviderHash121.size() == 32);
+    static_assert(D2RCoreProviderHash121Release.size() == 32);
     CHECK(Matches(DownstreamQueueEntry.data(), DownstreamQueueEntry));
     auto invalidDownstream = DownstreamQueueEntry;
     invalidDownstream[0x14] ^= 0x01;

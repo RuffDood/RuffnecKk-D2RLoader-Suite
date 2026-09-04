@@ -35,7 +35,6 @@ constexpr std::uintptr_t RenderAutomapUnitRva = 0x0D76E0;
 constexpr std::uintptr_t GetUnitStatRva = 0x2F5020;
 constexpr std::uintptr_t GetUnitAlignmentRva = 0x2F4190;
 constexpr std::uintptr_t GetUnitIdRva = 0x34A330;
-constexpr std::uintptr_t GetUnitClassIdRva = 0x349860;
 constexpr std::uintptr_t GetUnitDataContextRva = 0x34A0E0;
 constexpr std::uintptr_t GetUnitModeRva = 0x34AB60;
 constexpr std::uintptr_t GetDynamicPathRva = 0x34AE80;
@@ -218,7 +217,6 @@ GetNativeDimensionFn GetNativeWidth{};
 GetUnitStatFn GetUnitStat{};
 GetUnitSignedValueFn GetUnitAlignment{};
 GetUnitValueFn GetUnitId{};
-GetUnitSignedValueFn GetUnitClassId{};
 GetUnitDataContextFn GetUnitDataContext{};
 GetUnitValueFn GetUnitMode{};
 GetNativePointerFn GetDynamicPath{};
@@ -885,7 +883,7 @@ auto DiscoverTrackedMonster(
     __try {
         if (!IsAlignedPointer(unit)
             || GetUnitStat == nullptr || GetUnitAlignment == nullptr
-            || GetUnitId == nullptr || GetUnitClassId == nullptr
+            || GetUnitId == nullptr
             || GetUnitDataContext == nullptr || GetUnitMode == nullptr
             || GetDynamicPath == nullptr
             || PathGetX == nullptr || PathGetY == nullptr
@@ -916,7 +914,7 @@ auto DiscoverTrackedMonster(
             return false;
         }
 
-        const auto classId = GetUnitClassId(unit);
+        const auto classId = ReadNativeUnitClassId(unit);
         const auto unitDataContext = GetUnitDataContext(unit);
         if (!Detail::IsMonStatsLookupSafe(
                 scan.dataContext,
@@ -1422,11 +1420,6 @@ auto ValidateRuntime(const D2RL::PluginContext* context) noexcept -> bool {
         0xC0, 0x74, 0x01, 0xCC, 0xB8, 0xFF, 0xFF, 0xFF,
         0xFF, 0x48, 0x83, 0xC4, 0x28, 0xC3, 0x8B, 0x41,
         0x08, 0x48, 0x83, 0xC4, 0x28, 0xC3};
-    constexpr std::array<std::uint8_t, 32> getUnitClassIdExpected{
-        0x48, 0x83, 0xEC, 0x28, 0x48, 0x85, 0xC9, 0x75,
-        0x1D, 0x88, 0x4C, 0x24, 0x30, 0x48, 0x8D, 0x4C,
-        0x24, 0x30, 0xE8, 0x49, 0xCB, 0xFF, 0xFF, 0x84,
-        0xC0, 0x74, 0x01, 0xCC, 0xB8, 0xFF, 0xFF, 0xFF};
     constexpr std::array<std::uint8_t, 47> getUnitDataContextExpected{
         0x48, 0x83, 0xEC, 0x28, 0x48, 0x85, 0xC9, 0x75,
         0x1A, 0x88, 0x4C, 0x24, 0x30, 0x48, 0x8D, 0x4C,
@@ -1530,7 +1523,9 @@ auto ValidateRuntime(const D2RL::PluginContext* context) noexcept -> bool {
         && check(GetUnitStatRva, getUnitStatExpected)
         && check(GetUnitAlignmentRva, getUnitAlignmentExpected)
         && check(GetUnitIdRva, getUnitIdExpected)
-        && check(GetUnitClassIdRva, getUnitClassIdExpected)
+        && check(
+            NativeUnitIdentityLayoutWitnessRva,
+            NativeUnitIdentityLayoutWitness)
         && check(GetUnitDataContextRva, getUnitDataContextExpected)
         && check(GetUnitModeRva, getUnitModeExpected)
         && check(GetDynamicPathRva, getDynamicPathExpected)
@@ -1630,7 +1625,6 @@ auto InitializeNativeAutomapMarker(
     GetUnitStat = At<GetUnitStatFn>(GetUnitStatRva);
     GetUnitAlignment = At<GetUnitSignedValueFn>(GetUnitAlignmentRva);
     GetUnitId = At<GetUnitValueFn>(GetUnitIdRva);
-    GetUnitClassId = At<GetUnitSignedValueFn>(GetUnitClassIdRva);
     GetUnitDataContext = At<GetUnitDataContextFn>(GetUnitDataContextRva);
     GetUnitMode = At<GetUnitValueFn>(GetUnitModeRva);
     GetDynamicPath = At<GetNativePointerFn>(GetDynamicPathRva);
@@ -1680,7 +1674,6 @@ auto InitializeNativeAutomapMarker(
         GetUnitStat = nullptr;
         GetUnitAlignment = nullptr;
         GetUnitId = nullptr;
-        GetUnitClassId = nullptr;
         GetUnitDataContext = nullptr;
         GetUnitMode = nullptr;
         GetDynamicPath = nullptr;

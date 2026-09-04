@@ -761,16 +761,24 @@ auto ValidateD2RCoreSaveStatWriterAbi(
         std::size_t d2rImageSize,
         HMODULE core,
         std::uintptr_t writerExport,
+        const std::array<std::uint8_t, ProviderSize>&
+            providerBytes121Release,
         const std::array<std::uint8_t, ProviderSize>& providerBytes121,
         const std::array<std::uint8_t, ProviderSize>& providerBytes12,
         const std::array<std::uint8_t, ProviderSize>& providerBytes11,
+        std::uintptr_t providerRva121Release,
         std::uintptr_t providerRva121,
         std::uintptr_t providerRva12,
         std::uintptr_t providerRva11,
+        DWORD unwindRva121Release,
         DWORD unwindRva121,
         DWORD unwindRva12,
         DWORD unwindRva11,
         std::size_t forwardCallOffset) noexcept -> bool {
+    constexpr auto UnwindBytes121Release = std::to_array<std::uint8_t>({
+        0x19,0x0A,0x03,0x35,0x0A,0x03,0x05,0x52,
+        0x01,0x50,0x00,0x00,0xB0,0x04,0x42,0x00,
+    });
     constexpr auto UnwindBytes121 = std::to_array<std::uint8_t>({
         0x19,0x0A,0x03,0x35,0x0A,0x03,0x05,0x52,
         0x01,0x50,0x00,0x00,0x20,0x46,0x41,0x00,
@@ -792,6 +800,8 @@ auto ValidateD2RCoreSaveStatWriterAbi(
     if (!d2rBase || !core || writerExport == 0U
             || forwardCallOffset > ProviderSize
             || ProviderSize - forwardCallOffset < 6U
+            || providerBytes121Release[forwardCallOffset] != 0xFFU
+            || providerBytes121Release[forwardCallOffset + 1U] != 0x15U
             || providerBytes121[forwardCallOffset] != 0xFFU
             || providerBytes121[forwardCallOffset + 1U] != 0x15U
             || providerBytes12[forwardCallOffset] != 0xFFU
@@ -816,22 +826,28 @@ auto ValidateD2RCoreSaveStatWriterAbi(
             liveProvider.size())) {
         return false;
     }
+    const bool provider121Release = liveProvider == providerBytes121Release;
     const bool provider121 = liveProvider == providerBytes121;
     const bool provider12 = liveProvider == providerBytes12;
     const bool provider11 = liveProvider == providerBytes11;
-    if (static_cast<unsigned>(provider121)
+    if (static_cast<unsigned>(provider121Release)
+            + static_cast<unsigned>(provider121)
             + static_cast<unsigned>(provider12)
             + static_cast<unsigned>(provider11) != 1U) {
         return false;
     }
 
     const auto coreBase = reinterpret_cast<std::uintptr_t>(core);
-    const auto providerRva = provider121
-        ? providerRva121
-        : (provider12 ? providerRva12 : providerRva11);
-    const auto unwindRva = provider121
-        ? unwindRva121
-        : (provider12 ? unwindRva12 : unwindRva11);
+    const auto providerRva = provider121Release
+        ? providerRva121Release
+        : (provider121
+            ? providerRva121
+            : (provider12 ? providerRva12 : providerRva11));
+    const auto unwindRva = provider121Release
+        ? unwindRva121Release
+        : (provider121
+            ? unwindRva121
+            : (provider12 ? unwindRva12 : unwindRva11));
     DWORD64 functionImageBase{};
     const auto* liveFunction = RtlLookupFunctionEntry(
         static_cast<DWORD64>(writerExport), &functionImageBase, nullptr);
@@ -858,9 +874,11 @@ auto ValidateD2RCoreSaveStatWriterAbi(
             reinterpret_cast<const void*>(coreBase + function.UnwindData),
             liveUnwind.data(),
             liveUnwind.size())
-            || liveUnwind != (provider121
-                ? UnwindBytes121
-                : (provider12 ? UnwindBytes12 : UnwindBytes11))) {
+            || liveUnwind != (provider121Release
+                ? UnwindBytes121Release
+                : (provider121
+                    ? UnwindBytes121
+                    : (provider12 ? UnwindBytes12 : UnwindBytes11)))) {
         return false;
     }
 
@@ -902,6 +920,19 @@ auto ValidateD2RCorePlayerSaveStatWriterAbi(
         std::size_t d2rImageSize,
         HMODULE core,
         std::uintptr_t writerExport) noexcept -> bool {
+    constexpr auto ProviderBytes121Release = std::to_array<std::uint8_t>({
+        0x55,0x48,0x83,0xEC,0x30,0x48,0x8D,0x6C,0x24,0x30,
+        0x48,0xC7,0x45,0xF8,0xFE,0xFF,0xFF,0xFF,0x8B,0x05,
+        0xB8,0x0E,0xF1,0xFF,0x65,0x4C,0x8B,0x0C,0x25,0x58,
+        0x00,0x00,0x00,0x49,0x8B,0x04,0xC1,0x48,0x8B,0x80,
+        0x68,0x04,0x00,0x00,0x48,0x85,0xC0,0x41,0x0F,0x94,
+        0xC1,0x81,0xFA,0x00,0x02,0x00,0x00,0x41,0x0F,0x93,
+        0xC2,0x45,0x08,0xCA,0x75,0x1D,0x41,0x89,0xD2,0x41,
+        0xBB,0x01,0x00,0x00,0x00,0x49,0x89,0xC9,0x89,0xD1,
+        0x49,0xD3,0xE3,0x4C,0x89,0xC9,0x41,0xC1,0xEA,0x06,
+        0x4E,0x09,0x5C,0xD0,0x40,0xFF,0x15,0xF3,0xD9,0xEF,
+        0xFF,0x90,0x48,0x83,0xC4,0x30,0x5D,0xC3,
+    });
     constexpr auto ProviderBytes121 = std::to_array<std::uint8_t>({
         0x55,0x48,0x83,0xEC,0x30,0x48,0x8D,0x6C,0x24,0x30,
         0x48,0xC7,0x45,0xF8,0xFE,0xFF,0xFF,0xFF,0x8B,0x05,
@@ -943,6 +974,7 @@ auto ValidateD2RCorePlayerSaveStatWriterAbi(
     });
     constexpr std::size_t ForwardCallOffset = 0x5FU;
     static_assert(ProviderBytes121.size() == 0x6CU);
+    static_assert(ProviderBytes121Release.size() == 0x6CU);
     static_assert(ProviderBytes12.size() == 0x6CU);
     static_assert(ProviderBytes121.size() == ProviderBytes12.size());
     static_assert(ProviderBytes11.size() == ProviderBytes12.size());
@@ -951,12 +983,15 @@ auto ValidateD2RCorePlayerSaveStatWriterAbi(
         d2rImageSize,
         core,
         writerExport,
+        ProviderBytes121Release,
         ProviderBytes121,
         ProviderBytes12,
         ProviderBytes11,
+        0x6AA380U,
         0x698300U,
         0x636550U,
         0x5655B0U,
+        0x57C030U,
         0x56D56CU,
         0x50F470U,
         0x4528BCU,
@@ -968,6 +1003,19 @@ auto ValidateD2RCoreItemSaveStatWriterAbi(
         std::size_t d2rImageSize,
         HMODULE core,
         std::uintptr_t writerExport) noexcept -> bool {
+    constexpr auto ProviderBytes121Release = std::to_array<std::uint8_t>({
+        0x55,0x48,0x83,0xEC,0x30,0x48,0x8D,0x6C,0x24,0x30,
+        0x48,0xC7,0x45,0xF8,0xFE,0xFF,0xFF,0xFF,0x8B,0x05,
+        0x48,0x0F,0xF1,0xFF,0x65,0x4C,0x8B,0x0C,0x25,0x58,
+        0x00,0x00,0x00,0x49,0x8B,0x04,0xC1,0x48,0x8B,0x80,
+        0x68,0x04,0x00,0x00,0x48,0x85,0xC0,0x41,0x0F,0x94,
+        0xC1,0x81,0xFA,0x00,0x02,0x00,0x00,0x41,0x0F,0x93,
+        0xC2,0x45,0x08,0xCA,0x75,0x1C,0x41,0x89,0xD2,0x41,
+        0xBB,0x01,0x00,0x00,0x00,0x49,0x89,0xC9,0x89,0xD1,
+        0x49,0xD3,0xE3,0x4C,0x89,0xC9,0x41,0xC1,0xEA,0x06,
+        0x4E,0x09,0x1C,0xD0,0xFF,0x15,0x84,0xDA,0xEF,0xFF,
+        0x90,0x48,0x83,0xC4,0x30,0x5D,0xC3,
+    });
     constexpr auto ProviderBytes121 = std::to_array<std::uint8_t>({
         0x55,0x48,0x83,0xEC,0x30,0x48,0x8D,0x6C,0x24,0x30,
         0x48,0xC7,0x45,0xF8,0xFE,0xFF,0xFF,0xFF,0x8B,0x05,
@@ -1009,6 +1057,7 @@ auto ValidateD2RCoreItemSaveStatWriterAbi(
     });
     constexpr std::size_t ForwardCallOffset = 0x5EU;
     static_assert(ProviderBytes121.size() == 0x6BU);
+    static_assert(ProviderBytes121Release.size() == 0x6BU);
     static_assert(ProviderBytes12.size() == 0x6BU);
     static_assert(ProviderBytes121.size() == ProviderBytes12.size());
     static_assert(ProviderBytes11.size() == ProviderBytes12.size());
@@ -1017,12 +1066,15 @@ auto ValidateD2RCoreItemSaveStatWriterAbi(
         d2rImageSize,
         core,
         writerExport,
+        ProviderBytes121Release,
         ProviderBytes121,
         ProviderBytes12,
         ProviderBytes11,
+        0x6AA2F0U,
         0x698270U,
         0x6364C0U,
         0x565520U,
+        0x57BFCCU,
         0x56D508U,
         0x50F40CU,
         0x452858U,
@@ -1034,6 +1086,32 @@ auto ValidateD2RCorePlayerSaveProviderAbi(
         std::size_t d2rImageSize,
         HMODULE core,
         std::uintptr_t providerExport) noexcept -> bool {
+    constexpr std::uintptr_t ProviderRva121Release = 0x6A8290U;
+    constexpr std::size_t ProviderSize121Release = 0x1C04U;
+    constexpr DWORD ProviderUnwindRva121Release = 0x57BB90U;
+    constexpr std::uintptr_t ProviderFuncInfoRva121Release = 0x57BD74U;
+    constexpr std::uintptr_t NativeForwardSlotRva121Release = 0x5A7DC0U;
+    constexpr Sha256Digest ProviderHash121Release{
+        0x7E,0x70,0xC6,0x01,0xCC,0xDE,0x6B,0x08,
+        0xEA,0x28,0x31,0x23,0x54,0x11,0xE0,0x97,
+        0x2F,0x47,0xC4,0x8A,0xB2,0x47,0x55,0xD4,
+        0x2D,0x55,0x02,0xC3,0x09,0x89,0x76,0x40,
+    };
+    constexpr auto UnwindBytes121Release = std::to_array<std::uint8_t>({
+        0x19,0x22,0x0D,0x85,0x22,0x68,0xB0,0x00,
+        0x1B,0x03,0x13,0x01,0x63,0x01,0x0C,0x30,
+        0x0B,0x70,0x0A,0x60,0x09,0xC0,0x07,0xD0,
+        0x05,0xE0,0x03,0xF0,0x01,0x50,0x00,0x00,
+        0xB0,0x04,0x42,0x00,
+        0x74,0xBD,0x57,0x00,
+    });
+    constexpr auto FuncInfoBytes121Release = std::to_array<std::uint8_t>({
+        0x22,0x05,0x93,0x19,0x12,0x00,0x00,0x00,
+        0x9C,0xBD,0x57,0x00,0x03,0x00,0x00,0x00,
+        0x2C,0xBE,0x57,0x00,0x25,0x00,0x00,0x00,
+        0xA4,0xBE,0x57,0x00,0xF8,0x0A,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,
+    });
     constexpr std::uintptr_t ProviderRva121 = 0x696210U;
     constexpr std::size_t ProviderSize121 = 0x1C04U;
     constexpr DWORD ProviderUnwindRva121 = 0x56D0CCU;
@@ -1118,12 +1196,15 @@ auto ValidateD2RCorePlayerSaveProviderAbi(
         0x41,0x56,0x41,0x57,0x48,0x8D,0xAC,0x24,0xC8,
         0x7E,0xFF,0xFF,0xB8,0x38,0x82,0x00,0x00,
     });
-    constexpr std::size_t MaximumProviderSize = ProviderSize121;
+    constexpr std::size_t MaximumProviderSize = ProviderSize121Release;
+    static_assert(ProviderSize121 == MaximumProviderSize);
     static_assert(ProviderSize12 <= MaximumProviderSize);
     static_assert(ProviderSize11 <= MaximumProviderSize);
+    static_assert(UnwindBytes121Release.size() == UnwindBytes12.size());
     static_assert(UnwindBytes121.size() == UnwindBytes12.size());
     static_assert(UnwindBytes11.size() == UnwindBytes12.size());
     static_assert(UnwindBytes12.size() == 40U);
+    static_assert(FuncInfoBytes121Release.size() == FuncInfoBytes12.size());
     static_assert(FuncInfoBytes121.size() == FuncInfoBytes12.size());
     static_assert(FuncInfoBytes11.size() == FuncInfoBytes12.size());
 
@@ -1137,36 +1218,53 @@ auto ValidateD2RCorePlayerSaveProviderAbi(
     const auto coreBase = reinterpret_cast<std::uintptr_t>(core);
     if (providerExport < coreBase) return false;
     const auto liveProviderRva = providerExport - coreBase;
+    const bool provider121Release =
+        liveProviderRva == ProviderRva121Release;
     const bool provider121 = liveProviderRva == ProviderRva121;
     const bool provider12 = liveProviderRva == ProviderRva12;
     const bool provider11 = liveProviderRva == ProviderRva11;
-    if (static_cast<unsigned>(provider121)
+    if (static_cast<unsigned>(provider121Release)
+            + static_cast<unsigned>(provider121)
             + static_cast<unsigned>(provider12)
             + static_cast<unsigned>(provider11) != 1U) {
         return false;
     }
 
-    const auto providerSize = provider121
-        ? ProviderSize121
-        : (provider12 ? ProviderSize12 : ProviderSize11);
-    const auto providerUnwindRva = provider121
-        ? ProviderUnwindRva121
-        : (provider12 ? ProviderUnwindRva12 : ProviderUnwindRva11);
-    const auto providerFuncInfoRva = provider121
-        ? ProviderFuncInfoRva121
-        : (provider12 ? ProviderFuncInfoRva12 : ProviderFuncInfoRva11);
-    const auto nativeForwardSlotRva = provider121
-        ? NativeForwardSlotRva121
-        : (provider12 ? NativeForwardSlotRva12 : NativeForwardSlotRva11);
-    const auto& expectedProviderHash = provider121
-        ? ProviderHash121
-        : (provider12 ? ProviderHash12 : ProviderHash11);
-    const auto& expectedUnwind = provider121
-        ? UnwindBytes121
-        : (provider12 ? UnwindBytes12 : UnwindBytes11);
-    const auto& expectedFuncInfo = provider121
-        ? FuncInfoBytes121
-        : (provider12 ? FuncInfoBytes12 : FuncInfoBytes11);
+    const auto providerSize = provider121Release
+        ? ProviderSize121Release
+        : (provider121
+            ? ProviderSize121
+            : (provider12 ? ProviderSize12 : ProviderSize11));
+    const auto providerUnwindRva = provider121Release
+        ? ProviderUnwindRva121Release
+        : (provider121
+            ? ProviderUnwindRva121
+            : (provider12 ? ProviderUnwindRva12 : ProviderUnwindRva11));
+    const auto providerFuncInfoRva = provider121Release
+        ? ProviderFuncInfoRva121Release
+        : (provider121
+            ? ProviderFuncInfoRva121
+            : (provider12 ? ProviderFuncInfoRva12 : ProviderFuncInfoRva11));
+    const auto nativeForwardSlotRva = provider121Release
+        ? NativeForwardSlotRva121Release
+        : (provider121
+            ? NativeForwardSlotRva121
+            : (provider12 ? NativeForwardSlotRva12 : NativeForwardSlotRva11));
+    const auto& expectedProviderHash = provider121Release
+        ? ProviderHash121Release
+        : (provider121
+            ? ProviderHash121
+            : (provider12 ? ProviderHash12 : ProviderHash11));
+    const auto& expectedUnwind = provider121Release
+        ? UnwindBytes121Release
+        : (provider121
+            ? UnwindBytes121
+            : (provider12 ? UnwindBytes12 : UnwindBytes11));
+    const auto& expectedFuncInfo = provider121Release
+        ? FuncInfoBytes121Release
+        : (provider121
+            ? FuncInfoBytes121
+            : (provider12 ? FuncInfoBytes12 : FuncInfoBytes11));
     if (!IsAccessibleRange(
             reinterpret_cast<const void*>(providerExport),
             providerSize,
@@ -1257,6 +1355,31 @@ auto ValidateD2RCoreReadItemsByVersionAbi(
         std::size_t d2rImageSize,
         HMODULE core,
         std::uintptr_t providerExport) noexcept -> bool {
+    constexpr std::uintptr_t ProviderRva121Release = 0x6AEEA0U;
+    constexpr std::size_t ProviderSize121Release = 0x126U;
+    constexpr DWORD ProviderUnwindRva121Release = 0x57E184U;
+    constexpr std::uintptr_t ProviderFuncInfoRva121Release = 0x57E1C0U;
+    constexpr std::uintptr_t NativeForwardSlotRva121Release = 0x5A7E38U;
+    constexpr Sha256Digest ProviderHash121Release{
+        0x5F,0xF6,0x3C,0xBA,0x50,0x09,0x5A,0xD9,
+        0xBC,0xD6,0x7E,0x4F,0x33,0xEF,0x36,0x76,
+        0xD3,0x6C,0x46,0x5C,0xF5,0x3C,0xC8,0x52,
+        0x9F,0x9F,0xC6,0xE2,0x67,0xFA,0xD2,0x05,
+    };
+    constexpr auto UnwindBytes121Release = std::to_array<std::uint8_t>({
+        0x19,0x1B,0x0B,0x85,0x1B,0x03,0x13,0x01,
+        0x19,0x00,0x0C,0x30,0x0B,0x70,0x0A,0x60,
+        0x09,0xC0,0x07,0xD0,0x05,0xE0,0x03,0xF0,
+        0x01,0x50,0x00,0x00,0xB0,0x04,0x42,0x00,
+        0xC0,0xE1,0x57,0x00,
+    });
+    constexpr auto FuncInfoBytes121Release = std::to_array<std::uint8_t>({
+        0x22,0x05,0x93,0x19,0x01,0x00,0x00,0x00,
+        0xE8,0xE1,0x57,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x03,0x00,0x00,0x00,
+        0xF0,0xE1,0x57,0x00,0xC0,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,
+    });
     constexpr std::uintptr_t ProviderRva121 = 0x69CE20U;
     constexpr std::size_t ProviderSize121 = 0x126U;
     constexpr DWORD ProviderUnwindRva121 = 0x56F6C0U;
@@ -1339,12 +1462,15 @@ auto ValidateD2RCoreReadItemsByVersionAbi(
         0x26,0x00,0x00,0x41,0x8D,0x41,0xB8,0x83,
         0xF8,0x21,0x77,0x09,0x48,0x83,0xC4,0x48,
     });
-    constexpr std::size_t MaximumProviderSize = ProviderSize121;
+    constexpr std::size_t MaximumProviderSize = ProviderSize121Release;
+    static_assert(ProviderSize121 == MaximumProviderSize);
     static_assert(ProviderSize12 <= MaximumProviderSize);
     static_assert(ProviderSize11 <= MaximumProviderSize);
+    static_assert(UnwindBytes121Release.size() == UnwindBytes12.size());
     static_assert(UnwindBytes121.size() == UnwindBytes12.size());
     static_assert(UnwindBytes11.size() == UnwindBytes12.size());
     static_assert(UnwindBytes12.size() == 36U);
+    static_assert(FuncInfoBytes121Release.size() == FuncInfoBytes12.size());
     static_assert(FuncInfoBytes121.size() == FuncInfoBytes12.size());
     static_assert(FuncInfoBytes11.size() == FuncInfoBytes12.size());
 
@@ -1358,36 +1484,53 @@ auto ValidateD2RCoreReadItemsByVersionAbi(
     const auto coreBase = reinterpret_cast<std::uintptr_t>(core);
     if (providerExport < coreBase) return false;
     const auto liveProviderRva = providerExport - coreBase;
+    const bool provider121Release =
+        liveProviderRva == ProviderRva121Release;
     const bool provider121 = liveProviderRva == ProviderRva121;
     const bool provider12 = liveProviderRva == ProviderRva12;
     const bool provider11 = liveProviderRva == ProviderRva11;
-    if (static_cast<unsigned>(provider121)
+    if (static_cast<unsigned>(provider121Release)
+            + static_cast<unsigned>(provider121)
             + static_cast<unsigned>(provider12)
             + static_cast<unsigned>(provider11) != 1U) {
         return false;
     }
 
-    const auto providerSize = provider121
-        ? ProviderSize121
-        : (provider12 ? ProviderSize12 : ProviderSize11);
-    const auto providerUnwindRva = provider121
-        ? ProviderUnwindRva121
-        : (provider12 ? ProviderUnwindRva12 : ProviderUnwindRva11);
-    const auto providerFuncInfoRva = provider121
-        ? ProviderFuncInfoRva121
-        : (provider12 ? ProviderFuncInfoRva12 : ProviderFuncInfoRva11);
-    const auto nativeForwardSlotRva = provider121
-        ? NativeForwardSlotRva121
-        : (provider12 ? NativeForwardSlotRva12 : NativeForwardSlotRva11);
-    const auto& expectedProviderHash = provider121
-        ? ProviderHash121
-        : (provider12 ? ProviderHash12 : ProviderHash11);
-    const auto& expectedUnwind = provider121
-        ? UnwindBytes121
-        : (provider12 ? UnwindBytes12 : UnwindBytes11);
-    const auto& expectedFuncInfo = provider121
-        ? FuncInfoBytes121
-        : (provider12 ? FuncInfoBytes12 : FuncInfoBytes11);
+    const auto providerSize = provider121Release
+        ? ProviderSize121Release
+        : (provider121
+            ? ProviderSize121
+            : (provider12 ? ProviderSize12 : ProviderSize11));
+    const auto providerUnwindRva = provider121Release
+        ? ProviderUnwindRva121Release
+        : (provider121
+            ? ProviderUnwindRva121
+            : (provider12 ? ProviderUnwindRva12 : ProviderUnwindRva11));
+    const auto providerFuncInfoRva = provider121Release
+        ? ProviderFuncInfoRva121Release
+        : (provider121
+            ? ProviderFuncInfoRva121
+            : (provider12 ? ProviderFuncInfoRva12 : ProviderFuncInfoRva11));
+    const auto nativeForwardSlotRva = provider121Release
+        ? NativeForwardSlotRva121Release
+        : (provider121
+            ? NativeForwardSlotRva121
+            : (provider12 ? NativeForwardSlotRva12 : NativeForwardSlotRva11));
+    const auto& expectedProviderHash = provider121Release
+        ? ProviderHash121Release
+        : (provider121
+            ? ProviderHash121
+            : (provider12 ? ProviderHash12 : ProviderHash11));
+    const auto& expectedUnwind = provider121Release
+        ? UnwindBytes121Release
+        : (provider121
+            ? UnwindBytes121
+            : (provider12 ? UnwindBytes12 : UnwindBytes11));
+    const auto& expectedFuncInfo = provider121Release
+        ? FuncInfoBytes121Release
+        : (provider121
+            ? FuncInfoBytes121
+            : (provider12 ? FuncInfoBytes12 : FuncInfoBytes11));
     if (!IsAccessibleRange(
             reinterpret_cast<const void*>(providerExport),
             providerSize,
@@ -1612,6 +1755,26 @@ auto ValidateD2RCoreWriteD2SSaveProviderAbi(
         0xC4,0x30,0x5B,0xC3,
     });
     static_assert(NativeWriterEntryBytes.size() == 0x44U);
+    constexpr Sha256Digest ProviderHash121Release{
+        0x41,0x47,0x02,0x29,0xDB,0x51,0x89,0xEA,
+        0xFD,0x42,0xB5,0xC7,0x2B,0xA7,0x5F,0x57,
+        0xC1,0xB3,0x7B,0x6C,0x3E,0x6D,0x93,0x2F,
+        0x50,0x26,0xEB,0x3E,0x60,0x15,0x15,0x84,
+    };
+    constexpr auto UnwindBytes121Release = std::to_array<std::uint8_t>({
+        0x19,0x22,0x0D,0x85,0x22,0x68,0xFB,0x00,
+        0x1B,0x03,0x13,0x01,0xF9,0x01,0x0C,0x30,
+        0x0B,0x70,0x0A,0x60,0x09,0xC0,0x07,0xD0,
+        0x05,0xE0,0x03,0xF0,0x01,0x50,0x00,0x00,
+        0xB0,0x04,0x42,0x00,0x10,0xC3,0x57,0x00,
+    });
+    constexpr auto FuncInfoBytes121Release = std::to_array<std::uint8_t>({
+        0x22,0x05,0x93,0x19,0x16,0x00,0x00,0x00,
+        0x38,0xC3,0x57,0x00,0x01,0x00,0x00,0x00,
+        0xE8,0xC3,0x57,0x00,0x3C,0x00,0x00,0x00,
+        0x10,0xC4,0x57,0x00,0xA8,0x0F,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,
+    });
     constexpr Sha256Digest ProviderHash121{
         0x64,0xC5,0xC0,0x3C,0xDB,0x50,0x46,0xCC,
         0xA2,0xAE,0x73,0xB3,0xC6,0x8B,0x5B,0xC3,
@@ -1675,6 +1838,23 @@ auto ValidateD2RCoreWriteD2SSaveProviderAbi(
 
     const auto coreBase = reinterpret_cast<std::uintptr_t>(core);
     if (providerExport >= coreBase
+            && providerExport - coreBase == 0x6AA410U) {
+        return ValidateD2RCoreExactForwardingProvider<0x27E1U>(
+            d2rBase,
+            d2rImageSize,
+            core,
+            providerExport,
+            0x6AA410U,
+            0x57C094U,
+            0x57C310U,
+            0x5AA8B0U,
+            ProviderHash121Release,
+            UnwindBytes121Release,
+            FuncInfoBytes121Release,
+            NativeD2SSaveWriterRva,
+            NativeWriterEntryBytes);
+    }
+    if (providerExport >= coreBase
             && providerExport - coreBase == 0x698390U) {
         return ValidateD2RCoreExactForwardingProvider<0x27E1U>(
             d2rBase,
@@ -1733,6 +1913,26 @@ auto ValidateD2RCoreCloseD2SSaveProviderAbi(
         std::size_t d2rImageSize,
         HMODULE core,
         std::uintptr_t providerExport) noexcept -> bool {
+    constexpr Sha256Digest ProviderHash121Release{
+        0xED,0x5F,0x81,0x3E,0xAB,0x57,0x4F,0xED,
+        0xF3,0x13,0xAC,0x9D,0x15,0xD8,0x53,0x10,
+        0xAA,0x61,0x60,0x95,0x14,0xE6,0x3D,0xBA,
+        0x29,0x8F,0xDF,0x8D,0x56,0x15,0x09,0x5B,
+    };
+    constexpr auto UnwindBytes121Release = std::to_array<std::uint8_t>({
+        0x19,0x20,0x0C,0x85,0x20,0x68,0x42,0x00,
+        0x19,0x03,0x11,0x01,0x86,0x00,0x0A,0x30,
+        0x09,0x70,0x08,0x60,0x07,0xC0,0x05,0xE0,
+        0x03,0xF0,0x01,0x50,0xB0,0x04,0x42,0x00,
+        0xAC,0xC6,0x57,0x00,
+    });
+    constexpr auto FuncInfoBytes121Release = std::to_array<std::uint8_t>({
+        0x22,0x05,0x93,0x19,0x07,0x00,0x00,0x00,
+        0xD4,0xC6,0x57,0x00,0x01,0x00,0x00,0x00,
+        0x0C,0xC7,0x57,0x00,0x09,0x00,0x00,0x00,
+        0x34,0xC7,0x57,0x00,0x18,0x04,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,
+    });
     constexpr Sha256Digest ProviderHash121{
         0x00,0xB4,0xDB,0x06,0x6D,0x8B,0x73,0xE6,
         0x2F,0x0C,0xE1,0xF0,0x9F,0xAF,0x58,0x25,
@@ -1794,6 +1994,23 @@ auto ValidateD2RCoreCloseD2SSaveProviderAbi(
     });
 
     const auto coreBase = reinterpret_cast<std::uintptr_t>(core);
+    if (providerExport >= coreBase
+            && providerExport - coreBase == 0x6AD2F0U) {
+        return ValidateD2RCoreExactForwardingProvider<0x86AU>(
+            d2rBase,
+            d2rImageSize,
+            core,
+            providerExport,
+            0x6AD2F0U,
+            0x57C5F0U,
+            0x57C6ACU,
+            0x5AA8C8U,
+            ProviderHash121Release,
+            UnwindBytes121Release,
+            FuncInfoBytes121Release,
+            NativeD2SSaveCloseRva,
+            NativeFileHandleCloserBytes);
+    }
     if (providerExport >= coreBase
             && providerExport - coreBase == 0x69B270U) {
         return ValidateD2RCoreExactForwardingProvider<0x86AU>(
@@ -4759,7 +4976,9 @@ auto InspectD2SSaveIoProviderContract(
     const auto writerProviderRva = writerExportAddress - coreBase;
     const auto closeProviderRva = closeExportAddress - coreBase;
     const bool matchingProviderGeneration =
-        (writerProviderRva == 0x698390U
+        (writerProviderRva == 0x6AA410U
+            && closeProviderRva == 0x6AD2F0U)
+        || (writerProviderRva == 0x698390U
             && closeProviderRva == 0x69B270U)
         || (writerProviderRva == 0x6365E0U
             && closeProviderRva == 0x6393B0U)

@@ -1,12 +1,23 @@
 # RuffnecKk MapSense
 
 RuffnecKk MapSense is a D2RLoader client plugin for Diablo II: Resurrected.
-Version 1.0.0 promotes the 0.13.41 engineering candidate to its first public
-Suite identity. It combines native map reveal, a compact in-game
+Version 1.0.1 keeps the first public Suite identity and removes MapSense's
+callable dependency on the `UNITS_GetClassId` entry owned by Bind And Summon
+1.4.4. After an independent fail-closed unit-layout witness passes, MapSense
+reads the governed class-ID field directly. It also resolves Floating Damage's
+canonical public DLL name for renderer ownership handoff. The plugin combines
+native map reveal, a compact in-game
 settings panel, hostile-monster markers, immunity indicators, Direct
 navigation, localized exit/waypoint/shrine/boss labels, and data-driven
 chest/rack markers. The current candidate also provides PrimeMH-compatible,
 element-aware missile markers; GPS corridor routing remains planned.
+
+The final 1.0.1 candidate passed a full-stack cold start on D2R 3.3.93847 with
+the public D2RLoader 1.2.1 binary and Bind And Summon 1.4.4. MapSense installed
+the single DirectX 12 owner, initialized its in-frame ImGui host, and accepted
+Floating Damage's first rendered frame without touching the Bind-owned
+`UNITS_GetClassId` entry. The broader visual gameplay matrix was not rerun for
+this compatibility-only hotfix.
 
 ## Native seed atlas in 1.0.0
 

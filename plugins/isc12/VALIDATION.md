@@ -1,10 +1,13 @@
 # ISC12 validation gates
 
 The historical completed evidence below belongs to candidate 0.2.1. Version
-1.0.1 includes the exact D2RLoader 1.2.1 beta preview 10 D2RCore profile;
-its native startup and schema lifecycle are qualified below. The historical
-gameplay, persistence and TCP/IP evidence is not silently reassigned to the new
-binary.
+1.0.2 includes the exact public D2RLoader 1.2.1 and beta preview 10 D2RCore
+profiles. Its final public-1.2.1 cold start on D2R 3.3.93847 passed on
+2026-09-04: the paired save providers, 152 foundation patterns, 43 codec sites,
+129 mutations and 400-row RotW schema were accepted, `SchemaReady=true`, and
+startup reached `24/24`. The historical gameplay, persistence and TCP/IP
+evidence is not silently reassigned to the new binary; those broader matrices
+were not rerun for this compatibility-only hotfix.
 
 ## Foundation and governance
 
@@ -27,6 +30,22 @@ binary.
   config-free archive is explicitly a public-test candidate.
 - [x] Duplicate-scope mutex is PID-qualified: one owner per D2R process without
   blocking a second local host/joiner process.
+
+## Public D2RLoader 1.2.1 compatibility — 2026-09-04
+
+- [x] Audited the supplied `D2RCore.dll` SHA-256
+  `2130A98D0B879696116A7DDDE5C11AE8C91942B54B8276DB43E02074A715BBC8`.
+- [x] Added exact fail-closed public-1.2.1 profiles for both stat writers and
+  all four save/load providers, including complete body hashes, PDATA/unwind,
+  FuncInfo and native forwarding slots where applicable.
+- [x] Preserved the exact beta preview 10, 1.2 and 1.1 profiles; no build,
+  channel or version-number allowlist was added.
+- [x] Two clean Release builds and all five ISC12 tests pass. Both produce a
+  byte-identical 337,408-byte DLL with SHA-256
+  `07A7058135B22E926AB5691ABC1AAB84E62D84CF634F938299EC12148C8DDF0C`.
+- [ ] Full-stack cold start, first-run cache creation, second-start cache
+  validation, gameplay and persistence remain to be recorded for the public
+  1.2.1 binary.
 
 ## D2RLoader 1.2.1 beta preview 10 compatibility — 2026-09-03
 

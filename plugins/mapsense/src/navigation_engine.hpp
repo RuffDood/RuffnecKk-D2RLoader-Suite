@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -8,6 +9,23 @@ namespace RuffnecKk::MapSense {
 
 inline constexpr std::int32_t UnknownNavigationLevelId = -1;
 inline constexpr std::size_t MaximumNavigationDestinations = 256U;
+inline constexpr std::size_t NativeUnitClassIdOffset = 0x04U;
+inline constexpr std::uintptr_t NativeUnitIdentityLayoutWitnessRva = 0x34B7B2U;
+inline constexpr std::array<std::uint8_t, 20>
+    NativeUnitIdentityLayoutWitness{
+        0x8B, 0x01, 0x89, 0x44, 0x24, 0x60, 0x8B, 0x41,
+        0x04, 0x89, 0x44, 0x24, 0x58, 0x8B, 0x41, 0x0C,
+        0x89, 0x44, 0x24, 0x68};
+
+// Bind And Summon owns the callable UNITS_GetClassId entry at 0x349860.
+// Read the governed D2UnitStrc field directly after validating the separate,
+// unowned identity-tuple witness above so plugin load order cannot affect it.
+[[nodiscard]] inline auto ReadNativeUnitClassId(
+        const void* unit) noexcept -> std::int32_t {
+    if (unit == nullptr) return -1;
+    return *reinterpret_cast<const std::int32_t*>(
+        static_cast<const std::uint8_t*>(unit) + NativeUnitClassIdOffset);
+}
 
 enum class NavigationLineKind : std::uint8_t {
     Waypoint,

@@ -2750,7 +2750,7 @@ void WriteStatus(const D2RL::PluginContext* context) noexcept {
     std::snprintf(
         message,
         sizeof(message),
-            "RuffnecKk MapSense 1.0.0: active=%s; gameplay=%s; reveal-all=%s; markers=%s; immunity-scan=%s; renderer-hooks=%s; renderer=%s; chest-textures=%s; input=%s; menu=%s; presents=%llu; rendered=%llu; level traversals=%llu; rooms=%llu; failures=%llu; traversal limits=%llu; static-poi=candidates/materialized/released/failures:%llu/%llu/%llu/%llu; static-active-room-calls=0; automap-pulses=%llu; table-scans=%llu; buckets=%llu; table-limits=%llu; automap units=%llu; monsters=%llu; enemy-rejects=dead/unit/class/alignment:%llu/%llu/%llu/%llu; filter-faults=%llu; hostiles=%llu; hostile-bands=0-80/81-140/141-220/>220:%llu/%llu/%llu/%llu; projection-rejects=%llu; clip-rejects=%llu; max-hostile-subtiles=%u; max-accepted-subtiles=%u; max-published-subtiles=%u; accepted=%llu; inserted=%llu; refreshed=%llu; fresh=%llu; expired=%llu; marker waits=%llu; storage faults=%llu; marker faults=%llu.",
+            "RuffnecKk MapSense 1.0.1: active=%s; gameplay=%s; reveal-all=%s; markers=%s; immunity-scan=%s; renderer-hooks=%s; renderer=%s; chest-textures=%s; input=%s; menu=%s; presents=%llu; rendered=%llu; level traversals=%llu; rooms=%llu; failures=%llu; traversal limits=%llu; static-poi=candidates/materialized/released/failures:%llu/%llu/%llu/%llu; static-active-room-calls=0; automap-pulses=%llu; table-scans=%llu; buckets=%llu; table-limits=%llu; automap units=%llu; monsters=%llu; enemy-rejects=dead/unit/class/alignment:%llu/%llu/%llu/%llu; filter-faults=%llu; hostiles=%llu; hostile-bands=0-80/81-140/141-220/>220:%llu/%llu/%llu/%llu; projection-rejects=%llu; clip-rejects=%llu; max-hostile-subtiles=%u; max-accepted-subtiles=%u; max-published-subtiles=%u; accepted=%llu; inserted=%llu; refreshed=%llu; fresh=%llu; expired=%llu; marker waits=%llu; storage faults=%llu; marker faults=%llu.",
         IsRevealEngineActive() ? "true" : "false",
         GameplayReady.load(std::memory_order_acquire) ? "ready" : "inactive",
         IsRevealAllArmed() ? "armed" : "off",
@@ -5594,8 +5594,19 @@ enum class RendererHandoffResult {
 };
 
 auto GiveMapSenseRendererPriority() noexcept -> RendererHandoffResult {
-    if (const auto floatingDamage = GetModuleHandleW(
-            L"d2rl-ruffneckk-floating-damage.dll")) {
+    const auto canonicalFloatingDamage = GetModuleHandleW(
+        L"d2rl-ruffneckk-floating-damage.dll");
+    const auto legacyFloatingDamage = GetModuleHandleW(
+        L"RuffnecKkFloatingDamage.dll");
+    if (canonicalFloatingDamage != nullptr && legacyFloatingDamage != nullptr
+        && canonicalFloatingDamage != legacyFloatingDamage) {
+        LogRendererWarning(
+            "MapSense: canonical and legacy Floating Damage modules are both loaded; renderer handoff refused.");
+        return RendererHandoffResult::Failed;
+    }
+    if (const auto floatingDamage = canonicalFloatingDamage != nullptr
+            ? canonicalFloatingDamage
+            : legacyFloatingDamage) {
         using YieldFn = bool(__cdecl*)() noexcept;
         const auto yield = reinterpret_cast<YieldFn>(GetProcAddress(
             floatingDamage,
@@ -5644,7 +5655,7 @@ constexpr D2RL::PluginInfo PluginInfo{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-mapsense",
     .name = "RuffnecKk MapSense",
-    .version = "1.0.0",
+    .version = "1.0.1",
     .author = "RuffnecKk",
     .description = "Reveals maps, marks monsters, and draws direct navigation lines.",
     .flags = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
@@ -5927,7 +5938,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         loadedMessage,
         sizeof(loadedMessage),
-        "RuffnecKk MapSense 1.0.0 loaded; labels/objects=%s; native-seed-atlas=%s; monster-markers=%s; Direct-navigation=%s; Reveal/settings=active; native-panel-occlusion=%s.",
+        "RuffnecKk MapSense 1.0.1 loaded; labels/objects=%s; native-seed-atlas=%s; monster-markers=%s; Direct-navigation=%s; Reveal/settings=active; native-panel-occlusion=%s.",
         poiRuntimeAvailable ? "pending-localization" : "unavailable",
         externalLabelsAvailable ? "active" : "unavailable",
         markerAvailable ? "active" : "unavailable",

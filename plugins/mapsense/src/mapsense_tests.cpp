@@ -4721,6 +4721,14 @@ void CheckTownWaypointLabelPolicy() {
 int main(int argc, char** argv) {
     using namespace RuffnecKk::MapSense;
 
+    static_assert(NativeUnitClassIdOffset == 0x04U);
+    static_assert(NativeUnitIdentityLayoutWitnessRva == 0x34B7B2U);
+    static_assert(NativeUnitIdentityLayoutWitness.size() == 20U);
+    std::array<std::uint32_t, 4> nativeUnitWords{};
+    nativeUnitWords[1] = 12'345U;
+    CHECK(ReadNativeUnitClassId(nativeUnitWords.data()) == 12'345);
+    CHECK(ReadNativeUnitClassId(nullptr) == -1);
+
     CHECK(UiLocalizationCatalogIsComplete());
     CHECK(DetectUiLanguageFromFingerprint("Defense: %d")
         == UiLanguage::English);

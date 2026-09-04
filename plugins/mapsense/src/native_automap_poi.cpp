@@ -22,7 +22,6 @@ namespace RuffnecKk::MapSense {
 namespace {
 
 constexpr std::uintptr_t GetUnitByIdAndTypeRva = 0x09A5D0;
-constexpr std::uintptr_t GetUnitClassIdRva = 0x349860;
 constexpr std::uintptr_t GetUnitIdRva = 0x34A330;
 constexpr std::uintptr_t GetUnitModeRva = 0x34AB60;
 constexpr std::uintptr_t GetObjectInteractTypeRva = 0x34AD40;
@@ -80,7 +79,6 @@ struct VisibleNativeShrine final {
 std::uint8_t* Base{};
 GetUnitByIdAndTypeFn GetUnitByIdAndType{};
 GetUnitValueFn GetUnitId{};
-GetUnitSignedValueFn GetUnitClassId{};
 GetUnitValueFn GetUnitMode{};
 GetUnitValueFn GetObjectInteractType{};
 GetUnitValueFn GetObjectRuntimeFlagsC8{};
@@ -418,8 +416,7 @@ void ClearAllPoiLocked() noexcept {
 
 void ScanClientObjectTableLocked(std::uint32_t mask) noexcept {
     __try {
-        if (Base == nullptr || GetUnitId == nullptr
-                || GetUnitClassId == nullptr) {
+        if (Base == nullptr || GetUnitId == nullptr) {
             return;
         }
         std::size_t count{};
@@ -443,7 +440,7 @@ void ScanClientObjectTableLocked(std::uint32_t mask) noexcept {
                 ObjectUnitsObserved.fetch_add(1U, std::memory_order_relaxed);
                 if (*reinterpret_cast<const std::uint32_t*>(
                         bytes + UnitTypeOffset) == UnitObject) {
-                    const auto classId = GetUnitClassId(unit);
+                    const auto classId = ReadNativeUnitClassId(unit);
                     AutomapPoiKind kind{};
                     if (ClassifyObject(classId, kind)
                             && WantsTrackedObject(mask, kind)) {
@@ -1205,11 +1202,6 @@ void ProjectSpecialChestPresetsLocked(
         0xC0, 0x74, 0x01, 0xCC, 0xB8, 0xFF, 0xFF, 0xFF,
         0xFF, 0x48, 0x83, 0xC4, 0x28, 0xC3, 0x8B, 0x41,
         0x08, 0x48, 0x83, 0xC4, 0x28, 0xC3};
-    constexpr std::array<std::uint8_t, 32> getUnitClassIdExpected{
-        0x48, 0x83, 0xEC, 0x28, 0x48, 0x85, 0xC9, 0x75,
-        0x1D, 0x88, 0x4C, 0x24, 0x30, 0x48, 0x8D, 0x4C,
-        0x24, 0x30, 0xE8, 0x49, 0xCB, 0xFF, 0xFF, 0x84,
-        0xC0, 0x74, 0x01, 0xCC, 0xB8, 0xFF, 0xFF, 0xFF};
     constexpr std::array<std::uint8_t, 43> getUnitModeExpected{
         0x48, 0x83, 0xEC, 0x28, 0x48, 0x85, 0xC9, 0x75,
         0x1A, 0x88, 0x4C, 0x24, 0x30, 0x48, 0x8D, 0x4C,
@@ -1286,7 +1278,9 @@ void ProjectSpecialChestPresetsLocked(
             static_cast<std::uint32_t>(expected.size()));
     };
     return check(GetUnitIdRva, getUnitIdExpected)
-        && check(GetUnitClassIdRva, getUnitClassIdExpected)
+        && check(
+            NativeUnitIdentityLayoutWitnessRva,
+            NativeUnitIdentityLayoutWitness)
         && check(GetUnitModeRva, getUnitModeExpected)
         && check(GetUnitClientXRva, getXExpected)
         && check(GetUnitClientYRva, getYExpected)
@@ -1343,7 +1337,6 @@ auto InitializeNativeAutomapPoi(
     Base = reinterpret_cast<std::uint8_t*>(context->exeBase);
     GetUnitByIdAndType = At<GetUnitByIdAndTypeFn>(GetUnitByIdAndTypeRva);
     GetUnitId = At<GetUnitValueFn>(GetUnitIdRva);
-    GetUnitClassId = At<GetUnitSignedValueFn>(GetUnitClassIdRva);
     GetUnitMode = At<GetUnitValueFn>(GetUnitModeRva);
     GetObjectInteractType = At<GetUnitValueFn>(GetObjectInteractTypeRva);
     GetObjectRuntimeFlagsC8 = At<GetUnitValueFn>(
@@ -1392,7 +1385,6 @@ void ShutdownNativeAutomapPoi() noexcept {
     Base = nullptr;
     GetUnitByIdAndType = nullptr;
     GetUnitId = nullptr;
-    GetUnitClassId = nullptr;
     GetUnitMode = nullptr;
     GetObjectInteractType = nullptr;
     GetObjectRuntimeFlagsC8 = nullptr;
@@ -1889,13 +1881,13 @@ auto PublishNativeAutomapSpecialChests(
 void RecordRenderedNativeShrineUnchecked(void* unit) noexcept {
     __try {
         if (Catalog == nullptr
-                || GetUnitId == nullptr || GetUnitClassId == nullptr
+                || GetUnitId == nullptr
                 || GetUnitMode == nullptr
                 || GetUnitMode(unit) != ObjectModeNeutral) {
             return;
         }
         AutomapPoiKind kind{};
-        if (!ClassifyObject(GetUnitClassId(unit), kind)
+        if (!ClassifyObject(ReadNativeUnitClassId(unit), kind)
                 || kind != AutomapPoiKind::ShrineIcon) {
             return;
         }

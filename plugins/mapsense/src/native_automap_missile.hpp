@@ -1,5 +1,7 @@
 #pragma once
 
+#include "navigation_engine.hpp"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>

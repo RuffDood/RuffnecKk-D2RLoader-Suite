@@ -33,7 +33,6 @@ constexpr std::uintptr_t GetCollisionGridRva = 0x2EFB30;
 constexpr std::uintptr_t GetFirstUnitInRoomRva = 0x2EFD90;
 constexpr std::uintptr_t IsRoomInTownRva = 0x2F0750;
 constexpr std::uintptr_t DrlgRoomActiveRoomWitnessRva = 0x3289EE;
-constexpr std::uintptr_t GetUnitClassIdRva = 0x349860;
 constexpr std::uintptr_t GetUnitDataContextRva = 0x34A0E0;
 constexpr std::uintptr_t GetUnitClientCoordXRva = 0x34AF60;
 constexpr std::uintptr_t GetUnitClientCoordYRva = 0x34AFB0;
@@ -142,7 +141,6 @@ using GetDrlgRoomFromActiveRoomFn = void*(__fastcall*)(void*) noexcept;
 using GetCollisionGridFn = void*(__fastcall*)(void*) noexcept;
 using GetFirstUnitInRoomFn = void*(__fastcall*)(void*) noexcept;
 using IsRoomInTownFn = std::int32_t(__fastcall*)(void* activeRoom) noexcept;
-using GetUnitClassIdFn = std::int32_t(__fastcall*)(void*) noexcept;
 using GetUnitDataContextFn = std::uint8_t(__fastcall*)(
     const void* unit) noexcept;
 using GetUnitClientCoordFn = std::int32_t(__fastcall*)(void*) noexcept;
@@ -240,7 +238,6 @@ GetDrlgRoomFromActiveRoomFn GetDrlgRoomFromActiveRoom{};
 GetCollisionGridFn GetCollisionGrid{};
 GetFirstUnitInRoomFn GetFirstUnitInRoom{};
 IsRoomInTownFn IsRoomInTown{};
-GetUnitClassIdFn GetUnitClassId{};
 GetUnitDataContextFn GetUnitDataContext{};
 GetUnitClientCoordFn GetUnitClientCoordX{};
 GetUnitClientCoordFn GetUnitClientCoordY{};
@@ -1346,7 +1343,7 @@ void AppendSpecialChestPreset(
         }
 
         if (GetUnitType(unit) == UnitObject) {
-            const auto classId = GetUnitClassId(unit);
+            const auto classId = ReadNativeUnitClassId(unit);
             const auto targetLevelId = DynamicMainProgressionTargetFor(
                 currentLevelId,
                 classId);
@@ -2431,7 +2428,6 @@ void FinalizeCanyonCorrectTomb(CandidateBatch& batch) noexcept {
             || GetCollisionGrid == nullptr
             || GetFirstUnitInRoom == nullptr
             || IsRoomInTown == nullptr
-            || GetUnitClassId == nullptr
             || GetUnitDataContext == nullptr
             || GetUnitClientCoordX == nullptr
             || GetUnitClientCoordY == nullptr
@@ -2881,13 +2877,6 @@ void FinalizeCanyonCorrectTomb(CandidateBatch& batch) noexcept {
         0x48, 0x8B, 0x43, 0x58, 0x48, 0x8B, 0x5C, 0x24,
         0x30, 0x48, 0x83, 0xC4, 0x20, 0x5F, 0xC3, 0xCC,
         0xCC, 0xCC, 0x40, 0x53, 0x56, 0x57, 0x41, 0x54};
-    constexpr std::array<std::uint8_t, 46U> unitClassIdExpected{
-        0x48, 0x83, 0xEC, 0x28, 0x48, 0x85, 0xC9, 0x75,
-        0x1D, 0x88, 0x4C, 0x24, 0x30, 0x48, 0x8D, 0x4C,
-        0x24, 0x30, 0xE8, 0x49, 0xCB, 0xFF, 0xFF, 0x84,
-        0xC0, 0x74, 0x01, 0xCC, 0xB8, 0xFF, 0xFF, 0xFF,
-        0xFF, 0x48, 0x83, 0xC4, 0x28, 0xC3, 0x8B, 0x41,
-        0x04, 0x48, 0x83, 0xC4, 0x28, 0xC3};
     constexpr std::array<std::uint8_t, 47U> unitDataContextExpected{
         0x48, 0x83, 0xEC, 0x28, 0x48, 0x85, 0xC9, 0x75,
         0x1A, 0x88, 0x4C, 0x24, 0x30, 0x48, 0x8D, 0x4C,
@@ -3129,7 +3118,9 @@ void FinalizeCanyonCorrectTomb(CandidateBatch& batch) noexcept {
         && check(
             DrlgRoomActiveRoomWitnessRva,
             drlgRoomActiveRoomExpected)
-        && check(GetUnitClassIdRva, unitClassIdExpected)
+        && check(
+            NativeUnitIdentityLayoutWitnessRva,
+            NativeUnitIdentityLayoutWitness)
         && check(GetUnitDataContextRva, unitDataContextExpected)
         && check(GetUnitClientCoordXRva, unitClientCoordXExpected)
         && check(GetUnitClientCoordYRva, unitClientCoordYExpected)
@@ -3526,7 +3517,6 @@ auto InitializeNavigationResolver(
     GetFirstUnitInRoom = At<GetFirstUnitInRoomFn>(
         GetFirstUnitInRoomRva);
     IsRoomInTown = At<IsRoomInTownFn>(IsRoomInTownRva);
-    GetUnitClassId = At<GetUnitClassIdFn>(GetUnitClassIdRva);
     GetUnitDataContext = At<GetUnitDataContextFn>(GetUnitDataContextRva);
     GetUnitClientCoordX = At<GetUnitClientCoordFn>(GetUnitClientCoordXRva);
     GetUnitClientCoordY = At<GetUnitClientCoordFn>(GetUnitClientCoordYRva);
@@ -3569,7 +3559,6 @@ void ShutdownNavigationResolver() noexcept {
     GetCollisionGrid = nullptr;
     GetFirstUnitInRoom = nullptr;
     IsRoomInTown = nullptr;
-    GetUnitClassId = nullptr;
     GetUnitDataContext = nullptr;
     GetUnitClientCoordX = nullptr;
     GetUnitClientCoordY = nullptr;

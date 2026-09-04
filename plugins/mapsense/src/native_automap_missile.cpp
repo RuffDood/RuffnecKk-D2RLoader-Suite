@@ -16,7 +16,6 @@ namespace {
 
 constexpr std::uintptr_t ProjectClientToAutomapRva = 0x0D4910;
 constexpr std::uintptr_t GetUnitIdRva = 0x34A330;
-constexpr std::uintptr_t GetUnitClassIdRva = 0x349860;
 constexpr std::uintptr_t GetDynamicPathRva = 0x34AE80;
 constexpr std::uintptr_t GetUnitClientXRva = 0x34AF60;
 constexpr std::uintptr_t GetUnitClientYRva = 0x34AFB0;
@@ -61,7 +60,6 @@ struct MissileFrameSlot final {
 };
 
 using GetUnitIdFn = std::uint32_t(__fastcall*)(void* unit) noexcept;
-using GetUnitClassIdFn = std::int32_t(__fastcall*)(void* unit) noexcept;
 using GetNativePointerFn = void*(__fastcall*)(void* value) noexcept;
 using GetCoordinateFn = std::int32_t(__fastcall*)(void* value) noexcept;
 using ProjectClientToAutomapFn = NativePoint*(__fastcall*)(
@@ -71,7 +69,6 @@ using ProjectClientToAutomapFn = NativePoint*(__fastcall*)(
 
 std::uint8_t* Base{};
 GetUnitIdFn GetUnitId{};
-GetUnitClassIdFn GetUnitClassId{};
 GetNativePointerFn GetDynamicPath{};
 GetCoordinateFn GetUnitClientX{};
 GetCoordinateFn GetUnitClientY{};
@@ -399,7 +396,7 @@ void CountDuplicateIdentity(
             }
 
             const auto unitId = GetUnitId(unit);
-            const auto classId = GetUnitClassId(unit);
+            const auto classId = ReadNativeUnitClassId(unit);
             if (unitId == UINT32_MAX) {
                 InvalidUnitIds.fetch_add(1U, std::memory_order_relaxed);
             } else if (classId < 0) {
@@ -541,11 +538,6 @@ void CountDuplicateIdentity(
         0xC0, 0x74, 0x01, 0xCC, 0xB8, 0xFF, 0xFF, 0xFF,
         0xFF, 0x48, 0x83, 0xC4, 0x28, 0xC3, 0x8B, 0x41,
         0x08, 0x48, 0x83, 0xC4, 0x28, 0xC3};
-    constexpr std::array<std::uint8_t, 32> getUnitClassIdExpected{
-        0x48, 0x83, 0xEC, 0x28, 0x48, 0x85, 0xC9, 0x75,
-        0x1D, 0x88, 0x4C, 0x24, 0x30, 0x48, 0x8D, 0x4C,
-        0x24, 0x30, 0xE8, 0x49, 0xCB, 0xFF, 0xFF, 0x84,
-        0xC0, 0x74, 0x01, 0xCC, 0xB8, 0xFF, 0xFF, 0xFF};
     constexpr std::array<std::uint8_t, 68> getDynamicPathExpected{
         0x40, 0x53, 0x48, 0x83, 0xEC, 0x20, 0x48, 0x8B,
         0xD9, 0x48, 0x85, 0xC9, 0x75, 0x13, 0x88, 0x4C,
@@ -604,7 +596,9 @@ void CountDuplicateIdentity(
     };
     return check(ProjectClientToAutomapRva, projectExpected)
         && check(GetUnitIdRva, getUnitIdExpected)
-        && check(GetUnitClassIdRva, getUnitClassIdExpected)
+        && check(
+            NativeUnitIdentityLayoutWitnessRva,
+            NativeUnitIdentityLayoutWitness)
         && check(GetDynamicPathRva, getDynamicPathExpected)
         && check(GetUnitClientXRva, getXExpected)
         && check(GetUnitClientYRva, getYExpected)
@@ -640,7 +634,6 @@ auto InitializeNativeAutomapMissile(
 
     Base = reinterpret_cast<std::uint8_t*>(context->exeBase);
     GetUnitId = At<GetUnitIdFn>(GetUnitIdRva);
-    GetUnitClassId = At<GetUnitClassIdFn>(GetUnitClassIdRva);
     GetDynamicPath = At<GetNativePointerFn>(GetDynamicPathRva);
     GetUnitClientX = At<GetCoordinateFn>(GetUnitClientXRva);
     GetUnitClientY = At<GetCoordinateFn>(GetUnitClientYRva);

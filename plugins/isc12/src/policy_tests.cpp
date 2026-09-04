@@ -4881,6 +4881,10 @@ int main() {
     CHECK(loaderText.find("0x2129B18U") != std::string::npos);
     CHECK(loaderText.find("matchingProviderGeneration")
         != std::string::npos);
+    CHECK(loaderText.find("writerProviderRva == 0x6AA410U")
+        != std::string::npos);
+    CHECK(loaderText.find("closeProviderRva == 0x6AD2F0U")
+        != std::string::npos);
     CHECK(loaderText.find("writerProviderRva == 0x698390U")
         != std::string::npos);
     CHECK(loaderText.find("closeProviderRva == 0x69B270U")
