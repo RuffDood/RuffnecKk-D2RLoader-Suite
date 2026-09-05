@@ -17,8 +17,6 @@ The historical source directory and some document titles use `3.2.92777`. They i
 
 A `high` confidence entry proves the specific statement in its notes. It does not automatically prove a complete function ABI, structure, safe hook location or multiplayer behavior. `candidate`, `medium` and unknown fields retain their stated limits. Before using native addresses, validate the actual bytes, layouts, ABI and ranges your code depends on; a build number alone is not a compatibility check.
 
-## Laboratory references
-
 ## Credits
 
 Research and documentation: **RuffnecKk**. Original third-party citations and credits remain in the notes. **D2MOO** provided semantic references for Diablo II 1.10f; its 32-bit addresses, structures and ABI must not be transplanted into D2R. References to D2RLoader, PluginSDK and other contributors retain their individual provenance. See the Suite [license](../../LICENSE) and [third-party notices](../../THIRD_PARTY_NOTICES.md).
