@@ -51,6 +51,7 @@ std::atomic_bool QuestVisibilityKnown{};
 std::atomic_bool QuestPanelVisible{};
 std::atomic_uint32_t LastActiveMask{};
 std::atomic_uint32_t LastBlockingPanelMask{};
+std::atomic_uint32_t LastUnknownStateMask{};
 std::atomic_uint64_t ReadFailures{};
 std::atomic_uint64_t QuestVisibilityTick{};
 std::atomic_uint64_t QuestVisibilityReadFailures{};
@@ -103,6 +104,7 @@ void ShutdownNativeUiState() noexcept {
     QuestPanelVisible.store(false, std::memory_order_relaxed);
     LastActiveMask.store(0U, std::memory_order_relaxed);
     LastBlockingPanelMask.store(0U, std::memory_order_relaxed);
+    LastUnknownStateMask.store(0U, std::memory_order_relaxed);
     ReadFailures.store(0U, std::memory_order_relaxed);
     QuestVisibilityTick.store(0U, std::memory_order_relaxed);
     QuestVisibilityReadFailures.store(0U, std::memory_order_relaxed);
@@ -195,6 +197,7 @@ auto AcquireNativeUiStateStatus(
         | (questPanelVisible
             ? (std::uint32_t{1U} << NativeUiQuestPanelState)
             : 0U);
+    const auto unknownStateMask = NativeUiUnknownStateMask(nativeActiveMask);
     const auto retainAutomapProjection =
         ShouldRetainNativeAutomapProjectionForQuest(
             nativeActiveMask,
@@ -204,6 +207,7 @@ auto AcquireNativeUiStateStatus(
             currentTick);
     LastActiveMask.store(activeMask, std::memory_order_relaxed);
     LastBlockingPanelMask.store(blockingMask, std::memory_order_relaxed);
+    LastUnknownStateMask.store(unknownStateMask, std::memory_order_relaxed);
     status = {
         .active = true,
         .questVisibilityKnown = questVisibilityKnown,
@@ -211,6 +215,7 @@ auto AcquireNativeUiStateStatus(
         .retainAutomapProjection = retainAutomapProjection,
         .activeMask = activeMask,
         .blockingPanelMask = blockingMask,
+        .unknownStateMask = unknownStateMask,
         .readFailures = ReadFailures.load(std::memory_order_relaxed),
         .questVisibilityReadFailures =
             QuestVisibilityReadFailures.load(std::memory_order_relaxed),
@@ -226,6 +231,8 @@ auto GetNativeUiStateStatus() noexcept -> NativeUiStateStatus {
         .questPanelVisible = QuestPanelVisible.load(std::memory_order_acquire),
         .activeMask = LastActiveMask.load(std::memory_order_relaxed),
         .blockingPanelMask = LastBlockingPanelMask.load(
+            std::memory_order_relaxed),
+        .unknownStateMask = LastUnknownStateMask.load(
             std::memory_order_relaxed),
         .readFailures = ReadFailures.load(std::memory_order_relaxed),
         .questVisibilityReadFailures =

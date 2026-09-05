@@ -221,6 +221,35 @@ void Validate(const SceneSnapshot& snapshot) {
     }
 }
 
+auto ResolveAutomapLabelMetrics(
+        Vec2 displaySize, float userScale) noexcept -> AutomapLabelMetrics {
+    if (!IsFinite(displaySize) || displaySize.x <= 0.0F
+        || displaySize.y <= 0.0F) {
+        return {};
+    }
+    return {
+        .resolutionScale = displaySize.y / 2160.0F,
+        .userScale = std::isfinite(userScale)
+            ? std::clamp(userScale, 0.5F, 2.0F) : 1.0F,
+    };
+}
+
+auto AutomapLabelMetrics::TextSize(float referencePixels) const noexcept -> float {
+    // Preserve the old configurable 8..72 range at the 4K reference. Below
+    // 4K, normal labels stop at 12 px; explicitly smaller choices still work.
+    const auto referenceSize = std::clamp(referencePixels * userScale, 8.0F, 72.0F);
+    return std::max(std::min(12.0F, referenceSize), referenceSize * resolutionScale);
+}
+
+auto AutomapLabelMetrics::IconTopExtent(float referencePixels) const noexcept -> float {
+    // D2R owns this icon; changing a MapSense label setting cannot resize it.
+    return referencePixels * resolutionScale;
+}
+
+auto AutomapLabelMetrics::Spacing(float referencePixels) const noexcept -> float {
+    return std::max(1.0F, referencePixels * resolutionScale * userScale);
+}
+
 auto ComputeColoredImmunityIndicatorAdvance(float fontSize) -> float {
     ValidatePositive(
         fontSize,

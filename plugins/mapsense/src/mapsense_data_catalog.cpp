@@ -433,6 +433,143 @@ void AppendUniquePath(
     return true;
 }
 
+[[nodiscard]] auto ValidCompilerVersionToken(
+        std::string_view value) noexcept -> bool {
+    if (value.empty() || value.size() > 32U
+        || value.front() == '.' || value.back() == '.') {
+        return false;
+    }
+    bool previousWasDot{};
+    for (const char character : value) {
+        if (character == '.') {
+            if (previousWasDot) return false;
+            previousWasDot = true;
+            continue;
+        }
+        if (character < '0' || character > '9') return false;
+        previousWasDot = false;
+    }
+    return true;
+}
+
+[[nodiscard]] auto Utf8Path(std::string_view value)
+        -> std::filesystem::path {
+    const auto* const begin =
+        reinterpret_cast<const char8_t*>(value.data());
+    return std::filesystem::path(
+        std::u8string(begin, begin + value.size()));
+}
+
+[[nodiscard]] auto ResolveGameRoot(
+        const D2RL::PluginContext* context) -> std::filesystem::path {
+    constexpr auto ModSupportDirectoryEnd =
+        offsetof(D2RL::PluginContext, modSupportDirectory)
+        + sizeof(const wchar_t*);
+    if (ContextHasField(context, ModSupportDirectoryEnd)
+        && context->modSupportDirectory != nullptr
+        && context->modSupportDirectory[0] != L'\0') {
+        auto root =
+            std::filesystem::path(context->modSupportDirectory).parent_path();
+        root = root.parent_path();
+        root = root.parent_path();
+        if (!root.empty()) return root;
+    }
+
+    constexpr auto ScopeRootDirectoryEnd =
+        offsetof(D2RL::PluginContext, scopeRootDirectory)
+        + sizeof(const wchar_t*);
+    if (ContextHasField(context, ScopeRootDirectoryEnd)
+        && context->scopeRootDirectory != nullptr
+        && context->scopeRootDirectory[0] != L'\0') {
+        auto root = std::filesystem::path(context->scopeRootDirectory);
+        if (context->loadScope == D2RL::LoadScope::Mod) {
+            root = root.parent_path().parent_path();
+        }
+        if (!root.empty()) return root;
+    }
+
+    constexpr auto PluginDirectoryEnd =
+        offsetof(D2RL::PluginContext, pluginDirectory)
+        + sizeof(const wchar_t*);
+    if (ContextHasField(context, PluginDirectoryEnd)
+        && context->loadScope == D2RL::LoadScope::Global
+        && context->pluginDirectory != nullptr
+        && context->pluginDirectory[0] != L'\0') {
+        const auto root = std::filesystem::path(context->pluginDirectory)
+            .parent_path().parent_path();
+        if (!root.empty()) return root;
+    }
+    return {};
+}
+
+void AppendD2RLoaderVanillaDirectory(
+        const D2RL::PluginContext* context,
+        std::vector<std::filesystem::path>& directories,
+        DiagnosticSink& diagnostics) {
+    const auto gameRoot = ResolveGameRoot(context);
+    if (gameRoot.empty()) return;
+    const auto compilerRoot = gameRoot / L"d2rloader" / L"data"
+        / L"compiler";
+
+    std::string buildVersion;
+    constexpr auto BuildVersionEnd =
+        offsetof(D2RL::PluginContext, buildVersion) + sizeof(const char*);
+    if (ContextHasField(context, BuildVersionEnd)
+        && BoundedCString(
+            context->buildVersion, 33U, buildVersion)
+        && ValidCompilerVersionToken(buildVersion)) {
+        const auto exact = compilerRoot / Utf8Path(buildVersion)
+            / L"data" / L"global" / L"excel" / L"base";
+        std::error_code exactError;
+        if (std::filesystem::is_directory(exact, exactError)
+            && !exactError) {
+            AppendUniquePath(directories, exact);
+            diagnostics.Add(
+                DataCatalogDiagnosticSeverity::Info,
+                DataCatalogFamily::Levels,
+                "loader_vanilla_catalog",
+                "MapSense uses D2RLoader's installed " + buildVersion
+                    + " compiler baseline as its vanilla TXT fallback.");
+            return;
+        }
+    }
+
+    // Older compatible contexts may omit buildVersion. Accept an implicit
+    // compiler baseline only when exactly one usable version is installed;
+    // ambiguity remains fail-closed instead of selecting stale game data.
+    std::vector<std::filesystem::path> candidates;
+    std::error_code iteratorError;
+    std::filesystem::directory_iterator iterator(compilerRoot, iteratorError);
+    const std::filesystem::directory_iterator end;
+    while (!iteratorError && iterator != end) {
+        std::error_code entryError;
+        if (iterator->is_directory(entryError) && !entryError) {
+            const auto name = iterator->path().filename().u8string();
+            const auto* const begin =
+                reinterpret_cast<const char*>(name.data());
+            const std::string_view token(begin, name.size());
+            if (ValidCompilerVersionToken(token)) {
+                const auto base = iterator->path() / L"data" / L"global"
+                    / L"excel" / L"base";
+                if (std::filesystem::is_directory(base, entryError)
+                    && !entryError) {
+                    candidates.push_back(base);
+                }
+            }
+        }
+        iterator.increment(iteratorError);
+    }
+    if (!iteratorError && candidates.size() == 1U) {
+        AppendUniquePath(directories, candidates.front());
+        diagnostics.Add(
+            DataCatalogDiagnosticSeverity::Info,
+            DataCatalogFamily::Levels,
+            "loader_vanilla_catalog",
+            "MapSense uses the sole installed D2RLoader compiler baseline "
+            "as its vanilla TXT fallback.");
+    }
+}
+
 struct SourceDirectories final {
     bool activeInspectionAllowed{true};
     std::vector<std::filesystem::path> active{};
@@ -520,6 +657,9 @@ struct SourceDirectories final {
             AppendUniquePath(result.vanilla, directory / L"base");
         }
     }
+
+    AppendD2RLoaderVanillaDirectory(
+        context, result.vanilla, diagnostics);
 
     constexpr auto PluginDirectoryEnd =
         offsetof(D2RL::PluginContext, pluginDirectory)

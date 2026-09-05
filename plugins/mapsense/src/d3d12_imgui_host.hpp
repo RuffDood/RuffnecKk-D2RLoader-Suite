@@ -212,6 +212,9 @@ void SetD3D12ImGuiAutomapFontPath(const wchar_t* path) noexcept;
 // Missing or invalid data disables only the atlas underlay.
 void SetD3D12ImGuiAutomapSpritePath(const wchar_t* path) noexcept;
 [[nodiscard]] auto GetD3D12ImGuiAutomapFont() noexcept -> ImFont*;
+// Present-thread only. MapSense's locale-prioritized fallback, not the shared
+// context default used by Floating Damage and other overlay clients.
+[[nodiscard]] auto GetD3D12ImGuiLocalizedFont() noexcept -> ImFont*;
 [[nodiscard]] auto GetD3D12ImGuiAutomapSpriteTexture() noexcept
     -> D3D12ImGuiTextureView;
 [[nodiscard]] auto GetD3D12ImGuiPrimeMhChestTexture(

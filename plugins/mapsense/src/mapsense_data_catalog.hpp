@@ -219,8 +219,9 @@ struct MapSenseDataCatalogLimits final {
 struct MapSenseDataCatalogLoadOptions final {
     // Optional, explicitly trusted vanilla TXT roots. Each path must directly
     // contain levels.txt, shrines.txt, superuniques.txt, monstats.txt,
-    // objects.txt and/or missiles.txt. The loader also checks a packaged "vanilla-excel" folder
-    // next to the plugin and "base" below active Excel roots when present.
+    // objects.txt and/or missiles.txt. The loader also checks D2RLoader's
+    // installed compiler baseline, "base" below active Excel roots, and a
+    // packaged "vanilla-excel" folder next to the plugin.
     std::vector<std::filesystem::path> vanillaExcelDirectories{};
     MapSenseDataCatalogLimits limits{};
 };

@@ -13,6 +13,26 @@ namespace {
 
 using Translation = std::array<const char*, UiLanguageCount>;
 
+struct LanguageFingerprint final {
+    std::string_view text;
+    UiLanguage language;
+};
+
+constexpr std::array LanguageFingerprints{
+    LanguageFingerprint{"Defense: %d", UiLanguage::English},
+    LanguageFingerprint{"防禦：%d", UiLanguage::TraditionalChinese},
+    LanguageFingerprint{"Verteidigung: %d", UiLanguage::German},
+    LanguageFingerprint{"Defensa: %d", UiLanguage::Spanish},
+    LanguageFingerprint{"Défense : %d", UiLanguage::French},
+    LanguageFingerprint{"Difesa: %d", UiLanguage::Italian},
+    LanguageFingerprint{"방어력: %d", UiLanguage::Korean},
+    LanguageFingerprint{"Obrona: %d", UiLanguage::Polish},
+    LanguageFingerprint{"防御力: %d", UiLanguage::Japanese},
+    LanguageFingerprint{"Defesa: %d", UiLanguage::BrazilianPortuguese},
+    LanguageFingerprint{"Защита: %d", UiLanguage::Russian},
+    LanguageFingerprint{"防御: %d", UiLanguage::SimplifiedChinese},
+};
+
 // Column order follows UiLanguage. These strings belong to MapSense and are
 // therefore embedded in the plugin; D2R remains authoritative for all game
 // content names. Spanish wording is deliberately neutral for esES and esMX.
@@ -159,24 +179,22 @@ std::atomic<UiLanguage> ActiveLanguage{UiLanguage::English};
     return true;
 }
 
+[[nodiscard]] auto FindUiLanguageFingerprint(
+        std::string_view text) noexcept -> const LanguageFingerprint* {
+    for (const auto& fingerprint : LanguageFingerprints) {
+        if (fingerprint.text == text) return &fingerprint;
+    }
+    return nullptr;
+}
+
 } // namespace
 
 auto DetectUiLanguageFromFingerprint(
         std::string_view defenseFormat) noexcept -> UiLanguage {
-    if (defenseFormat == "防禦：%d") return UiLanguage::TraditionalChinese;
-    if (defenseFormat == "Verteidigung: %d") return UiLanguage::German;
-    if (defenseFormat == "Defensa: %d") return UiLanguage::Spanish;
-    if (defenseFormat == "Défense : %d") return UiLanguage::French;
-    if (defenseFormat == "Difesa: %d") return UiLanguage::Italian;
-    if (defenseFormat == "방어력: %d") return UiLanguage::Korean;
-    if (defenseFormat == "Obrona: %d") return UiLanguage::Polish;
-    if (defenseFormat == "防御力: %d") return UiLanguage::Japanese;
-    if (defenseFormat == "Defesa: %d") {
-        return UiLanguage::BrazilianPortuguese;
-    }
-    if (defenseFormat == "Защита: %d") return UiLanguage::Russian;
-    if (defenseFormat == "防御: %d") return UiLanguage::SimplifiedChinese;
-    return UiLanguage::English;
+    const auto* const fingerprint = FindUiLanguageFingerprint(defenseFormat);
+    return fingerprint != nullptr
+        ? fingerprint->language
+        : UiLanguage::English;
 }
 
 auto RefreshUiLanguage(const D2RL::PluginContext* context) noexcept -> bool {
@@ -207,10 +225,15 @@ auto RefreshUiLanguage(const D2RL::PluginContext* context) noexcept -> bool {
         return false;
     }
 
-    ActiveLanguage.store(
-        DetectUiLanguageFromFingerprint(
-            std::string_view(buffer.data(), required - 1U)),
-        std::memory_order_release);
+    const auto* const fingerprint = FindUiLanguageFingerprint(
+        std::string_view(buffer.data(), required - 1U));
+    // LocalizationService is published before D2R's language tables are
+    // populated and may temporarily echo ItemStats1h while reporting Success.
+    // Accept only one of D2R's exact translated defense formats so an early
+    // key echo cannot permanently select English for a non-English client.
+    if (fingerprint == nullptr) return false;
+
+    ActiveLanguage.store(fingerprint->language, std::memory_order_release);
     return true;
 }
 

@@ -69,6 +69,8 @@ $allowedVersionStatuses = @('locked', 'pending', 'candidate', 'needs-reconciliat
 $allowedGates = @('passed', 'pending', 'blocked', 'not-required')
 $requiredGateNames = @('source', 'build', 'battleNetRuntime', 'steamRuntime', 'packaging')
 $requiredPackagingGateNames = @('source', 'build', 'battleNetRuntime', 'packaging')
+$repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$releaseAuthorityLocked = [bool]$plan.suite.releaseReady -or [string]$plan.suite.status -in 'package-ready', 'published'
 
 if ([int](Get-PropertyValue $plan 'schemaVersion' 0) -ne 1) {
     $errors.Add('The next-release registry requires schemaVersion 1.')
@@ -112,6 +114,7 @@ foreach ($component in $components) {
     $archiveReadme = Get-PropertyValue $component 'archiveReadme'
     $archiveCompanions = @(Get-PropertyValue $component 'archiveCompanions' @())
     $archiveEmbedding = Get-PropertyValue $component 'archiveEmbedding'
+    $sourceRef = [string](Get-PropertyValue $component 'sourceRef' '')
 
     if ($id -notmatch $componentIdPattern) { $errors.Add("Invalid release registry id '$id'.") }
     if ($kind -notin $allowedKinds) { $errors.Add("$id has unsupported kind '$kind'.") }
@@ -138,6 +141,25 @@ foreach ($component in $components) {
     if ($null -ne $asset -and ([IO.Path]::GetFileName([string]$asset) -cne [string]$asset)) {
         $errors.Add("$id asset must be a basename, not a path: '$asset'.")
     }
+    if ($disposition -eq 'include' -and $kind -eq 'plugin' -and $null -ne $asset -and
+        $null -ne $targetVersion -and -not ([string]$asset).EndsWith("-v$targetVersion.zip", [StringComparison]::Ordinal)) {
+        $errors.Add("$id asset '$asset' does not match targetVersion '$targetVersion'.")
+    }
+    if ($releaseAuthorityLocked -and $disposition -eq 'include' -and
+        [string](Get-PropertyValue $component.gates 'packaging' '') -eq 'passed' -and
+        -not $sourceRef.StartsWith('suite:', [StringComparison]::Ordinal)) {
+        $errors.Add("$id cannot be release-ready while its authoritative source is '$sourceRef'.")
+    }
+    if ($disposition -eq 'include' -and $sourceRef.StartsWith('suite:', [StringComparison]::Ordinal)) {
+        $relativeSource = $sourceRef.Substring('suite:'.Length).Replace('/', [IO.Path]::DirectorySeparatorChar)
+        $resolvedSource = [IO.Path]::GetFullPath((Join-Path $repositoryRoot $relativeSource))
+        if (-not $resolvedSource.StartsWith($repositoryRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            $errors.Add("$id sourceRef escapes the public Suite repository: '$sourceRef'.")
+        }
+        elseif (-not (Test-Path -LiteralPath $resolvedSource)) {
+            $errors.Add("$id sourceRef does not exist in the public Suite repository: '$sourceRef'.")
+        }
+    }
     if ($kind -eq 'patch' -and $null -ne $asset -and [string]$asset -notmatch '^ruffneckk-[a-z0-9-]+\.json$') {
         $errors.Add("Patch $id has an invalid asset name '$asset'.")
     }
@@ -160,9 +182,12 @@ foreach ($component in $components) {
         if (-not [bool](Get-PropertyValue $archiveReadme 'include' $false)) {
             $errors.Add("$id archiveReadme.include must be true when the contract is present.")
         }
+        $readmeDestination = [string](Get-PropertyValue $archiveReadme 'destination' '')
+        $validReadmeDestination = $readmeDestination -ceq 'README.md' -or
+            $readmeDestination -cmatch '^[A-Za-z0-9][A-Za-z0-9._-]*-README\.md$'
         if ([string](Get-PropertyValue $archiveReadme 'source' '') -cne $expectedReadmeSource -or
-            [string](Get-PropertyValue $archiveReadme 'destination' '') -cne 'README.md') {
-            $errors.Add("$id archiveReadme must map $expectedReadmeSource to README.md.")
+            -not $validReadmeDestination) {
+            $errors.Add("$id archiveReadme must map $expectedReadmeSource to README.md or a governed root README basename.")
         }
         if ([string](Get-PropertyValue $archiveReadme 'sha256' '') -notmatch '^[0-9A-F]{64}$') {
             $errors.Add("$id archiveReadme requires an uppercase SHA-256.")
@@ -235,9 +260,11 @@ foreach ($component in $components) {
                 [IO.Path]::GetExtension($executableDestination) -ine '.exe') {
                 $errors.Add("$id archiveEmbedding executable must map a tools/*.exe source into its governed directory.")
             }
+            $validEmbeddedReadmeDestination = $readmeDestination -ceq "$destinationDirectory/README.md" -or
+                $readmeDestination -cmatch '^[A-Za-z0-9][A-Za-z0-9._-]*-README\.md$'
             if ($readmeSource -notmatch '^tools/[a-z0-9-]+/README\.md$' -or
-                $readmeDestination -cne "$destinationDirectory/README.md") {
-                $errors.Add("$id archiveEmbedding README must map a governed tool README into its governed directory.")
+                -not $validEmbeddedReadmeDestination) {
+                $errors.Add("$id archiveEmbedding README must map a governed tool README into its directory or a governed root README basename.")
             }
             foreach ($file in @($embeddingExecutable, $embeddingReadme)) {
                 if ([string](Get-PropertyValue $file 'sha256' '') -notmatch '^[0-9A-F]{64}$') {
@@ -351,8 +378,8 @@ if ([bool]$plan.suite.releaseReady -or $RequirePackageReady) {
     if (-not [bool]$plan.suite.releaseReady) {
         $errors.Add('Packaging is blocked because suite.releaseReady is false.')
     }
-    if ([string]$plan.suite.status -ne 'package-ready') {
-        $errors.Add("Packaging requires suite.status 'package-ready'.")
+    if ([string]$plan.suite.status -notin 'package-ready', 'published') {
+        $errors.Add("Packaging requires suite.status 'package-ready' or 'published'.")
     }
     foreach ($component in $included) {
         $id = [string]$component.id

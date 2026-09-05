@@ -239,7 +239,9 @@ foreach ($entry in $entries) {
             }
         }
         'plugin-readme' {
-            if ($destination -cne 'README.md' -or [IO.Path]::GetFileName($source) -cne 'README.md') {
+            $validReadmeDestination = $destination -ceq 'README.md' -or
+                $destination -cmatch '^[A-Za-z0-9][A-Za-z0-9._-]*-README\.md$'
+            if (-not $validReadmeDestination -or [IO.Path]::GetFileName($source) -cne 'README.md') {
                 throw "Invalid plugin README release path '$source' -> '$destination'."
             }
         }
@@ -252,8 +254,11 @@ foreach ($entry in $entries) {
         }
         'embedded-tool-readme' {
             $destinationDirectory = Split-Path -Parent $destination
+            $validReadmeDestination = ($basename -ceq 'README.md' -and
+                -not [string]::IsNullOrWhiteSpace($destinationDirectory)) -or
+                $destination -cmatch '^[A-Za-z0-9][A-Za-z0-9._-]*-README\.md$'
             if ($source -notmatch '^tools/[a-z0-9-]+/README\.md$' -or
-                $basename -cne 'README.md' -or [string]::IsNullOrWhiteSpace($destinationDirectory)) {
+                -not $validReadmeDestination) {
                 throw "Invalid embedded tool README path '$source' -> '$destination'."
             }
         }

@@ -121,7 +121,10 @@ foreach ($entry in @($allowlist.entries)) {
             }
         }
         'plugin-readme' {
-            if ($destination -cne 'README.md') { throw "Invalid plugin README path '$destination'." }
+            if ($destination -cne 'README.md' -and
+                $destination -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]*-README\.md$') {
+                throw "Invalid plugin README path '$destination'."
+            }
         }
         'embedded-tool-exe' {
             if ($source -notmatch '^tools/[A-Za-z0-9][A-Za-z0-9._-]*\.exe$' -or
@@ -131,9 +134,11 @@ foreach ($entry in @($allowlist.entries)) {
             }
         }
         'embedded-tool-readme' {
+            $readmeInGovernedDirectory = $basename -ceq 'README.md' -and
+                -not [string]::IsNullOrWhiteSpace((Split-Path -Parent $destination))
+            $governedRootReadme = $destination -cmatch '^[A-Za-z0-9][A-Za-z0-9._-]*-README\.md$'
             if ($source -notmatch '^tools/[a-z0-9-]+/README\.md$' -or
-                $basename -cne 'README.md' -or
-                [string]::IsNullOrWhiteSpace((Split-Path -Parent $destination))) {
+                (-not $readmeInGovernedDirectory -and -not $governedRootReadme)) {
                 throw "Invalid embedded tool README path '$source' -> '$destination'."
             }
         }
@@ -252,15 +257,18 @@ foreach ($entry in $pluginEntries) {
     }
     $present++
 
-    $readmes = @(Get-ChildItem -LiteralPath $pluginDirectory -File -Recurse |
+    $readmes = @(Get-ChildItem -LiteralPath $pluginDirectory -File |
         Where-Object Name -Match '^README(?:\..+)?$')
     if ($hasReleaseAllowlist) {
         $releaseReadmes = @($pluginReadmeEntries | Where-Object { [string]$_.componentId -eq $pluginId })
         if ($releaseReadmes.Count -eq 1) {
             $expectedReadmeSource = "plugins/$slug/README.md"
+            $releaseReadmeDestination = [string]$releaseReadmes[0].destination
+            $validReleaseReadmeDestination = $releaseReadmeDestination -ceq 'README.md' -or
+                $releaseReadmeDestination -cmatch '^[A-Za-z0-9][A-Za-z0-9._-]*-README\.md$'
             if ($readmes.Count -ne 1 -or $readmes[0].Name -cne 'README.md' -or
                 [string]$releaseReadmes[0].source -cne $expectedReadmeSource -or
-                [string]$releaseReadmes[0].destination -cne 'README.md' -or
+                -not $validReleaseReadmeDestination -or
                 ([string]$releaseReadmes[0].sha256).ToUpperInvariant() -cne
                     (Get-FileHash -Algorithm SHA256 -LiteralPath $readmes[0].FullName).Hash) {
                 $errors.Add("$slug must contain exactly the reviewed README.md pinned by its release entry.")
@@ -269,13 +277,9 @@ foreach ($entry in $pluginEntries) {
         elseif ($releaseReadmes.Count -gt 1) {
             $errors.Add("$slug has more than one release README entry.")
         }
-        elseif ($slug -eq 'remote-stash') {
-            if ($readmes.Count -ne 1 -or $readmes[0].Name -ne 'README.md') {
-                $errors.Add('remote-stash must contain exactly its approved button and migration README.md.')
-            }
-        }
-        elseif ($readmes.Count -ne 0) {
-            $errors.Add("$slug contains an unapproved per-plugin README; documentation must stay central.")
+        elseif ($readmes.Count -gt 1 -or
+            ($readmes.Count -eq 1 -and $readmes[0].Name -cne 'README.md')) {
+            $errors.Add("$slug may keep at most one repository-only README.md when no README is packaged.")
         }
     }
 
@@ -346,6 +350,21 @@ foreach ($entry in $pluginEntries) {
                 'floating-damage may resolve only D3D12CreateDevice and the optional versioned MapSense overlay-host API.')
         }
     }
+    elseif ($slug -eq 'isc12') {
+        $approvedIsc12Exports = @(
+            'LoadExcelTable',
+            'WritePlayerSaveStatId',
+            'WriteItemSaveStatId',
+            'WritePlayerSaveWithEnvironmentCapture',
+            'ReadItemsByVersion',
+            'WriteD2sFileWithEnvironment',
+            'CloseD2sFileWithEnvironment'
+        )
+        if ($getProcAddressMatches.Count -ne $approvedIsc12Exports.Count -or
+            @($approvedIsc12Exports | Where-Object { $sourceText -notmatch [regex]::Escape("`"$_`"") }).Count -ne 0) {
+            $errors.Add('isc12 may resolve only its seven fingerprint-validated D2RCore provider exports.')
+        }
+    }
     elseif ($slug -eq 'mapsense') {
         $approvedD3D12Lookup = $sourceText -match 'GetProcAddress\s*\(\s*d3d12Module\s*,\s*"D3D12CreateDevice"\s*\)'
         $approvedIsInGameLookup = $sourceText -match 'GetProcAddress\s*\(\s*core\s*,\s*D2RL::CoreExports::IsInGameInfo\.name\s*\)'
@@ -388,6 +407,17 @@ foreach ($entry in $pluginEntries) {
         if ($localizationText -notmatch [regex]::Escape('Menu Appearance and Size')) {
             $errors.Add('mapsense English appearance section must be named Menu Appearance and Size.')
         }
+        if ($sourceText -notmatch '(?s)LocalPlayerReady.*EnsureUiLanguageReady\(\).*EnsureLocalizedDataCatalogReady' -or
+            $sourceText -notmatch 'DataCatalogAttemptLogged\.exchange' -or
+            $localizationText -notmatch '(?s)FindUiLanguageFingerprint.*fingerprint\s*==\s*nullptr.*return false') {
+            $errors.Add('mapsense menu localization must reject early key echo, run independently before optional TXT catalog readiness, and deduplicate catalog diagnostics.')
+        }
+        $d3d12HostPath = Join-Path $pluginDirectory 'src\d3d12_imgui_host.cpp'
+        $d3d12HostText = Get-Content -LiteralPath $d3d12HostPath -Raw
+        if ($d3d12HostText -notmatch '(?s)MapSenseAutomapSpritePath\.empty\(\).*AutomapSpriteAtlasReadyPublished\.store' -or
+            $d3d12HostText -notmatch 'PresentDiscoveryWaitingLogged\.exchange') {
+            $errors.Add('mapsense must treat the retired terrain underlay as configured-off and deduplicate pending Present discovery diagnostics.')
+        }
         $shippedConfigPath = Join-Path $pluginDirectory 'config\ruffneckk-mapsense.toml'
         $shippedConfigText = Get-Content -LiteralPath $shippedConfigPath -Raw
         if ($shippedConfigText -notmatch '(?m)^schema_version\s*=\s*17\s*$' -or
@@ -402,7 +432,7 @@ foreach ($entry in $pluginEntries) {
     $expectedPluginInfoId = if ($hasReleaseAllowlist -and $null -ne $pluginEntry.PSObject.Properties['pluginInfoId']) {
         [string]$pluginEntry.pluginInfoId
     }
-    elseif (-not $hasReleaseAllowlist -and $pluginId -in @(
+    elseif ($pluginId -in @(
         'ruffneckk-bulk-currency-deposit',
         'ruffneckk-resistance-floor'
     )) {

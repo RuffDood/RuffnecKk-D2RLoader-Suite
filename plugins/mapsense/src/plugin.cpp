@@ -16,6 +16,7 @@
 #include "native_ui_state.hpp"
 #include "native_settings_policy.hpp"
 #include "overlay_host_api.hpp"
+#include "overlay_scene.hpp"
 #include "reveal_engine.hpp"
 #include "sfilllocation_diagnostic.hpp"
 #include "ui_localization.hpp"
@@ -88,6 +89,11 @@ std::atomic_bool MenuExpanded{};
 std::atomic_bool MarkerAvailable{};
 std::atomic_bool PoiRuntimeAvailable{};
 std::atomic_bool PoiAvailable{};
+std::atomic_bool UiLanguageReady{};
+std::atomic_bool UiLanguagePendingLogged{};
+std::atomic_bool DataCatalogAttemptLogged{};
+std::atomic_bool ActiveTxtWithoutModeLogged{};
+std::atomic_bool DataCatalogLocalizationPendingLogged{};
 std::atomic_uint64_t SessionEpoch{1};
 std::atomic_uint64_t CurrentSessionGeneration{};
 std::atomic_uint32_t ActiveRevealMapSeed{};
@@ -95,6 +101,7 @@ std::atomic_int32_t ActiveRevealMapDifficulty{UnknownRevealDifficulty};
 std::atomic_uint64_t LastDynamicNavigationRefreshTick{};
 std::atomic_uint64_t LastNativeUiPanelRefreshRequestTick{};
 std::atomic_bool NativeUiPanelRefreshQueued{};
+std::atomic_uint64_t LastNativeUiDiagnosticSnapshot{~std::uint64_t{0}};
 std::vector<NavigationLineSnapshot> NavigationLineSnapshots;
 std::vector<NativeAutomapMarkerSnapshot> MarkerSnapshots;
 std::vector<NativeAutomapMissileSnapshot> MissileSnapshots;
@@ -402,6 +409,34 @@ void ApplyNativeAutomapPoiCollectionSettings() noexcept {
         && catalog.HasVerifiedPlayerFacingLocalization();
 }
 
+[[nodiscard]] auto EnsureUiLanguageReady() noexcept -> bool {
+    if (UiLanguageReady.load(std::memory_order_acquire)) return true;
+    if (!RefreshUiLanguage(Context)) {
+        if (Context != nullptr
+            && !UiLanguagePendingLogged.exchange(
+                true, std::memory_order_acq_rel)) {
+            Context->LogInfo(
+                "MapSense: menu localization is pending D2R language initialization; the embedded English menu remains active and detection will retry independently of TXT catalogs.");
+        }
+        return false;
+    }
+
+    const auto firstReady = !UiLanguageReady.exchange(
+        true, std::memory_order_acq_rel);
+    if (firstReady && Context != nullptr) {
+        const auto language = UiLanguageCode(CurrentUiLanguage());
+        char message[160]{};
+        std::snprintf(
+            message,
+            sizeof(message),
+            "MapSense: embedded menu localization selected %.*s independently of TXT catalogs.",
+            static_cast<int>(language.size()),
+            language.data());
+        Context->LogInfo(message);
+    }
+    return true;
+}
+
 [[nodiscard]] auto EnsureLocalizedDataCatalogReady(
         std::uint64_t sessionGeneration) noexcept -> bool {
     if (DataCatalog.load(std::memory_order_acquire) != nullptr) return true;
@@ -410,11 +445,16 @@ void ApplyNativeAutomapPoiCollectionSettings() noexcept {
     if (DataCatalog.load(std::memory_order_acquire) != nullptr) return true;
 
     auto catalogLoad = MapSenseDataCatalog::Load(Context);
-    LogDataCatalogLoad(catalogLoad);
+    if (!DataCatalogAttemptLogged.exchange(
+            true, std::memory_order_acq_rel)) {
+        LogDataCatalogLoad(catalogLoad);
+    }
     if (catalogLoad.catalog != nullptr
         && HasActiveTxtFamily(*catalogLoad.catalog)
         && !CommandLineEnablesTxtMode()) {
-        if (Context != nullptr) {
+        if (Context != nullptr
+            && !ActiveTxtWithoutModeLogged.exchange(
+                true, std::memory_order_acq_rel)) {
             Context->LogWarn(
                 "MapSense: active mod TXT catalogs require the D2R -txt launch argument; localized labels and data-driven objects are disabled to prevent TXT/BIN divergence.");
         }
@@ -428,23 +468,13 @@ void ApplyNativeAutomapPoiCollectionSettings() noexcept {
     // first safe lifecycle point, and this guard leaves the catalog pending
     // if a future runtime still reports no resolved player-facing string.
     if (!HasResolvedCatalogLocalization(*catalogLoad.catalog)) {
-        if (Context != nullptr) {
+        if (Context != nullptr
+            && !DataCatalogLocalizationPendingLogged.exchange(
+                true, std::memory_order_acq_rel)) {
             Context->LogWarn(
                 "MapSense: D2R localization tables are not ready yet; labels and data-driven objects remain pending and will retry on the next player/level lifecycle event.");
         }
         return false;
-    }
-
-    if (RefreshUiLanguage(Context) && Context != nullptr) {
-        const auto language = UiLanguageCode(CurrentUiLanguage());
-        char message[128]{};
-        std::snprintf(
-            message,
-            sizeof(message),
-            "MapSense: ImGui localization selected %.*s.",
-            static_cast<int>(language.size()),
-            language.data());
-        Context->LogInfo(message);
     }
 
     auto catalog = std::move(catalogLoad.catalog);
@@ -2620,6 +2650,8 @@ void __cdecl OnGameplayEvent(
     }
     if (event->kind == D2RL::Lifecycle::GameplayEventKind::GameJoined) {
         ResetNativeUiPanelVisibility();
+        LastNativeUiDiagnosticSnapshot.store(
+            ~std::uint64_t{0}, std::memory_order_release);
         LastNativeUiPanelRefreshRequestTick.store(0U, std::memory_order_release);
         CurrentSessionGeneration.store(
             event->sessionGeneration,
@@ -2650,6 +2682,7 @@ void __cdecl OnGameplayEvent(
         CurrentSessionGeneration.store(
             event->sessionGeneration,
             std::memory_order_release);
+        (void)EnsureUiLanguageReady();
         (void)EnsureLocalizedDataCatalogReady(event->sessionGeneration);
         GameplayReady.store(true, std::memory_order_release);
         MenuExpanded.store(
@@ -2675,6 +2708,8 @@ void __cdecl OnGameplayEvent(
         }
     } else if (event->kind == D2RL::Lifecycle::GameplayEventKind::GameLeft) {
         ResetNativeUiPanelVisibility();
+        LastNativeUiDiagnosticSnapshot.store(
+            ~std::uint64_t{0}, std::memory_order_release);
         LastNativeUiPanelRefreshRequestTick.store(0U, std::memory_order_release);
         CancelPendingNavigationRefresh();
         ResetNavigationSession(event->sessionGeneration);
@@ -2718,6 +2753,9 @@ void __cdecl OnGameplayEvent(
         CurrentSessionGeneration.store(
             event->sessionGeneration,
             std::memory_order_release);
+        if (!UiLanguageReady.load(std::memory_order_acquire)) {
+            (void)EnsureUiLanguageReady();
+        }
         if (DataCatalog.load(std::memory_order_acquire) == nullptr) {
             (void)EnsureLocalizedDataCatalogReady(event->sessionGeneration);
         }
@@ -2898,14 +2936,15 @@ void WriteStatus(const D2RL::PluginContext* context) noexcept {
     context->WriteConsoleMessage(revealMessage);
     NativeUiStateStatus nativeUi{};
     (void)AcquireNativeUiStateStatus(nativeUi);
-    char nativeUiMessage[384]{};
+    char nativeUiMessage[448]{};
     std::snprintf(
         nativeUiMessage,
         sizeof(nativeUiMessage),
-        "MapSense native panel occlusion: active=%s; ui-mask=0x%08X; panel-mask=0x%08X; quest-known=%s; quest-visible=%s; retained-projection=%s; read-failures=%llu; quest-read-failures=%llu; render-policy=native-ui-state-plus-live-quest-widget-clip.",
+        "MapSense native panel occlusion: active=%s; ui-mask=0x%08X; panel-mask=0x%08X; unknown-mask=0x%08X; quest-known=%s; quest-visible=%s; retained-projection=%s; read-failures=%llu; quest-read-failures=%llu; render-policy=known-panels-clip-unknown-states-diagnostic.",
         nativeUi.active ? "true" : "false",
         static_cast<unsigned>(nativeUi.activeMask),
         static_cast<unsigned>(nativeUi.blockingPanelMask),
+        static_cast<unsigned>(nativeUi.unknownStateMask),
         nativeUi.questVisibilityKnown ? "yes" : "no",
         nativeUi.questPanelVisible ? "yes" : "no",
         nativeUi.retainAutomapProjection ? "yes" : "no",
@@ -3438,6 +3477,59 @@ auto DrawMapSensePanel(bool* open, float menuScale, void*) noexcept
     };
 }
 
+void LogNativeUiDiagnosticTransition(
+        const NativeUiStateStatus& status) noexcept {
+    if (!Settings.diagnostics || Context == nullptr) {
+        LastNativeUiDiagnosticSnapshot.store(
+            ~std::uint64_t{0}, std::memory_order_release);
+        return;
+    }
+
+    const auto snapshot = static_cast<std::uint64_t>(status.activeMask)
+        | (static_cast<std::uint64_t>(status.blockingPanelMask) << 32U);
+    if (LastNativeUiDiagnosticSnapshot.exchange(
+            snapshot, std::memory_order_acq_rel) == snapshot) {
+        return;
+    }
+
+    const auto coverage = ClassifyNativeUiMapPanelCoverage(status.activeMask);
+    const char* reason = "world-hud-only";
+    if (!IsNativeGameplayAutomapFrame(status.activeMask)) {
+        reason = "world-or-automap-inactive";
+    } else {
+        switch (coverage) {
+            case NativeUiMapPanelCoverage::None:
+                if (status.unknownStateMask != 0U) {
+                    reason = "unknown-state-nonblocking";
+                }
+                break;
+            case NativeUiMapPanelCoverage::Left:
+                reason = "left-panel-clip";
+                break;
+            case NativeUiMapPanelCoverage::Right:
+                reason = "right-panel-clip";
+                break;
+            case NativeUiMapPanelCoverage::Full:
+                reason = "known-full-or-combined-panels";
+                break;
+        }
+    }
+
+    char message[384]{};
+    std::snprintf(
+        message,
+        sizeof(message),
+        "MapSense native UI transition: active-mask=0x%08X blocking-mask=0x%08X unknown-mask=0x%08X reason=%s quest-known=%s quest-visible=%s retained-projection=%s.",
+        static_cast<unsigned>(status.activeMask),
+        static_cast<unsigned>(status.blockingPanelMask),
+        static_cast<unsigned>(status.unknownStateMask),
+        reason,
+        status.questVisibilityKnown ? "yes" : "no",
+        status.questPanelVisible ? "yes" : "no",
+        status.retainAutomapProjection ? "yes" : "no");
+    Context->LogInfo(message);
+}
+
 auto WantsMapSenseOwnedOverlay(void*) noexcept -> bool {
     if (!FeaturesEnabled.load(std::memory_order_acquire)) return false;
     RequestNativeUiPanelVisibilityRefresh();
@@ -3446,6 +3538,7 @@ auto WantsMapSenseOwnedOverlay(void*) noexcept -> bool {
         InvalidateNativeAutomapLocalPlayerFrame();
         return false;
     }
+    LogNativeUiDiagnosticTransition(nativeUi);
     if (!IsNativeGameplayAutomapFrame(nativeUi.activeMask)) {
         // A loading screen, closed automap or absent gameplay world revokes the
         // previous player witness without destroying any reveal/cache state.
@@ -3847,14 +3940,16 @@ void DrawMonsterImmunities(
 [[nodiscard]] auto SelectAutomapLabelFont(const char* text) noexcept
         -> ImFont* {
     auto* const automapFont = GetD3D12ImGuiAutomapFont();
-    if (automapFont == nullptr || text == nullptr) return ImGui::GetFont();
+    auto* localizedFont = GetD3D12ImGuiLocalizedFont();
+    if (localizedFont == nullptr) localizedFont = ImGui::GetFont();
+    if (automapFont == nullptr || text == nullptr) return localizedFont;
     const char* cursor = text;
     while (*cursor != '\0') {
         std::uint32_t codepoint{};
         if (!DecodeAutomapUtf8Codepoint(cursor, codepoint)
             || automapFont->FindGlyphNoFallback(
                 static_cast<ImWchar>(codepoint)) == nullptr) {
-            return ImGui::GetFont();
+            return localizedFont;
         }
     }
     return automapFont;
@@ -4346,6 +4441,7 @@ void DrawAutomapPoiSnapshots(
         const ImGuiIO& io,
         const std::shared_ptr<const MapSenseDataCatalog>& dataCatalog,
         float opacity,
+        const AutomapLabelMetrics& labelMetrics,
         AutomapPoiRenderPass renderPass) noexcept {
     if (drawList == nullptr || dataCatalog == nullptr
         || !Settings.objects.enabled) {
@@ -4396,11 +4492,8 @@ void DrawAutomapPoiSnapshots(
                     || level->name.utf8.empty()) {
                     break;
                 }
-                const auto fontSize = std::clamp(
-                    Settings.objects.exitLabels.size
-                        * Settings.overlay.scale,
-                    MinimumAutomapLabelSize,
-                    MaximumAutomapLabelSize);
+                const auto fontSize = labelMetrics.TextSize(
+                    Settings.objects.exitLabels.size);
                 auto* const font = SelectAutomapLabelFont(
                     level->name.utf8.c_str());
                 if (font == nullptr) break;
@@ -4412,8 +4505,8 @@ void DrawAutomapPoiSnapshots(
                 const auto textTop = AutomapLabelTopAboveIcon(
                     center.y,
                     textBounds.y,
-                    NativeExitIconTopExtent * Settings.overlay.scale,
-                    NativeAutomapLabelGap * Settings.overlay.scale);
+                    labelMetrics.IconTopExtent(NativeExitIconTopExtent),
+                    labelMetrics.Spacing(NativeAutomapLabelGap));
                 const auto textPosition = ImVec2{
                     std::clamp(
                         center.x - textBounds.x * 0.5F,
@@ -4440,7 +4533,7 @@ void DrawAutomapPoiSnapshots(
                             && AutomapLabelRectanglesOverlap(
                                 drawn.anchorRectangle,
                                 anchorRectangle,
-                                std::max(1.0F, Settings.overlay.scale))) {
+                                labelMetrics.Spacing(1.0F))) {
                         duplicate = true;
                         break;
                     }
@@ -4449,7 +4542,7 @@ void DrawAutomapPoiSnapshots(
                 auto placedRectangle = anchorRectangle;
                 bool placed{};
                 const auto separation = textBounds.y
-                    + std::max(4.0F, 5.0F * Settings.overlay.scale);
+                    + labelMetrics.Spacing(5.0F);
                 constexpr std::size_t MaximumSeparationSlots = 16U;
                 for (std::size_t slot = 0U;
                         slot < MaximumSeparationSlots;
@@ -4481,9 +4574,7 @@ void DrawAutomapPoiSnapshots(
                         if (AutomapLabelRectanglesOverlap(
                                 drawnExitLabels[drawnIndex].placedRectangle,
                                 candidate,
-                                std::max(
-                                    2.0F,
-                                    3.0F * Settings.overlay.scale))) {
+                                labelMetrics.Spacing(3.0F))) {
                             collision = true;
                             break;
                         }
@@ -4515,8 +4606,8 @@ void DrawAutomapPoiSnapshots(
                     ToImGuiColor(Settings.objects.exitLabels.color, opacity),
                     opacity,
                     AutomapTextPlacement::AboveIcon,
-                    NativeExitIconTopExtent * Settings.overlay.scale,
-                    NativeAutomapLabelGap * Settings.overlay.scale);
+                    labelMetrics.IconTopExtent(NativeExitIconTopExtent),
+                    labelMetrics.Spacing(NativeAutomapLabelGap));
                 break;
             }
             case AutomapPoiKind::WaypointLabel: {
@@ -4529,11 +4620,8 @@ void DrawAutomapPoiSnapshots(
                         || level->waypointLabelUtf8.empty()) {
                     break;
                 }
-                const auto fontSize = std::clamp(
-                    Settings.objects.waypointLabels.size
-                        * Settings.overlay.scale,
-                    MinimumAutomapLabelSize,
-                    MaximumAutomapLabelSize);
+                const auto fontSize = labelMetrics.TextSize(
+                    Settings.objects.waypointLabels.size);
                 auto* const font = SelectAutomapLabelFont(
                     level->waypointLabelUtf8.c_str());
                 if (font == nullptr) break;
@@ -4545,8 +4633,8 @@ void DrawAutomapPoiSnapshots(
                 const auto textTop = AutomapLabelTopAboveIcon(
                     center.y,
                     textBounds.y,
-                    NativeWaypointIconTopExtent * Settings.overlay.scale,
-                    NativeWaypointLabelGap * Settings.overlay.scale);
+                    labelMetrics.IconTopExtent(NativeWaypointIconTopExtent),
+                    labelMetrics.Spacing(NativeWaypointLabelGap));
                 const auto textPosition = ImVec2{
                     std::clamp(
                         center.x - textBounds.x * 0.5F,
@@ -4566,7 +4654,7 @@ void DrawAutomapPoiSnapshots(
                 auto placedRectangle = anchorRectangle;
                 bool placed{};
                 const auto separation = textBounds.y
-                    + std::max(4.0F, 5.0F * Settings.overlay.scale);
+                    + labelMetrics.Spacing(5.0F);
                 constexpr std::size_t MaximumSeparationSlots = 16U;
                 for (std::size_t slot = 0U;
                         slot < MaximumSeparationSlots;
@@ -4595,9 +4683,7 @@ void DrawAutomapPoiSnapshots(
                         if (AutomapLabelRectanglesOverlap(
                                 drawnExitLabels[drawnIndex].placedRectangle,
                                 candidate,
-                                std::max(
-                                    2.0F,
-                                    3.0F * Settings.overlay.scale))) {
+                                labelMetrics.Spacing(3.0F))) {
                             collision = true;
                             break;
                         }
@@ -4630,8 +4716,8 @@ void DrawAutomapPoiSnapshots(
                         opacity),
                     opacity,
                     AutomapTextPlacement::AboveIcon,
-                    NativeWaypointIconTopExtent * Settings.overlay.scale,
-                    NativeWaypointLabelGap * Settings.overlay.scale);
+                    labelMetrics.IconTopExtent(NativeWaypointIconTopExtent),
+                    labelMetrics.Spacing(NativeWaypointLabelGap));
                 break;
             }
             case AutomapPoiKind::LevelLabel: {
@@ -4658,10 +4744,7 @@ void DrawAutomapPoiSnapshots(
                 const auto configuredColor = waypointStyle
                     ? Settings.objects.waypointLabels.color
                     : Settings.objects.exitLabels.color;
-                const auto fontSize = std::clamp(
-                    configuredSize * Settings.overlay.scale,
-                    MinimumAutomapLabelSize,
-                    MaximumAutomapLabelSize);
+                const auto fontSize = labelMetrics.TextSize(configuredSize);
                 auto* const font = SelectAutomapLabelFont(text.c_str());
                 if (font == nullptr) break;
                 const auto textBounds = font->CalcTextSizeA(
@@ -4700,7 +4783,7 @@ void DrawAutomapPoiSnapshots(
                 auto placedRectangle = anchorRectangle;
                 bool placed{};
                 const auto separation = textBounds.y
-                    + std::max(4.0F, 5.0F * Settings.overlay.scale);
+                    + labelMetrics.Spacing(5.0F);
                 constexpr std::size_t MaximumSeparationSlots = 16U;
                 for (std::size_t slot = 0U;
                         slot < MaximumSeparationSlots;
@@ -4729,9 +4812,7 @@ void DrawAutomapPoiSnapshots(
                         if (AutomapLabelRectanglesOverlap(
                                 drawnExitLabels[drawnIndex].placedRectangle,
                                 candidate,
-                                std::max(
-                                    2.0F,
-                                    3.0F * Settings.overlay.scale))) {
+                                labelMetrics.Spacing(3.0F))) {
                             collision = true;
                             break;
                         }
@@ -4780,11 +4861,8 @@ void DrawAutomapPoiSnapshots(
                     || shrine->name.utf8.empty()) {
                     break;
                 }
-                const auto fontSize = std::clamp(
-                    Settings.objects.shrineLabels.size
-                        * Settings.overlay.scale,
-                    MinimumAutomapLabelSize,
-                    MaximumAutomapLabelSize);
+                const auto fontSize = labelMetrics.TextSize(
+                    Settings.objects.shrineLabels.size);
                 // The localized buff name is proximity-gated by the native
                 // collector and stays clearly above D2R's native marker.
                 (void)DrawCenteredShadowedText(
@@ -4796,8 +4874,8 @@ void DrawAutomapPoiSnapshots(
                     ToImGuiColor(Settings.objects.shrineLabels.color, opacity),
                     opacity,
                     AutomapTextPlacement::AboveIcon,
-                    NativeShrineIconTopExtent * Settings.overlay.scale,
-                    NativeShrineLabelGap * Settings.overlay.scale);
+                    labelMetrics.IconTopExtent(NativeShrineIconTopExtent),
+                    labelMetrics.Spacing(NativeShrineLabelGap));
                 break;
             }
             case AutomapPoiKind::Chest: {
@@ -4990,7 +5068,8 @@ void DrawAutomapPoiSnapshots(
         const NativeAutomapMarkerSnapshot& marker,
         ImVec2 markerCenter,
         float markerSize,
-        float fontSize) noexcept -> float {
+        float fontSize,
+        float labelGap) noexcept -> float {
     const auto gap = std::max(2.0F, 2.0F * Settings.overlay.scale);
     auto occupiedTop = markerCenter.y - markerSize * 0.5F;
     if (Settings.immunities.enabled && marker.immunityMask != 0U) {
@@ -5023,7 +5102,7 @@ void DrawAutomapPoiSnapshots(
             occupiedTop = markerCenter.y - radius;
         }
     }
-    return occupiedTop - gap - fontSize;
+    return occupiedTop - labelGap - fontSize;
 }
 
 void DrawBossName(
@@ -5033,20 +5112,20 @@ void DrawBossName(
         const NativeAutomapMarkerSnapshot& marker,
         ImVec2 markerCenter,
         float markerSize,
-        float opacity) noexcept {
+        float opacity,
+        const AutomapLabelMetrics& labelMetrics) noexcept {
     if (dataCatalog == nullptr) return;
     const auto* const name = ResolveBossName(*dataCatalog, marker);
     if (name == nullptr) return;
-    const auto fontSize = std::clamp(
-        Settings.monsters.superUniqueBoss.nameSize * Settings.overlay.scale,
-        MinimumAutomapLabelSize,
-        MaximumAutomapLabelSize);
+    const auto fontSize = labelMetrics.TextSize(
+        Settings.monsters.superUniqueBoss.nameSize);
     (void)DrawCenteredShadowedText(
         drawList,
         io,
         name->utf8.c_str(),
         ImVec2{markerCenter.x,
-            MonsterNameTop(marker, markerCenter, markerSize, fontSize)},
+            MonsterNameTop(marker, markerCenter, markerSize, fontSize,
+                labelMetrics.Spacing(2.0F))},
         fontSize,
         ToImGuiColor(
             Settings.monsters.superUniqueBoss.nameColor,
@@ -5258,6 +5337,8 @@ void DrawMapSenseOwnedOverlay(void*) noexcept {
         1.0F);
     const auto dataCatalog = DataCatalog.load(std::memory_order_acquire);
     auto* const drawList = ImGui::GetForegroundDrawList();
+    const auto labelMetrics = ResolveAutomapLabelMetrics(
+        Vec2{io.DisplaySize.x, io.DisplaySize.y}, Settings.overlay.scale);
     // D2R submits the native automap before its panels, so later panel artwork
     // hides it even though AutomapContext still spans the complete viewport.
     // Intersect that viewport with the current native UI-state side-panel clip
@@ -5277,6 +5358,7 @@ void DrawMapSenseOwnedOverlay(void*) noexcept {
         io,
         dataCatalog,
         opacity,
+        labelMetrics,
         AutomapPoiRenderPass::Objects);
     // Element-aware missiles remain below monster identity and protected text.
     DrawNativeMissileSnapshots(drawList, io, dataCatalog, opacity);
@@ -5373,7 +5455,8 @@ void DrawMapSenseOwnedOverlay(void*) noexcept {
                 marker,
                 geometry.center,
                 geometry.size,
-                opacity);
+                opacity,
+                labelMetrics);
         }
     }
     // Exit, waypoint, and shrine labels own the final protected layer. No
@@ -5384,6 +5467,7 @@ void DrawMapSenseOwnedOverlay(void*) noexcept {
         io,
         dataCatalog,
         opacity,
+        labelMetrics,
         AutomapPoiRenderPass::ProtectedLabels);
     drawList->PopClipRect();
 }
@@ -5691,6 +5775,14 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     Context = context;
     ResetUiLanguage();
+    UiLanguageReady.store(false, std::memory_order_release);
+    UiLanguagePendingLogged.store(false, std::memory_order_release);
+    DataCatalogAttemptLogged.store(false, std::memory_order_release);
+    ActiveTxtWithoutModeLogged.store(false, std::memory_order_release);
+    DataCatalogLocalizationPendingLogged.store(
+        false, std::memory_order_release);
+    LastNativeUiDiagnosticSnapshot.store(
+        ~std::uint64_t{0}, std::memory_order_release);
     Operational.store(false, std::memory_order_release);
     FeaturesEnabled.store(false, std::memory_order_release);
     HostApiAvailable.store(false, std::memory_order_release);
@@ -6006,6 +6098,14 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     PoiSnapshots.clear();
     DataCatalog.store({}, std::memory_order_release);
     ResetUiLanguage();
+    UiLanguageReady.store(false, std::memory_order_release);
+    UiLanguagePendingLogged.store(false, std::memory_order_release);
+    DataCatalogAttemptLogged.store(false, std::memory_order_release);
+    ActiveTxtWithoutModeLogged.store(false, std::memory_order_release);
+    DataCatalogLocalizationPendingLogged.store(
+        false, std::memory_order_release);
+    LastNativeUiDiagnosticSnapshot.store(
+        ~std::uint64_t{0}, std::memory_order_release);
     InputService = nullptr;
     LifecycleService = nullptr;
     ThreadService = nullptr;

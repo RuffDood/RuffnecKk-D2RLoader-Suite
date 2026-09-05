@@ -9,7 +9,10 @@
 namespace RuffnecKk::MapSense {
 
 inline constexpr std::size_t NativeUiStateCount = 32U;
+inline constexpr std::size_t NativeUiNewStatsButtonState = 6U;
+inline constexpr std::size_t NativeUiNewSkillsButtonState = 7U;
 inline constexpr std::size_t NativeUiQuestPanelState = 14U;
+inline constexpr std::size_t NativeUiQuestLogButtonState = 17U;
 inline constexpr std::uint64_t NativeUiPanelVisibilityLifetimeMilliseconds =
     500U;
 inline constexpr std::uint32_t NativeUiGameStateMask =
@@ -35,28 +38,6 @@ inline constexpr std::uint32_t NativeUiAutomapStateMask =
     return gameplayReady
         && IsNativeGameplayAutomapFrame(activeMask)
         && localPlayerAlive;
-}
-
-// D2R's 32-byte interface-state table mixes modal panels with a small set of
-// world/HUD states. The native automap is submitted before those panels and is
-// therefore hidden by their later draw. MapSense is submitted at Present, so
-// it must reproduce that occlusion explicitly. The launcher/settings panel is
-// deliberately independent from this map-pixel policy.
-[[nodiscard]] constexpr auto IsNativeUiPanelState(
-        std::size_t state) noexcept -> bool {
-    switch (state) {
-        case 0U:  // in-game/world state
-        case 10U: // native automap
-        case 12U: // item labels on the ground
-        case 18U: // party portraits
-        case 20U: // persistent world/HUD state observed with normal gameplay
-        case 26U: // belt HUD
-        case 28U: // avatar HUD
-        case 29U: // persistent world/HUD state observed with normal gameplay
-            return false;
-        default:
-            return state < NativeUiStateCount;
-    }
 }
 
 [[nodiscard]] constexpr auto ShouldDrawMapSenseSettingsMenu(
@@ -93,8 +74,11 @@ struct NativeUiMapHorizontalClip final {
 // MapSense pixels.
 inline constexpr std::uint32_t NativeUiWorldHudStateMask =
     NativeUiGameStateMask
+    | (std::uint32_t{1U} << NativeUiNewStatsButtonState)
+    | (std::uint32_t{1U} << NativeUiNewSkillsButtonState)
     | NativeUiAutomapStateMask
     | (std::uint32_t{1U} << 12U)
+    | (std::uint32_t{1U} << NativeUiQuestLogButtonState)
     | (std::uint32_t{1U} << 18U)
     | (std::uint32_t{1U} << 20U)
     | (std::uint32_t{1U} << 26U)
@@ -109,13 +93,38 @@ inline constexpr std::uint32_t NativeUiRightPanelStateMask =
     (std::uint32_t{1U} << 1U)  // Player Inventory
     | (std::uint32_t{1U} << 4U); // Skill Tree
 
+// No single full-screen state is promoted from inference alone. Add one here
+// only after a current-build runtime witness proves that it can coexist with
+// the native automap and must cover every MapSense map pixel.
+inline constexpr std::uint32_t NativeUiFullPanelStateMask = 0U;
+
+inline constexpr std::uint32_t NativeUiKnownPanelStateMask =
+    NativeUiLeftPanelStateMask
+    | NativeUiRightPanelStateMask
+    | NativeUiFullPanelStateMask;
+
+inline constexpr std::uint32_t NativeUiKnownStateMask =
+    NativeUiWorldHudStateMask | NativeUiKnownPanelStateMask;
+
+// The native table reports active interface states, not whether each state is
+// a panel. A valid bit outside the proven masks is therefore diagnostic-only:
+// treating it as a full-screen panel would make every new HUD notification
+// suppress MapSense until a user reports it.
+[[nodiscard]] constexpr auto IsKnownNativeUiPanelState(
+        std::size_t state) noexcept -> bool {
+    return state < NativeUiStateCount
+        && (NativeUiKnownPanelStateMask
+            & (std::uint32_t{1U} << state)) != 0U;
+}
+
+[[nodiscard]] constexpr auto NativeUiUnknownStateMask(
+        std::uint32_t activeMask) noexcept -> std::uint32_t {
+    return activeMask & ~NativeUiKnownStateMask;
+}
+
 [[nodiscard]] constexpr auto ClassifyNativeUiMapPanelCoverage(
         std::uint32_t activeMask) noexcept -> NativeUiMapPanelCoverage {
-    constexpr auto classifiedMask = NativeUiWorldHudStateMask
-        | NativeUiLeftPanelStateMask
-        | NativeUiRightPanelStateMask;
-    if ((activeMask & ~classifiedMask) != 0U) {
-        // Central, full-screen and not-yet-classified panels fail closed.
+    if ((activeMask & NativeUiFullPanelStateMask) != 0U) {
         return NativeUiMapPanelCoverage::Full;
     }
 
@@ -155,8 +164,9 @@ inline constexpr std::uint32_t NativeUiRightPanelStateMask =
 // standard left panel ends at x=81+1250 and the standard right panel begins at
 // screenWidth-1342. Scale by the limiting display dimension, exactly as the HD
 // UI profile does. A small inward margin prevents antialiased MapSense pixels
-// from touching panel artwork. Unknown/full coverage returns false so callers
-// emit no MapSense map pixels for that frame.
+// from touching panel artwork. Proven full coverage returns false so callers
+// emit no MapSense map pixels for that frame; unknown states do not alter the
+// clip.
 [[nodiscard]] constexpr auto TryResolveNativeUiMapHorizontalClip(
         std::int32_t nativeWidth,
         std::int32_t nativeHeight,
@@ -224,13 +234,7 @@ inline constexpr std::uint32_t NativeUiRightPanelStateMask =
 [[nodiscard]] constexpr auto NativeUiBlockingPanelMask(
         const std::array<std::uint8_t, NativeUiStateCount>& states) noexcept
         -> std::uint32_t {
-    std::uint32_t mask{};
-    for (std::size_t state = 0U; state < states.size(); ++state) {
-        if (states[state] != 0U && IsNativeUiPanelState(state)) {
-            mask |= std::uint32_t{1U} << state;
-        }
-    }
-    return mask;
+    return NativeUiStateMask(states) & NativeUiKnownPanelStateMask;
 }
 
 struct NativeUiStateStatus final {
@@ -240,6 +244,7 @@ struct NativeUiStateStatus final {
     bool retainAutomapProjection{};
     std::uint32_t activeMask{};
     std::uint32_t blockingPanelMask{};
+    std::uint32_t unknownStateMask{};
     std::uint64_t readFailures{};
     std::uint64_t questVisibilityReadFailures{};
 };

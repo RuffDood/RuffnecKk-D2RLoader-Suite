@@ -62,8 +62,8 @@ inline constexpr std::uint8_t AutomapPoiStateLocked = 1U << 0U;
 inline constexpr std::uint8_t AutomapPoiStateTrapped = 1U << 1U;
 
 // Native POI projections identify the sprite origin, not the upper edge of
-// D2R's automap cell. Reserve the complete visible cell before placing text;
-// this keeps the label's bottom edge above the icon at every overlay scale.
+// D2R's automap cell. These extents/margins are 2160p reference measurements;
+// the renderer resolves them through AutomapLabelMetrics for its live viewport.
 inline constexpr float NativeExitIconTopExtent = 26.0F;
 inline constexpr float NativeWaypointIconTopExtent = 24.0F;
 inline constexpr float NativeShrineIconTopExtent = 44.0F;

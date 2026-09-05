@@ -57,6 +57,69 @@ popup. Both runs reached 24/24 with 17 patches and exited normally without a
 new crash report or Windows application error. Other render resolutions and a
 live `ResizeBuffers` transition remain visual regression gates.
 
+The first 1.0.2 player-test candidate separates native telemetry
+safety from visual occlusion policy. Invalid fingerprints, unreadable state
+tables, inactive gameplay/automap states and a dead local player still suppress
+all MapSense map pixels. Valid but unclassified UI bits no longer do: only
+proven panels change the clip, while `unknown-mask` exposes every extra state
+for diagnostics. The same candidate treats New Stats, New Skills and Quest Log
+buttons as non-blocking HUD indicators and detects the embedded menu language
+independently from optional TXT catalogs. Vanilla gameplay labels now use the
+matching source baseline already installed by D2RLoader's versioned compiler,
+so a no-mod launch needs neither `-txt` nor a MapSense data companion. Two
+strict Release builds produced the same 3,570,176-byte DLL with SHA-256
+`4152889A028E2D4B43E11D6E32CCB61D3A8F482169D079F2EEF0B1568066BFD1`;
+CTest passed `1/1` twice and the Suite source policy returned `VALID`. No
+runtime was started for this source-only maintenance candidate.
+
+Player-test revision 2 additionally adapts exit, waypoint, shrine, area and
+boss labels to D2R's current drawing viewport. Existing sizes are interpreted
+at their visually calibrated 2160p reference: a default 28 px label becomes
+14 px at 1080p, approximately 18.67 px at 1440p and 12 px at 720p. Ordinary
+text stops shrinking at 12 px, while explicit smaller settings remain valid.
+Native-icon extents, label margins and collision spacing scale with the active
+height; ultrawide uses height too. Native projected exit/POI anchors are not
+scaled a second time. The existing overlay multiplier still adjusts text and
+margins, but never the extent of an icon owned by D2R. Boss names clear the
+actual monster marker and immunity indicators before adding the scaled margin.
+The settings menu, marker sizes, navigation and Floating Damage are unchanged.
+Metrics are resolved once per overlay frame, so a window resize or resolution
+change takes effect without persisting a derived scale in the player TOML.
+
+Two strict Release builds of revision 2 produced the same 3,570,688-byte DLL,
+SHA-256 `C64EDA0475A95991685372ED467169AA3BDEF482D5FA9B6EE6AB10B505CC8125`.
+CTest passed in both builds, including expected exit/shrine offsets at 720p,
+900p, 1080p, 1440p, ultrawide, 4K and 8K, repeated resolution transitions,
+collision spacing, manual scale and invalid viewport inputs. Suite policy
+passed. These are source/build and geometry tests; in-game validation of the
+current binary remains assigned to players.
+
+Player-test revision 3 gives MapSense menus and labels their own font priority:
+MS Gothic for Japanese, Malgun Gothic for Korean, Microsoft YaHei for Simplified
+Chinese, and Microsoft JhengHei for Traditional Chinese. Japanese retains its
+kanji. Font coverage is checked before merging: another installed family adds
+only missing glyphs, and a source contributing none is not copied into ImGui.
+Menu atlases contain only their language profile's translations. Fonts are read
+from the actual Windows directory, not an assumed C:\\Windows installation.
+
+D2R may initialize localization after graphics. The renderer adds the selected
+private font set once at a GPU-idle frame boundary and caches it until context
+destruction. Shared default/client ImFont pointers and metrics are retained;
+neither Floating Damage's font selection nor FontGlobalScale is changed.
+CJK label oversampling and non-power-of-two atlas packing avoid oversized
+textures. The resolution-aware label metrics from revision 2 remain unchanged.
+
+Two strict Release builds produced the same 3,577,856-byte DLL, SHA-256
+`FA8A2EE04156A18934F515BF97F9A2CEF330AD7E01716E9A131BA7F2A39EF724`.
+Both CTest runs passed `2/2`: the existing policy/geometry tests and a CPU-only
+font-atlas suite covering all four CJK profiles, glyph provenance and menu
+coverage at 15/20/30 px, absent optional fonts, late language selection, retained
+shared font metrics and D3D12 texture dimension limits. No D2R runtime or GPU
+upload was tested for this binary. Replacement characters already present in
+player strings, inline D2R formatting and unsupported glyphs still need the
+original reported strings to diagnose; revision 3 does not erase them blindly.
+Experimental Automap Serialization Fix compatibility is outside this font fix.
+
 ## Native seed atlas in 1.0.0
 
 The seed-atlas architecture replaces both the failed distant-room
@@ -373,12 +436,21 @@ borrowed `AutomapContext`, then intersect it with D2R's governed 32-byte
 interface-state table and HD side-panel geometry. This second step is required
 because D2R's native automap is hidden by panels through later draw order while
 the borrowed automap viewport itself remains full screen. Inventory and Skills
-clip the right side; Character and Quest clip the left side. Central,
-full-screen, combined, or not-yet-classified panels fail closed for map pixels.
-Navigation lines, monster icons, boss names, labels, chests and racks therefore
-remain visible only in the unobstructed region and cannot paint over a native
-panel. The movable MapSense launcher/settings menu is independent and never
-disappears merely because a native panel is open.
+clip the right side; Character and Quest clip the left side. Two simultaneous
+proven side panels, or a future full-screen state proven explicitly for the
+current runtime, suppress map pixels. A valid but unclassified interface state
+does not: the native table reports active states, not whether each state is a
+panel, so MapSense keeps the known clip and exposes the extra bits through its
+diagnostic `unknown-mask`. This prevents a new HUD notification from silently
+disabling every MapSense feature while preserving fail-closed behavior for an
+invalid native fingerprint or unreadable table. The movable MapSense
+launcher/settings menu is independent and never disappears merely because a
+native panel is open.
+
+The red New Stats, New Skills, and Quest Log notification buttons are HUD
+indicators rather than panels. They therefore leave MapSense map additions
+visible while their corresponding Character, Skill Tree, and Quest panels
+retain the normal clipping policy when actually opened.
 
 Quest Log needs one additional native-safe rule. D2R 3.3 does not keep its
 generic interface-state byte asserted while that panel remains visible, and
@@ -679,12 +751,15 @@ excluding the `Expansion` separator; descriptive `*hcIdx` and `*ID` comment
 columns are deliberately ignored. Technical rows with an empty display key
 remain valid and simply produce no label.
 
-The plugin package does not redistribute Blizzard's five vanilla TXT
-tables. A mod must therefore provide each customized/required table in its
-active Excel root, provide a matching `base` subdirectory, or install an
-explicit trusted `vanilla-excel` companion beside the plugin. A missing family
-is reported as unavailable and only that label/object family is disabled; it
-is never replaced with a BKVince-specific catalog.
+The plugin package does not redistribute Blizzard's six vanilla TXT tables.
+For a vanilla launch, MapSense reads the matching `base` sources already
+installed by D2RLoader under its versioned data compiler. This makes level,
+monster, shrine, super-unique, object, and missile data available without a
+mod and without `-txt`. An active mod can override each family from its Excel
+root; a matching `base` subdirectory or an explicit trusted `vanilla-excel`
+companion remains supported. A missing family is reported as unavailable and
+only that label/object family is disabled; it is never replaced with a
+BKVince-specific catalog.
 
 The D2RLoader localization service is available before D2R has populated its
 language tables, so MapSense deliberately waits for the player-ready lifecycle
@@ -798,9 +873,14 @@ panel. The current candidate contains:
 Each color opens in a compact picker; permanent technical RGBA fields are not
 shown in the panel. Hovering the color preview displays a custom technical
 tooltip above the pointer. The panel follows D2R's active language across its
-twelve supported localizations. Gameplay names come from D2R's active localized
-data catalog, except that the composed waypoint label still appends the fixed
-English suffix ` Waypoint`.
+twelve supported localizations. Menu-language detection is independent from
+the optional TXT catalog: a vanilla game or a mod started without `-txt` can
+still localize the embedded menu. If D2R temporarily echoes the technical
+`ItemStats1h` key before its language tables are ready, MapSense keeps the
+English fallback and retries on player-ready and level-change events instead
+of locking in a false English result. Gameplay names come from D2R's active
+localized data catalog, except that the composed waypoint label still appends
+the fixed English suffix ` Waypoint`.
 
 Closing or collapsing the panel returns to the launcher. Appearance, position,
 and opacity changes are saved to the active MapSense configuration

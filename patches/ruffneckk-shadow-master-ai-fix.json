@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Shadow Master AI Fix",
+  "description": "Lets Shadow minions keep independent targets.",
+  "patches": [
+    {
+      "description": "Do not replace a Shadow minion's current target with its owner's target",
+      "op": "bytes",
+      "rva": "0x5CDBB3",
+      "expected": "74 25",
+      "bytes": "EB 25"
+    },
+    {
+      "description": "Skip the owner-centered non-combat target reselection block",
+      "op": "bytes",
+      "rva": "0x5CDD55",
+      "expected": "75 74",
+      "bytes": "EB 74"
+    }
+  ]
+}

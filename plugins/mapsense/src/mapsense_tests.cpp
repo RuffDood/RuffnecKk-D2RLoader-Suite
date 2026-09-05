@@ -308,12 +308,18 @@ const D2RL::PluginApi FakeCatalogPluginApi{
 
 [[nodiscard]] auto MakeCatalogContext(
         const wchar_t* modDirectory,
-        const char* activeMod = "TestMod") noexcept -> D2RL::PluginContext {
+        const char* activeMod = "TestMod",
+        const wchar_t* scopeRootDirectory = nullptr,
+        D2RL::LoadScope loadScope = D2RL::LoadScope::Global,
+        const char* buildVersion = nullptr) noexcept -> D2RL::PluginContext {
     D2RL::PluginContext context{};
     context.contextSize = sizeof(context);
     context.api = &FakeCatalogPluginApi;
+    context.loadScope = loadScope;
     context.activeMod = activeMod;
     context.modDirectory = modDirectory;
+    context.scopeRootDirectory = scopeRootDirectory;
+    context.buildVersion = buildVersion;
     return context;
 }
 
@@ -601,6 +607,69 @@ void CheckMapSenseDataCatalogContract() {
                 && missile->element
                     == DataCatalogMissileElement::Physical);
             CHECK(result.catalog->FindMissile(1U) == nullptr);
+        }
+
+        {
+            // Vanilla has no active mod directory and must not require -txt.
+            // D2RLoader already installs the matching source baseline used by
+            // its compiler; MapSense reads that trusted local copy instead of
+            // redistributing Blizzard tables in the plugin package.
+            ScopedCatalogTestDirectory directory("loader-vanilla");
+            const auto vanillaExcel = directory.Path()
+                / "d2rloader" / "data" / "compiler" / "3.3.0"
+                / "data" / "global" / "excel" / "base";
+            WriteCompleteCatalog(vanillaExcel, "VanillaLevelKey");
+            const auto root = directory.Path().wstring();
+            const auto context = MakeCatalogContext(
+                nullptr,
+                nullptr,
+                root.c_str(),
+                D2RL::LoadScope::Global,
+                "3.3.0");
+            const auto result = MapSenseDataCatalog::Load(&context);
+            CHECK(result);
+            CHECK(result.catalog->AllFamiliesAvailable());
+            CHECK(result.catalog->ActiveExcelDirectories().empty());
+            CHECK(result.catalog->ActiveTileDirectories().empty());
+            CHECK(result.catalog->AtlasDataFingerprint() == 0U);
+            for (const auto& status : result.catalog->FamilyStatuses()) {
+                CHECK(status.state
+                    == DataCatalogFamilyState::VanillaFallbackTxt);
+                CHECK(status.sourcePath.parent_path() == vanillaExcel);
+            }
+            const auto* level = result.catalog->FindLevel(12);
+            CHECK(level != nullptr);
+            CHECK(level != nullptr
+                && level->name.key == "VanillaLevelKey");
+            CHECK(!HasCatalogDiagnostic(result, "table_unavailable"));
+            CHECK(HasCatalogDiagnostic(result, "loader_vanilla_catalog"));
+        }
+
+        {
+            // Mod-local plugins receive the mod root as their scope. Walking
+            // back through <game>/mods/<mod> must still find the one global
+            // D2RLoader compiler baseline without reading an unrelated mod.
+            ScopedCatalogTestDirectory directory("mod-local-loader-vanilla");
+            const auto vanillaExcel = directory.Path()
+                / "d2rloader" / "data" / "compiler" / "3.3.0"
+                / "data" / "global" / "excel" / "base";
+            WriteCompleteCatalog(vanillaExcel, "VanillaLevelKey");
+            const auto modRoot = directory.Path()
+                / "mods" / "EmptyMod";
+            std::error_code createError;
+            std::filesystem::create_directories(modRoot, createError);
+            CHECK(!createError);
+            const auto modRootWide = modRoot.wstring();
+            const auto context = MakeCatalogContext(
+                modRootWide.c_str(),
+                "EmptyMod",
+                modRootWide.c_str(),
+                D2RL::LoadScope::Mod,
+                "3.3.0");
+            const auto result = MapSenseDataCatalog::Load(&context);
+            CHECK(result);
+            CHECK(result.catalog->AllFamiliesAvailable());
+            CHECK(result.catalog->FindLevel(12) != nullptr);
         }
 
         {
@@ -1836,32 +1905,51 @@ void CheckNativeUiPanelPolicy() {
     std::array<std::uint8_t, NativeUiStateCount> states{};
     CHECK(NativeUiStateMask(states) == 0U);
     CHECK(NativeUiBlockingPanelMask(states) == 0U);
+    CHECK(NativeUiUnknownStateMask(NativeUiStateMask(states)) == 0U);
 
     // World/HUD states coexist with MapSense.
-    for (const auto state : std::array<std::size_t, 8>{
-            0U, 10U, 12U, 18U, 20U, 26U, 28U, 29U}) {
+    for (const auto state : std::array<std::size_t, 11>{
+            0U,
+            NativeUiNewStatsButtonState,
+            NativeUiNewSkillsButtonState,
+            10U,
+            12U,
+            NativeUiQuestLogButtonState,
+            18U,
+            20U,
+            26U,
+            28U,
+            29U}) {
         states.fill(0U);
         states[state] = 1U;
-        CHECK(!IsNativeUiPanelState(state));
+        CHECK(!IsKnownNativeUiPanelState(state));
         CHECK(NativeUiBlockingPanelMask(states) == 0U);
+        CHECK(NativeUiUnknownStateMask(NativeUiStateMask(states)) == 0U);
     }
 
-    // Known panels and every unclassified state fail closed. Quest is native
-    // interface state 0x0E; 0x0F remains unknown and therefore full-screen.
-    for (const auto state : std::array<std::size_t, 14>{
-            1U, 2U, 3U, 4U, 5U, 8U, 9U, 11U,
-            14U, 15U, 19U, 21U, 24U, 25U}) {
+    // Only panels proven for the current build are blocking. Quest is native
+    // interface state 0x0E and also has a live-widget visibility witness.
+    for (const auto state : std::array<std::size_t, 4>{1U, 2U, 4U, 14U}) {
         states.fill(0U);
         states[state] = 1U;
-        CHECK(IsNativeUiPanelState(state));
+        CHECK(IsKnownNativeUiPanelState(state));
         CHECK(NativeUiBlockingPanelMask(states)
             == (std::uint32_t{1U} << state));
+        CHECK(NativeUiUnknownStateMask(NativeUiStateMask(states)) == 0U);
     }
 
-    states.fill(0U);
-    states[31U] = 1U;
-    CHECK(IsNativeUiPanelState(31U));
-    CHECK(NativeUiBlockingPanelMask(states) == 0x80000000U);
+    // A valid but unclassified state is diagnostic-only. This exhaustive
+    // check prevents a new HUD bit from silently becoming a full-screen panel.
+    for (std::size_t state = 0U; state < NativeUiStateCount; ++state) {
+        const auto stateMask = std::uint32_t{1U} << state;
+        if ((NativeUiKnownStateMask & stateMask) != 0U) continue;
+        states.fill(0U);
+        states[state] = 1U;
+        CHECK(!IsKnownNativeUiPanelState(state));
+        CHECK(NativeUiBlockingPanelMask(states) == 0U);
+        CHECK(NativeUiUnknownStateMask(NativeUiStateMask(states))
+            == stateMask);
+    }
 
     // Native panels never hide the launcher or all map additions. Map pixels
     // are constrained later by the current UI state and side-panel geometry.
@@ -1912,6 +2000,13 @@ void CheckNativeUiPanelPolicy() {
         (std::uint32_t{1U} << 0U) | (std::uint32_t{1U} << 10U))
         == NativeUiMapPanelCoverage::None);
     CHECK(ClassifyNativeUiMapPanelCoverage(
+        (std::uint32_t{1U} << 0U)
+            | (std::uint32_t{1U} << NativeUiNewStatsButtonState)
+            | (std::uint32_t{1U} << NativeUiNewSkillsButtonState)
+            | (std::uint32_t{1U} << 10U)
+            | (std::uint32_t{1U} << NativeUiQuestLogButtonState))
+        == NativeUiMapPanelCoverage::None);
+    CHECK(ClassifyNativeUiMapPanelCoverage(
         (std::uint32_t{1U} << 0U) | (std::uint32_t{1U} << 1U)
             | (std::uint32_t{1U} << 10U))
         == NativeUiMapPanelCoverage::Right);
@@ -1927,13 +2022,23 @@ void CheckNativeUiPanelPolicy() {
     CHECK(ClassifyNativeUiMapPanelCoverage(
         (std::uint32_t{1U} << 0U) | (std::uint32_t{1U} << 15U)
             | (std::uint32_t{1U} << 10U))
-        == NativeUiMapPanelCoverage::Full);
+        == NativeUiMapPanelCoverage::None);
+    CHECK(ClassifyNativeUiMapPanelCoverage(
+        (std::uint32_t{1U} << 0U) | (std::uint32_t{1U} << 1U)
+            | (std::uint32_t{1U} << 10U)
+            | (std::uint32_t{1U} << 15U))
+        == NativeUiMapPanelCoverage::Right);
+    CHECK(ClassifyNativeUiMapPanelCoverage(
+        (std::uint32_t{1U} << 0U) | (std::uint32_t{1U} << 2U)
+            | (std::uint32_t{1U} << 10U)
+            | (std::uint32_t{1U} << 15U))
+        == NativeUiMapPanelCoverage::Left);
     CHECK(ClassifyNativeUiMapPanelCoverage(
         (std::uint32_t{1U} << 1U) | (std::uint32_t{1U} << 2U))
         == NativeUiMapPanelCoverage::Full);
     CHECK(ClassifyNativeUiMapPanelCoverage(
         std::uint32_t{1U} << 9U)
-        == NativeUiMapPanelCoverage::Full);
+        == NativeUiMapPanelCoverage::None);
 
     constexpr auto questWorldMask =
         (std::uint32_t{1U} << 0U) | (std::uint32_t{1U} << 10U)
@@ -1968,7 +2073,7 @@ void CheckNativeUiPanelPolicy() {
         true,
         1'000U,
         1'501U));
-    CHECK(!ShouldRetainNativeAutomapProjectionForQuest(
+    CHECK(ShouldRetainNativeAutomapProjectionForQuest(
         questWorldMask | (std::uint32_t{1U} << 9U),
         true,
         true,
@@ -1999,11 +2104,22 @@ void CheckNativeUiPanelPolicy() {
         (std::uint32_t{1U} << 0U) | (std::uint32_t{1U} << 1U),
         panelClip));
     CHECK(panelClip.right == 1819);
-    CHECK(!TryResolveNativeUiMapHorizontalClip(
+    CHECK(TryResolveNativeUiMapHorizontalClip(
         2560,
         1440,
         (std::uint32_t{1U} << 9U),
         panelClip));
+    CHECK(panelClip.left == 0);
+    CHECK(panelClip.right == 2560);
+    CHECK(panelClip.coverage == NativeUiMapPanelCoverage::None);
+    CHECK(TryResolveNativeUiMapHorizontalClip(
+        2560,
+        1440,
+        (std::uint32_t{1U} << 1U) | (std::uint32_t{1U} << 9U),
+        panelClip));
+    CHECK(panelClip.left == 0);
+    CHECK(panelClip.right == 1210);
+    CHECK(panelClip.coverage == NativeUiMapPanelCoverage::Right);
 
     NativeAutomapClipBounds clip{};
     CHECK(TryResolveNativeAutomapClipBounds(
@@ -4773,6 +4889,74 @@ void CheckAutomapLevelCatalogContract() {
     CHECK(catalog.Definitions().empty());
 }
 
+void CheckAutomapLabelResolutionPolicy() {
+    using namespace RuffnecKk::MapSense;
+    const auto nearlyEqual = [](float left, float right) {
+        return std::abs(left - right) < 0.001F;
+    };
+    struct Case final {
+        Vec2 viewport;
+        float textSize;
+        float shrineBottomOffset;
+        float exitBottomOffset;
+    };
+    // Expected screen pixels, independent of monitor DPI or menu size.
+    // Revisit prior resolutions to catch a cached or compounded scale.
+    constexpr std::array cases{
+        Case{{3840.0F, 2160.0F}, 28.0F, 62.0F, 38.0F},
+        Case{{1920.0F, 1080.0F}, 14.0F, 31.0F, 19.0F},
+        Case{{1280.0F, 720.0F}, 12.0F, 62.0F / 3.0F, 38.0F / 3.0F},
+        Case{{2560.0F, 1440.0F}, 56.0F / 3.0F, 124.0F / 3.0F, 76.0F / 3.0F},
+        Case{{3440.0F, 1440.0F}, 56.0F / 3.0F, 124.0F / 3.0F, 76.0F / 3.0F},
+        Case{{3840.0F, 2160.0F}, 28.0F, 62.0F, 38.0F},
+        Case{{1920.0F, 1080.0F}, 14.0F, 31.0F, 19.0F},
+        Case{{1600.0F, 900.0F}, 12.0F, 155.0F / 6.0F, 95.0F / 6.0F},
+        Case{{7680.0F, 4320.0F}, 56.0F, 124.0F, 76.0F},
+    };
+    for (const auto& value : cases) {
+        const auto metrics = ResolveAutomapLabelMetrics(value.viewport, 1.0F);
+        const auto textSize = metrics.TextSize(28.0F);
+        CHECK(nearlyEqual(textSize, value.textSize));
+        const auto anchorY = value.viewport.y * 0.6F;
+        const auto shrineTop = AutomapLabelTopAboveIcon(
+            anchorY, textSize,
+            metrics.IconTopExtent(NativeShrineIconTopExtent),
+            metrics.Spacing(NativeShrineLabelGap));
+        const auto exitTop = AutomapLabelTopAboveIcon(
+            anchorY, textSize,
+            metrics.IconTopExtent(NativeExitIconTopExtent),
+            metrics.Spacing(NativeAutomapLabelGap));
+        CHECK(nearlyEqual(anchorY - (shrineTop + textSize), value.shrineBottomOffset));
+        CHECK(nearlyEqual(anchorY - (exitTop + textSize), value.exitBottomOffset));
+        CHECK(nearlyEqual(AutomapLabelTopAboveIcon(
+            anchorY + 20.0F, textSize,
+            metrics.IconTopExtent(NativeExitIconTopExtent),
+            metrics.Spacing(NativeAutomapLabelGap)) - exitTop, 20.0F));
+
+        // Collision slots use the same text height and scaled spacing as
+        // drawing. Dense adjacent exits remain separated at low resolutions.
+        const AutomapLabelRectangle first{100.0F, exitTop, 200.0F, exitTop + textSize};
+        const auto separation = textSize + metrics.Spacing(5.0F);
+        const AutomapLabelRectangle second{
+            100.0F, exitTop - separation, 200.0F, exitTop - separation + textSize};
+        CHECK(!AutomapLabelRectanglesOverlap(first, second, metrics.Spacing(3.0F)));
+    }
+    const auto normal = ResolveAutomapLabelMetrics({1920.0F, 1080.0F}, 1.0F);
+    const auto enlarged = ResolveAutomapLabelMetrics({1920.0F, 1080.0F}, 2.0F);
+    CHECK(enlarged.TextSize(28.0F) == 28.0F);
+    CHECK(enlarged.IconTopExtent(44.0F) == normal.IconTopExtent(44.0F));
+    CHECK(enlarged.Spacing(18.0F) == 18.0F);
+    CHECK(normal.TextSize(8.0F) == 8.0F);
+    CHECK(ResolveAutomapLabelMetrics({3840.0F, 2160.0F}, 1.0F).TextSize(8.0F) == 8.0F);
+    CHECK(ResolveAutomapLabelMetrics({3840.0F, 2160.0F}, 1.0F).TextSize(72.0F) == 72.0F);
+    for (const auto invalid : std::array{
+            Vec2{0.0F, 1080.0F}, Vec2{1920.0F, -1.0F},
+            Vec2{1920.0F, std::numeric_limits<float>::quiet_NaN()},
+            Vec2{1920.0F, std::numeric_limits<float>::infinity()}}) {
+        CHECK(ResolveAutomapLabelMetrics(invalid, 1.0F).resolutionScale == 1.0F);
+    }
+}
+
 void CheckTownWaypointLabelPolicy() {
     using RuffnecKk::MapSense::Detail::AllowsWaypointLabelForLevel;
 
@@ -4852,6 +5036,10 @@ int main(int argc, char** argv) {
     {
         const auto localizationContext = MakeCatalogContext(nullptr);
         ResetUiLanguage();
+        EchoCatalogLocalizationKeys = true;
+        CHECK(!RefreshUiLanguage(&localizationContext));
+        CHECK(CurrentUiLanguage() == UiLanguage::English);
+        EchoCatalogLocalizationKeys = false;
         CHECK(RefreshUiLanguage(&localizationContext));
         CHECK(CurrentUiLanguage() == UiLanguage::French);
         CHECK(std::string_view(UiText(UiTextId::Open)) == "Ouvrir");
@@ -4879,6 +5067,7 @@ int main(int argc, char** argv) {
     CheckAutomapWaypointCatalogContract();
     CheckAutomapLevelCatalogContract();
     CheckTownWaypointLabelPolicy();
+    CheckAutomapLabelResolutionPolicy();
 
     static_assert(CurrentConfigSchemaVersion == 17);
     static_assert(MenuThemes.size() == 10U);

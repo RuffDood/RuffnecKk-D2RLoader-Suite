@@ -201,6 +201,22 @@ struct SceneSnapshot final {
 
 using SceneSnapshotPtr = std::shared_ptr<const SceneSnapshot>;
 
+// Existing label sizes and native-icon extents were calibrated at 2160p.
+// Resolve in the current ImGui drawing space, whose coordinates are mapped
+// to the active D2R back buffer by the renderer. Never scale native anchors
+// again or use the monitor resolution / settings-menu scale here.
+struct AutomapLabelMetrics final {
+    float resolutionScale{1.0F};
+    float userScale{1.0F};
+
+    [[nodiscard]] auto TextSize(float referencePixels) const noexcept -> float;
+    [[nodiscard]] auto IconTopExtent(float referencePixels) const noexcept -> float;
+    [[nodiscard]] auto Spacing(float referencePixels) const noexcept -> float;
+};
+
+[[nodiscard]] auto ResolveAutomapLabelMetrics(
+    Vec2 displaySize, float userScale) noexcept -> AutomapLabelMetrics;
+
 inline constexpr std::size_t CrossOutlinePointCount = 13U;
 using CrossOutline = std::array<Vec2, CrossOutlinePointCount>;
 

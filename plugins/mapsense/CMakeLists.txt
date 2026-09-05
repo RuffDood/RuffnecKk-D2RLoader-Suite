@@ -60,6 +60,7 @@ add_library(ruffneckk_mapsense SHARED
     src/automap_sprite_package.cpp
     src/external_label_provider.cpp
     src/imgui_settings_panel.cpp
+    src/localized_fonts.cpp
     src/mapsense_data_catalog.cpp
     src/navigation_engine.cpp
     src/navigation_level_catalog.cpp
@@ -118,6 +119,20 @@ if(MSVC)
 endif()
 
 if(BUILD_TESTING)
+    add_executable(ruffneckk_mapsense_font_tests
+        src/localized_fonts.cpp src/localized_fonts_tests.cpp src/ui_localization.cpp)
+    target_compile_features(ruffneckk_mapsense_font_tests PRIVATE cxx_std_20)
+    target_compile_definitions(ruffneckk_mapsense_font_tests PRIVATE
+        WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+    target_link_libraries(ruffneckk_mapsense_font_tests PRIVATE
+        D2RLPlugin::D2RLPlugin ruffneckk_mapsense_imgui)
+    if(MSVC)
+        target_compile_options(ruffneckk_mapsense_font_tests PRIVATE
+            /W4 /permissive- /EHsc /utf-8
+            $<$<BOOL:${RUFFNECKK_SUITE_WARNINGS_AS_ERRORS}>:/WX>)
+    endif()
+    add_test(NAME ruffneckk.mapsense.fonts COMMAND ruffneckk_mapsense_font_tests)
+
     add_executable(ruffneckk_mapsense_tests
         src/external_atlas_cache.cpp
         src/external_atlas_geometry.cpp
