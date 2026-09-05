@@ -207,3 +207,7 @@ applicable. MapSense also includes its map generator source under
 
 See `THIRD_PARTY_NOTICES.md` for complete component-level credits and licenses.
 This project is not affiliated with or endorsed by Blizzard Entertainment.
+
+## Research for modders
+
+Browse the [D2R research notes](research/d2r/README.md) for known RVAs, native findings and the DataTables atlas, including confidence levels, provenance and partial C++/Ghidra layouts.

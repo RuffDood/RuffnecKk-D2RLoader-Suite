@@ -5,3 +5,15 @@
 *.md text eol=lf
 *.ps1 text eol=lf
 *.toml text eol=lf
+
+# Preserve exact research snapshot bytes and the atlas manifest hashes.
+/research/d2r/findings.md -text
+/research/d2r/known-rvas.json -text
+/research/d2r/datatables-atlas/atlas.schema.json -text
+/research/d2r/datatables-atlas/candidates.json -text
+/research/d2r/datatables-atlas/catalog.json -text
+/research/d2r/datatables-atlas/README.md -text
+/research/d2r/datatables-atlas/generated/d2r33_datatables_atlas_witness.cpp -text
+/research/d2r/datatables-atlas/generated/d2r33_datatables_atlas.hpp -text
+/research/d2r/datatables-atlas/generated/d2r33_datatables_ghidra.h -text
+/research/d2r/datatables-atlas/generated/manifest.json -text

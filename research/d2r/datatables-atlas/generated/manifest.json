@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "generator": "scripts/reverse-engineering/d2r33-datatables-generate.mjs",
+  "catalog": "reverse-engineering/d2r-3.2.92777/datatables-atlas/catalog.json",
+  "catalogSha256": "BD5F711D1558D4F13AB0DC69D8616E878D6E3FCD6FEDA6622EF2279BE2A43191",
+  "targetRuntime": {
+    "version": "3.3.93847",
+    "build": 93847,
+    "architecture": "x86-64"
+  },
+  "coveredBuilds": [
+    {
+      "build": 92777,
+      "status": "byte-exact"
+    },
+    {
+      "build": 93847,
+      "status": "byte-exact"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "d2r33_datatables_atlas.hpp",
+      "bytes": 10327,
+      "sha256": "CE4FA09F4442DC15B33C8CAFE7DF8BD9EE4B52646A6937EF17D4E9E2B1631BBA"
+    },
+    {
+      "name": "d2r33_datatables_ghidra.h",
+      "bytes": 7733,
+      "sha256": "59934CF1EF755DBDFC47CEEDE2DC93C726DF4515132224DFFFD572B9C7AD885F"
+    },
+    {
+      "name": "d2r33_datatables_atlas_witness.cpp",
+      "bytes": 142,
+      "sha256": "28C69E32785E8E6249F06D0805D6C740F4D83A90D0280BBF914EE3344CD17F06"
+    }
+  ]
+}
