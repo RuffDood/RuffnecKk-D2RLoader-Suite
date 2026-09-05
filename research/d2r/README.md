@@ -1,7 +1,7 @@
 # D2R research notes
 
 Public research by RuffnecKk, shared to help D2R modders/devs reuse documented discoveries.
-This is a documentation snapshot maintained from the Diablo laboratory.
+This is a documentation snapshot maintained from my own laboratory.
 
 ## Start here
 
