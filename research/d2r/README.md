@@ -1,6 +1,6 @@
 # D2R research notes
 
-Public research by RuffnecKk, shared to help D2R modders/devs reuse documented discoveries.
+My whole research made public to help D2R modders/devs reuse documented discoveries.
 This is a documentation snapshot maintained from my own laboratory.
 
 ## Start here
