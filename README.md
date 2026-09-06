@@ -15,20 +15,6 @@ one component, a few favorites, or the complete bundles.
 
 Download D2RLoader from [D2RLoader.net](https://d2rloader.net/).
 
-## Source validation and releases
-
-The public source tree includes the compatibility data needed to reproduce its
-native-write and coexistence checks under `tests/data/compatibility/`.
-
-Release planning and package allowlists are private governance inputs. The
-release scripts accept their paths only as explicit arguments and refuse to
-package a release when a required plan, schema, or allowlist is unavailable.
-Before creating output, the release generator runs the complete source policy;
-after creating the individual plugin ZIPs and the All Plugins bundle, it scans
-every packaged RuffnecKk DLL for forbidden D2R build-version restrictions.
-Published releases expose a final SHA-256 catalog alongside their downloadable
-assets instead of publishing the working governance documents.
-
 ## What should I download?
 
 Open the GitHub **Releases** page and choose one of these options:
