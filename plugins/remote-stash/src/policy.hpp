@@ -65,8 +65,8 @@ struct ButtonConfig {
     ButtonAnchor anchor{ButtonAnchor::BottomLeft};
     std::int32_t offsetX{};
     std::int32_t offsetY{};
-    std::int32_t width{176};
-    std::int32_t height{112};
+    std::int32_t width{128};
+    std::int32_t height{80};
     std::string spriteFile{};
     std::string lowendSpriteFile{};
     std::uint32_t normalFrame{};
@@ -356,7 +356,7 @@ inline std::string BuildButtonLayoutJson(const ButtonConfig& config) {
     json += "    \"pressedFrame\": " + std::to_string(config.pressedFrame) + ",\n";
     json += "    \"disabledFrame\": " + std::to_string(config.disabledFrame) + ",\n";
     json += "    \"hoveredFrame\": " + std::to_string(config.hoveredFrame) + ",\n";
-    json += "    \"tooltipString\": \"@d2r:OpenCurrentStashLegend\",\n";
+    json += "    \"tooltipString\": \"@ruffneckk-remote-stash:OpenStash\",\n";
     json += "    \"onClickMessage\": \"PanelManager:OpenPanel:RuffnecKkRemoteStash\"\n";
     json += "  }\n}\n";
     return json;

@@ -1,12 +1,13 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(PlayerXScalingTweaks VERSION 1.0.1 LANGUAGES CXX RC)
+    project(PlayerXScalingTweaks VERSION 1.2.0 LANGUAGES CXX RC ASM_MASM)
     include(CTest)
     option(RUFFNECKK_SUITE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
     add_subdirectory(../../common "${CMAKE_BINARY_DIR}/_deps/common")
 else()
     enable_language(RC)
+    enable_language(ASM_MASM)
 endif()
 
 include(FetchContent)
@@ -32,6 +33,7 @@ configure_file(
     NEWLINE_STYLE LF)
 
 add_library(ruffneckk_playerx_scaling_tweaks SHARED
+    src/callsite_hooks.asm
     src/plugin.cpp
     src/plugin.rc
 )
@@ -62,8 +64,8 @@ d2rlplugin_embed_config(
 
 if(MSVC)
     target_compile_options(ruffneckk_playerx_scaling_tweaks PRIVATE
-        /utf-8 /W4 /permissive- /EHsc
-        $<$<BOOL:${RUFFNECKK_SUITE_WARNINGS_AS_ERRORS}>:/WX>
+        $<$<COMPILE_LANGUAGE:CXX>:/utf-8;/W4;/permissive-;/EHsc>
+        $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<BOOL:${RUFFNECKK_SUITE_WARNINGS_AS_ERRORS}>>:/WX>
     )
     target_link_options(ruffneckk_playerx_scaling_tweaks PRIVATE
         /INCREMENTAL:NO /Brepro
@@ -71,6 +73,23 @@ if(MSVC)
 endif()
 
 if(BUILD_TESTING)
+    add_executable(ruffneckk_playerx_native_command_tests tests/native_command_tests.cpp)
+    target_compile_features(ruffneckk_playerx_native_command_tests PRIVATE cxx_std_20)
+    target_include_directories(ruffneckk_playerx_native_command_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_link_libraries(ruffneckk_playerx_native_command_tests PRIVATE D2RLPlugin::D2RLPlugin tomlplusplus::tomlplusplus)
+    if(MSVC)
+        target_compile_options(ruffneckk_playerx_native_command_tests PRIVATE /utf-8 /W4 /WX /permissive- /EHsc)
+    endif()
+    add_test(NAME ruffneckk.playerx-scaling-tweaks.native-command COMMAND ruffneckk_playerx_native_command_tests)
+    add_executable(ruffneckk_playerx_controls_tests tests/controls_tests.cpp)
+    target_compile_features(ruffneckk_playerx_controls_tests PRIVATE cxx_std_20)
+    target_include_directories(ruffneckk_playerx_controls_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_link_libraries(ruffneckk_playerx_controls_tests PRIVATE D2RLPlugin::D2RLPlugin tomlplusplus::tomlplusplus)
+    if(MSVC)
+        target_compile_options(ruffneckk_playerx_controls_tests PRIVATE /utf-8 /W4 /permissive- /EHsc
+            $<$<BOOL:${RUFFNECKK_SUITE_WARNINGS_AS_ERRORS}>:/WX>)
+    endif()
+    add_test(NAME ruffneckk.playerx-scaling-tweaks.controls COMMAND ruffneckk_playerx_controls_tests)
     add_executable(ruffneckk_playerx_scaling_tweaks_tests
         tests/policy_tests.cpp
     )

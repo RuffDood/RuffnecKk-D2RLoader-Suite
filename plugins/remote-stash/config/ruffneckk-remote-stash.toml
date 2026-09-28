@@ -41,10 +41,10 @@ offset_x = 0
 offset_y = 0
 
 # Button hitbox and rendered size in Inventory-layout units.
-width = 176
-height = 112
+width = 128
+height = 80
 
-# Empty paths use the RuffnecKk chest sprites embedded in the DLL.
+# Empty paths use the self-contained framed chest sprites embedded in the DLL.
 # A relative path is resolved beside this TOML. Absolute paths are also valid.
 # Use forward slashes, escaped backslashes, or TOML literal strings.
 # Example: sprite_file = "sprites/my-remote-stash.sprite"

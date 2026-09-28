@@ -4249,7 +4249,7 @@ Le parseur World lit Teleport/Objects embarqués au lieu du contexte mod actif.
 `mapsense-gps-data-audit.mjs` confirme zéro différence Teleport sur les 137
 IDs communs mais dix IDs BKVince supplémentaires hors table embarquée.
 Les entrées sont round-trippées byte-exact en mémoire, sans écriture TSV.
-La mission et `suite:workspace:plugin-dev/mapsense/notes/GPS-PROOF.md` conservent la matrice,
+La mission et `suite:plugins/mapsense/mapgen/GPS-PROOF.md` conservent la matrice,
 ses limites et le prochain lot : adaptation, comparaison au terrain D2R,
 puis intégration. Aucun runtime, déploiement, nouveau paquet réseau ou
 changement de sauvegarde dans ce lot.
@@ -4286,7 +4286,7 @@ actifs sont testés séparément.
 Le patch gouverné se rejoue sur les 12 fichiers de la source épinglée, après
 normalisation des fins de ligne Git. Le helper régulier rebâti reste identique
 au r3 : `74CC1DACA28E836C53E10FDB43EE7B37883E73F0894A06E14AA2A8287B138A43`.
-Rapport et rollback : `suite:workspace:plugin-dev/mapsense/notes/GPS-PROOF.md`.
+Rapport et rollback : `suite:plugins/mapsense/mapgen/GPS-PROOF.md`.
 `gpsAdmitted=false` et `d2rRuntimeCompared=false` demeurent explicites : aucune
 capture native fraîche, arrivée réelle, intégration du rendu ou installation
 runtime n'est effectuée par ce lot.

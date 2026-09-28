@@ -3,6 +3,9 @@
 
 #include "native_contract.hpp"
 #include "policy.hpp"
+#include "removal_settings.hpp"
+#include "refund_native.hpp"
+#include <RuffnecKk/native_stat_compat.hpp>
 
 #include <Windows.h>
 
@@ -89,11 +92,11 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-bulk-skill-point-allocation",
     .name = "Bulk Skill Point Allocation",
-    .version = "1.3.5",
+    .version = "1.4.0",
     .author = "RuffnecKk",
     .description =
-        "Allocates configurable skill-point batches with Ctrl or all points with Shift.",
-    .flags = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
+        "Allocates and refunds skill points with configurable mouse controls.",
+    .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
 };
 
 template<class Function>
@@ -439,7 +442,10 @@ auto CheckBytes(
     return false;
 }
 
+#include "refund_runtime.inc"
+
 auto ValidateNativeContract() noexcept -> bool {
+    if (!ValidateRefundNative()) return false;
     if (!CheckBytes(
             NativeContract::SendFiveBytePacketRva,
             NativeContract::SendFiveBytePacketExpected,
@@ -508,6 +514,7 @@ void UnregisterUiListener() noexcept {
 }
 
 auto InstallHooks() noexcept -> bool {
+    if (!InstallRefundHooks()) return false;
     if (ActiveSettings.confirmShiftAllocation
         && !Context->InstallInlineHook(
             NativeContract::GetLocalizedStringByKeyRva,
@@ -546,6 +553,9 @@ auto PathForLog(
 }
 
 void ResetState() noexcept {
+    RefundStats.Reset();
+    OriginalButtonInput = nullptr;
+    OriginalServerAllocate = nullptr;
     CancelPendingConfirmation();
     OpeningSkillConfirmation = false;
     ConfirmationPrompt.fill('\0');
@@ -612,7 +622,15 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     context->LogInfo(buildMessage);
 
     try {
-        auto loaded = LoadSettings(context);
+        auto config = Removal::LoadConfiguration(
+            ResolveConfigCandidates(context, L"BulkSkillPointAllocation.toml"),
+            ResolveConfigCandidates(context, GameplayConfigFileName));
+        auto loaded = LoadSettingsFromCandidates({}, ResolveConfigCandidates(context, StringsConfigFileName));
+        loaded.settings = std::move(config.allocation);
+        if (auto document = LoadFirstDocument(ResolveConfigCandidates(context, StringsConfigFileName)))
+            ApplyStringsConfig(document->object, loaded.settings);
+        loaded.gameplaySource = std::move(config.source);
+        RefundSettings = config.removal;
         ActiveSettings = std::move(loaded.settings);
         GameplaySource = std::move(loaded.gameplaySource);
         StringsSource = std::move(loaded.stringsSource);
@@ -633,12 +651,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ActiveSettings.enabled) {
         try {
             const auto message = std::string(
-                "BulkSkillPointAllocation 1.3.5 by RuffnecKk loaded disabled; no service or hook registered; gameplayConfig=")
+                "BulkSkillPointAllocation 1.4.0 by RuffnecKk loaded disabled; no service or hook registered; gameplayConfig=")
                 + PathForLog(GameplaySource) + ".";
             context->LogInfo(message.c_str());
         } catch (...) {
             context->LogInfo(
-                "BulkSkillPointAllocation 1.3.5 by RuffnecKk loaded disabled; no service or hook registered.");
+                "BulkSkillPointAllocation 1.4.0 by RuffnecKk loaded disabled; no service or hook registered.");
         }
         return true;
     }
@@ -663,7 +681,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
 
     try {
         const auto message = std::string(
-            "BulkSkillPointAllocation 1.3.5 by RuffnecKk loaded; role=Client; ctrl=")
+            "BulkSkillPointAllocation 1.4.0 by RuffnecKk loaded; role=Shared; ctrl=")
             + std::to_string(ActiveSettings.skillPointsPerCtrlClick)
             + "; shiftConfirmation="
             + (ActiveSettings.confirmShiftAllocation ? "enabled" : "disabled")
@@ -672,7 +690,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         context->LogInfo(message.c_str());
     } catch (...) {
         context->LogInfo(
-            "BulkSkillPointAllocation 1.3.5 by RuffnecKk loaded.");
+            "BulkSkillPointAllocation 1.4.0 by RuffnecKk loaded.");
     }
     return true;
 }

@@ -94,6 +94,29 @@ constexpr CompactPlacement CompactBelow(
     return {true, placed};
 }
 
+// Artwork-independent placement: retain the requested native visual size unless
+// the measured free rectangle requires a smaller scale. Never enlarge past it.
+constexpr CompactPlacement FitButtonInArea(const WidgetRect& area, const WidgetGeometry& desired) noexcept {
+    if (!HasUsableSize(area) || !HasUsableSize(desired.rect) || !UsableScale(desired.scale)) return {};
+    double scale = desired.scale;
+    const double sx = static_cast<double>(area.width) / desired.rect.width;
+    const double sy = static_cast<double>(area.height) / desired.rect.height;
+    if (scale > sx) scale = sx;
+    if (scale > sy) scale = sy;
+    auto geometry = desired;
+    geometry.scale = static_cast<float>(scale);
+    // Round down to avoid crossing a measured edge after float conversion.
+    if (static_cast<double>(geometry.scale) > scale) geometry.scale *= 0.999999F;
+    const double width = desired.rect.width * static_cast<double>(geometry.scale);
+    const double height = desired.rect.height * static_cast<double>(geometry.scale);
+    if (width < 8 || height < 8 || width > area.width || height > area.height) return {};
+    const auto x = static_cast<std::int64_t>(area.x) + static_cast<std::int64_t>((area.width - width) / 2);
+    constexpr auto high = (std::numeric_limits<std::int32_t>::max)();
+    if (x + width > high || static_cast<double>(area.y) + height > high) return {};
+    geometry.rect.x = static_cast<std::int32_t>(x); geometry.rect.y = area.y;
+    return {true, geometry};
+}
+
 // The original layout remains the source of every placement. Repeated panel
 // configuration must not halve the scale repeatedly or capture our own changes.
 struct RefreshLayoutState {

@@ -53,8 +53,8 @@ constexpr char DepositButtonLowendVirtualPath[] =
     "data/hd/global/ui/d2rloader/bulk-currency-deposit/deposit-button.lowend.sprite";
 constexpr char ButtonChildLocalId[] = "inventory-button";
 
-constexpr char DefaultConfig[] = R"toml(# Bulk Currency Deposit
-# Auto transfers stackable currency items through the active mod's native Advanced Stash routing.
+constexpr char DefaultConfig[] = R"toml(# Automatic Materials Deposit
+# Deposits supported materials through the active mod's native Advanced Stash routing.
 
 [deposit]
 # Master switch. false disables the Controls action, button, resources and deposit logic.
@@ -64,10 +64,8 @@ enabled = true
 # when the active mod provides its own button in another layout, such as the stash.
 inventory_button_enabled = false
 
-# Delay between native transfers. Keep the default unless troubleshooting.
-# Values from 50 to 1000 milliseconds are accepted; higher values only make
-# the batch slower. The tested player-friendly default is 100 milliseconds.
-item_delay_ms = 100
+# Deposits run together without an artificial pause between items.
+# The retired item_delay_ms setting is accepted in old files but ignored.
 
 # Empty means every item accepted by the native Advanced Stash registry.
 # A non-empty list narrows the candidates to these one-to-four-character item
@@ -88,7 +86,7 @@ y = 813
 
 # Literal UTF-8 tooltip for the optional Inventory button. Mod-owned layouts
 # set their own literal tooltipString and do not depend on a global string ID.
-tooltip = "Deposit Currency"
+tooltip = "Deposit Materials"
 
 # Lets D2RLoader verify that multiplayer peers use matching settings.
 [d2rl]
@@ -300,8 +298,6 @@ std::deque<Candidate> PendingItems;
 std::atomic<std::uint64_t> PendingItemCount{};
 std::atomic_bool BatchActive{};
 std::atomic_bool CancelRequested{};
-std::atomic_bool StepUiWorkPending{};
-std::atomic<std::uint64_t> NextStepAt{};
 std::uint64_t BatchSequence{};
 std::uint64_t BatchInitialCount{};
 std::uint64_t BatchTransferred{};
@@ -344,10 +340,10 @@ constexpr D2RL::PluginInfo Info{
     .infoSize = D2RL::PluginInfoSize,
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "bulk-currency-deposit",
-    .name = "Bulk Currency Deposit",
-    .version = "1.1.3",
+    .name = "Automatic Materials Deposit",
+    .version = "1.2.0",
     .author = "RuffnecKk",
-    .description = "Auto transfers all your stackable currency items into their respective stash slots.",
+    .description = "Deposits all supported materials into their assigned stash slots in one action.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
 };
 
@@ -386,7 +382,7 @@ bool QueryDiagnosticsService() noexcept {
     if (result != D2RL::ServiceQueryResult::Success) {
         DiagnosticsService = nullptr;
         Context->LogWarn(
-            "BulkCurrencyDeposit: DiagnosticsService v1 is unavailable; composable UI-state validation requires the strict vanilla signature.");
+            "AutomaticMaterialsDeposit: DiagnosticsService v1 is unavailable; composable UI-state validation requires the strict vanilla signature.");
         return true;
     }
     if (!D2RL::HasDiagnosticsServiceV1Field(
@@ -394,7 +390,7 @@ bool QueryDiagnosticsService() noexcept {
             D2RL::DiagnosticsServiceV1RequiredSize)
             || DiagnosticsService->queryHookStatus == nullptr) {
         Context->LogError(
-            "BulkCurrencyDeposit: DiagnosticsService v1 returned an invalid contract.");
+            "AutomaticMaterialsDeposit: DiagnosticsService v1 returned an invalid contract.");
         DiagnosticsService = nullptr;
         return false;
     }
@@ -483,7 +479,7 @@ bool ValidateUiStateEntry() noexcept {
         return true;
     }
     Context->LogError(
-        "BulkCurrencyDeposit: UI_IsStateOpen signature or tracked-owner proof failed.");
+        "AutomaticMaterialsDeposit: UI_IsStateOpen signature or tracked-owner proof failed.");
     return false;
 }
 
@@ -550,7 +546,7 @@ bool ValidateItemInteractionBlockedEntry(
     std::snprintf(
         message,
         sizeof(message),
-        "BulkCurrencyDeposit: UI_IsItemInteractionBlocked ownership refused (state=%u, kind=%u, owners=%u, owner=%.*s).",
+        "AutomaticMaterialsDeposit: UI_IsItemInteractionBlocked ownership refused (state=%u, kind=%u, owners=%u, owner=%.*s).",
         static_cast<unsigned>(status.state),
         static_cast<unsigned>(status.kind),
         status.ownerCount,
@@ -573,7 +569,7 @@ bool ValidateNativeFingerprint() noexcept {
             std::snprintf(
                 message,
                 sizeof(message),
-                "BulkCurrencyDeposit: signature mismatch for %s at RVA 0x%llX.",
+                "AutomaticMaterialsDeposit: signature mismatch for %s at RVA 0x%llX.",
                 label,
                 static_cast<unsigned long long>(rva));
             Context->LogError(message);
@@ -596,7 +592,7 @@ bool ValidateNativeFingerprint() noexcept {
         valid = false;
         if (Context) {
             Context->LogError(
-                "BulkCurrencyDeposit: UI_IsItemInteractionBlocked signature or tracked-owner proof failed.");
+                "AutomaticMaterialsDeposit: UI_IsItemInteractionBlocked signature or tracked-owner proof failed.");
         }
     }
     check(GetUnitIdRva, GetUnitIdExpected, "UNITS_GetUnitId");
@@ -628,7 +624,7 @@ void LogRuntimeIdentity() noexcept {
     std::snprintf(
         message,
         sizeof(message),
-        "BulkCurrencyDeposit: observed D2R build-name=%s; version=%s; validating native fingerprint.",
+        "AutomaticMaterialsDeposit: observed D2R build-name=%s; version=%s; validating native fingerprint.",
         buildName && buildName[0] != '\0' ? buildName : "<unavailable>",
         buildVersion && buildVersion[0] != '\0'
             ? buildVersion
@@ -687,7 +683,7 @@ bool LoadConfig() noexcept {
             return true;
         } catch (const std::exception& exception) {
             if (Context) {
-                const auto message = std::string("BulkCurrencyDeposit: invalid ")
+                const auto message = std::string("AutomaticMaterialsDeposit: invalid ")
                     + path.string() + " (" + exception.what() + ").";
                 Context->LogError(message.c_str());
             }
@@ -734,7 +730,7 @@ bool LoadConfig() noexcept {
                         LoadedConfigPath = materializedPath.string();
                         if (Context) {
                             const auto message = std::string(
-                                "BulkCurrencyDeposit: created default configuration at ")
+                                "AutomaticMaterialsDeposit: created default configuration at ")
                                 + LoadedConfigPath + ".";
                             Context->LogInfo(message.c_str());
                         }
@@ -747,7 +743,7 @@ bool LoadConfig() noexcept {
     }
     if (Context) {
         Context->LogWarn(
-            "BulkCurrencyDeposit: no TOML was found or created; embedded defaults are active.");
+            "AutomaticMaterialsDeposit: no TOML was found or created; embedded defaults are active.");
     }
     return true;
 }
@@ -762,7 +758,7 @@ bool QueryInputService() noexcept {
         || InputService->registerAction == nullptr
         || InputService->unregisterAction == nullptr) {
         Context->LogError(
-            "BulkCurrencyDeposit: D2RLoader InputService v1 is unavailable.");
+            "AutomaticMaterialsDeposit: D2RLoader InputService v1 is unavailable.");
         InputService = nullptr;
         return false;
     }
@@ -778,7 +774,7 @@ bool QueryThreadService() noexcept {
             ThreadService, D2RL::ThreadServiceV1RequiredSize)
         || ThreadService->runOnUiThread == nullptr) {
         Context->LogError(
-            "BulkCurrencyDeposit: D2RLoader ThreadService v1 is unavailable.");
+            "AutomaticMaterialsDeposit: D2RLoader ThreadService v1 is unavailable.");
         ThreadService = nullptr;
         return false;
     }
@@ -795,7 +791,7 @@ bool QueryButtonServices() noexcept {
         || SharedEventService->registerUiMessageListener == nullptr
         || SharedEventService->unregisterUiMessageListener == nullptr) {
         Context->LogError(
-            "BulkCurrencyDeposit: D2RLoader SharedEvent service v1 is unavailable.");
+            "AutomaticMaterialsDeposit: D2RLoader SharedEvent service v1 is unavailable.");
         return false;
     }
     if (Context->QueryService(
@@ -807,7 +803,7 @@ bool QueryButtonServices() noexcept {
         || ResourceService->registerResource == nullptr
         || ResourceService->unregisterResource == nullptr) {
         Context->LogError(
-            "BulkCurrencyDeposit: D2RLoader Resource service v1 is unavailable.");
+            "AutomaticMaterialsDeposit: D2RLoader Resource service v1 is unavailable.");
         return false;
     }
     if (Settings.inventoryButtonEnabled
@@ -820,7 +816,7 @@ bool QueryButtonServices() noexcept {
             || PanelService->registerChildLayout == nullptr
             || PanelService->unregisterChildLayout == nullptr)) {
         Context->LogError(
-            "BulkCurrencyDeposit: D2RLoader Panel service v1 is unavailable.");
+            "AutomaticMaterialsDeposit: D2RLoader Panel service v1 is unavailable.");
         return false;
     }
     return true;
@@ -874,7 +870,7 @@ bool UnregisterOwnedButton() noexcept {
                 && result != D2RL::Panels::Result::NotFound
                 && result != D2RL::Panels::Result::StaleHandle) {
             Context->LogError(
-                "BulkCurrencyDeposit: Inventory child layout removal failed; SDK owner cleanup will complete during unload.");
+                "AutomaticMaterialsDeposit: Inventory child layout removal failed; SDK owner cleanup will complete during unload.");
             return false;
         }
     }
@@ -889,7 +885,7 @@ bool UnregisterOwnedButton() noexcept {
                     && result != D2RL::Resources::Result::NotFound
                     && result != D2RL::Resources::Result::StaleHandle) {
                 Context->LogError(
-                    "BulkCurrencyDeposit: Inventory button resource removal failed; SDK owner cleanup will complete during unload.");
+                    "AutomaticMaterialsDeposit: Inventory button resource removal failed; SDK owner cleanup will complete during unload.");
                 return false;
             }
         }
@@ -919,7 +915,7 @@ bool RegisterOwnedButton() noexcept {
             BULK_CURRENCY_DEPOSIT_BUTTON_LOWEND_RESOURCE_ID,
             buttonLowend)) {
         Context->LogError(
-            "BulkCurrencyDeposit: embedded Inventory button sprites are unavailable.");
+            "AutomaticMaterialsDeposit: embedded Inventory button sprites are unavailable.");
         return false;
     }
     if (!RegisterResource(
@@ -940,7 +936,7 @@ bool RegisterOwnedButton() noexcept {
             buttonLowend.size(),
             DepositButtonLowendResource)) {
         Context->LogError(
-            "BulkCurrencyDeposit: plugin-owned button resource registration failed.");
+            "AutomaticMaterialsDeposit: plugin-owned button resource registration failed.");
         (void)UnregisterOwnedButton();
         return false;
     }
@@ -954,7 +950,7 @@ bool RegisterOwnedButton() noexcept {
             layout.size(),
             ButtonLayoutResource)) {
         Context->LogError(
-            "BulkCurrencyDeposit: Inventory button layout registration failed.");
+            "AutomaticMaterialsDeposit: Inventory button layout registration failed.");
         (void)UnregisterOwnedButton();
         return false;
     }
@@ -971,7 +967,7 @@ bool RegisterOwnedButton() noexcept {
     if (result != D2RL::Panels::Result::Success
             || ButtonChildLayout == D2RL::Panels::InvalidChildLayoutHandle) {
         Context->LogError(
-            "BulkCurrencyDeposit: Inventory child layout registration failed.");
+            "AutomaticMaterialsDeposit: Inventory child layout registration failed.");
         (void)UnregisterOwnedButton();
         return false;
     }
@@ -983,9 +979,7 @@ void ResetCountersAndBatch() noexcept {
     PendingItemCount.store(0, std::memory_order_relaxed);
     BatchActive.store(false, std::memory_order_relaxed);
     CancelRequested.store(false, std::memory_order_relaxed);
-    StepUiWorkPending.store(false, std::memory_order_relaxed);
     InitialUiWorkPending.store(false, std::memory_order_relaxed);
-    NextStepAt.store(0, std::memory_order_relaxed);
     BatchSequence = 0;
     BatchInitialCount = 0;
     BatchTransferred = 0;
@@ -1116,7 +1110,7 @@ bool BuildBatch(void* inventory) noexcept {
             PendingItemCount.store(0, std::memory_order_release);
             if (Context) {
                 Context->LogError(
-                    "BulkCurrencyDeposit: inventory traversal exceeded its safety bound; request refused.");
+                    "AutomaticMaterialsDeposit: inventory traversal exceeded its safety bound; request refused.");
             }
             return false;
         }
@@ -1152,8 +1146,6 @@ bool TryNativeTransfer(
 void ResetBatchState() noexcept {
     PendingItems.clear();
     PendingItemCount.store(0, std::memory_order_release);
-    NextStepAt.store(0, std::memory_order_release);
-    StepUiWorkPending.store(false, std::memory_order_release);
     CancelRequested.store(false, std::memory_order_release);
     BatchActive.store(false, std::memory_order_release);
 }
@@ -1164,7 +1156,7 @@ void LogBatchSummary(const char* state, const char* reason) noexcept {
     std::snprintf(
         message,
         sizeof(message),
-        "BulkCurrencyDeposit: batch %llu %s; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; remaining=%llu; reason=%s.",
+        "AutomaticMaterialsDeposit: batch %llu %s; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; remaining=%llu; reason=%s.",
         static_cast<unsigned long long>(BatchSequence),
         state,
         static_cast<unsigned long long>(BatchInitialCount),
@@ -1188,73 +1180,62 @@ void CancelBatch(const char* reason) noexcept {
     ResetBatchState();
 }
 
-void ScheduleNextStep() noexcept {
-    NextStepAt.store(
-        GetTickCount64() + Settings.itemDelayMs,
-        std::memory_order_release);
-}
-
-void ProcessNextItem() noexcept {
-    StepUiWorkPending.store(false, std::memory_order_release);
-    if (!BatchActive.load(std::memory_order_acquire)) return;
-    if (CancelRequested.exchange(false, std::memory_order_acq_rel)) {
-        CancelBatch("UI-thread handoff failure");
-        return;
+bool ProcessBatchItem(const Candidate& candidate) noexcept {
+    PendingItemCount.fetch_sub(1, std::memory_order_relaxed);
+    if (CancelRequested.load(std::memory_order_acquire)
+            || InputStopping.load(std::memory_order_acquire)
+            || !CallbackRundown.CanProcess()) {
+        CancelBatch("plugin stopping");
+        return false;
     }
     if (!IsUiStateOpen(StashInterfaceState)) {
         CancelBatch("stash closed");
-        return;
+        return false;
     }
 
     auto* player = GetLocalPlayer(GetLocalDataContext());
     auto* inventory = player ? GetUnitInventory(player) : nullptr;
     if (!player || !inventory) {
         CancelBatch("local player inventory unavailable");
-        return;
+        return false;
+    }
+    auto* item = FindCurrentItem(inventory, candidate);
+    if (!item) {
+        ++BatchSkipped;
+        ItemsSkipped.fetch_add(1, std::memory_order_relaxed);
+        return true;
     }
 
-    while (!PendingItems.empty()) {
-        const auto candidate = PendingItems.front();
-        PendingItems.pop_front();
-        PendingItemCount.fetch_sub(1, std::memory_order_relaxed);
-        auto* item = FindCurrentItem(inventory, candidate);
-        if (!item) {
-            ++BatchSkipped;
-            ItemsSkipped.fetch_add(1, std::memory_order_relaxed);
-            continue;
-        }
-
-        void* destination{};
-        __try {
-            destination = GetAdvancedStashDestination(player);
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            destination = nullptr;
-        }
-        if (!destination) {
-            CancelBatch("Advanced Stash destination unavailable");
-            return;
-        }
-
-        bool transferred{};
-        const auto callCompleted = TryNativeTransfer(
-            item, destination, transferred);
-        if (callCompleted && transferred) {
-            ++BatchTransferred;
-            ItemsTransferred.fetch_add(1, std::memory_order_relaxed);
-        } else {
-            ++BatchFailed;
-            ItemsFailed.fetch_add(1, std::memory_order_relaxed);
-            if (!callCompleted) {
-                CancelBatch("native transfer raised an exception");
-                return;
-            }
-        }
-
-        if (PendingItems.empty()) CompleteBatch();
-        else ScheduleNextStep();
-        return;
+    void* destination{};
+    __try {
+        destination = GetAdvancedStashDestination(player);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        destination = nullptr;
     }
-    CompleteBatch();
+    if (!destination) {
+        CancelBatch("Advanced Stash destination unavailable");
+        return false;
+    }
+
+    bool transferred{};
+    const auto callCompleted = TryNativeTransfer(item, destination, transferred);
+    if (callCompleted && transferred) {
+        ++BatchTransferred;
+        ItemsTransferred.fetch_add(1, std::memory_order_relaxed);
+    } else {
+        ++BatchFailed;
+        ItemsFailed.fetch_add(1, std::memory_order_relaxed);
+        if (!callCompleted) {
+            CancelBatch("native transfer raised an exception");
+            return false;
+        }
+    }
+    return true;
+}
+
+void ProcessBatch() noexcept {
+    if (!BatchActive.load(std::memory_order_acquire)) return;
+    if (ProcessBatchItems(PendingItems, ProcessBatchItem)) CompleteBatch();
 }
 
 void ProcessDepositRequest(std::uint64_t requestedAt) noexcept {
@@ -1284,7 +1265,7 @@ void ProcessDepositRequest(std::uint64_t requestedAt) noexcept {
         NoCandidateRequests.fetch_add(1, std::memory_order_relaxed);
         if (Context) {
             Context->LogInfo(
-                "BulkCurrencyDeposit: no natively eligible inventory item was found.");
+                "AutomaticMaterialsDeposit: no natively eligible inventory item was found.");
         }
         return;
     }
@@ -1303,12 +1284,12 @@ void ProcessDepositRequest(std::uint64_t requestedAt) noexcept {
         std::snprintf(
             message,
             sizeof(message),
-            "BulkCurrencyDeposit: batch %llu started with %llu native candidate(s).",
+            "AutomaticMaterialsDeposit: batch %llu started with %llu native candidate(s).",
             static_cast<unsigned long long>(BatchSequence),
             static_cast<unsigned long long>(BatchInitialCount));
         Context->LogInfo(message);
     }
-    ProcessNextItem();
+    ProcessBatch();
 }
 
 void ProcessInitialRequest() noexcept {
@@ -1371,7 +1352,7 @@ bool UnregisterButtonListener() noexcept {
         if (result != D2RL::SharedEvents::Result::Success
                 && result != D2RL::SharedEvents::Result::NotFound) {
             Context->LogError(
-                "BulkCurrencyDeposit: SDK button listener removal failed; SDK owner cleanup will complete during unload.");
+                "AutomaticMaterialsDeposit: SDK button listener removal failed; SDK owner cleanup will complete during unload.");
             return false;
         }
     }
@@ -1394,7 +1375,7 @@ bool RegisterButtonListener() noexcept {
             || ButtonMessageListener == D2RL::SharedEvents::InvalidHandle) {
         ButtonMessageListener = D2RL::SharedEvents::InvalidHandle;
         Context->LogError(
-            "BulkCurrencyDeposit: SDK button message listener registration failed.");
+            "AutomaticMaterialsDeposit: SDK button message listener registration failed.");
         return false;
     }
     return true;
@@ -1415,17 +1396,6 @@ void __cdecl ProcessInitialRequestOnUiThread(
         return;
     }
     ProcessInitialRequest();
-}
-
-void __cdecl ProcessNextItemOnUiThread(
-        const D2RL::PluginContext*,
-        void*) noexcept {
-    CallbackGuard callbackGuard;
-    if (!callbackGuard.CanProcess()) {
-        StepUiWorkPending.store(false, std::memory_order_release);
-        return;
-    }
-    ProcessNextItem();
 }
 
 D2RL::Input::ActionResult __cdecl OnControlsAction(
@@ -1473,7 +1443,7 @@ bool RegisterControlsAction() noexcept {
         .structSize = D2RL::Input::ActionRegistrationSize,
         .flags = 0,
         .logicalId = "bulk-currency-deposit",
-        .displayName = "Bulk Currency Deposit",
+        .displayName = "Automatic Materials Deposit",
         .category = "RuffnecKk Suite",
         .defaultPrimary = {
             D2RL::Input::Key::D,
@@ -1498,7 +1468,7 @@ bool RegisterControlsAction() noexcept {
     std::snprintf(
         message,
         sizeof(message),
-        "BulkCurrencyDeposit: Controls action registration failed with result %u.",
+        "AutomaticMaterialsDeposit: Controls action registration failed with result %u.",
         static_cast<unsigned>(result));
     Context->LogError(message);
     DepositAction.store(D2RL::Input::InvalidHandle, std::memory_order_release);
@@ -1533,22 +1503,6 @@ void DispatchPendingControlsRequest() noexcept {
     }
 }
 
-void DispatchDueBatchStep() noexcept {
-    if (!BatchActive.load(std::memory_order_acquire)) return;
-    const auto due = NextStepAt.load(std::memory_order_acquire);
-    if (due == 0 || GetTickCount64() < due) return;
-    if (StepUiWorkPending.exchange(true, std::memory_order_acq_rel)) return;
-    if (!ThreadService
-            || ThreadService->runOnUiThread(
-                Context,
-                ProcessNextItemOnUiThread,
-                nullptr) != D2RL::Threads::Result::Success) {
-        StepUiWorkPending.store(false, std::memory_order_release);
-        CancelRequested.store(true, std::memory_order_release);
-        InputFailures.fetch_add(1, std::memory_order_relaxed);
-    }
-}
-
 DWORD WINAPI InputThreadProc(void* parameter) noexcept {
     const auto module = static_cast<HMODULE>(parameter);
     UiDispatchReady.store(true, std::memory_order_release);
@@ -1563,7 +1517,6 @@ DWORD WINAPI InputThreadProc(void* parameter) noexcept {
             break;
         }
         DispatchPendingControlsRequest();
-        DispatchDueBatchStep();
     }
     UiDispatchReady.store(false, std::memory_order_release);
     FreeLibraryAndExitThread(module, 0);
@@ -1621,7 +1574,7 @@ bool StopInput() noexcept {
         if (wait != WAIT_OBJECT_0) {
             if (Context) {
                 Context->LogError(
-                    "BulkCurrencyDeposit: UI dispatch worker did not stop; its module reference is retained for safety.");
+                    "AutomaticMaterialsDeposit: UI dispatch worker did not stop; its module reference is retained for safety.");
             }
             return false;
         }
@@ -1642,7 +1595,7 @@ HMODULE AcquireTeardownModuleReference() noexcept {
             &module)) {
         if (Context) {
             Context->LogError(
-                "BulkCurrencyDeposit: teardown module reference could not be retained.");
+                "AutomaticMaterialsDeposit: teardown module reference could not be retained.");
         }
         return nullptr;
     }
@@ -1655,7 +1608,7 @@ bool WaitForCallbackRundown() noexcept {
         if (GetTickCount64() >= deadline) {
             if (Context) {
                 Context->LogError(
-                    "BulkCurrencyDeposit: SDK callback rundown timed out; module reference and plugin state are retained for safety.");
+                    "AutomaticMaterialsDeposit: SDK callback rundown timed out; module reference and plugin state are retained for safety.");
             }
             return false;
         }
@@ -1680,7 +1633,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Bulk Currency Deposit 1.1.3: enabled=%s; Controls=%s; defaultBinding=SHIFT+D; UI=%s; buttonResources=%s; inventoryButton=%s; buttonPosition=%d,%d; delay=%ums; include=%llu; exclude=%llu; batch=%s; pending=%llu; requests=%llu; buttonRequests=%llu; coalesced=%llu; refused=%llu; stale=%llu; empty=%llu; started=%llu; completed=%llu; cancelled=%llu; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; dispatchFailures=%llu; TOML=%s.",
+        "Automatic Materials Deposit 1.2.0: enabled=%s; Controls=%s; defaultBinding=SHIFT+D; UI=%s; buttonResources=%s; inventoryButton=%s; buttonPosition=%d,%d; transferMode=immediate; include=%llu; exclude=%llu; batch=%s; pending=%llu; requests=%llu; buttonRequests=%llu; coalesced=%llu; refused=%llu; stale=%llu; empty=%llu; started=%llu; completed=%llu; cancelled=%llu; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; dispatchFailures=%llu; TOML=%s.",
         Settings.enabled ? "true" : "false",
         DepositAction.load(std::memory_order_acquire)
                 != D2RL::Input::InvalidHandle
@@ -1697,7 +1650,6 @@ auto Status(
         Settings.inventoryButtonEnabled ? "injected" : "external-ready",
         Settings.button.x,
         Settings.button.y,
-        Settings.itemDelayMs,
         static_cast<unsigned long long>(Settings.includeItemCodes.size()),
         static_cast<unsigned long long>(Settings.excludeItemCodes.size()),
         BatchActive.load(std::memory_order_acquire) ? "active" : "idle",
@@ -1746,19 +1698,19 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         if (!context->RegisterConsoleCommand(
                 "bulk-currency-deposit",
                 Status,
-                "Show Bulk Currency Deposit status and counters.")) {
+                "Show Automatic Materials Deposit status and counters.")) {
             context->LogWarn(
-                "BulkCurrencyDeposit: optional status command was not registered.");
+                "AutomaticMaterialsDeposit: optional status command was not registered.");
         }
         context->LogInfo(
-            "Bulk Currency Deposit 1.1.3 by RuffnecKk loaded disabled; no Controls action, SDK listeners or resources installed.");
+            "Automatic Materials Deposit 1.2.0 by RuffnecKk loaded disabled; no Controls action, SDK listeners or resources installed.");
         return true;
     }
 
     if (!QueryDiagnosticsService()) return false;
     if (!ValidateNativeFingerprint()) {
         context->LogError(
-            "BulkCurrencyDeposit: native fingerprint rejected; plugin refused.");
+            "AutomaticMaterialsDeposit: native fingerprint rejected; plugin refused.");
         return false;
     }
 
@@ -1793,7 +1745,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!StartInput()) {
         (void)StopInput();
         context->LogError(
-            "BulkCurrencyDeposit: bounded UI-thread handoff failed.");
+            "AutomaticMaterialsDeposit: bounded UI-thread handoff failed.");
         return false;
     }
     if (!RegisterControlsAction()) {
@@ -1818,20 +1770,19 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!context->RegisterConsoleCommand(
             "bulk-currency-deposit",
             Status,
-            "Show Bulk Currency Deposit status and counters.")) {
+            "Show Automatic Materials Deposit status and counters.")) {
         context->LogWarn(
-            "BulkCurrencyDeposit: optional status command was not registered.");
+            "AutomaticMaterialsDeposit: optional status command was not registered.");
     }
 
     char message[640]{};
     std::snprintf(
         message,
         sizeof(message),
-        "Bulk Currency Deposit 1.1.3 by RuffnecKk active; native fingerprint accepted; Controls action=Bulk Currency Deposit (default SHIFT+D); buttonResources=ready; inventoryButton=%s at %d,%d; delay=%ums; routing=native Advanced Stash registry; installation=%s; TOML=%s.",
+        "Automatic Materials Deposit 1.2.0 by RuffnecKk active; native fingerprint accepted; Controls action=Automatic Materials Deposit (default SHIFT+D); buttonResources=ready; inventoryButton=%s at %d,%d; transferMode=immediate; routing=native Advanced Stash registry; installation=%s; TOML=%s.",
         Settings.inventoryButtonEnabled ? "injected" : "external-ready",
         Settings.button.x,
         Settings.button.y,
-        Settings.itemDelayMs,
         context->loadScope == D2RL::LoadScope::Mod ? "mod-local" : "global",
         LoadedConfigPath.c_str());
     context->LogInfo(message);

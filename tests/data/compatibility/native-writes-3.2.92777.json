@@ -8,7 +8,8 @@
     "analysisSha256": "673E8C0B2E89563E75525B24D137098EFD07B2DB4ED42ADEC56AA1ADDF0E63AB",
     "pluginSdkCommit": "4933e2c42cb2592958cd0df3b6dc5003102252d1",
     "pluginSdkOverrides": {
-      "ruffneckk-vendor-stock-refresh": "6eb8f8b6192868214706bd6d528c5294f2f551b7"
+      "ruffneckk-vendor-stock-refresh": "6eb8f8b6192868214706bd6d528c5294f2f551b7",
+      "ruffneckk-mass-identify": "6eb8f8b6192868214706bd6d528c5294f2f551b7"
     },
     "loaderArchiveSha256": "923B4933476A8649B7D7C4B50286C0E7FC64CE013B561A446C152A41868C4EDB",
     "d2rCoreSha256": "013B047612BFF0EB564891037508FD43D03AFDFB20BFEB9B5BC683B36559FFC6"
@@ -149,6 +150,155 @@
           "size": 5,
           "kind": "sdk-inline-hook"
         }
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-auto-pickup",
+      "source": "plugins/auto-pickup/src/plugin.cpp",
+      "selectionGroup": "potion-pickup-automation",
+      "fixedWrites": [
+        {
+          "rva": "0x3862D0",
+          "size": 5,
+          "kind": "sdk-inline-hook",
+          "condition": "automatic potion belt routing enabled"
+        },
+        {
+          "rva": "0x1D2A798",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7A0",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7A8",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7B0",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7B8",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7C0",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7C8",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7D0",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7D8",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7E0",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7E8",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7F0",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A7F8",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A800",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A808",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A810",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A818",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        },
+        {
+          "rva": "0x1D2A820",
+          "size": 8,
+          "kind": "sdk-patch-write-u64",
+          "condition": "automatic pickup enabled"
+        }
+      ],
+      "dynamicAllocations": []
+    },
+    {
+      "id": "ruffneckk-potion-auto-pickup",
+      "source": "plugins/potion-auto-pickup/src/plugin.cpp",
+      "selectionGroup": "potion-pickup-automation",
+      "fixedWrites": [
+        { "rva": "0x3862D0", "size": 5, "kind": "sdk-inline-hook" },
+        { "rva": "0x1D2A798", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7A0", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7A8", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7B0", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7B8", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7C0", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7C8", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7D0", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7D8", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7E0", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7E8", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7F0", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A7F8", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A800", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A808", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A810", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A818", "size": 8, "kind": "sdk-patch-write-u64" },
+        { "rva": "0x1D2A820", "size": 8, "kind": "sdk-patch-write-u64" }
       ],
       "dynamicAllocations": []
     },
@@ -432,77 +582,77 @@
         {
           "rva": "0x259132",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x25A11D",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x0FEE36",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x0FF1D7",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x15E382",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x1F6674",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x2A9D68",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x2AAB0D",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x2ABB09",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x2C6055",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x2C6265",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x2C7479",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x102590",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x14F5895",
           "size": 5,
-          "kind": "sdk-patch-call-rel32"
+          "kind": "sdk-inline-hook"
         },
         {
           "rva": "0x0C1F01",
           "size": 5,
-          "kind": "sdk-patch-call-rel32",
+          "kind": "sdk-inline-hook",
           "condition": "hotkey enabled"
         }
       ],
@@ -682,133 +832,15 @@
       ]
     },
     {
-      "id": "ruffneckk-potion-auto-pickup",
-      "source": "plugins/potion-auto-pickup/src/plugin.cpp",
-      "fixedWrites": [
-        {
-          "rva": "0x3862D0",
-          "size": 5,
-          "kind": "sdk-inline-hook"
-        },
-        {
-          "rva": "0x1D2A798",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7A0",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7A8",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7B0",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7B8",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7C0",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7C8",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7D0",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7D8",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7E0",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7E8",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7F0",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A7F8",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A800",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A808",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A810",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A818",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        },
-        {
-          "rva": "0x1D2A820",
-          "size": 8,
-          "kind": "sdk-patch-write-u64"
-        }
-      ],
-      "dynamicAllocations": []
-    },
-    {
-      "id": "ruffneckk-armageddon-hurricane-ctc-fix",
-      "source": "plugins/armageddon-hurricane-ctc-fix/src/plugin.cpp",
-      "fixedWrites": [
-        {
-          "rva": "0x574E90",
-          "size": 5,
-          "kind": "sdk-inline-hook"
-        },
-        {
-          "rva": "0x575DE0",
-          "size": 5,
-          "kind": "sdk-inline-hook"
-        },
-        {
-          "rva": "0x589930",
-          "size": 5,
-          "kind": "sdk-inline-hook"
-        }
-      ],
-      "dynamicAllocations": []
-    },
-    {
       "id": "ruffneckk-cast-triggers",
       "source": "plugins/cast-triggers/src/plugin.cpp",
       "fixedWrites": [
+        {
+          "rva": "0x451FB0",
+          "size": 5,
+          "kind": "sdk-inline-hook",
+          "condition": "on-block stat configured and item-skill-execution capability available"
+        },
         {
           "rva": "0x44D570",
           "size": 5,
@@ -904,31 +936,23 @@
       "dynamicAllocations": []
     },
     {
+      "id": "ruffneckk-armageddon-hurricane-ctc-fix",
+      "source": "plugins/armageddon-hurricane-ctc-fix/src/plugin.cpp",
+      "fixedWrites": [
+        { "rva": "0x574E90", "size": 5, "kind": "sdk-inline-hook" },
+        { "rva": "0x575DE0", "size": 5, "kind": "sdk-inline-hook" },
+        { "rva": "0x589930", "size": 5, "kind": "sdk-inline-hook" }
+      ],
+      "dynamicAllocations": []
+    },
+    {
       "id": "ruffneckk-mapsense",
       "source": "plugins/mapsense/src/plugin.cpp",
       "fixedWrites": [
-        {
-          "rva": "0x0D76E0",
-          "size": 5,
-          "kind": "sdk-inline-hook"
-        },
-        {
-          "rva": "0x3271C0",
-          "size": 5,
-          "kind": "sdk-inline-hook"
-        },
-        {
-          "rva": "0x3E1D2F",
-          "size": 5,
-          "kind": "sdk-patch-nop",
-          "condition": "sFillLocation diagnostic suppression enabled"
-        },
-        {
-          "rva": "0x3E1F2B",
-          "size": 5,
-          "kind": "sdk-patch-nop",
-          "condition": "sFillLocation diagnostic suppression enabled"
-        }
+        { "rva": "0x0D76E0", "size": 5, "kind": "sdk-inline-hook" },
+        { "rva": "0x3271C0", "size": 5, "kind": "sdk-inline-hook" },
+        { "rva": "0x3E1D2F", "size": 5, "kind": "sdk-patch-nop", "condition": "sFillLocation diagnostic suppression enabled" },
+        { "rva": "0x3E1F2B", "size": 5, "kind": "sdk-patch-nop", "condition": "sFillLocation diagnostic suppression enabled" }
       ],
       "dynamicAllocations": []
     },
@@ -936,108 +960,33 @@
       "id": "ruffneckk-playerx-scaling-tweaks",
       "source": "plugins/playerx-scaling-tweaks/src/plugin.cpp",
       "fixedWrites": [
-        {
-          "rva": "0x18885B",
-          "size": 5,
-          "kind": "sdk-patch-call-rel32"
-        },
-        {
-          "rva": "0x18887F",
-          "size": 5,
-          "kind": "sdk-patch-call-rel32"
-        },
-        {
-          "rva": "0x588EF8",
-          "size": 5,
-          "kind": "sdk-patch-call-rel32"
-        },
-        {
-          "rva": "0x440A7D",
-          "size": 5,
-          "kind": "sdk-patch-call-rel32"
-        },
-        {
-          "rva": "0x440AC1",
-          "size": 5,
-          "kind": "sdk-patch-call-rel32"
-        },
-        {
-          "rva": "0x542F40",
-          "size": 5,
-          "kind": "sdk-inline-hook"
-        },
-        {
-          "rva": "0x188835",
-          "size": 2,
-          "kind": "sdk-patch-bytes",
-          "condition": "Battle.net simulation enabled"
-        },
-        {
-          "rva": "0x42521C",
-          "size": 6,
-          "kind": "sdk-patch-bytes",
-          "condition": "Battle.net simulation enabled"
-        },
-        {
-          "rva": "0x346F5",
-          "size": 4,
-          "kind": "sdk-patch-bytes",
-          "condition": "Battle.net simulation enabled"
-        },
-        {
-          "rva": "0x3474E",
-          "size": 5,
-          "kind": "sdk-patch-bytes",
-          "condition": "Battle.net simulation enabled"
-        },
-        {
-          "rva": "0xE1A15",
-          "size": 4,
-          "kind": "sdk-patch-bytes",
-          "condition": "Battle.net simulation enabled"
-        },
-        {
-          "rva": "0xE1A57",
-          "size": 5,
-          "kind": "sdk-patch-bytes",
-          "condition": "Battle.net simulation enabled"
-        }
+        { "rva": "0x18885B", "size": 5, "kind": "sdk-patch-call-rel32" },
+        { "rva": "0x18887F", "size": 5, "kind": "sdk-patch-call-rel32" },
+        { "rva": "0x588EF8", "size": 5, "kind": "sdk-patch-call-rel32" },
+        { "rva": "0x440A7D", "size": 5, "kind": "sdk-patch-call-rel32" },
+        { "rva": "0x440AC1", "size": 5, "kind": "sdk-patch-call-rel32" },
+        { "rva": "0x542F40", "size": 5, "kind": "sdk-inline-hook" },
+        { "rva": "0x188835", "size": 2, "kind": "sdk-patch-bytes", "condition": "Battle.net simulation enabled" },
+        { "rva": "0x42521C", "size": 6, "kind": "sdk-patch-bytes", "condition": "Battle.net simulation enabled" },
+        { "rva": "0x346F5", "size": 4, "kind": "sdk-patch-bytes", "condition": "Battle.net simulation enabled" },
+        { "rva": "0x3474E", "size": 5, "kind": "sdk-patch-bytes", "condition": "Battle.net simulation enabled" },
+        { "rva": "0xE1A15", "size": 4, "kind": "sdk-patch-bytes", "condition": "Battle.net simulation enabled" },
+        { "rva": "0xE1A57", "size": 5, "kind": "sdk-patch-bytes", "condition": "Battle.net simulation enabled" }
       ],
       "dynamicAllocations": [
-        {
-          "kind": "rel32-relay-page",
-          "allocation": "one system page near managed call sites",
-          "usedBytes": 80
-        }
+        { "kind": "rel32-relay-page", "allocation": "one system page near managed call sites", "usedBytes": 80 }
       ]
     },
     {
       "id": "ruffneckk-resistance-floor",
       "source": "plugins/resistance-floor/src/plugin.cpp",
       "fixedWrites": [
-        {
-          "rva": "0x4524C4",
-          "size": 5,
-          "kind": "sdk-patch-jmp-rel32"
-        },
-        {
-          "rva": "0x4524E7",
-          "size": 5,
-          "kind": "sdk-patch-jmp-rel32"
-        },
-        {
-          "rva": "0x14E729A",
-          "size": 4,
-          "kind": "sdk-patch-write-u32",
-          "condition": "character screen floor synchronization enabled"
-        }
+        { "rva": "0x4524C4", "size": 5, "kind": "sdk-patch-jmp-rel32" },
+        { "rva": "0x4524E7", "size": 5, "kind": "sdk-patch-jmp-rel32" },
+        { "rva": "0x14E729A", "size": 4, "kind": "sdk-patch-write-u32", "condition": "character screen floor synchronization enabled" }
       ],
       "dynamicAllocations": [
-        {
-          "kind": "rel32-relay-page",
-          "allocation": "one system page near resistance floor sites",
-          "usedBytes": 32
-        }
+        { "kind": "rel32-relay-page", "allocation": "one system page near resistance floor sites", "usedBytes": 32 }
       ]
     }
   ],

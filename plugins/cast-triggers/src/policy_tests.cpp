@@ -215,6 +215,51 @@ int main() {
     static_assert(!IsManualPlayerCast(0, 1, 0, 0, PlayerUnitType));
     static_assert(!IsManualPlayerCast(1, 0, 1, 0, PlayerUnitType));
     static_assert(!IsManualPlayerCast(1, 1, 0, 0, 1));
+    static_assert(IsConfirmedBlockResult(0x0010U));
+    static_assert(IsConfirmedBlockResult(0x8000U));
+    static_assert(IsConfirmedBlockResult(0x8010U));
+    static_assert(IsConfirmedBlockResult(0x4010U)); // soft-hit animation suppression
+    static_assert(IsConfirmedBlockResult(0xC000U)); // weapon block plus soft-hit
+    static_assert(!IsConfirmedBlockResult(0));
+    static_assert([] {
+        constexpr std::array contradictoryFlags{
+            std::uint16_t{0x0001}, // successful hit
+            std::uint16_t{0x0002}, // will die
+            std::uint16_t{0x0080}, // dodge
+            std::uint16_t{0x0100}, // avoid
+            std::uint16_t{0x0200}, // evade
+        };
+        for (const auto flag : contradictoryFlags) {
+            for (const auto block : {0x0010U, 0x8000U, 0x8010U}) {
+                if (IsConfirmedBlockResult(
+                        static_cast<std::uint16_t>(block | flag))) {
+                    return false;
+                }
+            }
+            if (IsConfirmedBlockResult(flag)) return false;
+        }
+        return true;
+    }());
+    static_assert(ShouldExtendKillEligibility(
+        9, 380, 380, true, true, 0, 0, true));
+    static_assert(ShouldExtendKillEligibility(
+        9, 380, 380, true, true, 0x40U, 0, true));
+    static_assert(!ShouldExtendKillEligibility(
+        10, 380, 380, true, true, 0, 0, true));
+    static_assert(!ShouldExtendKillEligibility(
+        9, 0, 380, true, true, 0, 0, true));
+    static_assert(!ShouldExtendKillEligibility(
+        9, 380, 381, true, true, 0, 0, true));
+    static_assert(!ShouldExtendKillEligibility(
+        9, 380, 380, false, true, 0, 0, true));
+    static_assert(!ShouldExtendKillEligibility(
+        9, 380, 380, true, false, 0, 0, true));
+    static_assert(!ShouldExtendKillEligibility(
+        9, 380, 380, true, true, 0x20U, 0, true));
+    static_assert(!ShouldExtendKillEligibility(
+        9, 380, 380, true, true, 0, 1, true));
+    static_assert(!ShouldExtendKillEligibility(
+        9, 380, 380, true, true, 0, 0, false));
     static_assert(SameLevelMarker == 63);
     static_assert(SameLevelMarker > 0);
     static_assert(SameLevelMarker <= 63);
@@ -299,7 +344,7 @@ int main() {
     static_assert(IsAcceptedPlayerSkillInput(0));
     static_assert(!IsAcceptedPlayerSkillInput(1));
     static_assert(!IsAcceptedPlayerSkillInput(4));
-    constexpr CombatTriggerConfig combatConfig{369, 370, 371, 372};
+    constexpr CombatTriggerConfig combatConfig{369, 370, 371, 372, 379};
     static_assert(HasDistinctCombatStatIds(combatConfig));
     static_assert(CombatTriggerForStatId(combatConfig, 370)
         == CombatTriggerKind::CriticalStrike);
@@ -309,14 +354,20 @@ int main() {
         == CombatTriggerKind::OpenWounds);
     static_assert(CombatTriggerForStatId(combatConfig, 369)
         == CombatTriggerKind::AttackAttempt);
+    static_assert(CombatTriggerForStatId(combatConfig, 379)
+        == CombatTriggerKind::Block);
+    static_assert(IsCombatTriggerEnabled(combatConfig, CombatTriggerKind::Block));
     Config triggerConfig{};
     triggerConfig.combatTriggers = combatConfig;
+    triggerConfig.onKillStatId = 380;
     triggerConfig.whileChanneling.stats = {373, 374};
     triggerConfig.sourceSkillTriggers = {
         {"frost_nova", {44}, {375, 376}},
         {"cold_spells", {39, 40, 44}, {377, 378}},
     };
     assert(HasDistinctSyntheticStatIds(triggerConfig));
+    assert(HasDistinctConfiguredTriggerStatIds(triggerConfig));
+    assert(!IsReservedSyntheticStat(triggerConfig, 380));
     assert(ShouldExposeSyntheticStat(
         triggerConfig,
         SourceTriggerKind::None,
@@ -341,6 +392,18 @@ int main() {
         -1,
         CombatTriggerKind::None,
         375));
+    assert(!ShouldExposeSyntheticStat(
+        triggerConfig,
+        SourceTriggerKind::None,
+        -1,
+        CombatTriggerKind::None,
+        379));
+    assert(ShouldExposeSyntheticStat(
+        triggerConfig,
+        SourceTriggerKind::None,
+        -1,
+        CombatTriggerKind::None,
+        380));
     assert(ShouldExposeSyntheticStat(
         triggerConfig,
         SourceTriggerKind::OnCast,
@@ -377,6 +440,18 @@ int main() {
         44,
         CombatTriggerKind::None,
         370));
+    assert(!ShouldExposeSyntheticStat(
+        triggerConfig,
+        SourceTriggerKind::OnCast,
+        44,
+        CombatTriggerKind::None,
+        379));
+    assert(ShouldExposeSyntheticStat(
+        triggerConfig,
+        SourceTriggerKind::OnCast,
+        44,
+        CombatTriggerKind::None,
+        380));
     assert(ShouldExposeSyntheticStat(
         triggerConfig,
         SourceTriggerKind::WhileChanneling,
@@ -401,6 +476,12 @@ int main() {
         44,
         CombatTriggerKind::None,
         375));
+    assert(!ShouldExposeSyntheticStat(
+        triggerConfig,
+        SourceTriggerKind::WhileChanneling,
+        44,
+        CombatTriggerKind::None,
+        379));
     assert(ShouldExposeSyntheticStat(
         triggerConfig,
         SourceTriggerKind::None,
@@ -419,6 +500,18 @@ int main() {
         -1,
         CombatTriggerKind::CriticalStrike,
         373));
+    assert(ShouldExposeSyntheticStat(
+        triggerConfig,
+        SourceTriggerKind::None,
+        -1,
+        CombatTriggerKind::Block,
+        379));
+    assert(!ShouldExposeSyntheticStat(
+        triggerConfig,
+        SourceTriggerKind::None,
+        -1,
+        CombatTriggerKind::Block,
+        370));
     static_assert(PackedEventStatId(370 << 16) == 370);
     static_assert([] {
         std::uint32_t low = 1;
@@ -444,6 +537,8 @@ enabled = true
 [on_cast]
 include_skill_ids = [48, 44, 48]
 exclude_skill_ids = [41]
+[on_kill]
+stat_id = 380
 [while_channeling]
 enabled = true
 interval_frames = 50
@@ -466,6 +561,8 @@ attack_attempt_stat_id = 369
 critical_strike_stat_id = 370
 crushing_blow_stat_id = 371
 open_wounds_stat_id = 372
+[on_block]
+stat_id = 379
 [diagnostics]
 enabled = true
 )toml";
@@ -477,6 +574,7 @@ enabled = true
         == std::vector<std::int32_t>({44, 48}));
     assert(config.onCast.excludeSkillIds
         == std::vector<std::int32_t>({41}));
+    assert(config.onKillStatId == 380);
     assert(config.whileChanneling.enabled);
     assert(config.whileChanneling.intervalFrames == 50);
     assert(config.whileChanneling.includeSkillIds
@@ -500,7 +598,9 @@ enabled = true
     assert(config.combatTriggers.criticalStrikeStatId == 370);
     assert(config.combatTriggers.crushingBlowStatId == 371);
     assert(config.combatTriggers.openWoundsStatId == 372);
+    assert(config.combatTriggers.blockStatId == 379);
     assert(HasDistinctSyntheticStatIds(config));
+    assert(HasDistinctConfiguredTriggerStatIds(config));
     assert(config.diagnostics);
     assert(IsConfiguredSourceSkill(config, 44));
     assert(!IsConfiguredSourceSkill(config, 41));
@@ -524,6 +624,22 @@ enabled = true
         error));
     assert(!ParseToml(
         "[on_cast]\nexclude_skill_ids = [\"Inferno\"]",
+        config,
+        error));
+    assert(!ParseToml(
+        "[on_kill]\nstat_id = -1",
+        config,
+        error));
+    assert(!ParseToml(
+        "[on_kill]\nstat_id = 65536",
+        config,
+        error));
+    assert(!ParseToml(
+        "[on_kill]\nstat_id = \"380\"",
+        config,
+        error));
+    assert(!ParseToml(
+        "[on_kill]\nunknown = true",
         config,
         error));
     assert(!ParseToml(
@@ -634,6 +750,70 @@ enabled = true
         config,
         error));
     assert(!ParseToml(
+        "[on_block]\nstat_id = -1",
+        config,
+        error));
+    assert(!ParseToml(
+        "[on_block]\nstat_id = 65536",
+        config,
+        error));
+    assert(!ParseToml(
+        "[on_block]\nstat_id = \"379\"",
+        config,
+        error));
+    assert(!ParseToml(
+        "[on_block]\nunknown = true",
+        config,
+        error));
+    assert(!ParseToml(
+        "[on_kill]\nstat_id = 369\n"
+        "[combat_triggers]\nattack_attempt_stat_id = 369",
+        config,
+        error));
+    assert(!ParseToml(
+        "[on_kill]\nstat_id = 373\n"
+        "[while_channeling]\nfixed_stat_id = 373",
+        config,
+        error));
+    assert(!ParseToml(
+        "[on_kill]\nstat_id = 375\n"
+        "[[source_skill_triggers]]\nname = \"kill_collision\"\n"
+        "source_skill_ids = [44]\nfixed_stat_id = 375",
+        config,
+        error));
+    assert(!ParseToml(
+        "[on_kill]\nstat_id = 379\n"
+        "[on_block]\nstat_id = 379",
+        config,
+        error));
+    // On Kill is native, not synthetic, but its ID must not alias any
+    // synthetic family: an alias would let the synthetic filter hide kills.
+    for (const std::string_view family : {
+            "[while_channeling]\nfixed_stat_id = 400",
+            "[while_channeling]\nsame_level_stat_id = 400",
+            "[combat_triggers]\nattack_attempt_stat_id = 400",
+            "[combat_triggers]\ncritical_strike_stat_id = 400",
+            "[combat_triggers]\ncrushing_blow_stat_id = 400",
+            "[combat_triggers]\nopen_wounds_stat_id = 400",
+            "[on_block]\nstat_id = 400",
+            "[[source_skill_triggers]]\nname = \"collision\"\n"
+                "source_skill_ids = [44]\nfixed_stat_id = 400",
+            "[[source_skill_triggers]]\nname = \"collision\"\n"
+                "source_skill_ids = [44]\nsame_level_stat_id = 400"}) {
+        assert(!ParseToml(
+            std::string("[on_kill]\nstat_id = 400\n") + std::string(family),
+            config, error));
+        assert(error == "all nonzero configured trigger stat IDs must be distinct");
+    }
+    assert(!ParseToml("on_kill = 400", config, error));
+    assert(!ParseToml("on_block = 400", config, error));
+    assert(ParseToml(
+        "[on_kill]\nstat_id = 0\n[on_block]\nstat_id = 0",
+        config,
+        error));
+    assert(config.onKillStatId == 0);
+    assert(config.combatTriggers.blockStatId == 0);
+    assert(!ParseToml(
         "[diagnostics]\nenabled = 1",
         config,
         error));
@@ -649,6 +829,7 @@ enabled = true
     assert(config.enabled);
     assert(config.onCast.includeSkillIds.empty());
     assert(config.onCast.excludeSkillIds.empty());
+    assert(config.onKillStatId == 0);
     assert(config.whileChanneling.enabled);
     assert(config.whileChanneling.intervalFrames == 50);
     assert(config.whileChanneling.includeSkillIds.empty());
@@ -661,6 +842,7 @@ enabled = true
     assert(config.combatTriggers.criticalStrikeStatId == 0);
     assert(config.combatTriggers.crushingBlowStatId == 0);
     assert(config.combatTriggers.openWoundsStatId == 0);
+    assert(config.combatTriggers.blockStatId == 0);
     assert(!config.diagnostics);
 
     const std::vector<std::filesystem::path> directories{
@@ -879,6 +1061,54 @@ enabled = true
     assert(source.find("HookEventFunc15") != std::string::npos);
     assert(source.find("HookEventFunc16") != std::string::npos);
     assert(source.find("HookEventFunc20") != std::string::npos);
+    assert(source.find("ReportFinalizedDamageRva = 0x451FB0")
+        != std::string::npos);
+    assert(source.find("FinalizeDamageReportReturnRva = 0x44AA24")
+        != std::string::npos);
+    assert(source.find("Settings.onKillStatId == 0 || !Capabilities.itemSkillExecution")
+        != std::string::npos);
+    assert(source.find("Settings.combatTriggers.blockStatId == 0\n            || !Capabilities.itemSkillExecution")
+        != std::string::npos);
+    for (const auto witness : {"EventFunc20DamageGateExpected",
+            "FinalizeDamageAdmissionWitnessExpected", "FinalizeDamageReportCallWitnessExpected",
+            "FinalizeDamageBlockFlagsWitnessExpected"}) {
+        assert(source.find(witness) != std::string::npos);
+    }
+    assert(source.find(
+        "if (Settings.combatTriggers.blockStatId != 0\n"
+        "            && Capabilities.itemSkillExecution\n"
+        "            && !Context->InstallInlineHook(\n"
+        "                ReportFinalizedDamageRva,") != std::string::npos);
+    const auto blockHookStart = source.find(
+        "__declspec(noinline) void __fastcall HookReportFinalizedDamage(");
+    const auto blockHookEnd = source.find("void __fastcall HookFillDamageValues(", blockHookStart);
+    assert(blockHookStart != std::string::npos && blockHookEnd != std::string::npos);
+    const auto blockHook = source.substr(blockHookStart, blockHookEnd - blockHookStart);
+    assert(blockHook.find("_ReturnAddress()\n        == Base + FinalizeDamageReportReturnRva")
+        != std::string::npos);
+    assert(blockHook.find("GetUnitType(defender) == PlayerUnitType") != std::string::npos);
+    const auto originalBlockReport = blockHook.find(
+        "OriginalReportFinalizedDamage(game, attacker, defender, damage);");
+    const auto blockDispatch = blockHook.find(
+        "DispatchCombatTrigger(game, defender, attacker, CombatTriggerKind::Block);");
+    assert(originalBlockReport != std::string::npos && blockDispatch != std::string::npos);
+    assert(originalBlockReport < blockDispatch);
+    assert(blockHook.find("OriginalReportFinalizedDamage(", originalBlockReport + 1)
+        == std::string::npos);
+    assert(blockHook.find("!IsConfirmedBlockResult(flags)") != std::string::npos);
+    assert(blockHook.find("Context->Log") == std::string::npos);
+    const auto killHookStart = source.find("std::int32_t __fastcall HookEventFunc20(");
+    const auto killHookEnd = source.find("std::int32_t __fastcall HookDispatchUnitStatEvent(", killHookStart);
+    assert(killHookStart != std::string::npos && killHookEnd != std::string::npos);
+    const auto killHook = source.substr(killHookStart, killHookEnd - killHookStart);
+    assert(killHook.find("Settings.onKillStatId != 0 && event == 9 && game")
+        != std::string::npos);
+    assert(killHook.find("ShouldExtendKillEligibility(") != std::string::npos);
+    assert(killHook.find("ProcExecutionDepth, Capabilities.itemSkillExecution")
+        != std::string::npos);
+    assert(killHook.find("game, event, attacker, target, nullptr,") != std::string::npos);
+    assert(killHook.find("game, event, attacker, target, damage,") != std::string::npos);
+    assert(killHook.find("Context->Log") == std::string::npos);
     assert(source.find("ActiveSourceTrigger") != std::string::npos);
     assert(source.find("ActiveSourceSkillId") != std::string::npos);
     assert(source.find("ShouldExposeSyntheticStat(") != std::string::npos);

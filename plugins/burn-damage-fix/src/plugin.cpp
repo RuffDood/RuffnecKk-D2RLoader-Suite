@@ -76,8 +76,6 @@ constexpr std::int32_t FireLengthStat = 315;
 constexpr std::int32_t BurningMinStat = 316;
 constexpr std::int32_t BurningMaxStat = 317;
 constexpr std::int32_t PassiveFireMasteryStat = 329;
-constexpr std::uint32_t GenericBurnPatchSize = 6;
-constexpr std::size_t RelayBytes = 16;
 constexpr char FireTypeName[] = "Fire";
 
 constexpr std::array<std::uint8_t, 10> GenericBurnProductionExpected{
@@ -357,7 +355,6 @@ std::size_t ImageSize{};
 Config Settings{};
 std::string LoadedConfigPath{"embedded defaults"};
 std::string RuntimeBuild{"unknown"};
-void* RelayPage{};
 ApplyBurnDamageFn OriginalApplyBurnDamage{};
 ApplyResistancesAndAbsorbFn ApplyResistancesAndAbsorb{};
 GetDifficultyRecordFn GetDifficultyRecord{};
@@ -410,7 +407,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-burn-damage-fix",
     .name = "Burn Damage Fix",
-    .version = "1.1.1",
+    .version = "1.1.2",
     .author = "RuffnecKk",
     .description = "Restores Burn damage and Fire defenses with a moving periodic flame.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -949,87 +946,23 @@ auto ValidateRuntime() noexcept -> bool {
     return true;
 }
 
-auto AllocateNear(void* hint, std::size_t size) noexcept -> void* {
-    SYSTEM_INFO systemInfo{};
-    GetSystemInfo(&systemInfo);
-    const auto granularity = static_cast<std::uintptr_t>(
-        systemInfo.dwAllocationGranularity);
-    const auto aligned = reinterpret_cast<std::uintptr_t>(hint)
-        & ~(granularity - 1U);
-    for (std::uintptr_t delta = granularity;
-            delta < 0x70000000ULL; delta += granularity) {
-        if (aligned > std::numeric_limits<std::uintptr_t>::max() - delta) break;
-        const auto candidate = aligned + delta;
-        if (!CanEncodeRel32(
-                reinterpret_cast<std::uintptr_t>(hint), candidate)) {
-            break;
-        }
-        if (auto* memory = VirtualAlloc(
-                reinterpret_cast<void*>(candidate), size,
-                MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE)) {
-            return memory;
-        }
-    }
-    return nullptr;
-}
-
-auto WriteAbsoluteJump(std::uint8_t* destination, const void* target) noexcept
-        -> bool {
-    if (!destination || !target) return false;
-    destination[0] = 0xFF;
-    destination[1] = 0x25;
-    destination[2] = destination[3] = destination[4] = destination[5] = 0;
-    const auto address = reinterpret_cast<std::uint64_t>(target);
-    std::memcpy(destination + 6, &address, sizeof(address));
-    return true;
-}
-
 auto InstallProductionRelay() noexcept -> bool {
     if (!Settings.normalizeGenericBurn) return true;
-    RelayPage = AllocateNear(Base + GenericBurnProductionRva, RelayBytes);
-    if (!RelayPage) {
-        Context->LogError(
-            "BurnDamageFix: no relay page was available within rel32 reach.");
-        return false;
-    }
-    auto* relay = static_cast<std::uint8_t*>(RelayPage);
-    if (!WriteAbsoluteJump(
-            relay,
-            reinterpret_cast<const void*>(&BurnDamageFixProductionMidHook))) {
-        return false;
-    }
-    DWORD previousProtection{};
-    if (!VirtualProtect(
-            relay, RelayBytes, PAGE_EXECUTE_READ, &previousProtection)) {
-        Context->LogError(
-            "BurnDamageFix: relay page protection could not be finalized.");
-        return false;
-    }
-    FlushInstructionCache(GetCurrentProcess(), relay, RelayBytes);
-    const auto relayAddress = reinterpret_cast<std::uintptr_t>(relay);
-    const auto baseAddress = reinterpret_cast<std::uintptr_t>(Base);
-    if (relayAddress < baseAddress
-            || !CanEncodeRel32(
-                baseAddress + GenericBurnProductionRva, relayAddress)) {
-        Context->LogError(
-            "BurnDamageFix: relay displacement validation failed.");
-        return false;
-    }
+    // The first six bytes are one complete ADD instruction. The Loader owns
+    // the inline hook; our assembly replacement resumes at the next instruction.
     gBurnDamageFixProductionContinuation =
         Base + GenericBurnProductionContinuationRva;
-    if (!Context->PatchJmpRel32(
+    if (!Context->InstallInlineHook(
             GenericBurnProductionRva,
             GenericBurnProductionExpected.data(),
-            GenericBurnPatchSize,
-            relayAddress - baseAddress,
-            GenericBurnPatchSize)) {
+            static_cast<std::uint32_t>(GenericBurnProductionExpected.size()),
+            &BurnDamageFixProductionMidHook)) {
         Context->LogError(
             "BurnDamageFix: generic Burn production seam is already owned; plugin refused.");
         return false;
     }
     return true;
 }
-
 auto IsNonHirelingMonster(void* unit) noexcept -> std::int32_t {
     if (!unit || GetUnitType(unit) != MonsterUnitType) return 0;
     return GetHirelingTypeId(unit) == 0 ? 1 : 0;
@@ -1447,7 +1380,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Burn Damage Fix 1.1.1: active=%s; build=%s; generic=%s; resistance=%s; overlay=%s/fire_hit/%df; native-burning=%s/%llu/%llu/%llu/%llu/%llu removed/already-none/custom/fail/restored; diagnostics=%s; production=%llu/%llu; resolved=%llu/%llu/%llu applied/cancelled/fail; burning-state=%llu/%llu active/missing; overlay-replay=%llu/%llu/%llu replayed/cadence/foreign-replaced; config=%s.",
+        "Burn Damage Fix 1.1.2: active=%s; build=%s; generic=%s; resistance=%s; overlay=%s/fire_hit/%df; native-burning=%s/%llu/%llu/%llu/%llu/%llu removed/already-none/custom/fail/restored; diagnostics=%s; production=%llu/%llu; resolved=%llu/%llu/%llu applied/cancelled/fail; burning-state=%llu/%llu active/missing; overlay-replay=%llu/%llu/%llu replayed/cadence/foreign-replaced; config=%s.",
         Operational.load(std::memory_order_acquire) ? "true" : "false",
         RuntimeBuild.c_str(),
         Settings.normalizeGenericBurn ? "on" : "off",
@@ -1519,7 +1452,6 @@ void ResetState() noexcept {
     }
     RuntimeBuild = "unknown";
     LoadedConfigPath = "embedded defaults";
-    RelayPage = nullptr;
     ImageSize = 0;
     ApplyResistancesAndAbsorb = nullptr;
     GetDifficultyRecord = nullptr;
@@ -1611,7 +1543,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     if (!Settings.enabled) {
         context->LogInfo(
-            "Burn Damage Fix 1.1.1 by RuffnecKk loaded disabled; no hook was installed.");
+            "Burn Damage Fix 1.1.2 by RuffnecKk loaded disabled; no hook was installed.");
         return true;
     }
 
@@ -1679,7 +1611,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Burn Damage Fix 1.1.1 by RuffnecKk active for observed D2R %s; generic=%s; resistance=%s; overlay=%s/fire_hit/%df; native-burning=%s; installation=%s; TOML=%s.",
+        "Burn Damage Fix 1.1.2 by RuffnecKk active for observed D2R %s; generic=%s; resistance=%s; overlay=%s/fire_hit/%df; native-burning=%s; installation=%s; TOML=%s.",
         RuntimeBuild.c_str(),
         Settings.normalizeGenericBurn ? "enabled" : "disabled",
         Settings.applyFireResistance ? "enabled" : "disabled",

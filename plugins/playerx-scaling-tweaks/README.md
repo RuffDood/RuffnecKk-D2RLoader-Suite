@@ -7,11 +7,56 @@ party members for NoDrop. Its optional Battle.net simulation disables
 artificial player-count controls and uses connected players as the only
 dynamic source.
 
-Current status: **1.0.1 Suite 1.4 candidate. Runtime qualification and release
-packaging are still required before publication.**
+Current status: **1.2.0 candidate with an independent NoDrop minimum.**
+The new minimum requires in-game qualification. In 1.1.1, new-game p16 startup and
+commands through p64 were confirmed in BKVince with D2RLoader 1.3.1-beta on
+Battle.net D2R 3.3.93847. Shift+1/p1 and Shift+2/p2 were confirmed during this
+test cycle. Higher counts and multiplayer remain unqualified.
+
+Version 1.1.1 also removes the final native setter's rejection of counts above
+8 when an extended maximum is configured. Earlier candidates updated the
+Offline Difficulty setting, but the final setter still kept the previous count
+instead of applying p16. Commands, startup values and shortcuts share this path.
+Set `player-count.maximum-command-players = 16` to allow up to p16. The default
+remains p8; Battle.net simulation continues to lock artificial difficulty to p1.
 
 Version 1.0.1 adds `[battle-net-simulation]` and declares the API v3 shared
 execution role required by its combined local-control and gameplay behavior.
+
+## Starting count and shortcuts
+
+The included TOML keeps Loader's starting value (`start-game-players = 0`) and
+adds exactly two shortcuts: **Shift+1 sets p1**, and **Shift+2 sets p2**.
+
+To start every new game at p16, edit your existing `[player-count]` section:
+
+```toml
+minimum-scaling-players = 1
+maximum-command-players = 16
+start-game-players = 16
+```
+
+The starting value is applied once when your local player becomes ready. Later
+commands and shortcuts remain in effect until you leave that game. Zero or an
+omitted setting leaves Loader's starting value alone.
+
+The TOML explains how to copy a `[[player-count.hotkeys]]` block to add a shortcut.
+Use a unique combination of A-Z, 0-9 or F1-F24, with an optional Shift, Ctrl or
+Alt modifier. Counts must be within your configured minimum and maximum; if you
+raise the minimum, adjust or remove shortcuts below it. Remove all hotkey blocks
+to disable shortcuts. Restart D2R after changing the TOML.
+
+Shortcuts are registered in Loader's Controls menu. Its saved bindings can
+override their defaults; changing a shortcut's keys or count in TOML creates a
+new action. Loader suppresses these shortcuts during text entry and key binding.
+The applied count is reported in Loader's console.
+
+Existing TOMLs remain valid: missing startup/hotkey settings add no controls.
+The new controls require Loader Lifecycle v1 and Input v1 (Input only when
+hotkeys are configured). A missing service or failed registration refuses the
+plugin with an error instead of silently skipping the requested feature.
+Battle.net simulation disables both features. Native `/players` game-mode
+restrictions still apply; multiplayer behavior has not been qualified.
 
 ## Default player experience
 
@@ -31,7 +76,7 @@ The configuration is
 [`ruffneckk-playerx-scaling-tweaks.toml`](config/ruffneckk-playerx-scaling-tweaks.toml). Its comments
 are the player-facing template and explain every value.
 
-The strict configuration range is 1–65,535. Values above p8 are extended mod
+The strict configuration range is 1â€“65,535. Values above p8 are extended mod
 values and remain runtime-unqualified until they are measured in game.
 
 ## Battle.net simulation
@@ -54,6 +99,30 @@ The current native evidence proves an immobile p1 control, not whether the
 slider is visually greyed or hidden.
 
 ## NoDrop nearby-party simulation
+
+### Independent NoDrop minimum
+
+Set an optional minimum effective count used only for NoDrop:
+
+```toml
+[no-drop]
+minimum-effective-players = 1
+players-command-simulates-nearby-party = false
+```
+
+The default of `1`, including when omitted from an older TOML, preserves the
+existing calculation. Choose another value to raise only the NoDrop minimum.
+For example, `5` gives solo play at least the NoDrop effect of five nearby
+living party members. It does not set `/players 5` or change monster HP, XP,
+physical damage or Attack Rating. Higher effective NoDrop counts still apply.
+
+This minimum is independent of the command minimum, command maximum and
+monster-channel caps. It applies after the native monster-count cap, and works
+with or without nearby-party simulation. In Battle.net simulation, it remains
+active while real players supply the dynamic count and command simulation is
+disabled. The valid configuration range is 1–65,535. Restart after editing.
+
+### Nearby-party simulation
 
 D2R combines the two inputs as:
 
@@ -92,8 +161,9 @@ D2R couples its player-count monster physical damage bonus with monster Attack
 Rating in Nightmare and Hell. The `[monster-offense-scaling]` section controls
 that whole native offense factor. Normal difficulty keeps its native rule.
 
-`[no-drop].players-command-simulates-nearby-party = false` leaves the original
-NoDrop inputs and formula untouched.
+`[no-drop].players-command-simulates-nearby-party = false` uses native NoDrop
+party inputs. A configured independent minimum still applies; with its default
+of 1, the original NoDrop calculation remains untouched.
 
 ## Installation and ownership
 

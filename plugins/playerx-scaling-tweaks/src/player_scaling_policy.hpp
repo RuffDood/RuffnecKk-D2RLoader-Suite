@@ -1,6 +1,7 @@
 #pragma once
 
 #include <toml++/toml.hpp>
+#include "player_hotkey.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -22,6 +23,7 @@ struct ScalingChannel {
 
 struct NoDropConfig {
     bool playersCommandSimulatesNearbyParty{};
+    std::int32_t minimumEffectivePlayers{1};
 };
 
 struct Config {
@@ -32,6 +34,8 @@ struct Config {
     bool battleNetSimulationEnabled{};
     std::int32_t minimumScalingPlayers{1};
     std::int32_t maximumCommandPlayers{8};
+    std::int32_t startGamePlayers{};
+    std::vector<PlayerHotkey> hotkeys{};
     ScalingChannel monsterLife{true, 0};
     ScalingChannel monsterExperience{true, 0};
     ScalingChannel monsterOffense{true, 0};
@@ -46,6 +50,17 @@ constexpr auto IsNoDropPartySimulationEnabled(const Config& config) noexcept
         -> bool {
     return config.noDrop.playersCommandSimulatesNearbyParty
         && !config.battleNetSimulationEnabled;
+}
+
+constexpr auto EffectiveNoDropConfig(const Config& config) noexcept -> NoDropConfig {
+    auto result = config.noDrop;
+    result.playersCommandSimulatesNearbyParty = IsNoDropPartySimulationEnabled(config);
+    return result;
+}
+
+constexpr auto IsNoDropAdjustmentEnabled(const Config& config) noexcept -> bool {
+    return config.noDrop.minimumEffectivePlayers > 1
+        || IsNoDropPartySimulationEnabled(config);
 }
 
 struct NoDropCounts {
@@ -105,7 +120,9 @@ constexpr auto MonsterExperienceBonusPercent(std::int32_t count) noexcept
 constexpr auto NativeNoDropEffectiveCount(
         std::int32_t playersCommand,
         std::int32_t nearbyPartyMembers) noexcept -> std::int32_t {
-    const auto nearby = NormalizePlayerCount(nearbyPartyMembers);
+    // Zero nearby living party members is a valid native input. Promoting it
+    // to one would grant extra half-credit at odd player counts.
+    const auto nearby = std::clamp(nearbyPartyMembers, 0, MaximumPlayerCount);
     const auto players = (std::max)(NormalizePlayerCount(playersCommand), nearby);
     return nearby + (players - nearby) / 2;
 }
@@ -115,21 +132,31 @@ constexpr auto ResolveNoDropCounts(
         std::int32_t observedNearbyPartyMembers,
         const NoDropConfig& config) noexcept -> NoDropCounts {
     auto players = NormalizePlayerCount(observedPlayersCommand);
-    auto nearby = NormalizePlayerCount(observedNearbyPartyMembers);
-    if (!config.playersCommandSimulatesNearbyParty) {
-        return {players, nearby, NativeNoDropEffectiveCount(players, nearby)};
+    auto nearby = std::clamp(observedNearbyPartyMembers, 0, MaximumPlayerCount);
+    if (config.playersCommandSimulatesNearbyParty) {
+        players = (std::max)(players, nearby);
+        nearby = players;
     }
-
-    players = (std::max)(players, nearby);
-    nearby = players;
+    const auto minimum = NormalizePlayerCount(config.minimumEffectivePlayers);
+    if (NativeNoDropEffectiveCount(players, nearby) < minimum) {
+        // These are temporary inputs to this drop calculation only. Equal
+        // inputs encode the exact effective minimum without half-credit loss.
+        players = minimum;
+        nearby = minimum;
+    }
     return {players, nearby, NativeNoDropEffectiveCount(players, nearby)};
 }
 
 constexpr auto ResolveNoDropMonsterCap(
         std::int32_t observedMonsterCount,
         std::int32_t effectiveNoDropCount,
-        bool simulateNearbyParty) noexcept -> std::int32_t {
-    if (!simulateNearbyParty) return observedMonsterCount;
+        bool simulateNearbyParty,
+        std::int32_t minimumEffectivePlayers = 1) noexcept -> std::int32_t {
+    if (!simulateNearbyParty) {
+        return minimumEffectivePlayers > 1
+            ? (std::max)(observedMonsterCount, NormalizePlayerCount(minimumEffectivePlayers))
+            : observedMonsterCount;
+    }
     return (std::max)(
         observedMonsterCount,
         NormalizePlayerCount(effectiveNoDropCount));
@@ -250,6 +277,52 @@ inline auto ParseChannel(
     return true;
 }
 
+inline auto ParsePlayerControls(const toml::table& table, Config& config,
+        std::string& error) -> bool {
+    if (table.contains("start-game-players")) {
+        if (!ReadInt(table, "start-game-players", "player-count.start-game-players",
+                0, MaximumPlayerCount, config.startGamePlayers, error)) return false;
+        if (config.startGamePlayers != 0
+                && (config.startGamePlayers < config.minimumScalingPlayers
+                    || config.startGamePlayers > config.maximumCommandPlayers)) {
+            error = "player-count.start-game-players must be 0 or within the configured player-count bounds";
+            return false;
+        }
+    }
+    const auto* node = table.get("hotkeys");
+    if (!node) return true;
+    const auto* hotkeys = node->as_array();
+    if (!hotkeys) {
+        error = "player-count.hotkeys must contain [[player-count.hotkeys]] tables";
+        return false;
+    }
+    for (const auto& entry : *hotkeys) {
+        const auto* hotkey = entry.as_table();
+        if (!hotkey) {
+            error = "each player-count.hotkeys entry must be a table";
+            return false;
+        }
+        PlayerHotkey parsed{};
+        if (!ValidateKeys(*hotkey, "player-count.hotkeys.", {"keys", "players"}, error)
+                || !ReadInt(*hotkey, "players", "player-count.hotkeys.players",
+                    config.minimumScalingPlayers, config.maximumCommandPlayers,
+                    parsed.players, error)) return false;
+        const auto* keys = hotkey->get_as<std::string>("keys");
+        if (!keys || !ParsePlayerHotkey(keys->get(), parsed)) {
+            error = "player-count.hotkeys.keys must be A-Z, 0-9 or F1-F24, optionally prefixed by Shift+, Ctrl+ or Alt+";
+            return false;
+        }
+        for (const auto& previous : config.hotkeys) {
+            if (previous.key == parsed.key && previous.modifier == parsed.modifier) {
+                error = "duplicate player-count.hotkeys key combination";
+                return false;
+            }
+        }
+        config.hotkeys.push_back(parsed);
+    }
+    return true;
+}
+
 inline auto ParseToml(
         std::string_view input,
         Config& result,
@@ -293,7 +366,8 @@ inline auto ParseToml(
         const auto* playerCount = RequireTable(root, "player-count", error);
         if (!playerCount
                 || !ValidateKeys(*playerCount, "player-count.",
-                    {"minimum-scaling-players", "maximum-command-players"},
+                    {"minimum-scaling-players", "maximum-command-players",
+                     "start-game-players", "hotkeys"},
                     error)
                 || !ReadInt(*playerCount, "minimum-scaling-players",
                     "player-count.minimum-scaling-players",
@@ -310,6 +384,7 @@ inline auto ParseToml(
                 "player-count.minimum-scaling-players";
             return false;
         }
+        if (!ParsePlayerControls(*playerCount, parsed, error)) return false;
 
         const auto* life = RequireTable(root, "monster-life-scaling", error);
         const auto* experience = RequireTable(
@@ -331,12 +406,19 @@ inline auto ParseToml(
         const auto* noDrop = RequireTable(root, "no-drop", error);
         if (!noDrop
                 || !ValidateKeys(*noDrop, "no-drop.",
-                    {"players-command-simulates-nearby-party"}, error)
+                    {"players-command-simulates-nearby-party", "minimum-effective-players"}, error)
                 || !ReadBool(*noDrop,
                     "players-command-simulates-nearby-party",
                     "no-drop.players-command-simulates-nearby-party",
                     parsed.noDrop.playersCommandSimulatesNearbyParty,
                     error)) {
+            return false;
+        }
+
+        if (noDrop->contains("minimum-effective-players")
+                && !ReadInt(*noDrop, "minimum-effective-players",
+                    "no-drop.minimum-effective-players", MinimumPlayerCount,
+                    MaximumPlayerCount, parsed.noDrop.minimumEffectivePlayers, error)) {
             return false;
         }
 

@@ -69,3 +69,11 @@ Advanced users can run `D2RSaveConverter.exe --help` for command-line options.
 - **prowner**: `@d2runewizard/d2s`, used under the ISC license.
 - **tmo-gg**: `stormlib-js`, used under the MIT license.
 - **D2MOO contributors**: reference material for Diablo II save-value encoding.
+
+## Development
+
+Run `npm ci` and `npm test` from this directory. The package owns its exact
+`@d2runewizard/d2s` dependency and the governed `patch-package` compatibility
+patch required by the ISC12 codec; it does not borrow dependencies or source
+files from the Diablo incubation workspace. Set `DIABLO_WORKSPACE_ROOT` only to
+enable the optional BKVince loose-mod integration tests.

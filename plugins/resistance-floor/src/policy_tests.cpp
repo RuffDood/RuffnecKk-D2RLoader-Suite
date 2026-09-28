@@ -158,19 +158,21 @@ void TestSourceContracts() {
     CHECK(plugin.find("diagnostic only") != std::string::npos);
     CHECK(plugin.find("validating the complete native fingerprint")
         != std::string::npos);
-    CHECK(plugin.find(".version = \"1.0.2\"") != std::string::npos);
+    CHECK(plugin.find(".version = \"1.0.3\"") != std::string::npos);
     CHECK(plugin.find("Resistance Floor 1.0.1") == std::string::npos);
-    CHECK(cmake.find("VERSION 1.0.2") != std::string::npos);
+    CHECK(cmake.find("VERSION 1.0.3") != std::string::npos);
     CHECK(cmake.find("VERSION 1.0.1") == std::string::npos);
-    CHECK(resource.find("FILEVERSION 1,0,2,0") != std::string::npos);
-    CHECK(resource.find("PRODUCTVERSION 1,0,2,0") != std::string::npos);
-    CHECK(resource.find("\"FileVersion\", \"1.0.2\"") != std::string::npos);
-    CHECK(resource.find("\"ProductVersion\", \"1.0.2\"") != std::string::npos);
+    CHECK(resource.find("FILEVERSION 1,0,3,0") != std::string::npos);
+    CHECK(resource.find("PRODUCTVERSION 1,0,3,0") != std::string::npos);
+    CHECK(resource.find("\"FileVersion\", \"1.0.3\"") != std::string::npos);
+    CHECK(resource.find("\"ProductVersion\", \"1.0.3\"") != std::string::npos);
     CHECK(resource.find("1.0.1") == std::string::npos);
-    CHECK(readme.find("# Resistance Floor 1.0.2") != std::string::npos);
+    CHECK(readme.find("# Resistance Floor 1.0.3") != std::string::npos);
     CHECK(readme.find("1.0.1") == std::string::npos);
     CHECK(plugin.find("0x4524C4") != std::string::npos);
     CHECK(plugin.find("0x4524E7") != std::string::npos);
+    CHECK(plugin.find("InstallInlineHook") != std::string::npos);
+    CHECK(plugin.find("PatchJmpRel32") == std::string::npos);
     CHECK(plugin.find("0x14E729A") != std::string::npos);
     CHECK(plugin.find("RegisterConsoleCommand") != std::string::npos);
     CHECK(plugin.find("MapSense") == std::string::npos);

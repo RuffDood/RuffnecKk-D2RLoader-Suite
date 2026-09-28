@@ -90,6 +90,37 @@ minimum-scaling-players = 1
 # Values above 8 are extended mod values and require runtime qualification.
 maximum-command-players = 8
 
+# Start every new game at this count once your character is ready, overriding
+# Loader's starting value. You can change it again during play.
+# 0 (or an omitted setting) keeps Loader's starting value.
+# Non-zero values must be within the minimum and maximum above.
+start-game-players = 0
+
+# Hotkeys change the player count during a game and report it in Loader's console.
+# They do not run while typing in chat or binding controls.
+# Startup and hotkeys are disabled by battle-net-simulation.
+# Values must be within the minimum and maximum above.
+# If you raise the minimum, change or remove shortcuts below that minimum.
+#
+# Add more shortcuts by copying a block below and changing keys and players.
+# For example, keys = "Shift+S" with players = 16 sets p16.
+# That example requires maximum-command-players = 16 or higher.
+# Use a unique key combination for each shortcut.
+# Supported keys: A-Z, 0-9, F1-F24; optionally one Shift+, Ctrl+ or Alt+ prefix.
+# Restart D2R after editing this file. Loader's Controls menu can override a
+# shortcut's default binding; changing keys or players here creates a new action.
+# Remove both blocks to disable hotkeys. Older TOMLs without blocks add none.
+
+# Press Shift+1 to set players 1.
+[[player-count.hotkeys]]
+keys = "Shift+1"
+players = 1
+
+# Press Shift+2 to set players 2.
+[[player-count.hotkeys]]
+keys = "Shift+2"
+players = 2
+
 
 # =============================================================================
 # MONSTER LIFE SCALING
@@ -171,6 +202,17 @@ maximum-players = 0
 
 [no-drop]
 
+# Minimum effective player count used only for NoDrop.
+# 1 = preserve the normal calculation without an additional minimum (default).
+# Example: 5 gives solo play at least the NoDrop effect of five nearby living
+# party members. This is not the same as the ordinary solo /players 5 command.
+# Higher effective counts still apply; this is a minimum, not a fixed count.
+# Does not change monster HP, XP, physical damage, Attack Rating or /players.
+# Independent of minimum-scaling-players and maximum-command-players.
+# Also applies in Battle.net simulation, after the real-player calculation.
+# Valid range: 1 to 65535. Omitted in older TOMLs means 1.
+minimum-effective-players = 1
+
 # NoDrop is the chance that a drop attempt produces no item.
 # A higher effective player count generally means a lower NoDrop chance
 # and therefore more successful item drops.
@@ -186,10 +228,10 @@ maximum-players = 0
 # Native party example:
 #   4 nearby living party members = 4 effective NoDrop players.
 #
-# false = preserve the original NoDrop calculation.
+# false = use native party-count inputs, subject to minimum-effective-players.
 #
 # true = make the host's accepted /players X value simulate X nearby living
-#        party members for NoDrop throughout the game.
+#        party members for NoDrop throughout the game, subject to that minimum.
 #
 # Simulation examples:
 #   /players 4 = 4 effective NoDrop players.
@@ -234,6 +276,9 @@ match = true
 #
 # EXAMPLE 1 — P4 BASELINE, P64 COMMAND LIMIT, HP CAPPED AT P16
 #
+# Also change both default hotkey counts to 4 or higher, or remove their blocks.
+# If start-game-players is non-zero, set it to 4 or higher as well.
+#
 #   [player-count]
 #   minimum-scaling-players = 4
 #   maximum-command-players = 64
@@ -250,6 +295,9 @@ match = true
 #
 #
 # EXAMPLE 2 — P4 BASELINE WITH FIXED MONSTER OFFENSE
+#
+# Also change both default hotkey counts to 4 or higher, or remove their blocks.
+# If start-game-players is non-zero, set it to 4 or higher as well.
 #
 #   [player-count]
 #   minimum-scaling-players = 4

@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(RuffnecKkFloatingDamage LANGUAGES C CXX RC)
+    project(RuffnecKkFloatingDamage LANGUAGES C CXX RC ASM_MASM)
     include(CTest)
     option(
         RUFFNECKK_SUITE_WARNINGS_AS_ERRORS
@@ -12,6 +12,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 else()
     enable_language(C)
     enable_language(RC)
+    enable_language(ASM_MASM)
 endif()
 
 include(FetchContent)
@@ -76,6 +77,7 @@ add_library(ruffneckk_floating_damage SHARED
     src/floating_damage.cpp
     src/plugin.cpp
     src/plugin.rc
+    src/hp_commit_sites.asm
 )
 target_link_libraries(ruffneckk_floating_damage PRIVATE
     RuffnecKk::Common
@@ -90,7 +92,8 @@ target_include_directories(ruffneckk_floating_damage PRIVATE
     "${FLOATING_DAMAGE_GENERATED_DIR}"
 )
 if(MSVC)
-    target_compile_options(ruffneckk_floating_damage PRIVATE /EHsc)
+    target_compile_options(ruffneckk_floating_damage PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
 endif()
 set_target_properties(ruffneckk_floating_damage PROPERTIES
     OUTPUT_NAME "d2rl-ruffneckk-floating-damage"

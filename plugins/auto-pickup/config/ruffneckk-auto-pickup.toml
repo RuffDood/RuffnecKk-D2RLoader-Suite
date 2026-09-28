@@ -1,0 +1,43 @@
+# Auto Pickup
+# Potion codes and generic codes are exact values from the relevant item table.
+# List order is pickup priority. Changes take effect after restarting the game.
+
+enabled = true
+# Maximum native grid-distance cost from the player, inclusive. Range: 1..4.
+pickup_range = 4
+# Eligible potion families are checked from left to right.
+pickup_family_order = ["rejuvenation", "health", "mana"]
+
+[health_potions]
+enabled = true
+potion_codes = ["hp5", "hp4", "hp3", "hp2"]
+belt_columns = [1, 2]
+inventory_fallback_potion_codes = ["hp5"]
+
+[mana_potions]
+enabled = true
+potion_codes = ["mp5", "mp4", "mp3"]
+belt_columns = [3]
+inventory_fallback_potion_codes = ["mp5"]
+
+[rejuvenation_potions]
+enabled = true
+potion_codes = ["rvl", "rvs"]
+belt_columns = [4]
+inventory_fallback_potion_codes = ["rvl", "rvs"]
+
+[inventory_items]
+# These codes use the native pickup destination without a forced belt route.
+# They are considered only when no configured potion has a dedicated route.
+codes = ["tsc", "isc"]
+
+[advanced]
+# Scan once per this many supported player actions. Range: 1..25.
+scan_every_player_actions = 1
+
+[diagnostics]
+enabled = false
+log_scans = false
+
+[d2rl]
+match = true

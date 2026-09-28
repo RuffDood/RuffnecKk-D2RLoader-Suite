@@ -5,10 +5,11 @@
 D2RL_PLUGIN_MANIFEST_RESOURCE_ID RCDATA { D2RL_PLUGIN_RESOURCE_DWORD(D2RL_PLUGIN_API_VERSION) }
 REMOTE_STASH_DEFAULT_SPRITE_RESOURCE_ID RCDATA "../assets/mod-data/data/hd/global/ui/panel/inventory/remotestashbutton.sprite"
 REMOTE_STASH_DEFAULT_LOWEND_SPRITE_RESOURCE_ID RCDATA "../assets/mod-data/data/hd/global/ui/panel/inventory/remotestashbutton.lowend.sprite"
+REMOTE_STASH_STRINGS_RESOURCE_ID RCDATA "../assets/strings.json"
 
 1 VERSIONINFO
-FILEVERSION 2,3,2,0
-PRODUCTVERSION 2,3,2,0
+FILEVERSION 2,3,5,0
+PRODUCTVERSION 2,3,5,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -16,11 +17,11 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "RuffnecKk"
       VALUE "FileDescription", "Opens the native personal and shared stash from anywhere."
-      VALUE "FileVersion", "2.3.2"
+      VALUE "FileVersion", "2.3.5"
       VALUE "InternalName", "ruffneckk-remote-stash"
       VALUE "OriginalFilename", "d2rl-ruffneckk-remote-stash.dll"
       VALUE "ProductName", "Remote Stash"
-      VALUE "ProductVersion", "2.3.2"
+      VALUE "ProductVersion", "2.3.5"
     END
   END
   BLOCK "VarFileInfo"

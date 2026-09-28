@@ -2,7 +2,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
     project(RuffnecKkMassIdentify LANGUAGES CXX RC)
     include(CTest)
-    add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
+    add_subdirectory(../../third_party/PluginSDK-v4 "${CMAKE_BINARY_DIR}/_deps/PluginSDK-v4")
     add_subdirectory(../../common "${CMAKE_BINARY_DIR}/_deps/common")
 endif()
 
@@ -12,7 +12,7 @@ add_library(ruffneckk_mass_identify SHARED
 )
 
 target_link_libraries(ruffneckk_mass_identify PRIVATE
-    RuffnecKk::Common
+    RuffnecKk::CommonV4
     RuffnecKk::NativeStatCompat
     user32
 )

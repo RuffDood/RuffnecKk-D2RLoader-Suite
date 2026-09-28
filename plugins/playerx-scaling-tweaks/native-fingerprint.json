@@ -1,13 +1,20 @@
 {
   "schemaVersion": 1,
   "component": "PlayerXScalingTweaks",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "source": "reverse-engineering/d2r-3.2.92777/analysis-cache/images/D2R-3.2.92777-decrypted.exe",
   "sourceSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715",
   "equivalentAnalysisSource": "reverse-engineering/d2r-3.2.92777/analysis-cache/images/D2R-3.2.92777-analysis.exe",
   "equivalentAnalysisSha256": "673E8C0B2E89563E75525B24D137098EFD07B2DB4ED42ADEC56AA1ADDF0E63AB",
   "qualification": "governed static evidence for the common 92777/93847 native surface; runtime pending",
   "witnesses": [
+    {
+      "name": "ArtificialPlayerCountSetter",
+      "rva": "0x425A60",
+      "size": 19,
+      "unique": true,
+      "expected": "8B 05 CA 0F 68 02 83 F9 08 0F 46 C1 89 05 BE 0F 68 02 C3"
+    },
     {
       "name": "PlayersAtoiCall",
       "rva": "0x18885B",
@@ -223,6 +230,27 @@
       "size": 30,
       "unique": true,
       "expected": "BA 08 00 00 00 48 C7 44 24 20 01 00 00 00 44 8B C2 48 8D 4C 24 20 41 B1 01 E8 7B A7 FF FF"
+    },
+    {
+      "name": "PlayersCommandModeEntry",
+      "rva": "0x8AF90",
+      "size": 7,
+      "expected": "8B 05 5E 84 99 02 C3",
+      "notes": "int32_t() on Windows x64. Native command dispatcher 0x188837/0x188840/0x18884A allows modes 0, 5, 7. Read-only eligibility for startup/hotkeys; no new hook."
+    },
+    {
+      "name": "PlayersCommandCommitEntry",
+      "rva": "0xA07670",
+      "size": 24,
+      "expected": "89 4C 24 08 48 83 EC 58 80 3D 41 DD AB 02 00 75 07 32 C0 48 83 C4 58 C3",
+      "notes": "Windows x64 bool(int32_t). Called with zero by native /players immediately after setting its value; retain same post-setting step for hotkeys/startup."
+    },
+    {
+      "name": "PlayersCommandCommitCall",
+      "rva": "0x188884",
+      "size": 7,
+      "expected": "33 C9 E8 E5 ED 87 00",
+      "callTargetRva": "0xA07670"
     }
   ]
 }

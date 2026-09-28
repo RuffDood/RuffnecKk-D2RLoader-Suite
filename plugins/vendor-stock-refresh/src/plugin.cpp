@@ -3,15 +3,21 @@
 #include "native_contract.hpp"
 #include "compact_layout.hpp"
 #include "ui_scale_contract.hpp"
+#include "companion_layout.hpp"
+#include "companion_native.hpp"
+#include "companion_hash.hpp"
+#include <D2RLPlugin/resources.h>
 
 #include <Windows.h>
 #include <bcrypt.h>
 
 #include <array>
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstdarg>
 #include <cstring>
 #include <string>
 
@@ -114,6 +120,9 @@ using GetWidgetRectFn = WidgetRect*(__fastcall*)(
     WidgetRect* rectOut
 ) noexcept;
 using SetWidgetBoolFn = void(__fastcall*)(void* widget, bool value) noexcept;
+struct NativeStringView { const char* data; std::size_t length; };
+using SetFilenameFn = void(__fastcall*)(void*, const NativeStringView*);
+using ImageReadyFn = bool(__fastcall*)(void*);
 
 const D2RL::PluginContext* Context{};
 std::uint8_t* Base{};
@@ -127,6 +136,8 @@ GetVendorChainEntryFn GetVendorChainEntry{};
 ConfigureVendorPanelFn OriginalConfigureVendorPanel{};
 FindWidgetFn FindWidget{};
 GetWidgetRectFn GetWidgetRect{};
+SetFilenameFn SetImageFilename{};
+ImageReadyFn IsImageReady{};
 std::atomic<std::uint64_t> NormalRequestsSent{};
 std::atomic<std::uint64_t> NormalRequestsReceived{};
 std::atomic<std::uint64_t> NormalRefreshesArmed{};
@@ -136,6 +147,23 @@ std::atomic<std::uint64_t> PlacementFailures{};
 std::atomic_bool PlacementFailureReported{};
 std::atomic_bool PlacementSuccessReported{};
 std::atomic<std::uint64_t> DiagnosticLogs{};
+
+#if defined(VENDOR_LAYOUT_DIAGNOSTIC)
+std::atomic<unsigned> LayoutDiagnosticEvents{};
+thread_local bool LayoutDiagnosticActive{};
+void LayoutDiagnostic(const char* format, ...) noexcept {
+    if (!Context || !LayoutDiagnosticActive) return;
+    char message[1024]{};
+    const int prefix = std::snprintf(message, sizeof(message), "[VSR-GOLD-216-2] ");
+    va_list args;
+    va_start(args, format);
+    std::vsnprintf(message + prefix, sizeof(message) - static_cast<std::size_t>(prefix), format, args);
+    va_end(args);
+    Context->LogInfo(message);
+}
+#else
+void LayoutDiagnostic(const char*, ...) noexcept {}
+#endif
 
 enum class PacketRoute {
     Invalid,
@@ -172,7 +200,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-vendor-stock-refresh",
     .name = "Vendor Stock Refresh",
-    .version = "2.1.3",
+    .version = "2.1.6",
     .author = "RuffnecKk",
     .description = "Refreshes a vendor's stock with one click.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -343,6 +371,38 @@ bool ComputeSha256(
     if (hash) BCryptDestroyHash(hash);
     BCryptCloseAlgorithmProvider(algorithm, 0);
     return success;
+}
+
+// The published DLL and MPQ are one pair. Reject an absent or stale companion
+// before touching the game, rather than leaving an empty native background.
+bool ValidateCompanion() noexcept {
+    const D2RL::ResourceServiceV1* resources{};
+    if (Context->QueryService(D2RL::ServiceId::Resource, D2RL::ResourceServiceV1Version,
+            &resources) != D2RL::ServiceQueryResult::Success
+        || !D2RL::HasResourceServiceV1Field(resources, D2RL::ResourceServiceV1RequiredSize))
+        return false;
+    const auto* pluginPath = D2RL::GetPluginPath(Context);
+    if (!pluginPath || !*pluginPath) return false;
+    std::wstring path(pluginPath);
+    const auto dot = path.find_last_of(L'.');
+    if (dot == std::wstring::npos) return false;
+    path.replace(dot, std::wstring::npos, L".mpq");
+    HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return false;
+    LARGE_INTEGER size{};
+    bool valid = GetFileSizeEx(file, &size) && size.QuadPart > 32
+        && size.QuadPart <= 32 * 1024 * 1024;
+    HANDLE mapping = valid ? CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr) : nullptr;
+    const auto* bytes = mapping ? static_cast<const std::uint8_t*>(
+        MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0)) : nullptr;
+    NativeContract::Sha256Digest digest{};
+    valid = bytes && ComputeSha256(bytes, static_cast<std::size_t>(size.QuadPart), digest)
+        && digest == CompanionSha256;
+    if (bytes) UnmapViewOfFile(bytes);
+    if (mapping) CloseHandle(mapping);
+    CloseHandle(file);
+    return valid;
 }
 
 bool ValidateD2RCoreProviderAbi(
@@ -602,7 +662,11 @@ PacketRoute ValidateSendNineBytePacketRoute() noexcept {
 
 bool ValidateRuntime() noexcept {
     ActivePacketRoute = PacketRoute::Invalid;
-    const auto fixedSurfacesMatch = Context->CheckExpectedBytes(
+    const auto companionSurfacesMatch = CompanionNative::Validate(
+        [](std::uintptr_t rva, const std::uint8_t* bytes, std::uint32_t size) {
+            return Context->CheckExpectedBytes(rva, bytes, size);
+        });
+    const auto fixedSurfacesMatch = companionSurfacesMatch && Context->CheckExpectedBytes(
             SendVendorRefreshRva,
             SendVendorRefreshExpected.data(),
             static_cast<std::uint32_t>(SendVendorRefreshExpected.size()))
@@ -692,6 +756,88 @@ bool WriteWidgetGeometry(void* widget, const WidgetGeometry& geometry) noexcept 
     }
 }
 
+// ImageWidget owns a native string at +0x108 (pointer, length), copied by
+// UI_ImageWidget_SetFilename. Reads and calls are covered by companion_native.hpp.
+bool ReadImagePath(void* widget, std::array<char, 512>& path) noexcept {
+    if (!widget) return false;
+    __try {
+        const auto* image = static_cast<const std::uint8_t*>(widget);
+        const auto* text = *reinterpret_cast<const char* const*>(image + 0x108);
+        const auto length = *reinterpret_cast<const std::size_t*>(image + 0x110);
+        if (!text || length == 0 || length >= path.size()) return false;
+        std::memcpy(path.data(), text, length);
+        path[length] = '\0';
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+
+bool SetImagePath(void* widget, const char* path) noexcept {
+    __try {
+        const NativeStringView view{path, std::strlen(path)};
+        SetImageFilename(widget, &view);
+        const bool ready = IsImageReady(static_cast<std::uint8_t*>(widget) + 0x130);
+        LayoutDiagnostic("image-set path=%s ready=%d", path, ready);
+        return ready;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        LayoutDiagnostic("image-set fault path=%s", path);
+        return false;
+    }
+}
+
+bool RestoreCompanionBackgrounds(void* panel) noexcept {
+    constexpr std::array names{"background", "background_repair"};
+    bool restored = true;
+    for (std::size_t i = 0; i < names.size(); ++i) {
+        auto* widget = FindNamedWidget(panel, names[i]);
+        std::array<char, 512> path{};
+        // Restore only our paths, never another mod's controller/custom artwork.
+        if (ReadImagePath(widget, path) && SameImagePath(path.data(), CompanionBackgrounds[i]))
+            restored = SetImagePath(widget, NativeBackgrounds[i]) && restored;
+    }
+    return restored;
+}
+
+bool ApplyCompanionBackgrounds(void* panel) noexcept {
+    constexpr std::array names{"background", "background_repair"};
+    std::array<void*, 2> widgets{};
+    std::array<bool, 2> alreadyApplied{};
+    // Validate both widgets before changing either one. Controller and SD layouts
+    // fail this exact desktop geometry/path check and retain the compact fallback.
+    for (std::size_t i = 0; i < names.size(); ++i) {
+        widgets[i] = FindNamedWidget(panel, names[i]);
+        WidgetGeometry geometry{};
+        std::array<char, 512> path{};
+        if (!ReadWidgetGeometry(widgets[i], geometry)) {
+            LayoutDiagnostic("companion rejected: %s geometry unreadable", names[i]); return false;
+        }
+        if (!IsDesktopBackground(geometry)) {
+            LayoutDiagnostic("companion rejected: %s desktop geometry mismatch rect=%d,%d,%d,%d scale=%.6f expected=0,0,1162,1507 scale=1",
+                names[i], geometry.rect.x, geometry.rect.y, geometry.rect.width, geometry.rect.height, static_cast<double>(geometry.scale));
+            return false;
+        }
+        if (!ReadImagePath(widgets[i], path)) {
+            LayoutDiagnostic("companion rejected: %s filename unreadable", names[i]); return false;
+        }
+        alreadyApplied[i] = SameImagePath(path.data(), CompanionBackgrounds[i]);
+        if (!alreadyApplied[i] && !SameImagePath(path.data(), NativeBackgrounds[i])) {
+            LayoutDiagnostic("companion rejected: %s unexpected filename=%s", names[i], path.data()); return false;
+        }
+    }
+    for (std::size_t i = 0; i < names.size(); ++i) {
+        if (alreadyApplied[i]) continue;
+        if (!SetImagePath(widgets[i], CompanionBackgrounds[i])) {
+            LayoutDiagnostic("companion rejected: %s image failed to load", names[i]); return false;
+        }
+        WidgetGeometry geometry{};
+        if (!ReadWidgetGeometry(widgets[i], geometry) || !IsDesktopBackground(geometry)) {
+            LayoutDiagnostic("companion rejected: %s post-load geometry mismatch rect=%d,%d,%d,%d scale=%.6f",
+                names[i], geometry.rect.x, geometry.rect.y, geometry.rect.width, geometry.rect.height, static_cast<double>(geometry.scale));
+            return false;
+        }
+    }
+    return true;
+}
+
 // Move the existing native gold widgets rather than drawing a duplicate amount.
 // Capture all three before the first write, and retain each original for gambling.
 bool SetGoldLayout(void* panel, const WidgetRect* target) noexcept {
@@ -745,6 +891,40 @@ bool ResolveGoldAnchor(void* panel, WidgetRect& anchor) noexcept {
     return true;
 }
 
+WidgetGeometry DesiredRefreshSize(void* panel, const WidgetGeometry& original) noexcept {
+    auto desired = original;
+    WidgetGeometry repair{};
+    if (ReadWidgetGeometry(FindNamedWidget(panel, "button_repair"), repair)
+        && HasUsableSize(repair.rect) && HasUsableSize(original.rect)) {
+        const double sx = repair.rect.width * static_cast<double>(repair.scale) / original.rect.width;
+        const double sy = repair.rect.height * static_cast<double>(repair.scale) / original.rect.height;
+        const auto scale = static_cast<float>(sx < sy ? sx : sy);
+        if (UsableScale(scale)) desired.scale = scale;
+    }
+    return desired;
+}
+
+bool ResolveFreeButtonArea(void* panel, const WidgetRect& gold, WidgetRect& area) noexcept {
+    WidgetGeometry background{};
+    if (!ReadWidgetGeometry(FindNamedWidget(panel, "background"), background)
+        || !HasUsableSize(background.rect) || !HasUsableSize(gold)) return false;
+    // Coordinates are local to the same vendor parent. Leave an eight-unit gap
+    // under gold and a sixteen-unit inset at the outer panel edges.
+    const double panelRight = background.rect.x + background.rect.width * static_cast<double>(background.scale) - 16;
+    const double panelBottom = background.rect.y + background.rect.height * static_cast<double>(background.scale) - 16;
+    const double left = (std::max)(static_cast<double>(gold.x), static_cast<double>(background.rect.x) + 16);
+    const double right = (std::min)(static_cast<double>(gold.x) + gold.width, panelRight);
+    const double top = (std::max)(static_cast<double>(gold.y) + gold.height + 8, static_cast<double>(background.rect.y) + 16);
+    constexpr double low = (std::numeric_limits<std::int32_t>::min)();
+    constexpr double high = (std::numeric_limits<std::int32_t>::max)();
+    if (left < low || top < low || right > high || panelBottom > high
+        || right - left < 8 || panelBottom - top < 8
+        || right - left > high || panelBottom - top > high) return false;
+    area = {static_cast<std::int32_t>(left), static_cast<std::int32_t>(top),
+        static_cast<std::int32_t>(right - left), static_cast<std::int32_t>(panelBottom - top)};
+    return true;
+}
+
 void ReportPlacementFailure(const char* reason) noexcept {
     PlacementFailures.fetch_add(1, std::memory_order_relaxed);
     if (!Context || PlacementFailureReported.exchange(true, std::memory_order_relaxed)) return;
@@ -768,9 +948,54 @@ void SetWidgetState(void* widget, bool value) noexcept {
     }
 }
 
+#if defined(VENDOR_LAYOUT_DIAGNOSTIC)
+void SnapshotLayout(void* panel, const char* phase) noexcept {
+    constexpr std::array names{"background", "background_repair", "button_refresh", "button_repair",
+        "button_repair_all", "StashWidget", "gold_icon", "gold_amount", "vendor_refresh_frame",
+        "vendor_refresh_slot", "vendor_refresh_gold_anchor"};
+    for (const auto* name : names) {
+        auto* widget = FindNamedWidget(panel, name);
+        WidgetRect rect{};
+        WidgetGeometry geometry{};
+        const bool rectOk = ReadWidgetRect(widget, rect);
+        const bool geometryOk = ReadWidgetGeometry(widget, geometry);
+        LayoutDiagnostic("%s widget=%s present=%d rect-ok=%d rect=%d,%d,%d,%d geometry-ok=%d scale=%.6f footprint=%.3fx%.3f",
+            phase, name, widget != nullptr, rectOk, rect.x, rect.y, rect.width, rect.height, geometryOk,
+            static_cast<double>(geometry.scale), rect.width * static_cast<double>(geometry.scale), rect.height * static_cast<double>(geometry.scale));
+        if (std::strcmp(name, "background") == 0 || std::strcmp(name, "background_repair") == 0) {
+            std::array<char, 512> path{};
+            const bool pathOk = ReadImagePath(widget, path);
+            LayoutDiagnostic("%s widget=%s filename-ok=%d filename=%s", phase, name, pathOk, pathOk ? path.data() : "<unavailable>");
+        }
+    }
+}
+struct LayoutDiagnosticScope {
+    void* panel;
+    bool active{};
+    unsigned sequence{};
+    explicit LayoutDiagnosticScope(void* value) noexcept : panel(value) {
+        if (LayoutDiagnosticActive) return;
+        sequence = LayoutDiagnosticEvents.fetch_add(1, std::memory_order_relaxed);
+        if (sequence >= 12) return;
+        active = true; LayoutDiagnosticActive = true;
+        LayoutDiagnostic("configure=%u begin after native configuration", sequence + 1);
+        SnapshotLayout(panel, "before");
+    }
+    ~LayoutDiagnosticScope() noexcept {
+        if (!active) return;
+        SnapshotLayout(panel, "after");
+        LayoutDiagnostic("configure=%u end%s", sequence + 1, sequence == 11 ? "; capture limit reached; restart for more" : "");
+        LayoutDiagnosticActive = false;
+    }
+};
+#endif
+
 void __fastcall HookConfigureVendorPanel(void* panel) noexcept {
     OriginalConfigureVendorPanel(panel);
     if (!panel) return;
+#if defined(VENDOR_LAYOUT_DIAGNOSTIC)
+    LayoutDiagnosticScope diagnosticScope(panel);
+#endif
 
     auto* frame = FindNamedWidget(panel, "vendor_refresh_frame");
     SetWidgetState(frame, false);
@@ -792,8 +1017,17 @@ void __fastcall HookConfigureVendorPanel(void* panel) noexcept {
     }
     auto& layout = PlacementCache.layout;
     layout.Observe(current);
+    LayoutDiagnostic("baseline refresh rect=%d,%d,%d,%d scale=%.6f cached-applied=%d",
+        layout.original.rect.x, layout.original.rect.y, layout.original.rect.width, layout.original.rect.height,
+        static_cast<double>(layout.original.scale), layout.hasApplied);
 
     if (IsGambling() != 0) {
+        LayoutDiagnostic("route=gambling; restore native background and cached positions");
+        if (!RestoreCompanionBackgrounds(panel)) {
+            SetWidgetState(refresh, false);
+            ReportPlacementFailure("gambling background could not be restored");
+            return;
+        }
         if (!SetGoldLayout(panel, nullptr)) {
             SetWidgetState(refresh, false);
             ReportPlacementFailure("gambling gold position could not be restored");
@@ -810,16 +1044,39 @@ void __fastcall HookConfigureVendorPanel(void* panel) noexcept {
         return;
     }
 
+    const auto desired = DesiredRefreshSize(panel, layout.original);
     WidgetRect slot{};
     WidgetRect goldTarget{};
     CompactPlacement position{};
-    const bool panelLayout = frame
+    const bool legacyPanelLayout = frame
         && ReadWidgetRect(FindNamedWidget(panel, "vendor_refresh_slot"), slot)
         && ReadWidgetRect(FindNamedWidget(panel, "vendor_refresh_gold_anchor"), goldTarget)
         && HasUsableSize(goldTarget)
-        && (position = CenterInPanelSlot(slot, layout.original)).valid;
+        && (position = CenterInPanelSlot(slot, desired)).valid;
+    // The original revision-3 loose frame used the same high gold anchor.
+    // Correct only that known anchor; arbitrary mod-provided anchors stay intact.
+    if (legacyPanelLayout && goldTarget.x == 421 && goldTarget.y == 1260
+        && goldTarget.width == 313 && goldTarget.height == 58) goldTarget.y += 12;
+    const auto companionPosition = CenterInPanelSlot(CompanionSlot, desired);
+    const bool companionLayout = !legacyPanelLayout && companionPosition.valid
+        && ApplyCompanionBackgrounds(panel);
+    if (!companionLayout && !RestoreCompanionBackgrounds(panel)) {
+        SetWidgetState(refresh, false);
+        ReportPlacementFailure("native background could not be restored");
+        return;
+    }
+    if (companionLayout) {
+        position = companionPosition;
+        goldTarget = CompanionGold;
+    }
+    const bool panelLayout = legacyPanelLayout || companionLayout;
+    LayoutDiagnostic("route=%s legacy-valid=%d companion-slot-fits=%d companion-applied=%d legacy-slot=%d,%d,%d,%d gold-target=%d,%d,%d,%d",
+        legacyPanelLayout ? "legacy-frame" : companionLayout ? "companion-frame" : "measured-fallback",
+        legacyPanelLayout, companionPosition.valid, companionLayout,
+        slot.x, slot.y, slot.width, slot.height, goldTarget.x, goldTarget.y, goldTarget.width, goldTarget.height);
     if (!SetGoldLayout(panel, panelLayout ? &goldTarget : nullptr)) {
         SetGoldLayout(panel, nullptr);
+        RestoreCompanionBackgrounds(panel);
         SetWidgetState(refresh, false);
         ReportPlacementFailure("gold widgets could not follow panel layout");
         return;
@@ -827,20 +1084,28 @@ void __fastcall HookConfigureVendorPanel(void* panel) noexcept {
     WidgetRect anchor{};
     if (!ResolveGoldAnchor(panel, anchor)) {
         SetGoldLayout(panel, nullptr);
+        RestoreCompanionBackgrounds(panel);
         SetWidgetState(refresh, false);
         ReportPlacementFailure("gold anchor was not found");
         return;
     }
-    if (!panelLayout) position = CompactBelow(anchor, layout.original);
+    if (!panelLayout) {
+        WidgetRect freeArea{};
+        if (ResolveFreeButtonArea(panel, anchor, freeArea)) position = FitButtonInArea(freeArea, desired);
+        LayoutDiagnostic("fallback free-area=%d,%d,%d,%d desired-scale=%.6f fitted-scale=%.6f valid=%d",
+            freeArea.x, freeArea.y, freeArea.width, freeArea.height, static_cast<double>(desired.scale),
+            static_cast<double>(position.geometry.scale), position.valid);
+    }
     if (!position.valid || !WriteWidgetGeometry(refresh, position.geometry)) {
         SetGoldLayout(panel, nullptr);
+        RestoreCompanionBackgrounds(panel);
         SetWidgetState(refresh, false);
         ReportPlacementFailure("computed position was invalid");
         return;
     }
 
     layout.Applied(position.geometry);
-    SetWidgetState(frame, panelLayout);
+    SetWidgetState(frame, legacyPanelLayout);
     DynamicPlacements.fetch_add(1, std::memory_order_relaxed);
     SetWidgetState(refresh, true);
 
@@ -851,7 +1116,7 @@ void __fastcall HookConfigureVendorPanel(void* panel) noexcept {
             message,
             sizeof(message),
             "VendorStockRefresh: %s button at %d,%d scale %.3f from gold anchor %d,%d,%d,%d.",
-            panelLayout ? "framed" : "compact fallback",
+            panelLayout ? "framed" : "measured fallback",
             position.geometry.rect.x,
             position.geometry.rect.y,
             static_cast<double>(position.geometry.scale),
@@ -983,7 +1248,7 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
     std::snprintf(
         message,
         sizeof(message),
-        "Vendor Stock Refresh 2.1.3: %s; diagnostics=%s; placed=%llu; "
+        "Vendor Stock Refresh 2.1.6: %s; diagnostics=%s; placed=%llu; "
         "placementFailures=%llu; sent=%llu; received=%llu; armed=%llu; rejected=%llu.",
         Settings.enabled ? "active" : "disabled",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
@@ -1012,6 +1277,11 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     Context = context;
+#if defined(VENDOR_LAYOUT_DIAGNOSTIC)
+    LayoutDiagnosticEvents.store(0, std::memory_order_relaxed);
+    LayoutDiagnosticActive = false;
+    context->LogInfo("[VSR-GOLD-216-2] Diagnostic build; automatic first-12 vendor captures; native-size placement with measured fit. Companion validation follows configuration; disabled plugins skip it.");
+#endif
     Base = nullptr;
     Settings = {};
     NormalRequestsSent.store(0, std::memory_order_relaxed);
@@ -1029,8 +1299,18 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "VendorStockRefresh 2.1.3 by RuffnecKk loaded disabled; no hook or service registered.");
+            "VendorStockRefresh 2.1.6 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
+    }
+
+    const bool companionValid = ValidateCompanion();
+#if defined(VENDOR_LAYOUT_DIAGNOSTIC)
+    context->LogInfo(companionValid ? "[VSR-GOLD-216-2] Companion hash and resource-service validation PASS."
+        : "[VSR-GOLD-216-2] Companion hash/resource-service validation FAIL; see error below.");
+#endif
+    if (!companionValid) {
+        context->LogError("VendorStockRefresh: missing/mismatched companion MPQ or unavailable resource service; install the matching DLL and MPQ together.");
+        return false;
     }
 
     Base = reinterpret_cast<std::uint8_t*>(context->exeBase);
@@ -1060,6 +1340,8 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     GetVendorChainEntry = At<GetVendorChainEntryFn>(GetVendorChainEntryRva);
     FindWidget = At<FindWidgetFn>(FindWidgetRva);
     GetWidgetRect = At<GetWidgetRectFn>(GetWidgetRectRva);
+    SetImageFilename = At<SetFilenameFn>(CompanionNative::SetFilenameRva);
+    IsImageReady = At<ImageReadyFn>(CompanionNative::ImageReadyRva);
 
     if (!context->InstallInlineHook(
                 ConfigureVendorPanelRva,
@@ -1116,7 +1398,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
 
     context->LogInfo(
-        "VendorStockRefresh 2.1.3 by RuffnecKk active; native button follows the panel slot or runtime gold anchor.");
+        "VendorStockRefresh 2.1.6 by RuffnecKk active; native button follows the panel slot or runtime gold anchor.");
     return true;
 }
 
@@ -1125,6 +1407,8 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     ActiveRefresh = {};
     OriginalConfigureVendorPanel = nullptr;
     GetWidgetRect = nullptr;
+    SetImageFilename = nullptr;
+    IsImageReady = nullptr;
     FindWidget = nullptr;
     GetVendorChainEntry = nullptr;
     SendNineBytePacket = nullptr;

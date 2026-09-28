@@ -17,7 +17,7 @@ int main() {
     REQUIRE(info->apiVersion == D2RL_PLUGIN_API_VERSION);
     REQUIRE(std::strcmp(info->id, "ruffneckk-vendor-stock-refresh") == 0);
     REQUIRE(std::strcmp(info->name, "Vendor Stock Refresh") == 0);
-    REQUIRE(std::strcmp(info->version, "2.1.3") == 0);
+    REQUIRE(std::strcmp(info->version, "2.1.6") == 0);
     REQUIRE(std::strcmp(info->author, "RuffnecKk") == 0);
     REQUIRE(D2RL::PluginRoleValue(info->flags)
         == D2RL::FlagsValue(D2RL::PluginFlags::Shared));

@@ -139,8 +139,14 @@ Assert-Policy ($plugin -match 'SetUnitStatWide\(target,\s*statId,\s*newFixed,\s*
 
 Assert-Policy ($plugin -match 'PeriodicHitpointsCommitCallRva\s*=\s*0x448D4C') `
     'the governed monster periodic HP commit seam must remain 0x448D4C'
-Assert-Policy ($plugin -match 'PatchCallRel32\([\s\S]*?PeriodicHitpointsCommitCallRva') `
-    'the periodic HP commit call must be patched through the loader transaction'
+Assert-Policy ($plugin -match 'InstallInlineHook\([\s\S]*?PeriodicHitpointsCommitCallRva') `
+    'the periodic HP commit callsite must use a Loader-owned inline hook'
+Assert-Policy (-not $plugin.Contains('PatchCallRel32')) `
+    'external callsite relays must not return'
+Assert-Policy ($plugin -match 'gFloatingDamageDirectContinuation\s*=\s*Base \+ HitpointsCommitCallRva \+ 5') `
+    'direct commit hook must resume immediately after the witnessed call'
+Assert-Policy ($plugin -match 'gFloatingDamagePeriodicContinuation\s*=\s*[\s\S]*?Base \+ PeriodicHitpointsCommitCallRva \+ 5') `
+    'periodic commit hook must resume immediately after the witnessed call'
 Assert-Policy ($plugin -match 'HookPeriodicHitpointsCommit\([\s\S]*?TryGetFixedHitpoints\(target,\s*beforeFixed\)[\s\S]*?SetUnitStatWide\(target,\s*statId,\s*newFixed,\s*layer\)[\s\S]*?TryGetFixedHitpoints\(target,\s*afterFixed\)[\s\S]*?QueueCommittedVisibleLoss') `
     'periodic capture must measure the actual visible HP loss around the live setter'
 Assert-Policy ($plugin -match 'ElementFromPeriodicStates\([\s\S]*?BurningStateId[\s\S]*?Element::Fire[\s\S]*?PoisonStateId[\s\S]*?Element::Poison') `
@@ -153,10 +159,10 @@ Assert-Policy (-not $plugin.Contains('only D2R builds')) `
     'compatibility refusal must be based on the native fingerprint, not named builds'
 Assert-Policy ($plugin -match 'validating the complete native fingerprint') `
     'the observed build name must remain diagnostic while the full fingerprint is checked'
-Assert-Policy ($plugin -match '\.version\s*=\s*"1\.5\.1"') `
-    'the plugin metadata must identify the Suite 1.4.1 compatibility update as 1.5.1'
-Assert-Policy ($resource -match 'FILEVERSION\s+1,5,1,0') `
-    'the Windows file version must identify the Suite 1.4.1 compatibility update as 1.5.1'
+Assert-Policy ($plugin -match '\.version\s*=\s*"1\.5\.2"') `
+    'the plugin metadata must identify the Loader 1.3.1 compatibility update as 1.5.2'
+Assert-Policy ($resource -match 'FILEVERSION\s+1,5,2,0') `
+    'the Windows file version must identify the Loader 1.3.1 compatibility update as 1.5.2'
 Assert-Policy ($plugin -match 'GetModuleHandleW\(\s*L"d2rl-ruffneckk-mapsense\.dll"\)') `
     'the renderer handoff must resolve the canonical public MapSense module name'
 Assert-Policy ($plugin -match 'GetModuleHandleW\(L"RuffnecKkMapSense\.dll"\)') `

@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
     REQUIRE(config.button.placement == ButtonPlacement::Automatic);
     REQUIRE(config.button.anchor == ButtonAnchor::BottomLeft);
     REQUIRE(config.button.offsetX == 0 && config.button.offsetY == 0);
-    REQUIRE(config.button.width == 176 && config.button.height == 112);
+    REQUIRE(config.button.width == 128 && config.button.height == 80);
     REQUIRE(config.button.spriteFile.empty());
     REQUIRE(config.button.lowendSpriteFile.empty());
     REQUIRE(config.button.normalFrame == 0);
@@ -232,7 +232,7 @@ int main(int argc, char** argv) {
     REQUIRE(mpqButton.placement == ButtonPlacement::Automatic);
     REQUIRE(mpqButton.anchor == ButtonAnchor::BottomLeft);
     REQUIRE(mpqButton.offsetX == 12 && mpqButton.offsetY == 0);
-    REQUIRE(mpqButton.width == 176 && mpqButton.height == 112);
+    REQUIRE(mpqButton.width == 128 && mpqButton.height == 80);
     REQUIRE(mpqButton.spriteFile.empty());
     REQUIRE(!ParseMpqButtonConfig(
         "offset_x = 12\n",
@@ -507,11 +507,44 @@ int main(int argc, char** argv) {
     REQUIRE(InspectSpA1Sprite(
         lowend.data(), lowend.size(), lowendMetadata));
     REQUIRE(spriteMetadata.frameCount == 4);
-    REQUIRE(spriteMetadata.frameWidth == 176);
-    REQUIRE(spriteMetadata.height == 112);
+    REQUIRE(spriteMetadata.frameWidth == 128);
+    REQUIRE(spriteMetadata.height == 80);
     REQUIRE(lowendMetadata.frameCount == 4);
-    REQUIRE(lowendMetadata.frameWidth == 88);
-    REQUIRE(lowendMetadata.height == 56);
+    REQUIRE(lowendMetadata.frameWidth == 64);
+    REQUIRE(lowendMetadata.height == 40);
+
+    // The portable surround must leave the inventory visible around every state.
+    // Check real embedded artwork, including the low-end asset, not a fixture.
+    for (const auto* asset : {&sprite, &lowend}) {
+        SpriteMetadata metadata{};
+        REQUIRE(InspectSpA1Sprite(asset->data(), asset->size(), metadata));
+        REQUIRE(asset->size() == 40ULL + metadata.atlasWidth * metadata.height * 4ULL);
+        for (std::uint32_t frame = 0; frame < metadata.frameCount; ++frame) {
+            std::size_t visible{};
+            for (std::int32_t y = 0; y < metadata.height; ++y) {
+                for (std::int32_t x = 0; x < metadata.frameWidth; ++x) {
+                    const auto alpha = (*asset)[40 + (
+                        y * metadata.atlasWidth + frame * metadata.frameWidth + x) * 4 + 3];
+                    if (x == 0 || y == 0 || x == metadata.frameWidth - 1
+                        || y == metadata.height - 1) REQUIRE(alpha == 0);
+                    if (alpha > 16) ++visible;
+                    // The carved surround must not jump or change between states.
+                    // Animated chest pixels are confined to the central 54% x 62%.
+                    if (frame != 0 && (x < metadata.frameWidth / 5
+                        || x >= metadata.frameWidth * 4 / 5
+                        || y < metadata.height / 8
+                        || y >= metadata.height * 7 / 8)) {
+                        const auto first = 40 + (y * metadata.atlasWidth + x) * 4;
+                        const auto current = first + frame * metadata.frameWidth * 4;
+                        for (int channel = 0; channel < 4; ++channel)
+                            REQUIRE((*asset)[first + channel] == (*asset)[current + channel]);
+                    }
+                }
+            }
+            const auto area = static_cast<std::size_t>(metadata.frameWidth * metadata.height);
+            REQUIRE(visible > area / 4 && visible < area * 19 / 20);
+        }
+    }
 
     const ButtonConfig defaultButton{};
     REQUIRE(ButtonFramesFit(defaultButton, spriteMetadata.frameCount));
@@ -523,8 +556,8 @@ int main(int argc, char** argv) {
         "\"name\": \"ruffneckk-remote-stash/inventory-button\"")
         != std::string::npos);
     REQUIRE(layout.find("\"x\": -32000") != std::string::npos);
-    REQUIRE(layout.find("\"width\": 176") != std::string::npos);
-    REQUIRE(layout.find("\"height\": 112") != std::string::npos);
+    REQUIRE(layout.find("\"width\": 128") != std::string::npos);
+    REQUIRE(layout.find("\"height\": 80") != std::string::npos);
     REQUIRE(layout.find(
         "D2RLoader\\\\ruffneckk-remote-stash\\\\inventory-button")
         != std::string::npos);
@@ -533,7 +566,7 @@ int main(int argc, char** argv) {
     REQUIRE(layout.find("\"disabledFrame\": 1") != std::string::npos);
     REQUIRE(layout.find("\"hoveredFrame\": 3") != std::string::npos);
     REQUIRE(layout.find(
-        "\"tooltipString\": \"@d2r:OpenCurrentStashLegend\"")
+        "\"tooltipString\": \"@ruffneckk-remote-stash:OpenStash\"")
         != std::string::npos);
     REQUIRE(layout.find(
         "\"tooltipString\": \"@OpenCurrentStashLegend\"")
@@ -541,6 +574,36 @@ int main(int argc, char** argv) {
     REQUIRE(layout.find("PanelManager:OpenPanel:RuffnecKkRemoteStash")
         != std::string::npos);
     REQUIRE(layout.find("DropGold") == std::string::npos);
+
+    // Existing explicit sizes remain player-owned, including former defaults.
+    HotkeyConfig legacyButton{};
+    REQUIRE(ParseConfig(
+        "enabled = true\nhotkey = \"SHIFT+R\"\n[button]\nwidth = 176\nheight = 112\n",
+        legacyButton, error));
+    REQUIRE(legacyButton.button.width == 176 && legacyButton.button.height == 112);
+    const WidgetRect compactButton{0, 0, defaultButton.width, defaultButton.height};
+    // Representative small and expanded panels use their own grid/footer geometry.
+    // A larger background texture or fixed 1648px position must not be needed.
+    for (const auto rows : {4, 6, 8}) {
+        const WidgetRect ownGrid{95, 200, 980, rows * 98};
+        const auto bottom = ownGrid.y + ownGrid.height;
+        const WidgetRect ownPanel{0, 0, 1270, bottom + 158};
+        const WidgetRect ownGold{780, bottom + 20, 80, 80};
+        const WidgetRect ownAmount{860, bottom + 20, 249, 48};
+        const auto result = PlaceDesktopFooterLeft(
+            ownPanel, ownGrid, ownGold, ownAmount, compactButton);
+        REQUIRE(result.valid);
+        REQUIRE(Contains(ownPanel, result.rect));
+        REQUIRE(!Intersects(ownGrid, result.rect));
+        REQUIRE(!Intersects(UnionRect(ownGold, ownAmount), result.rect));
+    }
+    const auto compact = PlaceDesktopFooterLeft(
+        {0, 0, 1000, 1400}, {100, 200, 700, 1100},
+        {780, 1310, 80, 80}, {860, 1310, 120, 80}, compactButton);
+    REQUIRE(compact.valid && compact.rect.y == 1310);
+    REQUIRE(!PlaceDesktopFooterLeft(
+        {0, 0, 1000, 1400}, {100, 200, 700, 1100},
+        {780, 1310, 80, 80}, {860, 1310, 120, 80}, {0, 0, 176, 112}).valid);
 
     const WidgetRect panel{0, 0, 1000, 1600};
     const WidgetRect grid{100, 200, 700, 1100};

@@ -1,0 +1,20 @@
+# Restart D2R after editing this configuration.
+# TOML takes precedence over the legacy BulkSkillPointAllocation.json.
+enabled = true
+skillPointsPerCtrlClick = 5
+confirmShiftAllocation = false
+diagnostics = false
+
+[refund]
+# Remove one invested point from the clicked skill.
+single_removal = "RightClick"
+# Remove up to batch_points invested points from the clicked skill.
+batch_removal = "Ctrl+RightClick"
+# Remove all refundable invested points from the clicked skill.
+all_removal = "Shift+RightClick"
+# Maximum number of points removed by batch_removal.
+batch_points = 5
+
+# Invested dependent skills protect their prerequisite's last invested point.
+# Example: with two points in a prerequisite, a batch removes one and leaves one.
+# An unlocked child with no invested points does not prevent removal.

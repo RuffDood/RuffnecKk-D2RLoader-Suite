@@ -1,3 +1,5 @@
+enable_language(ASM_MASM)
+
 set(REMOTE_STASH_DEFAULT_SPRITE
     "${CMAKE_CURRENT_SOURCE_DIR}/assets/mod-data/data/hd/global/ui/panel/inventory/remotestashbutton.sprite"
 )
@@ -6,19 +8,21 @@ set(REMOTE_STASH_DEFAULT_LOWEND_SPRITE
 )
 
 add_library(ruffneckk_remote_stash SHARED
+    src/callsite_hooks.asm
     src/runtime.cpp
     src/plugin.rc
 )
 set_property(
     SOURCE src/plugin.rc
     APPEND PROPERTY OBJECT_DEPENDS
-        "${REMOTE_STASH_DEFAULT_SPRITE};${REMOTE_STASH_DEFAULT_LOWEND_SPRITE}"
+        "${REMOTE_STASH_DEFAULT_SPRITE};${REMOTE_STASH_DEFAULT_LOWEND_SPRITE};${CMAKE_CURRENT_SOURCE_DIR}/assets/strings.json"
 )
 
 target_link_libraries(ruffneckk_remote_stash PRIVATE RuffnecKk::Common)
 target_compile_features(ruffneckk_remote_stash PRIVATE cxx_std_20)
 if(MSVC)
-    target_compile_options(ruffneckk_remote_stash PRIVATE /EHsc)
+    target_compile_options(ruffneckk_remote_stash PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
 endif()
 set_target_properties(ruffneckk_remote_stash PROPERTIES
     OUTPUT_NAME "d2rl-ruffneckk-remote-stash"
@@ -45,5 +49,12 @@ if(BUILD_TESTING)
             "${REMOTE_STASH_DEFAULT_SPRITE}"
             "${REMOTE_STASH_DEFAULT_LOWEND_SPRITE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime.cpp"
+    )
+    find_program(REMOTE_STASH_POWERSHELL NAMES pwsh powershell REQUIRED)
+    add_test(
+        NAME ruffneckk.remote-stash.button-resources
+        COMMAND "${REMOTE_STASH_POWERSHELL}" -NoProfile -ExecutionPolicy Bypass
+            -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/Test-ButtonResources.ps1"
+            -PluginPath "$<TARGET_FILE:ruffneckk_remote_stash>"
     )
 endif()

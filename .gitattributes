@@ -7,6 +7,7 @@
 *.toml text eol=lf
 
 # Preserve exact research snapshot bytes and the atlas manifest hashes.
+/research/** -text
 /research/d2r/findings.md -text
 /research/d2r/known-rvas.json -text
 /research/d2r/datatables-atlas/atlas.schema.json -text

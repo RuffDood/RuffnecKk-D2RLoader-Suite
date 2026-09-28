@@ -57,6 +57,7 @@ enum class CombatTriggerKind : std::uint8_t {
     CriticalStrike,
     CrushingBlow,
     OpenWounds,
+    Block,
 };
 
 // Native entries that another plugin legitimately owns cannot be hooked a
@@ -216,11 +217,13 @@ struct CombatTriggerConfig {
     std::int32_t criticalStrikeStatId{};
     std::int32_t crushingBlowStatId{};
     std::int32_t openWoundsStatId{};
+    std::int32_t blockStatId{};
 };
 
 struct Config {
     bool enabled{true};
     SourceSkillFilter onCast;
+    std::int32_t onKillStatId{};
     ChannelingConfig whileChanneling;
     std::vector<SourceSkillTriggerConfig> sourceSkillTriggers;
     CombatTriggerConfig combatTriggers;
@@ -243,6 +246,9 @@ constexpr CombatTriggerKind CombatTriggerForStatId(
     if (statId == config.openWoundsStatId) {
         return CombatTriggerKind::OpenWounds;
     }
+    if (statId == config.blockStatId) {
+        return CombatTriggerKind::Block;
+    }
     return CombatTriggerKind::None;
 }
 
@@ -258,6 +264,8 @@ constexpr bool IsCombatTriggerEnabled(
         return config.crushingBlowStatId != DisabledCombatStatId;
     case CombatTriggerKind::OpenWounds:
         return config.openWoundsStatId != DisabledCombatStatId;
+    case CombatTriggerKind::Block:
+        return config.blockStatId != DisabledCombatStatId;
     case CombatTriggerKind::None:
         return false;
     }
@@ -482,6 +490,36 @@ constexpr bool IsManualPlayerCast(
         && unitType == PlayerUnitType;
 }
 
+// D2Damage result flags report a confirmed shield or Weapon Block result in
+// either bit 0x0010 or bit 0x8000.  Avoid/dodge/evade, a successful hit, and
+// will-die outcomes contradict that result and must not dispatch a block proc.
+constexpr bool IsConfirmedBlockResult(std::uint16_t resultFlags) noexcept {
+    return (resultFlags & 0x8010U) != 0
+        && (resultFlags & 0x0383U) == 0;
+}
+
+// Extends only the native player kill event.  The native EventFunc20 remains
+// responsible for the item-stat lookup, chance roll, skill decoding, and
+// target routing; this policy only admits the configured kill stat.
+constexpr bool ShouldExtendKillEligibility(
+        std::int32_t event,
+        std::int32_t configuredStatId,
+        std::int32_t candidateStatId,
+        bool playerOwner,
+        bool damagePresent,
+        std::uint32_t hitFlags,
+        std::uint32_t procDepth,
+        bool itemSkillExecution) noexcept {
+    return event == 9
+        && configuredStatId > DisabledCombatStatId
+        && configuredStatId == candidateStatId
+        && playerOwner
+        && damagePresent
+        && (hitFlags & 0x20U) == 0
+        && procDepth == 0
+        && itemSkillExecution;
+}
+
 constexpr bool ShouldResolveTriggeredSkillTarget(
         bool casterIsSource,
         bool targetIsSource,
@@ -582,6 +620,7 @@ constexpr bool HasDistinctCombatStatIds(
         config.criticalStrikeStatId,
         config.crushingBlowStatId,
         config.openWoundsStatId,
+        config.blockStatId,
     };
     for (std::size_t left = 0; left < ids.size(); ++left) {
         if (ids[left] == DisabledCombatStatId) continue;
@@ -600,6 +639,27 @@ inline bool HasDistinctSyntheticStatIds(const Config& config) noexcept {
         config.combatTriggers.criticalStrikeStatId,
         config.combatTriggers.crushingBlowStatId,
         config.combatTriggers.openWoundsStatId,
+        config.combatTriggers.blockStatId,
+    };
+    for (const auto& rule : config.sourceSkillTriggers) {
+        ids.emplace_back(rule.stats.fixedStatId);
+        ids.emplace_back(rule.stats.sameLevelStatId);
+    }
+    std::erase(ids, DisabledCombatStatId);
+    std::sort(ids.begin(), ids.end());
+    return std::adjacent_find(ids.begin(), ids.end()) == ids.end();
+}
+
+inline bool HasDistinctConfiguredTriggerStatIds(const Config& config) noexcept {
+    std::vector<std::int32_t> ids{
+        config.onKillStatId,
+        config.whileChanneling.stats.fixedStatId,
+        config.whileChanneling.stats.sameLevelStatId,
+        config.combatTriggers.attackAttemptStatId,
+        config.combatTriggers.criticalStrikeStatId,
+        config.combatTriggers.crushingBlowStatId,
+        config.combatTriggers.openWoundsStatId,
+        config.combatTriggers.blockStatId,
     };
     for (const auto& rule : config.sourceSkillTriggers) {
         ids.emplace_back(rule.stats.fixedStatId);
@@ -619,6 +679,8 @@ inline bool ParseToml(
         for (const auto& [key, value] : root) {
             (void)value;
             if (key != "enabled" && key != "on_cast"
+                    && key != "on_kill"
+                    && key != "on_block"
                     && key != "while_channeling"
                     && key != "source_skill_triggers"
                     && key != "combat_triggers"
@@ -670,6 +732,30 @@ inline bool ParseToml(
                         "exclude_skill_ids",
                         parsed.onCast.excludeSkillIds,
                         error)) {
+                return false;
+            }
+        }
+
+        if (const auto* onKillNode = root.get("on_kill")) {
+            const auto* onKill = onKillNode->as_table();
+            if (!onKill) {
+                error = "on_kill must be a TOML table";
+                return false;
+            }
+            for (const auto& [key, value] : *onKill) {
+                (void)value;
+                if (key != "stat_id") {
+                    error = "unknown setting: on_kill."
+                        + std::string(key.str());
+                    return false;
+                }
+            }
+            if (!ReadTriggerStatId(
+                    *onKill,
+                    "on_kill",
+                    "stat_id",
+                    parsed.onKillStatId,
+                    error)) {
                 return false;
             }
         }
@@ -877,8 +963,32 @@ inline bool ParseToml(
             }
         }
 
-        if (!HasDistinctSyntheticStatIds(parsed)) {
-            error = "all nonzero synthetic trigger stat IDs must be distinct";
+        if (const auto* onBlockNode = root.get("on_block")) {
+            const auto* onBlock = onBlockNode->as_table();
+            if (!onBlock) {
+                error = "on_block must be a TOML table";
+                return false;
+            }
+            for (const auto& [key, value] : *onBlock) {
+                (void)value;
+                if (key != "stat_id") {
+                    error = "unknown setting: on_block."
+                        + std::string(key.str());
+                    return false;
+                }
+            }
+            if (!ReadTriggerStatId(
+                    *onBlock,
+                    "on_block",
+                    "stat_id",
+                    parsed.combatTriggers.blockStatId,
+                    error)) {
+                return false;
+            }
+        }
+
+        if (!HasDistinctConfiguredTriggerStatIds(parsed)) {
+            error = "all nonzero configured trigger stat IDs must be distinct";
             return false;
         }
 

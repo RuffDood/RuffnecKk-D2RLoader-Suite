@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "target": {
+    "product": "Diablo II Resurrected",
+    "version": "3.2",
+    "build": 92777,
+    "architecture": "x86-64",
+    "imageBase": "0x140000000"
+  },
+  "canonicalImage": {
+    "relativePath": "analysis-cache/images/D2R-3.2.92777-decrypted.exe",
+    "size": 32159440,
+    "sha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715",
+    "sections": {
+      ".text": "35AA4478F59B766189F79C14E26A1A49CEFF1666126AB0CB496276485D398E37",
+      ".rdata": "58E947709FE4FED2AD37359D4FF97656183CB66B7BB6C2DD4F7743BEBDAC69CE",
+      ".pdata": "3F191DC32210F6785C87446E208B1D0EBB8BC94D5C7FE50F59F9964CF5BBDEE9"
+    },
+    "policy": "local-only; reconstructed read-only from a licensed running process; never commit"
+  },
+  "analysisImage": {
+    "relativePath": "analysis-cache/images/D2R-3.2.92777-analysis.exe",
+    "size": 32159440,
+    "sha256": "673E8C0B2E89563E75525B24D137098EFD07B2DB4ED42ADEC56AA1ADDF0E63AB",
+    "derivedFromSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715",
+    "runtimeFunctionCount": 105850,
+    "hydratedSections": {
+      ".pdata": "9CFAD6C21E28F3303EBA071437DCF981A25E551C75076AC00D38C4F01798C3F9",
+      "_RDATA": "B66F5C4D2B9D53E7D18FED4803668579927965414EFBB895297DDFD7E978A026",
+      ".rodata": "EA93EADC01105DD4EDBE5F3A0CA757CB1BB7F7A2209D7CB18CBB61A995A88599"
+    },
+    "policy": "canonical code plus plaintext non-code PE metadata from the same installed build; local-only"
+  },
+  "index": {
+    "relativePath": "analysis-cache/index/d2r32.sqlite",
+    "formatVersion": 1
+  },
+  "externalReferencesManifest": "../references.json",
+  "ghidra": {
+    "home": "C:/CodexTools/ghidra/ghidra_12.1.2_PUBLIC",
+    "javaHome": "C:/Program Files/Eclipse Adoptium/jdk-21.0.11.10-hotspot",
+    "inputRelativePath": "analysis-cache/images/D2R-3.2.92777.text.bin",
+    "inputSize": 22900736,
+    "inputSha256": "35AA4478F59B766189F79C14E26A1A49CEFF1666126AB0CB496276485D398E37",
+    "functionMapRelativePath": "analysis-cache/index/functions.csv",
+    "blockBase": "0x140001000",
+    "projectDirectory": "analysis-cache/ghidra-text",
+    "projectName": "D2R_3_2_92777_TEXT",
+    "programName": "D2R-3.2.92777.text.bin",
+    "analysisMode": "lazy-per-function"
+  },
+  "governedSources": [
+    "Mission/memory-patches-portage-3.2.json",
+    "reverse-engineering/references.json",
+    "data/BKVince/d2rloader/patches",
+    "data/BKVince/d2rloader/plugins"
+  ]
+}

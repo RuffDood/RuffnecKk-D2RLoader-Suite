@@ -3,16 +3,20 @@
 const fs = require('fs');
 const path = require('path');
 
-const workspaceRoot = path.resolve(__dirname, '..', '..', '..');
+// The product lives in the Suite; governed source tables/parser live in Diablo.
+// The fixture is data-only and never copies a packaged or installed DLL.
+const workspaceRoot = process.env.DIABLO_WORKSPACE
+  ? path.resolve(process.env.DIABLO_WORKSPACE)
+  : path.resolve(__dirname, '..', '..', '..', '..', 'Diablo');
 const { parseTable, serializeTable, writeTable, ENCODING } = require(
   path.join(workspaceRoot, 'scripts', 'build-data', 'tsv.js'));
 
 const buildName = process.argv[3] || '93847';
 const modName = process.argv[4] || 'CastTriggersTest';
 const sourceDirectory = {
-  92777: 'data-vanilla3.2',
-  93787: 'data-vanilla3.3',
-  93847: 'data-vanilla3.3',
+  92777: 'data/vanilla3.2',
+  93787: 'data/vanilla3.3',
+  93847: 'data/vanilla3.3',
 }[buildName];
 if (!sourceDirectory) {
   throw new Error('Build must be 92777, 93787 or 93847');
@@ -33,7 +37,8 @@ const itemModifiersSourcePath = process.argv[6]
   ? path.resolve(process.argv[6])
   : path.join(
     workspaceRoot,
-    'data-BKVince',
+    'data',
+    'BKVince',
     'BKVince.mpq',
     'data',
     'local',
@@ -51,8 +56,6 @@ const mpqRoot = path.join(modRoot, `${modName}.mpq`);
 const excelRoot = path.join(mpqRoot, 'data', 'global', 'excel');
 const stringsRoot = path.join(mpqRoot, 'data', 'local', 'lng', 'strings');
 const pluginConfigRoot = path.join(modRoot, 'd2rloader', 'config');
-const pluginBinaryRoot = path.join(modRoot, 'd2rloader', 'plugins');
-const packageRoot = path.join(workspaceRoot, 'addons', 'CastTriggers', 'package');
 
 function rowObject(table, row) {
   return Object.fromEntries(table.headers.map((header, index) => [
@@ -77,7 +80,7 @@ function cloneNamedRow(table, name) {
   return rowObject(table, row);
 }
 
-function upsertItemStat(table, stat, stringKey) {
+function upsertItemStat(table, stat, stringKey, event = 'doactive') {
   const matches = table.rows
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => row[0] === stat);
@@ -88,7 +91,7 @@ function upsertItemStat(table, stat, stringKey) {
   const existing = matches[0];
   const row = existing
     ? rowObject(table, existing.row)
-    : cloneNamedRow(table, 'item_skillonattack');
+    : cloneNamedRow(table, event === 'kill' ? 'item_skillonkill' : 'item_skillonattack');
   const id = existing ? Number(row['*ID']) : nextId(table, '*ID');
   if (!Number.isInteger(id) || id < 0) {
     throw new Error(`Invalid ItemStatCost ID for ${stat}`);
@@ -96,7 +99,7 @@ function upsertItemStat(table, stat, stringKey) {
   Object.assign(row, {
     Stat: stat,
     '*ID': String(id),
-    itemevent1: 'doactive',
+    itemevent1: event,
     itemeventfunc1: '20',
     itemevent2: '',
     itemeventfunc2: '',
@@ -111,7 +114,8 @@ function upsertItemStat(table, stat, stringKey) {
   return id;
 }
 
-function upsertProperty(table, code, stat, tooltip, scalar = false) {
+function upsertProperty(table, code, stat, tooltip, scalar = false,
+    sourceCode = scalar ? 'crush' : 'att-skill') {
   const matches = table.rows
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => row[0] === code);
@@ -122,7 +126,7 @@ function upsertProperty(table, code, stat, tooltip, scalar = false) {
   const existing = matches[0];
   const row = existing
     ? rowObject(table, existing.row)
-    : cloneNamedRow(table, scalar ? 'crush' : 'att-skill');
+    : cloneNamedRow(table, sourceCode);
   const id = existing ? Number(row['*Id']) : nextId(table, '*Id');
   if (!Number.isInteger(id) || id < 0) {
     throw new Error(`Invalid Properties ID for ${code}`);
@@ -267,11 +271,6 @@ function migrateLocalizationKeys(target, migrations) {
 fs.mkdirSync(excelRoot, { recursive: true });
 fs.mkdirSync(stringsRoot, { recursive: true });
 fs.mkdirSync(pluginConfigRoot, { recursive: true });
-fs.mkdirSync(pluginBinaryRoot, { recursive: true });
-
-fs.copyFileSync(
-  path.join(packageRoot, 'd2rl-ruffneckk-cast-triggers.dll'),
-  path.join(pluginBinaryRoot, 'd2rl-ruffneckk-cast-triggers.dll'));
 
 for (const name of [
   'itemstatcost.txt',
@@ -327,6 +326,9 @@ const itemStatIds = {
     itemStats,
     'item_skillwhenfrostnovasamelevel',
     'CastWhenFrostNovaSameLevel'),
+  onKill: upsertItemStat(
+    itemStats, 'item_skillonkillconfigured', 'CastOnKillConfigured', 'kill'),
+  onBlock: upsertItemStat(itemStats, 'item_skillonblock', 'CastOnBlock'),
 };
 for (const [name, id] of [
   ['item_skilloncast', itemStatIds.onCast],
@@ -342,6 +344,8 @@ for (const [name, id] of [
   ],
   ['item_skillwhenfrostnova', itemStatIds.whenFrostNova],
   ['item_skillwhenfrostnovasamelevel', itemStatIds.whenFrostNovaSameLevel],
+  ['item_skillonkillconfigured', itemStatIds.onKill],
+  ['item_skillonblock', itemStatIds.onBlock],
 ]) {
   assertAddedRow(itemStats, '*ID', id, name);
 }
@@ -406,6 +410,11 @@ const propertyIds = {
     'cast-skill-when-frost-nova-same-level',
     'item_skillwhenfrostnovasamelevel',
     '#% Chance to cast [Skill] at the Frost Nova source level'),
+  onKill: upsertProperty(properties, 'cast-skill-on-kill',
+    'item_skillonkillconfigured', '#% Chance to cast level # [Skill] when you Kill an Enemy',
+    false, 'kill-skill'),
+  onBlock: upsertProperty(properties, 'cast-skill-on-block',
+    'item_skillonblock', '#% Chance to cast level # [Skill] when you Block'),
 };
 for (const [name, id] of [
   ['cast-skill', propertyIds.onCast],
@@ -421,6 +430,8 @@ for (const [name, id] of [
     propertyIds.whileChannelingSameLevel,
   ],
   ['cast-skill-when-frost-nova', propertyIds.whenFrostNova],
+  ['cast-skill-on-kill', propertyIds.onKill],
+  ['cast-skill-on-block', propertyIds.onBlock],
   [
     'cast-skill-when-frost-nova-same-level',
     propertyIds.whenFrostNovaSameLevel,
@@ -650,6 +661,26 @@ upsertCubeRecipe(cube, {
   'mod 3 min': '100',
   'mod 3 max': '12',
 });
+// Existing kill-skill is a control: the configured clone alone receives the
+// extension. The two-gem ring checks independent kill/block family ownership.
+for (const [description, inputs, effects] of [
+  ['Cast Triggers configured on-kill ring', ['gcv'], [['cast-skill-on-kill', '47', '100', '12']]],
+  ['Cast Triggers native on-kill control ring', ['gcy'], [['kill-skill', '47', '100', '12']]],
+  ['Cast Triggers on-block ring', ['gcb'], [['cast-skill-on-block', '48', '100', '12']]],
+  ['Cast Triggers on-kill and on-block isolation ring', ['gcv', 'gcb'], [
+    ['cast-skill-on-kill', '47', '100', '12'], ['cast-skill-on-block', '48', '100', '12'],
+  ]],
+]) {
+  const values = { description, enabled: '1', version: '100',
+    numinputs: String(inputs.length), output: '"rin,mag"', lvl: '1' };
+  inputs.forEach((input, index) => { values[`input ${index + 1}`] = input; });
+  effects.forEach(([code, skill, chance, level], index) => {
+    const prefix = `mod ${index + 1}`;
+    Object.assign(values, { [prefix]: code, [`${prefix} param`]: skill,
+      [`${prefix} min`]: chance, [`${prefix} max`]: level });
+  });
+  upsertCubeRecipe(cube, values);
+}
 writeTable(cubePath, cube);
 
 const localized = [
@@ -702,6 +733,16 @@ const localized = [
     id: 199999,
     Key: 'CastWhenFrostNovaSameLevel',
     enUS: '%d%% Chance to cast %.*s at the source skill level when casting Frost Nova',
+  },
+  {
+    id: 200000,
+    Key: 'CastOnKillConfigured',
+    enUS: '%d%% Chance to cast level %d %s when you Kill an Enemy',
+  },
+  {
+    id: 200001,
+    Key: 'CastOnBlock',
+    enUS: '%d%% Chance to cast level %d %s when you Block',
   },
 ].map((entry) => ({
   ...entry,
@@ -776,6 +817,12 @@ fs.writeFileSync(
     `crushing_blow_stat_id = ${itemStatIds.onCrushingBlow}`,
     `open_wounds_stat_id = ${itemStatIds.onOpenWounds}`,
     '',
+    '[on_kill]',
+    `stat_id = ${itemStatIds.onKill}`,
+    '',
+    '[on_block]',
+    `stat_id = ${itemStatIds.onBlock}`,
+    '',
     '[diagnostics]',
     'enabled = true',
     '',
@@ -800,7 +847,8 @@ console.log(JSON.stringify({
   modRoot,
   itemStatIds,
   propertyIds,
-  recipes: 10,
+  recipes: 14,
+  dataOnly: true,
   starterItems: [
     'vps', 'isc', 'box', 'yps', 'rvs', 'hp1', 'mp1', 'hp2', 'mp2',
   ],

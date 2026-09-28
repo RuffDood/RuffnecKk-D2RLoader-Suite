@@ -23,15 +23,25 @@ inline constexpr std::uint8_t AdvancedStashPage = 4;
 inline constexpr std::uint8_t InvalidInventoryPage = 0xFF;
 inline constexpr std::size_t ItemDataInventoryPageOffset = 0x55;
 inline constexpr std::uint32_t ItemUnitType = 4;
-inline constexpr std::uint32_t MinimumItemDelayMs = 50;
-inline constexpr std::uint32_t MaximumItemDelayMs = 1000;
-inline constexpr std::uint32_t DefaultItemDelayMs = 100;
 inline constexpr std::int32_t DefaultButtonX = 3;
 inline constexpr std::int32_t DefaultButtonY = 813;
 inline constexpr std::int32_t MinimumButtonCoordinate = -32768;
 inline constexpr std::int32_t MaximumButtonCoordinate = 32767;
-inline constexpr std::string_view DefaultButtonTooltip{"Deposit Currency"};
+inline constexpr std::string_view DefaultButtonTooltip{"Deposit Materials"};
 inline constexpr std::size_t MaximumButtonTooltipBytes = 256;
+
+// Drain the captured inventory snapshot in the caller's UI-thread operation.
+// A rejected or stale item can continue; cancellation or a native fault stops
+// before the next candidate. Never retain an item pointer across transfers.
+template<class Queue, class TryItem>
+bool ProcessBatchItems(Queue& candidates, TryItem&& tryItem) {
+    while (!candidates.empty()) {
+        const auto candidate = candidates.front();
+        candidates.pop_front();
+        if (!tryItem(candidate)) return false;
+    }
+    return true;
+}
 
 constexpr std::uint64_t PackActionBinding(
         std::uint32_t key,
@@ -164,7 +174,6 @@ struct ButtonConfig {
 struct Config {
     bool enabled{true};
     bool inventoryButtonEnabled{false};
-    std::uint32_t itemDelayMs{DefaultItemDelayMs};
     std::vector<std::uint32_t> includeItemCodes;
     std::vector<std::uint32_t> excludeItemCodes;
     ButtonConfig button{};
@@ -368,15 +377,15 @@ inline bool ParseToml(
             return false;
         }
 
+        // Accept the retired setting in existing configurations, but never
+        // store or apply it. Zero also supports previously attempted instant
+        // configurations; malformed values still fail configuration loading.
         if (const auto* node = deposit->get("item_delay_ms")) {
             const auto value = node->value<std::int64_t>();
-            if (!value
-                    || *value < MinimumItemDelayMs
-                    || *value > MaximumItemDelayMs) {
-                error = "deposit.item_delay_ms must be an integer from 50 to 1000";
+            if (!node->is_integer() || !value || *value < 0) {
+                error = "legacy deposit.item_delay_ms must be a non-negative integer (ignored)";
                 return false;
             }
-            parsed.itemDelayMs = static_cast<std::uint32_t>(*value);
         }
 
         const auto readCodes = [&](

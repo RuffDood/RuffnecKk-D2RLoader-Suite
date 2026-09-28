@@ -1,4 +1,4 @@
-# Resistance Floor 1.0.2
+# Resistance Floor 1.0.3
 
 Lets configured units fall below D2R's vanilla `-100` resistance floor.
 
@@ -70,7 +70,7 @@ Character Screen options are grouped separately:
 show_resistances_below_minus_100 = true
 ```
 
-Version 1.0.2 uses `config_version = 3`. Replace an earlier candidate TOML
+Version 1.0.3 uses `config_version = 3`. Replace an earlier candidate TOML
 instead of mixing removed settings with this format.
 
 Unknown keys, missing required settings and out-of-range values make the plugin
@@ -82,8 +82,9 @@ the lower bound.
 
 - Runtime identities are diagnostic only; the DLL loads from its complete
   native fingerprint rather than a build or channel allowlist.
-- Battle.net qualification of the exact 1.0.2 artifact is pending.
-- Steam 3.3.93787 remains pending until the exact 1.0.2 artifact passes the
+- Battle.net 3.3.93847 with Loader 1.3.1 beta passed a full-stack cold start
+  with both floor hooks active. Gameplay and save/reload checks remain open.
+- Steam 3.3.93787 remains pending until the exact 1.0.3 artifact passes the
   complete Suite qualification.
 - Loader: governed D2RLoader/PluginSDK v3 baseline.
 - Scope: global or mod-local; the plugin is not mod-scoped-only.

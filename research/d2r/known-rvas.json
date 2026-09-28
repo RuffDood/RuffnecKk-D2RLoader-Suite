@@ -4,6 +4,214 @@
   "imageBase": "0x140000000",
   "entries": [
     {
+      "rva": "0x80CF0",
+      "name": "STRING_AssignPointerLength",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/vendor-stock-refresh/notes/companion-214.md",
+      "notes": "Windows x64 (native string*, const char*, uint64 length). Full 114-byte body copies bytes, writes terminator, stores length at +8; data pointer is at +0. Called from ImageWidget_SetFilename at0x859B43 with widget+0x108, proving bounded filename reads at widget+0x108/+0x110. No direct string writes."
+    },
+    {
+      "rva": "0x859710",
+      "name": "UI_ImageWidget_AssignImageReference",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/vendor-stock-refresh/notes/companion-214.md",
+      "notes": "Windows x64 (ImageWidget*, ImageReference*). Full 70-byte body stores widget+0x88, tests reference readiness through0x858960 and updates intrinsic geometry through0x858890/0x8574D0. SetFilename passes its owned widget+0x130 reference."
+    },
+    {
+      "rva": "0x858960",
+      "name": "UI_ImageReference_IsReady",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/vendor-stock-refresh/notes/companion-214.md",
+      "notes": "Windows x64 bool(ImageReference*), AL return. Full 45-byte body calls native renderer selector then checks reference+0 or+8 for nonnull. Independently consumed by0x859710 before intrinsic geometry update. Vendor companion verifies resource resolution with this helper after filename changes; offline ABI evidence only."
+    },
+    {
+      "rva": "0x425A60",
+      "name": "PlayersCommand_SetArtificialCount",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/playerx-scaling-tweaks/notes/2026-09-27-command-setter.md",
+      "notes": "Windows x64 void(uint32_t), count in ECX. 19-byte leaf loads previous artificial count from RVA 0x2AA6A30 into EAX, replaces EAX only when unsigned ECX <= 8, then stores EAX. Values above 8 retain the previous count. Secondary Offline Difficulty observer 0xE0220 calls it at 0xE0244. PlayerX 1.1.1 reserves only 0x425A69[3], cmovbe eax,ecx -> mov eax,ecx;nop, when non-simulation configured command maximum exceeds 8. Full entry fingerprinted; parser/configuration still bound requested values. Canonical and 93847 live bytes matched before patch."
+    },
+    {
+      "rva": "0xA07670",
+      "name": "PlayersCommand_PostSettingCommit",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/playerx-scaling-tweaks/notes/2026-09-27-startup-hotkeys.md",
+      "notes": "Windows x64 bool(int32_t): entry stores ECX; returns AL. Native /players calls with ECX=0 at 0x188884 immediately after SetPlayerCount, ignoring result. Entry24 and callsite7 bytes fingerprinted by PlayerX 1.1.0; new UI control callbacks follow this same post-setting path without closing chat. Save/request completion flow observed at 0xA07692..0xA07799; in-game propagation/persistence remain unqualified. No new hook."
+    },
+    {
+      "rva": "0x8AF90",
+      "name": "PlayersCommand_GetGameMode",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/playerx-scaling-tweaks/notes/2026-09-27-startup-hotkeys.md",
+      "notes": "Windows x64 int32_t() leaf: 8B 05 5E 84 99 02 C3. Native /players recognition at 0x188837/0x188840/0x18884A calls it and permits results 0, 5, 7. PlayerX 1.1.0 reads it only for startup/hotkey eligibility and fingerprints both the leaf and original recognition context; no hook at this address. Historical Loader-hosted corpus verified; direct retail/multiplayer qualification not implied."
+    },
+    {
+      "rva": "0x3E2DB60",
+      "name": "D2RLoader131_ClientUnitLookupTombstoneGuard",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/mapsense/notes/LOADER-131-LOOKUP.md",
+      "notes": "Runtime-only Loader-hosted 1.3.1 witness captured 2026-09-26; not part of the historical canonical image. Exact 22-byte leaf guard reached by E9 at 0x09F270: reject R8D=-1 via original null return 0x09F296, otherwise execute displaced movsxd RAX,EDX and mov RAX,[RCX+RAX*8], then rejoin 0x09F277. RCX bucket table, EDX index, R8D ID, R9D type; original 34-byte tail through RET preserves Unit ID +8, type +0, next +0x158. MapSense validates full entry, guard and tail without changing them or selecting by version name. Exact loader hash and raw capture provenance are in the source note."
+    },
+    {
+      "rva": "0x2A98B0",
+      "name": "UI_ItemWidget_HandleInputMessage",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/configurable-controls-native.md",
+      "notes": "ABI void(widget* RCX, const InputMessage* RDX); common item-widget dispatcher. Namespace hash +0, command hash +0x88, payload pointer +0x110, packed XY at payload+4. Complete 0xB50-byte logical body recovered read-only. Grid and belt message handlers delegate here. Remote Stash owns CALL 0x2A9D68 inside the body; exact tracked ownership and remaining bytes must compose. New Stack Manager 1.2.0 input hook is offline-qualified only."
+    },
+    {
+      "rva": "0x2C49F0",
+      "name": "UI_InventoryGridWidget_GetCellItem",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/configurable-controls-native.md",
+      "notes": "ABI item*(widget* RCX, const int32[2]* RDX); page byte +0x630, owner 0x2A7810, grid 0x34A410, inventory 0x34A360, lookup 0x386A00. 0xD0-byte witness. Loader redirects CALL 0x2C4A3C through Core 0x4AD670, adding widget from RSI in R9, then 0x3761A0; ordinary pages forward through import 0x67C400 to game+0x34A410. Getter is vtable+0xC8 on observed grid widget. Runtime control exercise remains open."
+    },
+    {
+      "rva": "0x2C3FF0",
+      "name": "UI_InventoryGridWidget_GetInputCell",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/configurable-controls-native.md",
+      "notes": "ABI int32*(widget* RCX, int32[2]* output RDX, uint64 packedPoint R8); grid uses current native pointer helper 0x2C6300 and validates through vtable+0x90. Returns output pointer, invalid -1,-1. 0x40-byte witness; vtable+0x98 and common input caller establish argument order. Borrow output/widget for callback only."
+    },
+    {
+      "rva": "0x226C60",
+      "name": "UI_BeltWidget_GetInputCell",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/configurable-controls-native.md",
+      "notes": "ABI int32*(widget* RCX, int32[2]* output RDX, uint64 packedPoint R8). Signed low/high DWORD X/Y, accumulated origin, scale, belt rows and spacing produce slot 0..15 and zero in output[1]; invalid -1,-1. Returns output. Full 0x130-byte body; native vtable+0x98. Offline proof; new controls not gameplay-tested."
+    },
+    {
+      "rva": "0x227440",
+      "name": "UI_BeltWidget_GetCellItem",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/configurable-controls-native.md",
+      "notes": "ABI item*(widget* RCX, const int32[2]* cell RDX); owner/inventory and native belt slot lookup, 0x50-byte witness. Observed belt vtable+0xC8; used only as borrowed item identity within input callback."
+    },
+    {
+      "rva": "0x2CE900",
+      "name": "UI_AdvancedStashSlotWidget_GetCounterItem",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/configurable-controls-native.md",
+      "notes": "ABI item*(widget* RCX); leaf returns borrowed item pointer at widget+0x608. Getter at counter vtable+0xC8; definition at +0x600 belongs to existing counter-click contract. 0x10-byte witness. Distinguishes counter representation from ordinary item quantity."
+    },
+    {
+      "rva": "0x876180",
+      "name": "UI_IsCurrentMouseWidget",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/configurable-controls-native.md",
+      "notes": "ABI bool(widget* RCX), AL result; compares against current mouse widget at UI context+0x178 via 0x846020. Different from controller focus getter 0x876160/context+0x190. 32-byte entry and complete common dispatcher establish use before mouse action."
+    },
+    {
+      "rva": "0x8460D0",
+      "name": "UI_IsCurrentInputConsumed",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/configurable-controls-native.md",
+      "notes": "ABI bool(), AL result; false for null UI context, otherwise reads byte at context+0xB8. Complete leaf inside 32-byte entry. Both belt and base item message dispatch gate native input with it; paired with 0x843FC0."
+    },
+    {
+      "rva": "0x843FC0",
+      "name": "UI_ConsumeCurrentInput",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/configurable-controls-native.md",
+      "notes": "ABI void(), no arguments; marks current native input consumed. 32-byte entry and repeated successful branches in 0x2A98B0 establish call contract. UI callback only; do not retain message pointers."
+    },
+    {
+      "rva": "0x840560",
+      "name": "INPUT_PublishBindableMouseButtonDown",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/configurable-controls-native.md",
+      "notes": "ABI void(const payload* RCX); native pointer-position/input-mode update followed by InputMessage/BindableMouseButtonDown publication. 0x400-byte envelope witness and read-only token verification. Payload+4 contains packed X/Y. This does not prove that the publisher changes Windows key state; Stack Manager separately samples pressed Middle/X buttons, whose real hardware routing is not yet exercised."
+    },
+    {
+      "rva": "0x8562F0",
+      "name": "UI_GetWidgetAccumulatedOrigin",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/skill-trees-revamp/notes/cursor-panel-coordinates.md",
+      "notes": "Complete body [0x8562F0,0x856477), 391 bytes, exact and unique; SHA256 DE2F2A2FCD80E8BF9F49E7B186AB2D30554EBD7E9BF43890174CE8941B65DEAB. ABI PointI*(Widget* RCX, PointI* RDX), two signed int32 outputs and output pointer returned. Composes parent+0x30, local rect+0x70, fill-parent+0x52, anchor+0x48/+0x4C and parent scale+0x80; rounds via 0x12DEA28. Native spans 0x8F85FE (68 bytes) and 0x8F86D8 (101 bytes) prove origin plus scaled dimensions shares units with UI_GetCursorPosition: both alternatives converge as packed RBX at 0x8F873A. Read on UI thread from a current validated widget; no hook. Win32 client-pixel equivalence is not claimed."
+    },
+    {
+      "rva": "0x846150",
+      "name": "UI_GetCursorPosition",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/skill-trees-revamp/notes/cursor-panel-coordinates.md",
+      "notes": "Complete 32-byte function [0x846150,0x846170), exact and unique; SHA256 2C5DA3493DF13A469AE99310AC6B126CAE2291BE9C1AB5D1E5F697DD2A2C203A. No-argument ABI returns packed signed int32 X/Y in low/high RAX DWORDs by calling 0x14F1F0 and 0x14F200. Native cursor consumers pass the result directly to widget hit testing at 0x1E7199 and 0x8D0F93. The alternative at 0x8F8732 joins a widget-origin plus scaled-dimensions point at 0x8F873A, proving matching native UI units. Read-only UI-thread sampling; no hook or Win32 pixel conversion assumed."
+    },
+    {
+      "rva": "0x14F1F0",
+      "name": "INPUT_GetNativeCursorX",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/skill-trees-revamp/notes/cursor-panel-coordinates.md",
+      "notes": "Complete 7-byte leaf 8B 05 FA 94 93 02 C3, exact and unique; SHA256 BE06CF0E4F46C6AFD38412CB93AC6A8003EC1A98DBE26455D0FF9C31949EE870. No-argument ABI returns signed int32 from RVA 0x2A886F0. UI_GetCursorPosition calls this at 0x846154 and places the value in the low DWORD of its packed point. Native UI coordinate units; no hook."
+    },
+    {
+      "rva": "0x14F200",
+      "name": "INPUT_GetNativeCursorY",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/skill-trees-revamp/notes/cursor-panel-coordinates.md",
+      "notes": "Complete 7-byte leaf 8B 05 EE 94 93 02 C3, exact and unique; SHA256 E882A560B39881F7F2FA06FF47EDADA8F80D91D38445B0A6EE74A38A4F04E7F7. No-argument ABI returns signed int32 from RVA 0x2A886F4. UI_GetCursorPosition calls this at 0x84615D and places the value in the high DWORD of its packed point. Native UI coordinate units; no hook."
+    },
+    {
+      "rva": "0x472590",
+      "name": "ITEMS_CommitValidatedMoveAndRemoval",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/pd2-stack-controls-investigation.md (1.1.11 belt merge)",
+      "notes": "Continuous body [472590,472B0A), bool(owner,keepStates16,removeStates16,keepIds,removeIds,uint64 keepCount,uint64 removeCount,uint8 bypass). Native full-stack merge caller4C1DDB supplies target state/id with keepCount1 and cursor state/id with removeCount1. Snapshot removals validate exact identities before restaging kept items, final validation and physical source detachment via4747F0. Twenty extracted-body oracle cases check four belt slots, success and precommit snapshot/staging/validation/identity refusals. Source must be detached before43EC10; native completed-merge publication follows with action0/flags100. Local ABI/control-flow evidence only."
+    },
+    {
+      "rva": "0x1C6CC0",
+      "name": "CLIENT_ReceiveStackMergeCompletion",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/pd2-stack-controls-investigation.md (1.1.11 belt merge)",
+      "notes": "9C action0A dispatch table entry12E458 ->12E38D ->1C6CC0. Updates existing item by packet GUID using decoder374BF0, deletes malformed decode result, resolves player inventory, clears cursor through389990(inv,null) when decoded action bit8 is absent, and refreshes held item if any. No inventory-page-only predicate. Core replaces decode CALL1C6D0F with its admitted7A7680 provider; all surrounding bytes, complete provider, relay and native import remain required. Static and live byte evidence, not player-visible delivery proof."
+    },
+    {
+      "rva": "0x1C2B10",
+      "name": "CLIENT_ReceiveAdvancedStashCreditOne",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/pd2-stack-controls-investigation.md (1.1.9 counter publication repair)",
+      "notes": "Packet 9D action 0x17 dispatches here through 0x12E5CB. Existing item/counter identity does not receive an absolute counter replacement: the existing-counter branch calls credit once at 0x1C2C68. Missing item identity is decoded and registered separately. Current Loader routes that CALL to its admitted DWORD credit provider. Repeating one-unit publication is required for a whole-stack credit to an existing client counter; first registration receives one serialized-counter event."
+    },
+    {
+      "rva": "0x1C59F0",
+      "name": "CLIENT_ReceiveAdvancedStashDebitOne",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/pd2-stack-controls-investigation.md (1.1.9 counter publication repair)",
+      "notes": "Packet 9D action 0x18 dispatches here through 0x12E5D7. Resolves owner and existing item, checks/registers class counter, then calls 0x46DC90 once at 0x1C5AED. Serialized metadata is not an absolute replacement for an existing counter. Live 1.1.8 BKVince probe after a three-Topaz withdrawal: server counter0, client counter2, cursor quantity3 on both sides. Publication must represent all transferred units."
+    },
+    {
+      "rva": "0x4F9EED",
+      "name": "D2GAME_StashDepositCreditPublicationCall",
+      "kind": "callsite",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/pd2-stack-controls-investigation.md (1.1.9 counter publication repair)",
+      "notes": "Five-byte CALL to nine-argument publication 0x535F60 after successful credit and native source deletion. Native block 0x4F9EAC..0x4F9EED sets add flag and passes game, owner, credited slot, action0x2000, flags2, source mode/page/node/XY; 0x4F9EF2 clears the add flag. Stack Manager 1.1.9 redirects only this CALL via an SDK-owned relay to repeat the matching committed existing-counter delta. First registration and unrelated events remain one publication; caller retains cleanup and dirty marking."
+    },
+    {
       "rva": "0x3E02C5",
       "name": "DRLGPRESET_SuperUniquePresetEncodingWitness",
       "kind": "interior",
@@ -65,7 +273,69 @@
       "kind": "function",
       "confidence": "high",
       "source": "reverse-engineering/d2r-3.2.92777/modules/skill-costs.md; Mission/d2r-native-reconstruction.md",
-      "notes": "Static logical body 0x33AA00..0x33AA6A exclusive, 106 bytes, SHA256 317EA4C72D6B9D325977F6615E762819DEA0B30C48063C9DC7CA5B763ECDCC7F. Context ECX, skillId EDX, level R8D; int32 cost EAX. Record lookup 0x97790. Missing record or both s16+0x22A and s16+0x22C zero returns zero; otherwise computes level-scaled signed cost shifted by u8+0x228 and applies floor s16+0x226 <<8. Direct calls 0x218937 and 0x4369FB. Unlike affordability body 0x340900, this calculator applies the floor. Individual compiled field names are not promoted in the atlas. Static only."
+      "notes": "Static logical body 0x33AA00..0x33AA6A exclusive, 106 bytes, SHA256 317EA4C72D6B9D325977F6615E762819DEA0B30C48063C9DC7CA5B763ECDCC7F. Context ECX, skillId EDX, level R8D; int32 cost EAX. Record lookup 0x97790. Missing record or both s16+0x22A and s16+0x22C zero returns zero; otherwise computes level-scaled signed cost shifted by u8+0x228 and applies floor s16+0x226 <<8. Direct calls 0x218937 and 0x4369FB. Unlike affordability body 0x340900, this calculator applies the floor. Individual compiled field names are not promoted in the atlas. Static only.",
+      "argumentContract": {
+        "schemaVersion": 1,
+        "status": "partial",
+        "callable": true,
+        "prototype": null,
+        "arguments": [
+          {
+            "position": 1,
+            "name": "context",
+            "location": "ECX",
+            "type": "32-bit value; semantic type unresolved",
+            "meaning": "Lookup context; observed caller supplies game context byte"
+          },
+          {
+            "position": 2,
+            "name": "skillId",
+            "location": "EDX",
+            "type": "int32_t",
+            "meaning": "Skill record identifier"
+          },
+          {
+            "position": 3,
+            "name": "level",
+            "location": "R8D",
+            "type": "int32_t",
+            "meaning": "Skill level"
+          }
+        ],
+        "return": {
+          "location": "EAX",
+          "type": "int32_t",
+          "meaning": "Calculated resource cost"
+        },
+        "requirements": [
+          "Only the documented argument/register observations are established; thread, lifetime and active-provider requirements need consumer-specific proof."
+        ],
+        "effects": [
+          "Looks up a skill record and calculates a floor-clamped cost."
+        ],
+        "unknowns": [
+          "Exact semantic type and full valid domain of context remain unresolved.",
+          "Individual compiled field names are not promoted in the DataTables atlas."
+        ],
+        "scope": {
+          "target": "D2R 3.3.93847 using the governed common 92777/93847 corpus",
+          "canonicalSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715"
+        },
+        "evidence": [
+          {
+            "source": "reverse-engineering/d2r-3.2.92777/modules/skill-costs.md — Payment cost calculator",
+            "witness": "Body [0x33AA00,0x33AA6A); SHA256 317EA4C72D6B9D325977F6615E762819DEA0B30C48063C9DC7CA5B763ECDCC7F; callers 0x218937 and 0x4369FB."
+          },
+          {
+            "source": "reverse-engineering/d2r-3.2.92777/known-rvas.json — D2Common_SKILLMANA_GetManaCost existing notes",
+            "witness": "Register mapping and return observation preserved from the pre-intake registry; no new native qualification."
+          }
+        ],
+        "runtimeQualification": {
+          "status": "not-tested",
+          "notes": "Existing static reconstruction only; normalization into structured fields adds no runtime evidence."
+        }
+      }
     },
     {
       "rva": "0x33F512",
@@ -81,7 +351,62 @@
       "kind": "function",
       "confidence": "high",
       "source": "reverse-engineering/d2r-3.2.92777/modules/skill-costs.md; Mission/d2r-native-reconstruction.md",
-      "notes": "Static logical body 0x340900..0x340A78 exclusive, 376 bytes, SHA256 6AFF612D41E94ED98BACC45CCCEE5F53787B2FCBE4831399E3F14B6BE037D87F. Unit RCX, skill RDX, boolean EAX. Reads mana stat8 and HP stat6. Charged owner at skill+0x4C != -1 selects charge count skill+0x50 >0. Normal cost uses skill record s16+0x22A and s16+0x22C with u8+0x228 shift and bounded level index; no minimum clamp in this body. State114 check at 0x340A2C selects HP>=cost, otherwise compares mana, with the record+0x4E==116/0x336090 exception. Direct caller 0x33F489. That caller also has a separate start-mana gate; do not infer this function alone governs all affordability. No runtime or complete skill structure qualification."
+      "notes": "Static logical body 0x340900..0x340A78 exclusive, 376 bytes, SHA256 6AFF612D41E94ED98BACC45CCCEE5F53787B2FCBE4831399E3F14B6BE037D87F. Unit RCX, skill RDX, boolean EAX. Reads mana stat8 and HP stat6. Charged owner at skill+0x4C != -1 selects charge count skill+0x50 >0. Normal cost uses skill record s16+0x22A and s16+0x22C with u8+0x228 shift and bounded level index; no minimum clamp in this body. State114 check at 0x340A2C selects HP>=cost, otherwise compares mana, with the record+0x4E==116/0x336090 exception. Direct caller 0x33F489. That caller also has a separate start-mana gate; do not infer this function alone governs all affordability. No runtime or complete skill structure qualification.",
+      "argumentContract": {
+        "schemaVersion": 1,
+        "status": "partial",
+        "callable": true,
+        "prototype": null,
+        "arguments": [
+          {
+            "position": 1,
+            "name": "unit",
+            "location": "RCX",
+            "type": "opaque pointer (64-bit)",
+            "meaning": "Unit whose resource availability is checked"
+          },
+          {
+            "position": 2,
+            "name": "skill",
+            "location": "RDX",
+            "type": "opaque pointer (64-bit)",
+            "meaning": "Skill instance including charged-skill context"
+          }
+        ],
+        "return": {
+          "location": "EAX",
+          "type": "boolean result; exact C++ return type unresolved",
+          "meaning": "Whether the examined affordability path succeeds"
+        },
+        "requirements": [
+          "Only the documented argument/register observations are established; thread, lifetime and active-provider requirements need consumer-specific proof."
+        ],
+        "effects": [
+          "Reads mana, hitpoints or charge count and evaluates affordability."
+        ],
+        "unknowns": [
+          "Pointer layouts, ownership and lifetime are not fully established.",
+          "The separate start-mana gate is outside this function; this contract does not cover all affordability."
+        ],
+        "scope": {
+          "target": "D2R 3.3.93847 using the governed common 92777/93847 corpus",
+          "canonicalSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715"
+        },
+        "evidence": [
+          {
+            "source": "reverse-engineering/d2r-3.2.92777/modules/skill-costs.md — Affordability is a separate decision",
+            "witness": "Body [0x340900,0x340A78); SHA256 6AFF612D41E94ED98BACC45CCCEE5F53787B2FCBE4831399E3F14B6BE037D87F; caller 0x33F489."
+          },
+          {
+            "source": "reverse-engineering/d2r-3.2.92777/known-rvas.json — D2Common_SKILLMANA_CheckStat existing notes",
+            "witness": "Register mapping and return observation preserved from the pre-intake registry; no new native qualification."
+          }
+        ],
+        "runtimeQualification": {
+          "status": "not-tested",
+          "notes": "Existing static reconstruction only; normalization into structured fields adds no runtime evidence."
+        }
+      }
     },
     {
       "rva": "0x436A80",
@@ -1900,6 +2225,30 @@
       "notes": "Returns the item-data pointer stored at unit+0x10. CharmInventoryAuras reads flags at +0x18 and the inventory-grid node position at +0xB8."
     },
     {
+      "rva": "0x36CA80",
+      "name": "ITEMS_GetAutoAffixId",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/advanced-item-tooltips/notes/loader13-affixes.md",
+      "notes": "Complete 112-byte getter validates item type and obtains ItemData through 0x34A500. Canonical MOVZX EAX,WORD [RAX+0x46] at 0x36CAE6 is replaced by public Loader 1.3 with MOV EAX,DWORD [RAX-0x1C] plus NOP. Authorized read-only 93847 live proof shows no other body difference. AIT 3.4.3 admits only complete consistent legacy16 or extended32 auto/prefix/suffix getter witnesses."
+    },
+    {
+      "rva": "0x36CD50",
+      "name": "ITEMS_GetMagicPrefixId",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/advanced-item-tooltips/notes/loader13-affixes.md",
+      "notes": "Complete 130-byte getter has x64 ABI uint32(item RCX, slot EDX), with caller-bounded slots 0..2. Canonical WORD [ItemData+slot*2+0x48] at 0x36CDC2 becomes public Loader 1.3 DWORD [ItemData+slot*4-0x18] plus NOP. Core ItemService getItemInfo uses native import descriptor 0x67D2E8 naming this RVA. The full live body matches the canonical body except the proven five-byte load transform; AIT copies the three DWORD IDs without truncation."
+    },
+    {
+      "rva": "0x36CDE0",
+      "name": "ITEMS_GetMagicSuffixId",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/advanced-item-tooltips/notes/loader13-affixes.md",
+      "notes": "Complete 130-byte getter has x64 ABI uint32(item RCX, slot EDX), with caller-bounded slots 0..2. Canonical WORD [ItemData+slot*2+0x4E] at 0x36CE52 becomes public Loader 1.3 DWORD [ItemData+slot*4-0x0C] plus NOP. Core ItemService getItemInfo uses native import descriptor 0x67D300 naming this RVA. The full live body matches the canonical body except the proven five-byte load transform. Mixed or unknown affix getter layouts must fail closed."
+    },
+    {
       "rva": "0x34B6E0",
       "name": "UNITS_GetSkillList",
       "kind": "function",
@@ -2345,7 +2694,77 @@
       "kind": "function",
       "confidence": "high",
       "source": "D2RL-Plugins plugin-skills 2.0.1 (commit dc75b49ffbb67b887d7757ee00ee9a03bcde5d8a); reverse-engineering/d2r-3.2.92777/modules/skill-costs.md",
-      "notes": "Native mana and charged-item consumption path used by the official plugin pack. Static logical body 0x436830..0x436A7E exclusive, 590 bytes, SHA256 BB46A2F8878B6C9BCBC77243228F36CE08B4305E408D3B00D8B3CD00874B4F71. Observed arguments game RCX, unit RDX, skillId R8D, level R9D; int32 result. Normal branch calculates cost via 0x33AA00, returns 0 for nonpositive cost, checks player state 0x72 at 0x436A1C and calls 0x584E80 at 0x436A2A; otherwise checks stat 8 then subtracts cost unless unidentified global byte 0x2AA6A69 is set. Charged-item branch handles stat 0xCC independently. Direct calls at 0x43B135 and 0x43B5B4. Pdata fragments do not bound the complete logical function. No active-stack ownership or runtime qualification by this reconstruction."
+      "notes": "Native mana and charged-item consumption path used by the official plugin pack. Static logical body 0x436830..0x436A7E exclusive, 590 bytes, SHA256 BB46A2F8878B6C9BCBC77243228F36CE08B4305E408D3B00D8B3CD00874B4F71. Observed arguments game RCX, unit RDX, skillId R8D, level R9D; int32 result. Normal branch calculates cost via 0x33AA00, returns 0 for nonpositive cost, checks player state 0x72 at 0x436A1C and calls 0x584E80 at 0x436A2A; otherwise checks stat 8 then subtracts cost unless unidentified global byte 0x2AA6A69 is set. Charged-item branch handles stat 0xCC independently. Direct calls at 0x43B135 and 0x43B5B4. Pdata fragments do not bound the complete logical function. No active-stack ownership or runtime qualification by this reconstruction.",
+      "argumentContract": {
+        "schemaVersion": 1,
+        "status": "partial",
+        "callable": true,
+        "prototype": null,
+        "arguments": [
+          {
+            "position": 1,
+            "name": "game",
+            "location": "RCX",
+            "type": "opaque pointer (64-bit)",
+            "meaning": "Game context"
+          },
+          {
+            "position": 2,
+            "name": "unit",
+            "location": "RDX",
+            "type": "opaque pointer (64-bit)",
+            "meaning": "Unit paying the resource cost"
+          },
+          {
+            "position": 3,
+            "name": "skillId",
+            "location": "R8D",
+            "type": "int32_t",
+            "meaning": "Skill record identifier"
+          },
+          {
+            "position": 4,
+            "name": "level",
+            "location": "R9D",
+            "type": "int32_t",
+            "meaning": "Skill level"
+          }
+        ],
+        "return": {
+          "location": "EAX",
+          "type": "int32_t",
+          "meaning": "Branch-dependent consumption result; nonpositive normal cost returns zero"
+        },
+        "requirements": [
+          "Only the documented argument/register observations are established; thread, lifetime and active-provider requirements need consumer-specific proof."
+        ],
+        "effects": [
+          "Can update mana or charges, or delegate to Blood Mana payment, depending on the branch."
+        ],
+        "unknowns": [
+          "Pointer ownership, lifetime and complete valid calling context are unresolved.",
+          "Purpose of global byte 0x2AA6A69 remains unidentified.",
+          "Active hook ownership is not established by this reconstruction."
+        ],
+        "scope": {
+          "target": "D2R 3.3.93847 using the governed common 92777/93847 corpus",
+          "canonicalSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715"
+        },
+        "evidence": [
+          {
+            "source": "reverse-engineering/d2r-3.2.92777/modules/skill-costs.md — Ordinary consumption",
+            "witness": "Body [0x436830,0x436A7E); SHA256 BB46A2F8878B6C9BCBC77243228F36CE08B4305E408D3B00D8B3CD00874B4F71; callers 0x43B135 and 0x43B5B4."
+          },
+          {
+            "source": "reverse-engineering/d2r-3.2.92777/known-rvas.json — D2GAME_SKILLMANA_Consume existing notes",
+            "witness": "Register mapping and return observation preserved from the pre-intake registry; no new native qualification."
+          }
+        ],
+        "runtimeQualification": {
+          "status": "not-tested",
+          "notes": "Existing static reconstruction only; normalization into structured fields adds no runtime evidence."
+        }
+      }
     },
     {
       "rva": "0x43921F",
@@ -4689,7 +5108,7 @@
       "kind": "function",
       "confidence": "high",
       "source": "plugin-dev/mass-identify/mission.md",
-      "notes": "Keyboard/mouse inventory handler with ABI (widget, eventStateValue) -> void. It stores the second argument by value and passes the address of that stack copy to widget vtable +0xC8 at 0x228B2D, rejects mouse state 5 at 0x228AF0, tests Ctrl at 0x228BA3 and Shift at 0x228CA4, then dispatches the vanilla right-click through vtable +0xD0 at 0x228CED. The MassID 0.1.5 gameplay witness invalidated treating eventStateValue itself as a pointer; 0.1.6 reproduces the local-copy ABI. Its strict 32-byte entry signature is unique in build 92777."
+      "notes": "Keyboard/mouse inventory handler with ABI (widget, eventStateValue) -> void. It stores the second argument by value and passes the address of that stack copy to widget vtable +0xC8 at 0x228B2D, rejects mouse state 5 at 0x228AF0, tests Ctrl at 0x228BA3 and Shift at 0x228CA4, then dispatches the vanilla right-click through vtable +0xD0 at 0x228CED. The MassID 0.1.5 gameplay witness invalidated treating eventStateValue itself as a pointer; 0.1.6 reproduces the local-copy ABI. Its strict 32-byte entry signature is unique in build 92777. 2026-09-21 clarification: vtable and BeltWidget source-string evidence identifies this as the belt handler, not a legacy-inventory counterpart; +0xD0 is the unmodified left-click pickup action. Historical name retained as an alias. See plugin-dev/stack-manager/configurable-controls-native.md."
     },
     {
       "rva": "0x2C7540",
@@ -4697,7 +5116,7 @@
       "kind": "function",
       "confidence": "high",
       "source": "plugin-dev/mass-identify/mission.md",
-      "notes": "Modern inventory-slot click handler with ABI (widget, eventStateValue) -> void. It stores the second argument by value and passes the address of that stack copy to widget vtable +0xC8 at 0x2C7801, validates the slot at 0x2C756B, separates mouse state 5 from the right branch at 0x2C7614, tests Ctrl at 0x2C78CD and Shift at 0x2C7CEC, then calls 0x2AA9F0 or 0x15F660. MassID 0.1.6 hooks this entry together with 0x228AB0 so panel selection is no longer inferred from an indirect witness. Its strict 32-byte entry signature is unique in build 92777."
+      "notes": "Modern inventory-slot click handler with ABI (widget, eventStateValue) -> void. It stores the second argument by value and passes the address of that stack copy to widget vtable +0xC8 at 0x2C7801, validates the slot at 0x2C756B, separates mouse state 5 from the right branch at 0x2C7614, tests Ctrl at 0x2C78CD and Shift at 0x2C7CEC, then calls 0x2AA9F0 or 0x15F660. MassID 0.1.6 hooks this entry together with 0x228AB0 so panel selection is no longer inferred from an indirect witness. Its strict 32-byte entry signature is unique in build 92777. 2026-09-21 clarification: this belongs to InventoryGridWidget; the base InputMessage dispatcher sends left-button actions here through vtable+0x100. Historical registry name retained. See plugin-dev/stack-manager/configurable-controls-native.md."
     },
     {
       "rva": "0x2C5241",

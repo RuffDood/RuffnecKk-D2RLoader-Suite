@@ -1,0 +1,26 @@
+{
+  "name": "@ruffneckk/d2r-save-converter",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "d2r-save-converter": "src/cli-entry.mjs"
+  },
+  "scripts": {
+    "postinstall": "patch-package",
+    "generate:vanilla-excel": "node scripts/generate-vanilla-excel.mjs",
+    "build:standalone": "node scripts/build-standalone.mjs",
+    "convert": "node src/cli-entry.mjs",
+    "fixture:runtime": "node scripts/create-runtime-fixture.mjs",
+    "test": "node --test src/*.test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "patch-package": "^8.0.1",
+    "postject": "1.0.0-alpha.6"
+  },
+  "dependencies": {
+    "@d2runewizard/d2s": "2.0.132",
+    "stormlib-js": "^0.1.1"
+  }
+}

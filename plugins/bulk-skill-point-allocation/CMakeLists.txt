@@ -11,6 +11,10 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     add_subdirectory(../../common "${CMAKE_BINARY_DIR}/_deps/common")
 endif()
 
+include(FetchContent)
+FetchContent_Declare(tomlplusplus GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git GIT_TAG v3.4.0 GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(tomlplusplus)
+
 add_library(ruffneckk_bulk_skill_point_allocation SHARED
     src/plugin.cpp
     src/plugin.rc
@@ -20,7 +24,9 @@ target_link_libraries(
     ruffneckk_bulk_skill_point_allocation
     PRIVATE
         RuffnecKk::Common
+        RuffnecKk::NativeStatCompat
         user32
+        tomlplusplus::tomlplusplus
 )
 target_compile_features(
     ruffneckk_bulk_skill_point_allocation
@@ -91,4 +97,12 @@ if(BUILD_TESTING)
         NAME ruffneckk.bulk-skill-point-allocation.metadata
         COMMAND ruffneckk_bulk_skill_point_allocation_metadata_tests
     )
+endif()
+
+if(BUILD_TESTING)
+    add_executable(skill_removal_tests tests/removal_tests.cpp)
+    target_compile_features(skill_removal_tests PRIVATE cxx_std_20)
+    target_include_directories(skill_removal_tests PRIVATE src)
+    target_link_libraries(skill_removal_tests PRIVATE RuffnecKk::Common tomlplusplus::tomlplusplus)
+    add_test(NAME ruffneckk.bulk-skill-point-allocation.removal COMMAND skill_removal_tests "${CMAKE_CURRENT_SOURCE_DIR}/config/BulkSkillPointAllocation.toml")
 endif()

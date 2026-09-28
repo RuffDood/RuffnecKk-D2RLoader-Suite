@@ -1,5 +1,10 @@
 # Cast Triggers 1.1.1
 
+The current source adds an opt-in **spell-kill extension for vanilla On Kill**
+and a new **On Block** trigger family. These additions are an unreleased local
+candidate; their gameplay, persistence and multiplayer qualification remains
+open. The component version is unchanged.
+
 Cast Triggers adds Path of Exile-style skill procs to Diablo II: Resurrected
 items.
 
@@ -8,6 +13,8 @@ X% Chance to cast level X [Skill] when casting a skill
 X% Chance to cast [Skill] at the source skill level when casting a skill
 X% Chance to cast level X [Skill] while channeling
 X% Chance to cast level X [Skill] when casting [Source Skill]
+X% Chance to cast level X [Skill] when you Kill an Enemy
+X% Chance to cast level X [Skill] when you Block
 ```
 
 > [!IMPORTANT]
@@ -72,6 +79,7 @@ Copy `item_skillonattack` in `ItemStatCost.txt` and `att-skill` in
 | Crushing Blow | `item_skilloncrushingblow` | `cast-skill-on-cb` | `crushing_blow_stat_id` |
 | Open Wounds | `item_skillonopenwounds` | `cast-skill-on-ow` | `open_wounds_stat_id` |
 | Attack Attempt | `item_skillonattackattempt` | `cast-skill-on-attack` | `attack_attempt_stat_id` |
+| Block | `item_skillonblock` | `cast-skill-on-block` | `on_block.stat_id` |
 
 For every `ItemStatCost.txt` row, copy the complete native row instead of
 building one from empty cells. Then change its `Stat` and `*ID`, set
@@ -84,6 +92,19 @@ For every `Properties.txt` row, copy the complete native `att-skill` row. Keep
 `*Enabled=1`, `func1=11`, `uiRangeType=7`, and set `stat1` to the matching
 ItemStatCost `Stat` value. The example property codes may be changed, but must
 remain stable after items using them are published.
+
+Diablo II already provides Chance to Cast on Kill through the native **`kill`
+event**, `item_skillonkill` stat and `kill-skill` property. This plugin does not
+recreate that trigger. It optionally extends the existing callback to kills
+caused by player spells, which vanilla normally excludes from item-proc
+eligibility.
+
+Set `on_kill.stat_id` to native `item_skillonkill` (`196`) to extend existing
+`kill-skill` properties, or clone the complete `item_skillonkill` and
+`kill-skill` rows into unused IDs. Keep `itemevent1=kill`,
+`itemeventfunc1=20`, native encoding and save fields on that clone. A clone lets
+the mod extend one property without extending its other native on-kill items.
+Only one on-kill stat can be configured at a time; it is not a `doactive` stat.
 
 ### Source-conditioned families
 
@@ -120,6 +141,8 @@ English values are ready for `enUS`:
 | `CastOnCrushingBlow` | `%d%% Chance to cast level %d %s on Crushing Blow` |
 | `CastOnOpenWounds` | `%d%% Chance to cast level %d %s on Open Wounds` |
 | `CastOnAttackAttempt` | `%d%% Chance to cast level %d %s on Attack Attempt` |
+| `CastOnBlock` | `%d%% Chance to cast level %d %s when you Block` |
+| `CastOnKillConfigured` | `%d%% Chance to cast level %d %s when you Kill an Enemy` |
 | `CastWhenFrostNova` | `%d%% Chance to cast level %d %s when casting Frost Nova` |
 | `CastWhenFrostNovaSameLevel` | `%d%% Chance to cast %.*s at the source skill level when casting Frost Nova` |
 
@@ -182,6 +205,12 @@ critical_strike_stat_id = <CRITICAL_STAT_ID>
 crushing_blow_stat_id = <CRUSHING_BLOW_STAT_ID>
 open_wounds_stat_id = <OPEN_WOUNDS_STAT_ID>
 
+[on_kill]
+stat_id = <NATIVE_OR_CLONED_KILL_STAT_ID>
+
+[on_block]
+stat_id = <BLOCK_STAT_ID>
+
 [diagnostics]
 enabled = false
 ```
@@ -200,6 +229,54 @@ families.
 Channeling rolls once immediately, then at `interval_frames`. D2R runs at 25
 server frames per second, so 50 frames equals two seconds. Ordinary
 `cast-skill` properties do not activate from channeling skills.
+
+### Kill and block behavior
+
+`on_kill.stat_id=0` leaves vanilla On Kill unchanged. A nonzero ID extends that
+stat when the server reports a player kill whose damage record lacks the native
+item-proc eligibility bit. The original callback still reads the item, rolls
+the player's native chance and selects the skill, level and target. Spell
+damage and weapon damage are unchanged. Kills already eligible natively, other
+stats/events, and non-player owners are forwarded unchanged. Minion and
+mercenary ownership is not reassigned to the player.
+
+`on_block.stat_id=0` disables block dispatch. A nonzero ID reserves a separate
+`doactive` stat for confirmed player blocks, including Assassin Weapon Block.
+The blocking player owns the proc and the incoming attacker is its native
+target. Shield and Weapon Block are intentionally combined: some missile
+paths encode both as the same final block result. Misses, Dodge, Avoid, Evade,
+absorb and zero damage alone do not qualify. Block animation cooldown and an
+uninterruptible animation do not define whether a block occurred. Each
+accepted native block outcome gets one dispatch, with no per-frame cooldown;
+each matching item entry retains its normal chance roll.
+
+Both IDs must be distinct from every configured channel/source/combat stat.
+Use fixed-level item properties for these families; neither derives a source
+skill level. The existing guards suppress synchronous synthetic proc chains
+and prevent the on-kill extension during an item-skill execution. Delayed
+missiles and damage-over-time outlive those guards and still require runtime
+qualification. All dispatch occurs on the authoritative server. PvP and
+TCP/IP ownership, full-stack coexistence and save/reload are separate open
+tests for this candidate.
+
+To disable either addition, set its ID to `0`. Keep ItemStatCost rows and IDs
+that saved items use; removing them is not a safe rollback. A DLL rollback must
+also restore its compatible TOML, since older versions reject the new sections.
+
+### Offline fixture
+
+`tools/build-test-fixture.cjs` produces data and TOML only. It uses the governed
+Diablo workspace parser; set `DIABLO_WORKSPACE` when that workspace is not the
+Suite's sibling `Diablo` directory. Pass a fresh output directory, build label,
+mod name, source Excel directory and source `item-modifiers.json` path. It
+never copies a packaged DLL or installs its output.
+
+The added recipes use chipped amethyst for configured on-kill Fire Ball,
+chipped topaz for unchanged native on-kill Fire Ball, chipped sapphire for
+on-block Nova, and amethyst plus sapphire for both configured families on one
+ring. They use 100% chance and fixed level 12 for deterministic qualification.
+The fixture's configured on-kill row is a clone; testing the native-stat option
+requires a separate TOML fixture with `on_kill.stat_id=196`.
 
 ## Put a proc on an item or affix
 
@@ -260,9 +337,3 @@ The source skill and triggered skill are separate. In a property named
 - Author: `RuffnecKk`.
 - D2MOO is the semantic reference for item properties and server skill behavior.
 - D2RLoader and its PluginSDK provide the plugin runtime.
-
-## Isolated compatibility work
-
-The optional 1.0.1 damage-cleanup candidate for DollExplosion is documented in
-[DAMAGE-CLEANUP-ABI.md](DAMAGE-CLEANUP-ABI.md). It is OFF by default and excluded
-from the current release; the default plugin remains 1.0.0.

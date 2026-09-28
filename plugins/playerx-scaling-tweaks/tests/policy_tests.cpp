@@ -1,5 +1,6 @@
 #include "native_fingerprint.hpp"
 #include "player_scaling_policy.hpp"
+#include "players_command.hpp"
 
 #include <D2RLPlugin/lifecycle.h>
 
@@ -8,6 +9,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <sstream>
 #include <string>
 
 namespace {
@@ -26,9 +28,11 @@ void Require(bool condition, const std::string& message) {
 auto ReadText(const std::filesystem::path& path) -> std::string {
     std::ifstream input(path, std::ios::binary);
     if (!input.is_open()) Fail("cannot open " + path.string());
-    return {
+    std::string text{
         std::istreambuf_iterator<char>(input),
         std::istreambuf_iterator<char>()};
+    std::erase(text, '\r');
+    return text;
 }
 
 auto ReplaceOne(
@@ -43,6 +47,114 @@ auto ReplaceOne(
     return source;
 }
 
+void TestPlayerControlsConfig() {
+    auto root = toml::parse(ReadText(PLAYER_SCALING_TOML_FILE));
+    auto& count = *root["player-count"].as_table();
+    count.insert_or_assign("maximum-command-players", 64);
+    count.insert_or_assign("start-game-players", 16);
+    count.insert_or_assign("hotkeys", toml::array{
+        toml::table{{"keys", "Shift+1"}, {"players", 1}},
+        toml::table{{"keys", "Ctrl+S"}, {"players", 32}}});
+    const auto parse = [&](Config& result, std::string& error) {
+        std::ostringstream text;
+        text << root;
+        return ParseToml(text.str(), result, error);
+    };
+    Config result{};
+    std::string error;
+    Require(parse(result, error), "startup and hotkeys parse: " + error);
+    Require(result.startGamePlayers == 16 && result.hotkeys.size() == 2,
+        "startup and repeated hotkeys retained");
+    Require(result.hotkeys[0].key == 0x31 && result.hotkeys[0].modifier == 1
+            && result.hotkeys[1].key == 0x53 && result.hotkeys[1].modifier == 2,
+        "key chords map to SDK key and modifier values");
+    count.erase("start-game-players");
+    count.erase("hotkeys");
+    Require(parse(result, error) && result.startGamePlayers == 0
+            && result.hotkeys.empty(), "old TOMLs keep controls disabled");
+    count.insert_or_assign("start-game-players", 65);
+    Require(!parse(result, error), "startup above configured cap rejected");
+    count.insert_or_assign("start-game-players", 0);
+    count.insert_or_assign("hotkeys", toml::array{
+        toml::table{{"keys", "Shift+1"}, {"players", 1}},
+        toml::table{{"keys", "shift+1"}, {"players", 8}}});
+    Require(!parse(result, error), "duplicate normalized chord rejected");
+    count.insert_or_assign("hotkeys", toml::array{});
+    Require(parse(result, error) && result.hotkeys.empty(), "empty list disables hotkeys");
+    for (const auto* keys : {"Shift+Ctrl+1", "", "Shift+", "F25", "Escape", "Alt+?"}) {
+        count.insert_or_assign("hotkeys", toml::array{
+            toml::table{{"keys", keys}, {"players", 1}}});
+        Require(!parse(result, error), "unsupported chord rejected");
+    }
+    count.insert_or_assign("hotkeys", toml::array{
+        toml::table{{"keys", "Alt+F12"}, {"players", 65}}});
+    Require(!parse(result, error), "hotkey above cap rejected");
+    count.insert_or_assign("hotkeys", toml::array{
+        toml::table{{"keys", "Alt+F12"}, {"players", 4}}});
+    count.insert_or_assign("minimum-scaling-players", 4);
+    count.insert_or_assign("start-game-players", 1);
+    Require(!parse(result, error), "startup below floor rejected");
+    count.insert_or_assign("start-game-players", 0);
+    Require(parse(result, error) && result.hotkeys[0].key == 0x7B
+            && result.hotkeys[0].modifier == 3, "function key with modifier accepted");
+    count.insert_or_assign("hotkeys", toml::array{
+        toml::table{{"keys", "Shift+1"}, {"players", 1}}});
+    Require(!parse(result, error), "hotkey below floor rejected");
+    count.insert_or_assign("hotkeys", toml::array{1});
+    Require(!parse(result, error), "malformed hotkey list rejected");
+}
+
+void TestNativeCommandRange() {
+    struct NativeSetting {
+        std::int32_t minimum{1};
+        std::int32_t maximum{8};
+        std::int32_t value{1};
+        int writes{};
+    } setting;
+    const auto setRange = [](void* object, std::int32_t minimum,
+            std::int32_t maximum) noexcept {
+        auto& state = *static_cast<NativeSetting*>(object);
+        state.minimum = minimum;
+        state.maximum = maximum;
+    };
+    const auto setCount = [](void* object, std::int32_t requested) noexcept {
+        auto& state = *static_cast<NativeSetting*>(object);
+        state.value = std::clamp(requested, state.minimum, state.maximum);
+        ++state.writes;
+    };
+    Config config{};
+    config.maximumCommandPlayers = 16;
+    setCount(&setting, ClampPlayersCommand(16, config));
+    Require(setting.value == 8, "reproduce 1.0.2 downstream native clamp");
+    for (const auto requested : {1, 8, 9, 16, 17, 65535}) {
+        setting = {}; // Also model a native range reset between commands.
+        const auto accepted = ApplyPlayersCommand(
+            &setting, requested, config, setRange, setCount);
+        Require(accepted == std::min(requested, 16)
+                && setting.value == accepted && setting.writes == 1,
+            "native setting retains the configured extended command");
+    }
+    config.minimumScalingPlayers = 4;
+    config.maximumCommandPlayers = 65535;
+    for (const auto requested : {-1, 0, 1, 4, 16, 65535, 65536}) {
+        setting = {};
+        const auto accepted = ApplyPlayersCommand(
+            &setting, requested, config, setRange, setCount);
+        Require(setting.value == std::clamp(requested, 4, 65535)
+                && setting.value == accepted,
+            "native range honors both configured bounds");
+    }
+    config = {};
+    ApplyPlayersCommand(&setting, 16, config, setRange, setCount);
+    Require(setting.value == 8 && setting.maximum == 8,
+        "default configuration restores vanilla p8 ceiling");
+    config.maximumCommandPlayers = 16;
+    config.battleNetSimulationEnabled = true;
+    ApplyPlayersCommand(&setting, 16, config, setRange, setCount);
+    Require(setting.value == 1 && setting.minimum == 1 && setting.maximum == 1,
+        "Battle.net simulation cannot expand its p1 lock");
+}
+
 void TestDefaultToml() {
     const auto text = ReadText(PLAYER_SCALING_TOML_FILE);
     Config config{};
@@ -54,6 +166,12 @@ void TestDefaultToml() {
         "Battle.net simulation defaults to false");
     Require(config.minimumScalingPlayers == 1, "vanilla minimum");
     Require(config.maximumCommandPlayers == 8, "vanilla command maximum");
+    Require(config.startGamePlayers == 0 && config.hotkeys.size() == 2,
+        "template keeps startup optional and exactly two shortcuts");
+    Require(config.hotkeys[0].key == 0x31 && config.hotkeys[0].modifier == 1
+        && config.hotkeys[0].players == 1 && config.hotkeys[1].key == 0x32
+        && config.hotkeys[1].modifier == 1 && config.hotkeys[1].players == 2,
+        "template defaults to Shift+1/p1 and Shift+2/p2");
     Require(config.monsterLife.enabled
             && config.monsterLife.maximumPlayers == 0,
         "life defaults");
@@ -227,6 +345,89 @@ void TestNoDropPolicy() {
         "Battle.net simulation takes NoDrop simulation priority");
 }
 
+void TestIndependentNoDropMinimum() {
+    auto root = toml::parse(ReadText(PLAYER_SCALING_TOML_FILE));
+    auto& noDrop = *root["no-drop"].as_table();
+    noDrop.insert_or_assign("minimum-effective-players", 5);
+    std::ostringstream text;
+    text << root;
+    Config config{};
+    std::string error;
+    Require(ParseToml(text.str(), config, error),
+        "independent NoDrop minimum parses: " + error);
+    Require(config.noDrop.minimumEffectivePlayers == 5,
+        "configured minimum retained independently of command range");
+    const auto dropCount = [](int players, int nearby, int monsterCount,
+            const Config& settings) {
+        const auto counts = ResolveNoDropCounts(players, nearby, EffectiveNoDropConfig(settings));
+        const auto cap = ResolveNoDropMonsterCap(monsterCount, counts.effectivePlayers,
+            IsNoDropPartySimulationEnabled(settings), settings.noDrop.minimumEffectivePlayers);
+        return (std::min)(counts.effectivePlayers, cap);
+    };
+    Require(dropCount(1, 1, 1, config) == 5, "minimum survives a p1 monster cap");
+    Require(dropCount(8, 1, 8, config) == 5, "solo p8 native half credit is raised to five");
+    Require(dropCount(8, 8, 8, config) == 8, "higher nearby-party count is preserved");
+    Require(dropCount(8, 8, 2, config) == 5,
+        "minimum does not remove the native monster cap above the floor");
+    auto lowMinimum = config;
+    lowMinimum.noDrop.minimumEffectivePlayers = 2;
+    Require(dropCount(9, 0, 9, lowMinimum) == 4,
+        "zero nearby party members do not gain extra half-credit above the floor");
+    Require(ResolveScalingCount(1, config.minimumScalingPlayers, config.monsterLife) == 1
+        && ResolveScalingCount(1, config.minimumScalingPlayers, config.monsterExperience) == 1
+        && ResolveScalingCount(1, config.minimumScalingPlayers, config.monsterOffense) == 1
+        && ClampPlayersCommand(1, config) == 1,
+        "NoDrop minimum leaves command and monster channels independent");
+    config.noDrop.playersCommandSimulatesNearbyParty = true;
+    Require(dropCount(8, 1, 1, config) == 8, "party simulation above the minimum survives the monster cap");
+    config.battleNetSimulationEnabled = true;
+    Require(IsNoDropAdjustmentEnabled(config) && !IsNoDropPartySimulationEnabled(config)
+        && dropCount(1, 1, 1, config) == 5 && dropCount(8, 1, 8, config) == 5,
+        "Battle.net simulation preserves the minimum but disables command party simulation");
+    config.noDrop.minimumEffectivePlayers = 1;
+    Require(!IsNoDropAdjustmentEnabled(config) && dropCount(1, 1, 1, config) == 1,
+        "default minimum in master mode preserves native behavior");
+    config.battleNetSimulationEnabled = false;
+    config.noDrop.playersCommandSimulatesNearbyParty = false;
+    for (int players = 1; players <= 16; ++players) {
+        for (int nearby = 1; nearby <= players; ++nearby) {
+            for (int monster = 1; monster <= 16; ++monster) {
+                const auto native = (std::min)(NativeNoDropEffectiveCount(players, nearby), monster);
+                Require(dropCount(players, nearby, monster, config) == native,
+                    "default minimum preserves existing native drop counts");
+                auto floor = config;
+                floor.noDrop.minimumEffectivePlayers = 5;
+                Require(dropCount(players, nearby, monster, floor) == (std::max)(native, 5),
+                    "independent floor is exactly applied after the native monster cap");
+            }
+        }
+    }
+    const auto parse = [&] {
+        std::ostringstream updated;
+        updated << root;
+        return ParseToml(updated.str(), config, error);
+    };
+    noDrop.erase("minimum-effective-players");
+    Require(parse() && config.noDrop.minimumEffectivePlayers == 1,
+        "legacy TOMLs default to an inactive minimum");
+    for (const auto minimum : {1, 5, 64, 65535}) {
+        noDrop.insert_or_assign("minimum-effective-players", minimum);
+        Require(parse() && config.noDrop.minimumEffectivePlayers == minimum,
+            "independent minimum may exceed the command maximum");
+        Require(dropCount(1, 1, 1, config) == minimum, "configured bounds reach final effective count");
+    }
+    for (const auto invalid : {-1, 0, 65536}) {
+        noDrop.insert_or_assign("minimum-effective-players", invalid);
+        Require(!parse(), "out-of-range minimum rejected");
+    }
+    noDrop.insert_or_assign("minimum-effective-players", "5");
+    Require(!parse(), "string minimum rejected");
+    noDrop.insert_or_assign("minimum-effective-players", 5.0);
+    Require(!parse(), "fractional type rejected");
+    noDrop.insert_or_assign("minimum-effective-players", true);
+    Require(!parse(), "boolean minimum rejected");
+}
+
 void TestInvalidToml() {
     const auto original = ReadText(PLAYER_SCALING_TOML_FILE);
     Config config{};
@@ -251,6 +452,8 @@ void TestInvalidToml() {
         "minimum-scaling-players = 1", "minimum-scaling-players = 4");
     text = ReplaceOne(text,
         "maximum-players = 0", "maximum-players = 3");
+    text = ReplaceOne(text, "\nplayers = 1\n", "\nplayers = 4\n");
+    text = ReplaceOne(text, "\nplayers = 2\n", "\nplayers = 4\n");
     Require(!ParseToml(text, config, error)
             && error.find("monster-life-scaling.maximum-players")
                 != std::string::npos,
@@ -325,14 +528,20 @@ void TestStaticContract() {
         "plugin metadata declares the shared execution role");
     Require(plugin.find("InstallInlineHook") != std::string::npos,
         "managed entry hook");
-    Require(plugin.find("PatchCallRel32") != std::string::npos,
-        "managed callsite hooks");
+    Require(plugin.find("installSite(native::PlayersAtoiCallRva")
+            != std::string::npos
+            && plugin.find("installSite(native::NoDropMonsterCapCallRva")
+                != std::string::npos
+            && plugin.find("PatchCallRel32") == std::string::npos,
+        "Loader-owned callsite hooks without external relays");
     Require(plugin.find("InstallBattleNetSimulationPatches")
             != std::string::npos
             && plugin.find("PatchBytes") != std::string::npos,
         "managed Battle.net simulation patches");
-    Require(plugin.find("_AddressOfReturnAddress") != std::string::npos,
-        "NoDrop ABI stack slot");
+    Require(plugin.find("nearbyPartySlot") != std::string::npos
+            && plugin.find("effectiveNoDropSlot") != std::string::npos
+            && plugin.find("_AddressOfReturnAddress") == std::string::npos,
+        "NoDrop ABI stack slots passed explicitly by the site hooks");
     Require(plugin.find("HasNativePlayerCountScaling(output[4])")
             != std::string::npos,
         "native monster exemption gate");
@@ -393,11 +602,14 @@ void TestStaticContract() {
 } // namespace
 
 int main() {
+    TestPlayerControlsConfig();
+    TestNativeCommandRange();
     TestDefaultToml();
     TestLegacyTomlUpgrade();
     TestBattleNetSimulationToml();
     TestCommandAndChannelPolicy();
     TestNoDropPolicy();
+    TestIndependentNoDropMinimum();
     TestInvalidToml();
     TestStaticContract();
     std::cout << "PASS: PlayerX Scaling Tweaks policy and static contract\n";

@@ -1,0 +1,682 @@
+diff --git a/node_modules/@d2runewizard/d2s/lib/d2/attributes.d.ts b/node_modules/@d2runewizard/d2s/lib/d2/attributes.d.ts
+index c9cdac8..e22d925 100644
+--- a/node_modules/@d2runewizard/d2s/lib/d2/attributes.d.ts
++++ b/node_modules/@d2runewizard/d2s/lib/d2/attributes.d.ts
+@@ -1,4 +1,4 @@
+ import * as types from "./types";
+ import { BitReader } from "../binary/bitreader";
+-export declare function readAttributes(char: types.ID2S, reader: BitReader, constants: types.IConstantData): Promise<void>;
+-export declare function writeAttributes(char: types.ID2S, constants: types.IConstantData): Promise<Uint8Array>;
++export declare function readAttributes(char: types.ID2S, reader: BitReader, constants: types.IConstantData, config?: types.IConfig): Promise<void>;
++export declare function writeAttributes(char: types.ID2S, constants: types.IConstantData, config?: types.IConfig): Promise<Uint8Array>;
+diff --git a/node_modules/@d2runewizard/d2s/lib/d2/attributes.js b/node_modules/@d2runewizard/d2s/lib/d2/attributes.js
+index c047e0d..f99a583 100644
+--- a/node_modules/@d2runewizard/d2s/lib/d2/attributes.js
++++ b/node_modules/@d2runewizard/d2s/lib/d2/attributes.js
+@@ -3,10 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.writeAttributes = exports.readAttributes = void 0;
+ const bitwriter_1 = require("../binary/bitwriter");
+ //todo use constants.magical_properties and csvBits
+-async function readAttributes(char, reader, constants) {
++async function readAttributes(char, reader, constants, config) {
+     char.attributes = {};
++    char._raw_attributes = [];
+     const header = reader.ReadString(2); //0x0000 [attributes header = 0x67, 0x66 "gf"]
+     if (header != "gf") {
++        char._attributes_header_present = false;
+         // header is not present in first save after char is created
+         if (char.header.level === 1) {
+             const classData = constants.classes.find((c) => c.n === char.header.class).a;
+@@ -32,51 +34,85 @@ async function readAttributes(char, reader, constants) {
+         }
+         throw new Error(`Attribute header 'gf' not found at position ${reader.offset - 2 * 8}`);
+     }
++    char._attributes_header_present = true;
++    const statIdBits = getStatIdBits(config);
++    const statTerminator = (1 << statIdBits) - 1;
+     let bitoffset = 0;
+-    let id = reader.ReadUInt16(9);
+-    //read till 0x1ff end of attributes is found
+-    while (id != 0x1ff) {
+-        bitoffset += 9;
++    let id = reader.ReadUInt16(statIdBits);
++    while (id != statTerminator) {
++        bitoffset += statIdBits;
+         const field = constants.magical_properties[id];
+         if (field === undefined) {
+             throw new Error(`Invalid attribute id: ${id}`);
+         }
+         const size = field.cB;
+-        char.attributes[Attributes[field.s]] = reader.ReadUInt32(size);
++        const rawValue = reader.ReadUInt32(size);
++        char._raw_attributes.push({ id, value: rawValue });
++        const attributeName = Attributes[field.s];
++        if (attributeName !== undefined) {
++            char.attributes[attributeName] = rawValue;
++        }
+         //current_hp - max_stamina need to be bit shifted
+-        if (id >= 6 && id <= 11) {
+-            char.attributes[Attributes[field.s]] >>>= 8;
++        if (attributeName !== undefined && id >= 6 && id <= 11) {
++            char.attributes[attributeName] >>>= 8;
+         }
+         bitoffset += size;
+-        id = reader.ReadUInt16(9);
++        id = reader.ReadUInt16(statIdBits);
+     }
+     reader.Align();
+ }
+ exports.readAttributes = readAttributes;
+-async function writeAttributes(char, constants) {
++async function writeAttributes(char, constants, config) {
+     const writer = new bitwriter_1.BitWriter();
++    if ((config === null || config === void 0 ? void 0 : config.preserveRawAttributes) && char._attributes_header_present === false) {
++        return writer.ToArray();
++    }
++    const statIdBits = getStatIdBits(config);
++    const statTerminator = (1 << statIdBits) - 1;
+     writer.WriteString("gf", 2); //0x0000 [attributes header = 0x67, 0x66 "gf"]
+-    for (let i = 0; i < 16; i++) {
+-        const property = constants.magical_properties[i];
+-        if (property === undefined) {
+-            throw new Error(`Invalid attribute: ${property}`);
+-        }
+-        let value = char.attributes[Attributes[property.s]];
+-        if (!value) {
+-            continue;
++    if ((config === null || config === void 0 ? void 0 : config.preserveRawAttributes) && Array.isArray(char._raw_attributes)) {
++        for (const entry of char._raw_attributes) {
++            if (!Number.isInteger(entry.id) || entry.id < 0 || entry.id >= statTerminator) {
++                throw new Error(`Attribute id ${entry.id} cannot be represented with ${statIdBits} bits`);
++            }
++            const property = constants.magical_properties[entry.id];
++            if (property === undefined) {
++                throw new Error(`Invalid attribute id: ${entry.id}`);
++            }
++            writer.WriteUInt16(entry.id, statIdBits);
++            writer.WriteUInt32(entry.value, property.cB);
+         }
+-        const size = property.cB;
+-        if (i >= 6 && i <= 11) {
+-            value <<= 8;
++    }
++    else {
++        for (let i = 0; i < 16; i++) {
++            const property = constants.magical_properties[i];
++            if (property === undefined) {
++                throw new Error(`Invalid attribute: ${property}`);
++            }
++            let value = char.attributes[Attributes[property.s]];
++            if (!value) {
++                continue;
++            }
++            const size = property.cB;
++            if (i >= 6 && i <= 11) {
++                value <<= 8;
++            }
++            writer.WriteUInt16(i, statIdBits);
++            writer.WriteUInt32(value, size);
+         }
+-        writer.WriteUInt16(i, 9);
+-        writer.WriteUInt32(value, size);
+     }
+-    writer.WriteUInt16(0x1ff, 9);
++    writer.WriteUInt16(statTerminator, statIdBits);
+     writer.Align();
+     return writer.ToArray();
+ }
+ exports.writeAttributes = writeAttributes;
++function getStatIdBits(config) {
++    const bits = (config === null || config === void 0 ? void 0 : config.statIdBits) || 9;
++    if (bits !== 9 && bits !== 12) {
++        throw new Error(`Stat ID width must be 9 or 12 bits; received ${bits}`);
++    }
++    return bits;
++}
+ //nokkas names
+ const Attributes = {
+     strength: "strength",
+diff --git a/node_modules/@d2runewizard/d2s/lib/d2/d2s.js b/node_modules/@d2runewizard/d2s/lib/d2/d2s.js
+index 78c757c..24dca6c 100644
+--- a/node_modules/@d2runewizard/d2s/lib/d2/d2s.js
++++ b/node_modules/@d2runewizard/d2s/lib/d2/d2s.js
+@@ -32,6 +32,9 @@ const defaultConfig = {
+     extendedStash: false,
+     sortProperties: true,
+     disableItemEnhancements: false,
++    statIdBits: 9,
++    preserveRawAttributes: false,
++    preserveRawHeader: false,
+ };
+ function reader(buffer) {
+     return new bitreader_1.BitReader(buffer);
+@@ -40,14 +43,18 @@ exports.reader = reader;
+ async function read(buffer, constants, userConfig) {
+     const char = {};
+     const reader = new bitreader_1.BitReader(buffer);
+-    const config = Object.assign(defaultConfig, userConfig);
++    const config = Object.assign({}, defaultConfig, userConfig);
+     await header_1.readHeader(char, reader);
+     //could load constants based on version here
+     if (!constants) {
+         constants = constants_1.getConstantData(char.header.version);
+     }
+     await header_1.readHeaderData(char, reader, constants);
+-    await attributes_1.readAttributes(char, reader, constants);
++    if (config.preserveRawHeader) {
++        const headerEnd = reader.offset / 8;
++        char._raw_header_data = Array.from(new Uint8Array(buffer).slice(8, headerEnd));
++    }
++    await attributes_1.readAttributes(char, reader, constants, config);
+     await skills_1.readSkills(char, reader, constants);
+     await items.readCharItems(char, reader, constants, config);
+     /*if (char.header.version === 0x69) {
+@@ -67,12 +74,12 @@ async function read(buffer, constants, userConfig) {
+ exports.read = read;
+ async function readItem(buffer, version, constants, userConfig) {
+     const reader = new bitreader_1.BitReader(buffer);
+-    const config = Object.assign(defaultConfig, userConfig);
++    const config = Object.assign({}, defaultConfig, userConfig);
+     if (!constants) {
+         constants = constants_1.getConstantData(version);
+     }
+     const item = await items.readItem(reader, version, constants, config);
+-    await attribute_enhancer_1.enhanceItems([item], constants);
++    await attribute_enhancer_1.enhanceItems([item], constants, 1, config);
+     return item;
+ }
+ exports.readItem = readItem;
+@@ -81,14 +88,19 @@ function writer(buffer) {
+ }
+ exports.writer = writer;
+ async function write(data, constants, userConfig) {
+-    const config = Object.assign(defaultConfig, userConfig);
++    const config = Object.assign({}, defaultConfig, userConfig);
+     const writer = new bitwriter_1.BitWriter();
+     writer.WriteArray(await header_1.writeHeader(data));
+     if (!constants) {
+         constants = constants_1.getConstantData(data.header.version);
+     }
+-    writer.WriteArray(await header_1.writeHeaderData(data, constants));
+-    writer.WriteArray(await attributes_1.writeAttributes(data, constants));
++    if (config.preserveRawHeader && Array.isArray(data._raw_header_data)) {
++        writer.WriteArray(new Uint8Array(data._raw_header_data));
++    }
++    else {
++        writer.WriteArray(await header_1.writeHeaderData(data, constants));
++    }
++    writer.WriteArray(await attributes_1.writeAttributes(data, constants, config));
+     writer.WriteArray(await skills_1.writeSkills(data, constants));
+     writer.WriteArray(await items.writeCharItems(data, constants, config));
+     writer.WriteArray(await items.writeCorpseItem(data, constants, config));
+@@ -104,7 +116,7 @@ async function write(data, constants, userConfig) {
+ }
+ exports.write = write;
+ async function writeItem(item, version, constants, userConfig) {
+-    const config = Object.assign(defaultConfig, userConfig);
++    const config = Object.assign({}, defaultConfig, userConfig);
+     const writer = new bitwriter_1.BitWriter();
+     if (!constants) {
+         constants = constants_1.getConstantData(version);
+diff --git a/node_modules/@d2runewizard/d2s/lib/d2/items.d.ts b/node_modules/@d2runewizard/d2s/lib/d2/items.d.ts
+index 1c401cd..5beffe1 100644
+--- a/node_modules/@d2runewizard/d2s/lib/d2/items.d.ts
++++ b/node_modules/@d2runewizard/d2s/lib/d2/items.d.ts
+@@ -15,5 +15,5 @@ export declare function readItems(reader: BitReader, version: number, constants:
+ export declare function writeItems(items: types.IItem[], version: number, constants: types.IConstantData, config: types.IConfig): Promise<Uint8Array>;
+ export declare function readItem(reader: BitReader, version: number, originalConstants: types.IConstantData, config: types.IConfig, parent?: types.IItem): Promise<types.IItem>;
+ export declare function writeItem(item: types.IItem, version: number, constants: types.IConstantData, config: types.IConfig): Promise<Uint8Array>;
+-export declare function _readMagicProperties(reader: BitReader, constants: types.IConstantData, skipMagicProps?: boolean): types.IMagicProperty[];
+-export declare function _writeMagicProperties(writer: BitWriter, properties: types.IMagicProperty[], constants: types.IConstantData): void;
++export declare function _readMagicProperties(reader: BitReader, constants: types.IConstantData, skipMagicProps?: boolean, config?: types.IConfig): types.IMagicProperty[];
++export declare function _writeMagicProperties(writer: BitWriter, properties: types.IMagicProperty[], constants: types.IConstantData, config?: types.IConfig): void;
+diff --git a/node_modules/@d2runewizard/d2s/lib/d2/items.js b/node_modules/@d2runewizard/d2s/lib/d2/items.js
+index 7a56f26..c6fd8e6 100644
+--- a/node_modules/@d2runewizard/d2s/lib/d2/items.js
++++ b/node_modules/@d2runewizard/d2s/lib/d2/items.js
+@@ -336,8 +336,16 @@ async function readItem(reader, version, originalConstants, config, parent) {
+         if (item.type === "tbk" || item.type == "ibk") {
+             reader.ReadUInt8(5);
+         }
+-        //realm data
++        // Realm data. D2R save format 105 stores four uint32 values when the
++        // presence bit is set. Older versions use fewer values.
+         item.timestamp = reader.ReadUInt8(1);
++        if (item.timestamp) {
++            const realmDataCount = version > 0x60 ? 4 : version > 0x5d ? 3 : 2;
++            item._unknown_data.realm_data = [];
++            for (let i = 0; i < realmDataCount; i++) {
++                item._unknown_data.realm_data.push(reader.ReadUInt32());
++            }
++        }
+         if (item.type_id === ItemType.Armor) {
+             item.defense_rating = reader.ReadUInt16(constants.magical_properties[31].sB) - constants.magical_properties[31].sA;
+         }
+@@ -347,10 +355,18 @@ async function readItem(reader, version, originalConstants, config, parent) {
+                 item.current_durability = reader.ReadUInt16(constants.magical_properties[72].sB) - constants.magical_properties[72].sA;
+             }
+         }
++        if (item.type_id === ItemType.Other && Array.isArray(item.categories) && item.categories.includes("Gold")) {
++            const largeGoldPile = reader.ReadBit();
++            item.gold_amount = largeGoldPile ? reader.ReadUInt32() : reader.ReadUInt16(12);
++            if (version > 0x60) {
++                item._unknown_data.player_gold = reader.ReadBit();
++            }
++        }
++        let hasQuantity = constants.stackables[item.type] ? 1 : 0;
+         if (version === 0x69) {
+-            reader.SkipBits(1); //unknown bit in RotW
++            hasQuantity = reader.ReadUInt8(1);
+         }
+-        if (constants.stackables[item.type]) {
++        if (hasQuantity) {
+             item.quantity = reader.ReadUInt16(9);
+         }
+         if (item.socketed === 1) {
+@@ -368,12 +384,12 @@ async function readItem(reader, version, originalConstants, config, parent) {
+         }
+         //magical properties
+         const skipMagicPeroperties = ["qll", "spe", "sol", "fng", "jaw", "scz", "flg", "tal"].includes(item.type);
+-        let magic_attributes = _readMagicProperties(reader, constants, skipMagicPeroperties);
++        let magic_attributes = _readMagicProperties(reader, constants, skipMagicPeroperties, config);
+         item.magic_attributes = magic_attributes;
+         while (plist_flag > 0) {
+             if (plist_flag & 1) {
+                 item.set_list_count += 1;
+-                magic_attributes = _readMagicProperties(reader, constants);
++                magic_attributes = _readMagicProperties(reader, constants, false, config);
+                 if (item.set_attributes) {
+                     item.set_attributes.push(magic_attributes);
+                 }
+@@ -384,12 +400,22 @@ async function readItem(reader, version, originalConstants, config, parent) {
+             plist_flag >>>= 1;
+         }
+         if (item.given_runeword === 1) {
+-            magic_attributes = _readMagicProperties(reader, constants);
++            magic_attributes = _readMagicProperties(reader, constants, false, config);
+             if (magic_attributes && magic_attributes.length > 0) {
+                 item.runeword_attributes = magic_attributes;
+             }
+         }
+     }
++    if (version === 0x69 && item.simple_item) {
++        item.timestamp = reader.ReadUInt8(1);
++        if (item.timestamp) {
++            const realmDataCount = version > 0x60 ? 4 : version > 0x5d ? 3 : 2;
++            item._unknown_data.realm_data = [];
++            for (let i = 0; i < realmDataCount; i++) {
++                item._unknown_data.realm_data.push(reader.ReadUInt32());
++            }
++        }
++    }
+     /*if (item._unknown_data.b27_31 && item._unknown_data.b27_31?.some((b) => b === 1)) {
+       reader.SkipBits(53); // skip 50 - 53
+       reader.Align();
+@@ -507,20 +533,43 @@ async function writeItem(item, version, constants, config) {
+         else if (item.type === "ibk") {
+             writer.WriteUInt8(1, 5);
+         }
+-        writer.WriteUInt8(item.timestamp, 1);
++        const realmData = item._unknown_data.realm_data;
++        const hasRealmData = Array.isArray(realmData) && realmData.length > 0;
++        writer.WriteUInt8(hasRealmData ? 1 : 0, 1);
++        if (hasRealmData) {
++            const realmDataCount = version > 0x60 ? 4 : version > 0x5d ? 3 : 2;
++            for (let i = 0; i < realmDataCount; i++) {
++                writer.WriteUInt32(realmData[i] || 0);
++            }
++        }
+         if (item.type_id === ItemType.Armor || item.type_id === ItemType.Shield) {
+             writer.WriteUInt16(item.defense_rating + constants.magical_properties[31].sA, constants.magical_properties[31].sB);
+         }
+         if (item.type_id === ItemType.Armor || item.type_id === ItemType.Shield || item.type_id === ItemType.Weapon) {
+-            writer.WriteUInt16(item.max_durability || 0, constants.magical_properties[73].sB);
++            writer.WriteUInt16((item.max_durability || 0) + (constants.magical_properties[73].sA || 0), constants.magical_properties[73].sB);
+             if (item.max_durability > 0) {
+-                writer.WriteUInt16(item.current_durability, constants.magical_properties[72].sB);
++                writer.WriteUInt16(item.current_durability + (constants.magical_properties[72].sA || 0), constants.magical_properties[72].sB);
++            }
++        }
++        if (item.type_id === ItemType.Other && Array.isArray(item.categories) && item.categories.includes("Gold")) {
++            const goldAmount = Math.max(0, Number.isFinite(item.gold_amount) ? Math.trunc(item.gold_amount) : 0);
++            const largeGoldPile = goldAmount >= 0x1000;
++            writer.WriteBit(largeGoldPile ? 1 : 0);
++            if (largeGoldPile) {
++                writer.WriteUInt32(Math.min(goldAmount, 0xffffffff));
++            }
++            else {
++                writer.WriteUInt16(Math.min(goldAmount, 0xfff), 12);
++            }
++            if (version > 0x60) {
++                writer.WriteBit(item._unknown_data.player_gold || 0);
+             }
+         }
++        const hasQuantity = item.quantity !== undefined && item.quantity !== null;
+         if (version === 0x69) {
+-            writer.WriteUInt8(constants.stackables[item.type] ? 1 : 0, 1); //unknown bit in RotW
++            writer.WriteUInt8(hasQuantity ? 1 : 0, 1);
+         }
+-        if (constants.stackables[item.type]) {
++        if (hasQuantity || (version !== 0x69 && constants.stackables[item.type])) {
+             writer.WriteUInt16(item.quantity, 9);
+         }
+         if (item.socketed === 1) {
+@@ -532,14 +581,25 @@ async function writeItem(item, version, constants, config) {
+             const plist_flag = (1 << set_attribute_count) - 1;
+             writer.WriteUInt8(item._unknown_data.plist_flag || plist_flag, 5);
+         }
+-        _writeMagicProperties(writer, item.magic_attributes, constants);
++        _writeMagicProperties(writer, item.magic_attributes, constants, config);
+         if (item.set_attributes && item.set_attributes.length > 0) {
+             for (let i = 0; i < item.set_attributes.length; i++) {
+-                _writeMagicProperties(writer, item.set_attributes[i], constants);
++                _writeMagicProperties(writer, item.set_attributes[i], constants, config);
+             }
+         }
+         if (item.given_runeword === 1) {
+-            _writeMagicProperties(writer, item.runeword_attributes, constants);
++            _writeMagicProperties(writer, item.runeword_attributes, constants, config);
++        }
++    }
++    if (version === 0x69 && item.simple_item) {
++        const realmData = item._unknown_data.realm_data;
++        const hasRealmData = Array.isArray(realmData) && realmData.length > 0;
++        writer.WriteUInt8(hasRealmData ? 1 : 0, 1);
++        if (hasRealmData) {
++            const realmDataCount = version > 0x60 ? 4 : version > 0x5d ? 3 : 2;
++            for (let i = 0; i < realmDataCount; i++) {
++                writer.WriteUInt32(realmData[i] || 0);
++            }
+         }
+     }
+     if (version === 0x69) {
+@@ -644,12 +704,19 @@ function _readSimpleBits(item, reader, version, constants, config) {
+         else {
+             item.type_id = ItemType.Other;
+         }
+-        let bits = item.simple_item ? 1 : 3;
++        if (item.simple_item && ((_c = item.categories) === null || _c === void 0 ? void 0 : _c.includes("Gold"))) {
++            const largeGoldPile = reader.ReadBit();
++            item.gold_amount = largeGoldPile ? reader.ReadUInt32() : reader.ReadUInt16(12);
++            if (version > 0x60) {
++                item._unknown_data.player_gold = reader.ReadBit();
++            }
++        }
++        let bits = item.simple_item ? (version === 0x69 ? 0 : 1) : 3;
+         if ((_c = item.categories) === null || _c === void 0 ? void 0 : _c.includes("Quest")) {
+             item.quest_difficulty = reader.ReadUInt16(constants.magical_properties[356].sB) - constants.magical_properties[356].sA;
+-            bits = 1;
++            bits = version === 0x69 && item.simple_item ? 0 : 1;
+         }
+-        item.nr_of_items_in_sockets = reader.ReadUInt8(bits);
++        item.nr_of_items_in_sockets = bits > 0 ? reader.ReadUInt8(bits) : 0;
+     }
+ }
+ function _lookupRareId(name, constants) {
+@@ -657,7 +724,7 @@ function _lookupRareId(name, constants) {
+     return constants.rare_names.findIndex((k) => k && (k.n.toLowerCase().startsWith(name.toLowerCase()) || name.toLowerCase().startsWith(k.n.toLowerCase())));
+ }
+ function _writeSimpleBits(writer, version, item, constants, config) {
+-    var _a;
++    var _a, _b;
+     writer.WriteBits(item._unknown_data.b0_3 || new Uint8Array(4), 4);
+     writer.WriteBit(item.identified);
+     writer.WriteBits(item._unknown_data.b5_10 || new Uint8Array(6), 6);
+@@ -708,34 +775,52 @@ function _writeSimpleBits(writer, version, item, constants, config) {
+                 writer.WriteUInt16(n.v, n.l);
+             }
+         }
+-        let bits = item.simple_item ? 1 : 3;
+-        if ((_a = item.categories) === null || _a === void 0 ? void 0 : _a.includes("Quest")) {
++        if (item.simple_item && ((_a = item.categories) === null || _a === void 0 ? void 0 : _a.includes("Gold"))) {
++            const goldAmount = Math.max(0, Number.isFinite(item.gold_amount) ? Math.trunc(item.gold_amount) : 0);
++            const largeGoldPile = goldAmount >= 0x1000;
++            writer.WriteBit(largeGoldPile ? 1 : 0);
++            if (largeGoldPile) {
++                writer.WriteUInt32(Math.min(goldAmount, 0xffffffff));
++            }
++            else {
++                writer.WriteUInt16(Math.min(goldAmount, 0xfff), 12);
++            }
++            if (version > 0x60) {
++                writer.WriteBit(item._unknown_data.player_gold || 0);
++            }
++        }
++        let bits = item.simple_item ? (version === 0x69 ? 0 : 1) : 3;
++        if ((_b = item.categories) === null || _b === void 0 ? void 0 : _b.includes("Quest")) {
+             const difficulty = item.quest_difficulty || 0;
+             writer.WriteUInt16(difficulty + constants.magical_properties[356].sA, constants.magical_properties[356].sB);
+-            bits = 1;
++            bits = version === 0x69 && item.simple_item ? 0 : 1;
++        }
++        if (bits > 0) {
++            writer.WriteUInt8(item.nr_of_items_in_sockets, bits);
+         }
+-        writer.WriteUInt8(item.nr_of_items_in_sockets, bits);
+     }
+ }
+-function _readMagicProperties(reader, constants, skipMagicProps) {
++function _readMagicProperties(reader, constants, skipMagicProps, config) {
++    const statIdBits = getStatIdBits(config);
++    const statTerminator = (1 << statIdBits) - 1;
+     if (skipMagicProps) {
+-        // Scan for the 0x1FF end marker (9 bits of 1)
++        // Scan for the configured all-ones end marker.
+         const bitStr = reader.bits.join("");
+         const searchStart = reader.offset;
+-        const marker = "111111111"; // 9-bit 0x1FF marker
++        const marker = "1".repeat(statIdBits);
+         const idx = bitStr.indexOf(marker, searchStart);
+         if (idx !== -1) {
+-            reader.SeekBit(idx + 9); // Move reader past the 0x1FF marker
++            reader.SeekBit(idx + statIdBits);
+         }
+         else {
+-            console.warn("0x1FF end marker not found, skipping failed");
++            console.warn(`${statIdBits}-bit stat end marker not found, skipping failed`);
+         }
+         return []; // Return empty list since we're skipping parsing
+     }
+-    let id = reader.ReadUInt16(9);
++    let id = reader.ReadUInt16(statIdBits);
+     const magic_attributes = [];
+     let zeroCounter = 0;
+-    while (id != 0x1ff) {
++    while (id != statTerminator) {
+         if (id === 0) {
+             zeroCounter++;
+         }
+@@ -743,8 +828,8 @@ function _readMagicProperties(reader, constants, skipMagicProps) {
+             throw new Error(`Possible malformed data at position ${reader.offset - 9}`);
+         }
+         const values = [];
+-        if (id > constants.magical_properties.length) {
+-            throw new Error(`Invalid Stat Id: ${id} at position ${reader.offset - 9}`);
++        if (id >= constants.magical_properties.length) {
++            throw new Error(`Invalid Stat Id: ${id} at position ${reader.offset - statIdBits}`);
+         }
+         const num_of_properties = constants.magical_properties[id].np || 1;
+         for (let i = 0; i < num_of_properties; i++) {
+@@ -799,17 +884,22 @@ function _readMagicProperties(reader, constants, skipMagicProps) {
+             values: values,
+             name: constants.magical_properties[id].s,
+         });
+-        id = reader.ReadUInt16(9);
++        id = reader.ReadUInt16(statIdBits);
+     }
+     return magic_attributes;
+ }
+ exports._readMagicProperties = _readMagicProperties;
+-function _writeMagicProperties(writer, properties, constants) {
++function _writeMagicProperties(writer, properties, constants, config) {
++    const statIdBits = getStatIdBits(config);
++    const statTerminator = (1 << statIdBits) - 1;
+     if (properties) {
+         for (let i = 0; i < properties.length; i++) {
+             const property = properties[i];
+             let valueIdx = 0;
+-            writer.WriteUInt16(property.id, 9);
++            if (!Number.isInteger(property.id) || property.id < 0 || property.id >= statTerminator) {
++                throw new Error(`Stat id ${property.id} cannot be represented with ${statIdBits} bits`);
++            }
++            writer.WriteUInt16(property.id, statIdBits);
+             const num_of_properties = constants.magical_properties[property.id].np || 1;
+             for (let j = 0; j < num_of_properties; j++) {
+                 const prop = constants.magical_properties[property.id + j];
+@@ -857,9 +947,16 @@ function _writeMagicProperties(writer, properties, constants) {
+             }
+         }
+     }
+-    writer.WriteUInt16(0x1ff, 9);
++    writer.WriteUInt16(statTerminator, statIdBits);
+ }
+ exports._writeMagicProperties = _writeMagicProperties;
++function getStatIdBits(config) {
++    const bits = (config === null || config === void 0 ? void 0 : config.statIdBits) || 9;
++    if (bits !== 9 && bits !== 12) {
++        throw new Error(`Stat ID width must be 9 or 12 bits; received ${bits}`);
++    }
++    return bits;
++}
+ function _GetItemTXT(item, constants) {
+     if (constants.armor_items[item.type]) {
+         return constants.armor_items[item.type];
+diff --git a/node_modules/@d2runewizard/d2s/lib/d2/skills.js b/node_modules/@d2runewizard/d2s/lib/d2/skills.js
+index e893f9e..731c9e3 100644
+--- a/node_modules/@d2runewizard/d2s/lib/d2/skills.js
++++ b/node_modules/@d2runewizard/d2s/lib/d2/skills.js
+@@ -4,6 +4,7 @@ exports.writeSkills = exports.readSkills = void 0;
+ const bitwriter_1 = require("../binary/bitwriter");
+ async function readSkills(char, reader, constants) {
+     char.skills = [];
++    char._raw_skill_tail = [];
+     const offset = SkillOffset[char.header.class];
+     const header = reader.ReadString(2); //0x0000 [skills header = 0x69, 0x66 "if"]
+     if (header !== "if") {
+@@ -21,6 +22,23 @@ async function readSkills(char, reader, constants) {
+             name: constants.skills[id].s,
+         });
+     }
++    // D2R v105 does not guarantee that the skill payload stops after the
++    // original 30 class skills. Current D2R 3.3 saves carry one additional
++    // byte, while some mods append more class-skill bytes. Preserve that
++    // opaque tail until the character item-list marker so rewriting a save
++    // cannot shift or discard the following inventory sections.
++    const skillTailStart = reader.offset;
++    const maxSkillTailBytes = Math.min(512, (reader.bits.length - reader.offset) / 8);
++    for (let i = 0; i < maxSkillTailBytes; i++) {
++        if (peekString(reader, 2) === "JM") {
++            return;
++        }
++        char._raw_skill_tail.push(reader.ReadUInt8());
++    }
++    // Preserve the package's historical behavior when a brand-new level-one
++    // save omits the following item-list section entirely.
++    char._raw_skill_tail = [];
++    reader.SeekBit(skillTailStart);
+ }
+ exports.readSkills = readSkills;
+ async function writeSkills(char, constants) {
+@@ -30,9 +48,21 @@ async function writeSkills(char, constants) {
+     for (let i = 0; i < 30; i++) {
+         writer.WriteUInt8(char.skills[i].points);
+     }
++    if (Array.isArray(char._raw_skill_tail)) {
++        writer.WriteArray(new Uint8Array(char._raw_skill_tail));
++    }
+     return writer.ToArray();
+ }
+ exports.writeSkills = writeSkills;
++function peekString(reader, bytes) {
++    if (reader.offset + bytes * 8 > reader.bits.length) {
++        return "";
++    }
++    const offset = reader.offset;
++    const value = reader.ReadString(bytes);
++    reader.SeekBit(offset);
++    return value;
++}
+ const SkillOffset = {
+     Amazon: 6,
+     Sorceress: 36,
+diff --git a/node_modules/@d2runewizard/d2s/lib/d2/stash.js b/node_modules/@d2runewizard/d2s/lib/d2/stash.js
+index fdeca72..ca2c66b 100644
+--- a/node_modules/@d2runewizard/d2s/lib/d2/stash.js
++++ b/node_modules/@d2runewizard/d2s/lib/d2/stash.js
+@@ -32,7 +32,7 @@ const defaultConfig = {
+ async function read(buffer, constants, version, userConfig) {
+     const stash = {};
+     const reader = new bitreader_1.BitReader(buffer);
+-    const config = Object.assign(defaultConfig, userConfig);
++    const config = Object.assign({}, defaultConfig, userConfig);
+     const firstHeader = reader.ReadUInt32();
+     reader.SeekByte(0);
+     if (firstHeader == 0xaa55aa55) {
+@@ -163,7 +163,7 @@ async function readStashPart(stash, reader, version, constants, pageIndex) {
+     }
+ }
+ async function write(data, constants, version, userConfig) {
+-    const config = Object.assign(defaultConfig, userConfig);
++    const config = Object.assign({}, defaultConfig, userConfig);
+     const writer = new bitwriter_1.BitWriter();
+     if (!constants) {
+         constants = constants_1.getConstantData(version);
+diff --git a/node_modules/@d2runewizard/d2s/lib/d2/types.d.ts b/node_modules/@d2runewizard/d2s/lib/d2/types.d.ts
+index 5b71ab5..ec673d2 100644
+--- a/node_modules/@d2runewizard/d2s/lib/d2/types.d.ts
++++ b/node_modules/@d2runewizard/d2s/lib/d2/types.d.ts
+@@ -2,6 +2,9 @@ export interface IConfig {
+     extendedStash?: boolean;
+     sortProperties?: boolean;
+     disableItemEnhancements?: boolean;
++    statIdBits?: 9 | 12;
++    preserveRawAttributes?: boolean;
++    preserveRawHeader?: boolean;
+ }
+ export interface IConstantData {
+     classes: any[];
+@@ -30,6 +33,13 @@ export interface ID2S {
+     golem_item: IItem;
+     demon: IDemon;
+     is_dead: number;
++    _attributes_header_present?: boolean;
++    _raw_attributes?: Array<{
++        id: number;
++        value: number;
++    }>;
++    _raw_skill_tail?: number[];
++    _raw_header_data?: number[];
+ }
+ export interface IAttributes {
+     [key: string]: number;
+@@ -295,6 +305,7 @@ export interface IItem {
+     type_id: number;
+     type_name: string;
+     quest_difficulty: number;
++    gold_amount?: number;
+     nr_of_items_in_sockets: number;
+     id: number;
+     level: number;
+@@ -354,6 +365,7 @@ export interface IItem {
+         b27_31?: Uint8Array;
+         plist_flag?: number;
+         chest_stackable?: number;
++        player_gold?: number;
+     };
+     rare_name_id: number;
+     rare_name_id2: number;
+diff --git a/node_modules/@d2runewizard/d2s/lib/d2/versions/default_header.js b/node_modules/@d2runewizard/d2s/lib/d2/versions/default_header.js
+index 11b3d51..cac9d24 100644
+--- a/node_modules/@d2runewizard/d2s/lib/d2/versions/default_header.js
++++ b/node_modules/@d2runewizard/d2s/lib/d2/versions/default_header.js
+@@ -369,9 +369,8 @@ function _writeQuests(quests) {
+         .WriteArray(_writeQuest(quests.act_iv.terrors_end))
+         .WriteArray(_writeQuest(quests.act_iv.hellforge))
+         .WriteUInt16(+quests.act_iv.completed || +quests.act_iv.terrors_end.is_completed)
+-        .WriteArray(new Uint8Array(6))
++        .WriteArray(new Uint8Array(10))
+         .WriteUInt16(+quests.act_v.introduced || +quests.act_iv.terrors_end.is_completed)
+-        .WriteArray(new Uint8Array(4))
+         .WriteArray(_writeQuest(quests.act_v.siege_on_harrogath))
+         .WriteArray(_writeQuest(quests.act_v.rescue_on_mount_arreat))
+         .WriteArray(_writeQuest(quests.act_v.prison_of_ice))

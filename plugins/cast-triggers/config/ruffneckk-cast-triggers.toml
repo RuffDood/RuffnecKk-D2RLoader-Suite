@@ -12,6 +12,12 @@ include_skill_ids = []
 # activate cast-on-cast item properties.
 exclude_skill_ids = []
 
+[on_kill]
+# Extends native player kill-event item stats to spell kills. This stat ID is
+# consumed by the mod's ItemStatCost.txt row; set it to 0 to disable the
+# extension. It is not a synthetic doactive stat.
+stat_id = 0
+
 [while_channeling]
 # Repeating/channelled spells use their own item properties and stat IDs.
 enabled = true
@@ -51,6 +57,12 @@ attack_attempt_stat_id = 0
 critical_strike_stat_id = 0
 crushing_blow_stat_id = 0
 open_wounds_stat_id = 0
+
+[on_block]
+# Dispatches the consuming mod's doactive item stat only when the defender has
+# a confirmed shield block or Assassin Weapon Block result. Set it to 0 to
+# disable it. Its nonzero ID must be distinct from every other trigger ID.
+stat_id = 0
 
 [diagnostics]
 # Retains the latest detailed events in a bounded in-memory trace. The

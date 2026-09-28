@@ -1,0 +1,3739 @@
+{
+  "schemaVersion": 1,
+  "target": {
+    "product": "Diablo II: Resurrected",
+    "version": "3.3.93847",
+    "buildKey": "623f7a1f73eabb08ccb2b2046e3f9164",
+    "buildInfoSha256": "2EBCAD0521DBF038D5A7FE5395E96B4BEF6D4F0774F7B1F840E03C3DE9CB067A",
+    "retailExeSha256": "E1F5436E3D9687F644EF16938B1B183D1FDEF434F18CF66D852CF68F48CC8936"
+  },
+  "nativeLayout": {
+    "playerSequenceTableRva": "0x2386650",
+    "weaponClassMapRva": "0x2386730",
+    "slotCount": 26,
+    "weaponClassCount": 14,
+    "descriptorSize": 24,
+    "recordSize": 6,
+    "weaponClassMap": [
+      {
+        "weaponClassIndex": 0,
+        "weaponClassId": 0
+      },
+      {
+        "weaponClassIndex": 1,
+        "weaponClassId": 3
+      },
+      {
+        "weaponClassIndex": 2,
+        "weaponClassId": 6
+      },
+      {
+        "weaponClassIndex": 3,
+        "weaponClassId": 2
+      },
+      {
+        "weaponClassIndex": 4,
+        "weaponClassId": 5
+      },
+      {
+        "weaponClassIndex": 5,
+        "weaponClassId": 1
+      },
+      {
+        "weaponClassIndex": 6,
+        "weaponClassId": 7
+      },
+      {
+        "weaponClassIndex": 7,
+        "weaponClassId": 4
+      },
+      {
+        "weaponClassIndex": 8,
+        "weaponClassId": 8
+      },
+      {
+        "weaponClassIndex": 9,
+        "weaponClassId": 9
+      },
+      {
+        "weaponClassIndex": 10,
+        "weaponClassId": 10
+      },
+      {
+        "weaponClassIndex": 11,
+        "weaponClassId": 11
+      },
+      {
+        "weaponClassIndex": 12,
+        "weaponClassId": 12
+      },
+      {
+        "weaponClassIndex": 13,
+        "weaponClassId": 13
+      }
+    ]
+  },
+  "nativeEvidence": {
+    "sequenceNumberResolverRva": "0x33DBC0",
+    "playerSequenceResolverRva": "0x3CB890",
+    "staticWeaponClassMapRva": "0x19EAF70"
+  },
+  "groups": [
+    {
+      "sequenceId": 1,
+      "groupRva": "0x2383150",
+      "descriptorsSha256": "E0F7D24113994A5862ACA33D316DFF9D9EEBB4840758EEE972FAACBB5CA364F9",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2383150",
+          "recordsRva": "0x2382FB0",
+          "sequenceFrameCount": 13,
+          "animationFrameCount": 13,
+          "extra": "0x100",
+          "recordsSha256": "79CF4A2C1A259156C5C88D4C9656ECA93DAF3B2FE965A53224468E12056FBCA8"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2383168",
+          "recordsRva": "0x2383060",
+          "sequenceFrameCount": 18,
+          "animationFrameCount": 18,
+          "extra": "0x100",
+          "recordsSha256": "B31908FAA00D1538E32DCE57E2124C27046758DBD73C0DA10F712A1F985CE160"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2383180",
+          "recordsRva": "0x23830D0",
+          "sequenceFrameCount": 21,
+          "animationFrameCount": 21,
+          "extra": "0x100",
+          "recordsSha256": "DEBFF213E688548C9F6350F66E29F3A54BA454F80F5BDD1FF2755F565E918A3C"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2383198",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x23831B0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x23831C8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x23831E0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x23831F8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2383210",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2383228",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2383240",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2383258",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2383270",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2383288",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        }
+      ]
+    },
+    {
+      "sequenceId": 2,
+      "groupRva": "0x2383300",
+      "descriptorsSha256": "C40462C5833A1FEFF96891164559EBA02C6587E5D414C180E7766E25D99105E5",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2383300",
+          "recordsRva": "0x2383000",
+          "sequenceFrameCount": 14,
+          "animationFrameCount": 14,
+          "extra": "0x100",
+          "recordsSha256": "0744B17BF1D24ABA4C487EBE8631A975F6DAA22ACCCDA6382EAFC0D83E4D90E0"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2383318",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2383330",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2383348",
+          "recordsRva": "0x23832A0",
+          "sequenceFrameCount": 7,
+          "animationFrameCount": 7,
+          "extra": "0x100",
+          "recordsSha256": "DF87286E43038D31C0DCC37CA3A387F9B76720329052D23621C6FD054254ECEC"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2383360",
+          "recordsRva": "0x23832D0",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "E9A27D3457CDCEAFCC7DAD66E9874CEE017A1F392B8077EDE68AE2FEF4E8681A"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2383378",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2383390",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x23833A8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x23833C0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x23833D8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x23833F0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2383408",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2383420",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2383438",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        }
+      ]
+    },
+    {
+      "sequenceId": 3,
+      "groupRva": "0x23834B0",
+      "descriptorsSha256": "B2E327037F6AE00FD1FF401AEFD9DFF320D9E473589D9C9EC9E024DE600AA3A1",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x23834B0",
+          "recordsRva": "0x2383000",
+          "sequenceFrameCount": 14,
+          "animationFrameCount": 14,
+          "extra": "0x100",
+          "recordsSha256": "0744B17BF1D24ABA4C487EBE8631A975F6DAA22ACCCDA6382EAFC0D83E4D90E0"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x23834C8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x23834E0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x23834F8",
+          "recordsRva": "0x2383450",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "C31694F3A7B395E8A5160F15A99935FFC9A470343C1658600302E1B6368E1732"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2383510",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2383528",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2383540",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2383558",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2383570",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2383588",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x23835A0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x23835B8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x23835D0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x23835E8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        }
+      ]
+    },
+    {
+      "sequenceId": 4,
+      "groupRva": "0x2383660",
+      "descriptorsSha256": "99092676A6F1228722205854F6C05A49E3B8E1E8D6E22BE654E5156EF11D92B9",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2383660",
+          "recordsRva": "0x2383600",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "C47127A68AD96D156C3235AD7A737734F14E0687C413C1A97B3A6EA2056221EC"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2383678",
+          "recordsRva": "0x2383600",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "C47127A68AD96D156C3235AD7A737734F14E0687C413C1A97B3A6EA2056221EC"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2383690",
+          "recordsRva": "0x2383600",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "C47127A68AD96D156C3235AD7A737734F14E0687C413C1A97B3A6EA2056221EC"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x23836A8",
+          "recordsRva": "0x2383600",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "C47127A68AD96D156C3235AD7A737734F14E0687C413C1A97B3A6EA2056221EC"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x23836C0",
+          "recordsRva": "0x2383600",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "C47127A68AD96D156C3235AD7A737734F14E0687C413C1A97B3A6EA2056221EC"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x23836D8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x23836F0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2383708",
+          "recordsRva": "0x2383600",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "C47127A68AD96D156C3235AD7A737734F14E0687C413C1A97B3A6EA2056221EC"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2383720",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2383738",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2383750",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2383768",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2383780",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2383798",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        }
+      ]
+    },
+    {
+      "sequenceId": 5,
+      "groupRva": "0x23837E0",
+      "descriptorsSha256": "734070EECF1A2B61C260F23080249821503CFA591FAE2AA151EECBDEA87EECE6",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x23837E0",
+          "recordsRva": "0x2383000",
+          "sequenceFrameCount": 14,
+          "animationFrameCount": 14,
+          "extra": "0x100",
+          "recordsSha256": "0744B17BF1D24ABA4C487EBE8631A975F6DAA22ACCCDA6382EAFC0D83E4D90E0"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x23837F8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2383810",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2383828",
+          "recordsRva": "0x23837B0",
+          "sequenceFrameCount": 6,
+          "animationFrameCount": 6,
+          "extra": "0x100",
+          "recordsSha256": "53AAB8793EE4C675B362B69674DCC74C78B30D039B2ACC46331B92B0A8981444"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2383840",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2383858",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2383870",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2383888",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x23838A0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x23838B8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x23838D0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x23838E8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2383900",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2383918",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        }
+      ]
+    },
+    {
+      "sequenceId": 6,
+      "groupRva": "0x2383990",
+      "descriptorsSha256": "E491874A035E6863CF91A4C39EC09392D073510B06D7EC235026EACE45EA6B76",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2383990",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x23839A8",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x23839C0",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x23839D8",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x23839F0",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2383A08",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2383A20",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2383A38",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2383A50",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2383A68",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2383A80",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2383A98",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2383AB0",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2383AC8",
+          "recordsRva": "0x2383930",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4"
+        }
+      ]
+    },
+    {
+      "sequenceId": 7,
+      "groupRva": "0x2383BB0",
+      "descriptorsSha256": "03BAD3756662A3121B1700EB3AB28454CD75E130E3723ED3CF4E394C7B9A4375",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2383BB0",
+          "recordsRva": "0x2382FB0",
+          "sequenceFrameCount": 13,
+          "animationFrameCount": 13,
+          "extra": "0x100",
+          "recordsSha256": "79CF4A2C1A259156C5C88D4C9656ECA93DAF3B2FE965A53224468E12056FBCA8"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2383BC8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2383BE0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2383BF8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2383C10",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2383C28",
+          "recordsRva": "0x2383AE0",
+          "sequenceFrameCount": 13,
+          "animationFrameCount": 13,
+          "extra": "0x100",
+          "recordsSha256": "2BC9E42B413E7BC594E2296AFA7AA9891328AAF73CD6E5886C32EEAD6E22EB7C"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2383C40",
+          "recordsRva": "0x2383B30",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "F616B9015EE8EF0082FE19C4522B944501C4796B050EA5778803724455CE97CE"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2383C58",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2383C70",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2383C88",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2383CA0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2383CB8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2383CD0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2383CE8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        }
+      ]
+    },
+    {
+      "sequenceId": 8,
+      "groupRva": "0x2383E10",
+      "descriptorsSha256": "5ED3B5C1B1E950721E37A2C433300E3ABF19B45EA8852E950D93079945232368",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2383E10",
+          "recordsRva": "0x2382FB0",
+          "sequenceFrameCount": 13,
+          "animationFrameCount": 13,
+          "extra": "0x100",
+          "recordsSha256": "79CF4A2C1A259156C5C88D4C9656ECA93DAF3B2FE965A53224468E12056FBCA8"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2383E28",
+          "recordsRva": "0x2383D00",
+          "sequenceFrameCount": 21,
+          "animationFrameCount": 21,
+          "extra": "0x100",
+          "recordsSha256": "B231AEC18617EE7A4FAAAE87444A13FABBE72300D183DB369BB8E290769D2369"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2383E40",
+          "recordsRva": "0x2383D80",
+          "sequenceFrameCount": 24,
+          "animationFrameCount": 24,
+          "extra": "0x100",
+          "recordsSha256": "C5F5409C607029B8A958E4A0540BAAC2069172E243039EAC491270A8A7B9EB9E"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2383E58",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2383E70",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2383E88",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2383EA0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2383EB8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2383ED0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2383EE8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2383F00",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2383F18",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2383F30",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2383F48",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        }
+      ]
+    },
+    {
+      "sequenceId": 9,
+      "groupRva": "0x2384020",
+      "descriptorsSha256": "60B2CD2171EC5BCFDB98C0DB617EC878B580C4EB59D5CCA9DDF7FB3C6ADBA7AD",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2384020",
+          "recordsRva": "0x2382FB0",
+          "sequenceFrameCount": 13,
+          "animationFrameCount": 13,
+          "extra": "0x100",
+          "recordsSha256": "79CF4A2C1A259156C5C88D4C9656ECA93DAF3B2FE965A53224468E12056FBCA8"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2384038",
+          "recordsRva": "0x2383F60",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "28D291B312BB402BFB76FAA03C48724306F445F65AA259227432915EBD9CBAA0"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2384050",
+          "recordsRva": "0x2383FC0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "E49994B9B84BDDED6C0ABE582CF51242FD8AC13BAD2CDC8F91FC20F369451354"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2384068",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2384080",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2384098",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x23840B0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x23840C8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x23840E0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x23840F8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2384110",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2384128",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2384140",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2384158",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        }
+      ]
+    },
+    {
+      "sequenceId": 10,
+      "groupRva": "0x23841A0",
+      "descriptorsSha256": "36F68E5BE7E0C4935DF6E171C609E1FE06726169E4506BA82DDB008ED331292B",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x23841A0",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x23841B8",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x23841D0",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x23841E8",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2384200",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2384218",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2384230",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2384248",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2384260",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2384278",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2384290",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x23842A8",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x23842C0",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x23842D8",
+          "recordsRva": "0x2384170",
+          "sequenceFrameCount": 8,
+          "animationFrameCount": 8,
+          "extra": "0x100",
+          "recordsSha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6"
+        }
+      ]
+    },
+    {
+      "sequenceId": 11,
+      "groupRva": "0x2384360",
+      "descriptorsSha256": "317AE6B9C1B0B0DB70B895C91DE9F4EBDD2E19C6E99EC2EDCBFA4255FC89CA96",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2384360",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2384378",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2384390",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x23843A8",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x23843C0",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x23843D8",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x23843F0",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2384408",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2384420",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2384438",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2384450",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2384468",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2384480",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2384498",
+          "recordsRva": "0x23842F0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A"
+        }
+      ]
+    },
+    {
+      "sequenceId": 12,
+      "groupRva": "0x2384530",
+      "descriptorsSha256": "8D0FEADEDB49F4318EF99BBEA99FEF1AD582F64E97AEAB1C03266777E6072898",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2384530",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2384548",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2384560",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2384578",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2384590",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x23845A8",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x23845C0",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x23845D8",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x23845F0",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2384608",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2384620",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2384638",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2384650",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2384668",
+          "recordsRva": "0x23844B0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1"
+        }
+      ]
+    },
+    {
+      "sequenceId": 13,
+      "groupRva": "0x23846E0",
+      "descriptorsSha256": "09DC927D491A7A0A6C9113D0C805D30C97A471F2EA43BF0F5BF1C07CAADB112B",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x23846E0",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x23846F8",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2384710",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2384728",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2384740",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2384758",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2384770",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2384788",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x23847A0",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x23847B8",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x23847D0",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x23847E8",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2384800",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2384818",
+          "recordsRva": "0x2384680",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B"
+        }
+      ]
+    },
+    {
+      "sequenceId": 14,
+      "groupRva": "0x2384AC0",
+      "descriptorsSha256": "B9E9D716FE67E7E71AF64C71A0EA52912EFE1D21B6D18CCF2FDA506C42FBE110",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2384AC0",
+          "recordsRva": "0x2384830",
+          "sequenceFrameCount": 22,
+          "animationFrameCount": 22,
+          "extra": "0x100",
+          "recordsSha256": "5544A9D6CC31210892946F3A48CB2A57FD0B7F17B723F69EF1E2642435E45CA8"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2384AD8",
+          "recordsRva": "0x23848C0",
+          "sequenceFrameCount": 25,
+          "animationFrameCount": 25,
+          "extra": "0x100",
+          "recordsSha256": "F1229336BDFAFF8D7A314887F26D77F8D8359B7071E6E68D9688BB8F3709E6ED"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2384AF0",
+          "recordsRva": "0x2384960",
+          "sequenceFrameCount": 28,
+          "animationFrameCount": 28,
+          "extra": "0x100",
+          "recordsSha256": "FC2E60756518E780EFEC7D92399645FAE4991781A18CBA77B166AAE98E576B85"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2384B08",
+          "recordsRva": "0x23848C0",
+          "sequenceFrameCount": 25,
+          "animationFrameCount": 25,
+          "extra": "0x100",
+          "recordsSha256": "F1229336BDFAFF8D7A314887F26D77F8D8359B7071E6E68D9688BB8F3709E6ED"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2384B20",
+          "recordsRva": "0x2384A10",
+          "sequenceFrameCount": 27,
+          "animationFrameCount": 27,
+          "extra": "0x100",
+          "recordsSha256": "D40E2DE631977B450C67634EAF6D27AEDA376907BD14F4343077835E3FFA8F46"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2384B38",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2384B50",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2384B68",
+          "recordsRva": "0x2384960",
+          "sequenceFrameCount": 28,
+          "animationFrameCount": 28,
+          "extra": "0x100",
+          "recordsSha256": "FC2E60756518E780EFEC7D92399645FAE4991781A18CBA77B166AAE98E576B85"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2384B80",
+          "recordsRva": "0x2384830",
+          "sequenceFrameCount": 22,
+          "animationFrameCount": 22,
+          "extra": "0x100",
+          "recordsSha256": "5544A9D6CC31210892946F3A48CB2A57FD0B7F17B723F69EF1E2642435E45CA8"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2384B98",
+          "recordsRva": "0x2384830",
+          "sequenceFrameCount": 22,
+          "animationFrameCount": 22,
+          "extra": "0x100",
+          "recordsSha256": "5544A9D6CC31210892946F3A48CB2A57FD0B7F17B723F69EF1E2642435E45CA8"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2384BB0",
+          "recordsRva": "0x2384830",
+          "sequenceFrameCount": 22,
+          "animationFrameCount": 22,
+          "extra": "0x100",
+          "recordsSha256": "5544A9D6CC31210892946F3A48CB2A57FD0B7F17B723F69EF1E2642435E45CA8"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2384BC8",
+          "recordsRva": "0x2384830",
+          "sequenceFrameCount": 22,
+          "animationFrameCount": 22,
+          "extra": "0x100",
+          "recordsSha256": "5544A9D6CC31210892946F3A48CB2A57FD0B7F17B723F69EF1E2642435E45CA8"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2384BE0",
+          "recordsRva": "0x2384830",
+          "sequenceFrameCount": 22,
+          "animationFrameCount": 22,
+          "extra": "0x100",
+          "recordsSha256": "5544A9D6CC31210892946F3A48CB2A57FD0B7F17B723F69EF1E2642435E45CA8"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2384BF8",
+          "recordsRva": "0x2384830",
+          "sequenceFrameCount": 22,
+          "animationFrameCount": 22,
+          "extra": "0x100",
+          "recordsSha256": "5544A9D6CC31210892946F3A48CB2A57FD0B7F17B723F69EF1E2642435E45CA8"
+        }
+      ]
+    },
+    {
+      "sequenceId": 15,
+      "groupRva": "0x2384C60",
+      "descriptorsSha256": "7D8EF8AC7070AD7AC507636B6936E76019DCC165F7F29505CC12211BD0A50616",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2384C60",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2384C78",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2384C90",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2384CA8",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2384CC0",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2384CD8",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2384CF0",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2384D08",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2384D20",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2384D38",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2384D50",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2384D68",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2384D80",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2384D98",
+          "recordsRva": "0x2384C10",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2"
+        }
+      ]
+    },
+    {
+      "sequenceId": 16,
+      "groupRva": "0x2384E60",
+      "descriptorsSha256": "815768D8890239FF49BC1CE625F73B729ACB86FB0E626D203CD05D7E8238D29D",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2384E60",
+          "recordsRva": "0x2384DB0",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "D0BCBEBD2A378035F94325837A7A14FFABEF02764B00AF796AB17D20B9372B64"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2384E78",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2384E90",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2384EA8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2384EC0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2384ED8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2384EF0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2384F08",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2384F20",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2384F38",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2384F50",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2384F68",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2384F80",
+          "recordsRva": "0x2384DB0",
+          "sequenceFrameCount": 12,
+          "animationFrameCount": 12,
+          "extra": "0x100",
+          "recordsSha256": "D0BCBEBD2A378035F94325837A7A14FFABEF02764B00AF796AB17D20B9372B64"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2384F98",
+          "recordsRva": "0x2384E00",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "692F50009CF5C2DFCED4DC1BA7C9280A55A77B77AD69A9BEC2E4691F98C3D461"
+        }
+      ]
+    },
+    {
+      "sequenceId": 17,
+      "groupRva": "0x2385030",
+      "descriptorsSha256": "33124DC5F70EC624A8455D2DF8A2CEFB3EFDE260159D0395D16EA7B2028C1FCD",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2385030",
+          "recordsRva": "0x2384FB0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "22CBF0C3405B560D7EEAC9BA2F181FC50E43745E6A7896CF0D8FF81E00AEA108"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2385048",
+          "recordsRva": "0x2384FB0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "22CBF0C3405B560D7EEAC9BA2F181FC50E43745E6A7896CF0D8FF81E00AEA108"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2385060",
+          "recordsRva": "0x2384FB0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "22CBF0C3405B560D7EEAC9BA2F181FC50E43745E6A7896CF0D8FF81E00AEA108"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2385078",
+          "recordsRva": "0x2384FB0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "22CBF0C3405B560D7EEAC9BA2F181FC50E43745E6A7896CF0D8FF81E00AEA108"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2385090",
+          "recordsRva": "0x2384FB0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "22CBF0C3405B560D7EEAC9BA2F181FC50E43745E6A7896CF0D8FF81E00AEA108"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x23850A8",
+          "recordsRva": "0x2384FB0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "22CBF0C3405B560D7EEAC9BA2F181FC50E43745E6A7896CF0D8FF81E00AEA108"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x23850C0",
+          "recordsRva": "0x2384FB0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "22CBF0C3405B560D7EEAC9BA2F181FC50E43745E6A7896CF0D8FF81E00AEA108"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x23850D8",
+          "recordsRva": "0x2384FB0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "22CBF0C3405B560D7EEAC9BA2F181FC50E43745E6A7896CF0D8FF81E00AEA108"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x23850F0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2385108",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2385120",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2385138",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2385150",
+          "recordsRva": "0x2384FB0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "22CBF0C3405B560D7EEAC9BA2F181FC50E43745E6A7896CF0D8FF81E00AEA108"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2385168",
+          "recordsRva": "0x2384FB0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "22CBF0C3405B560D7EEAC9BA2F181FC50E43745E6A7896CF0D8FF81E00AEA108"
+        }
+      ]
+    },
+    {
+      "sequenceId": 18,
+      "groupRva": "0x23853B0",
+      "descriptorsSha256": "142FFD052D3DC7647C696FA7CB6BDAEE9616A18432957E34A539E214208A47EC",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x23853B0",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x23853C8",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x23853E0",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x23853F8",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2385410",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2385428",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2385440",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2385458",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2385470",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2385488",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x23854A0",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x23854B8",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x23854D0",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x23854E8",
+          "recordsRva": "0x2385350",
+          "sequenceFrameCount": 15,
+          "animationFrameCount": 15,
+          "extra": "0x100",
+          "recordsSha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65"
+        }
+      ]
+    },
+    {
+      "sequenceId": 19,
+      "groupRva": "0x2385200",
+      "descriptorsSha256": "25EA2F9796DDACDFB6127FE167EE87771CE13546B1F87326FB9CB2E939FD6952",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2385200",
+          "recordsRva": "0x2385180",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "0D0FFD12476F4937CD3BB8B2BC21317055BFF786ED1EC1A95BAEFB22CF4FA346"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2385218",
+          "recordsRva": "0x2385180",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "0D0FFD12476F4937CD3BB8B2BC21317055BFF786ED1EC1A95BAEFB22CF4FA346"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2385230",
+          "recordsRva": "0x2385180",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "0D0FFD12476F4937CD3BB8B2BC21317055BFF786ED1EC1A95BAEFB22CF4FA346"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2385248",
+          "recordsRva": "0x2385180",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "0D0FFD12476F4937CD3BB8B2BC21317055BFF786ED1EC1A95BAEFB22CF4FA346"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2385260",
+          "recordsRva": "0x2385180",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "0D0FFD12476F4937CD3BB8B2BC21317055BFF786ED1EC1A95BAEFB22CF4FA346"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2385278",
+          "recordsRva": "0x2385180",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "0D0FFD12476F4937CD3BB8B2BC21317055BFF786ED1EC1A95BAEFB22CF4FA346"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2385290",
+          "recordsRva": "0x2385180",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "0D0FFD12476F4937CD3BB8B2BC21317055BFF786ED1EC1A95BAEFB22CF4FA346"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x23852A8",
+          "recordsRva": "0x2385180",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "0D0FFD12476F4937CD3BB8B2BC21317055BFF786ED1EC1A95BAEFB22CF4FA346"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x23852C0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x23852D8",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x23852F0",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2385308",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2385320",
+          "recordsRva": "0x2385180",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "0D0FFD12476F4937CD3BB8B2BC21317055BFF786ED1EC1A95BAEFB22CF4FA346"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2385338",
+          "recordsRva": "0x2385180",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "0D0FFD12476F4937CD3BB8B2BC21317055BFF786ED1EC1A95BAEFB22CF4FA346"
+        }
+      ]
+    },
+    {
+      "sequenceId": 20,
+      "groupRva": "0x2385570",
+      "descriptorsSha256": "78700CFE7F4871AABE9BB58D6A0EEF022E114EEEC045CA0698AD016150FD9A8D",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2385570",
+          "recordsRva": "0x2385500",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "954B91AB4747219B1E045F37847A12A15BA7E3BE9171082826D5985E16264F38"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2385588",
+          "recordsRva": "0x2385500",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "954B91AB4747219B1E045F37847A12A15BA7E3BE9171082826D5985E16264F38"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x23855A0",
+          "recordsRva": "0x2385500",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "954B91AB4747219B1E045F37847A12A15BA7E3BE9171082826D5985E16264F38"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x23855B8",
+          "recordsRva": "0x2385500",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "954B91AB4747219B1E045F37847A12A15BA7E3BE9171082826D5985E16264F38"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x23855D0",
+          "recordsRva": "0x2385500",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "954B91AB4747219B1E045F37847A12A15BA7E3BE9171082826D5985E16264F38"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x23855E8",
+          "recordsRva": "0x2385500",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "954B91AB4747219B1E045F37847A12A15BA7E3BE9171082826D5985E16264F38"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2385600",
+          "recordsRva": "0x2385500",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "954B91AB4747219B1E045F37847A12A15BA7E3BE9171082826D5985E16264F38"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2385618",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2385630",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2385648",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2385660",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2385678",
+          "recordsRva": null,
+          "sequenceFrameCount": 0,
+          "animationFrameCount": 0,
+          "extra": "0x100",
+          "recordsSha256": null
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2385690",
+          "recordsRva": "0x2385500",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "954B91AB4747219B1E045F37847A12A15BA7E3BE9171082826D5985E16264F38"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x23856A8",
+          "recordsRva": "0x2385500",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "954B91AB4747219B1E045F37847A12A15BA7E3BE9171082826D5985E16264F38"
+        }
+      ]
+    },
+    {
+      "sequenceId": 21,
+      "groupRva": "0x2385750",
+      "descriptorsSha256": "6105F927A68E77674CA00BA8E9DB72BB435268A315DEC7FC6B424E2F000FE50C",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2385750",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2385768",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2385780",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2385798",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x23857B0",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x23857C8",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x23857E0",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x23857F8",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2385810",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2385828",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2385840",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2385858",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2385870",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2385888",
+          "recordsRva": "0x23856C0",
+          "sequenceFrameCount": 23,
+          "animationFrameCount": 23,
+          "extra": "0x100",
+          "recordsSha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9"
+        }
+      ]
+    },
+    {
+      "sequenceId": 22,
+      "groupRva": "0x2385900",
+      "descriptorsSha256": "C0C42FF385CBAC9DD66E8105A452E033AF810B5C791BBBF7E454022C91A46351",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2385900",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2385918",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2385930",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2385948",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2385960",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2385978",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2385990",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x23859A8",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x23859C0",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x23859D8",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x23859F0",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2385A08",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2385A20",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2385A38",
+          "recordsRva": "0x23858A0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD"
+        }
+      ]
+    },
+    {
+      "sequenceId": 23,
+      "groupRva": "0x2385AD0",
+      "descriptorsSha256": "CDF1C26110520BB5BEA9AAE68B93821C5A4F2811C524E3007EEB2972B3108F64",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2385AD0",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2385AE8",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2385B00",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2385B18",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2385B30",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2385B48",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2385B60",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2385B78",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2385B90",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2385BA8",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2385BC0",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2385BD8",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2385BF0",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2385C08",
+          "recordsRva": "0x2385A50",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        }
+      ]
+    },
+    {
+      "sequenceId": 24,
+      "groupRva": "0x2385EE0",
+      "descriptorsSha256": "9733EF0638DFF13BD436D01325248EC3D8419BAA437F4845BA0FA7C2B15AC3A4",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2385EE0",
+          "recordsRva": "0x2385C20",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2385EF8",
+          "recordsRva": "0x2385D00",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "F5D33EFB89A723C18061E8A7385DB48134575C419FB715D1D3F3F48D95E09246"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2385F10",
+          "recordsRva": "0x2385DD0",
+          "sequenceFrameCount": 20,
+          "animationFrameCount": 20,
+          "extra": "0x100",
+          "recordsSha256": "85BEFD732DD010536923716A9CCA5CBA9DBC3A865E51A702B2FF855FC3A1331F"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2385F28",
+          "recordsRva": "0x2385CA0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "F5D33EFB89A723C18061E8A7385DB48134575C419FB715D1D3F3F48D95E09246"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x2385F40",
+          "recordsRva": "0x2385D60",
+          "sequenceFrameCount": 18,
+          "animationFrameCount": 18,
+          "extra": "0x100",
+          "recordsSha256": "7F75D4A46F716A73CC0611C0D5383356A378B98774709982BFA1F3E08D9CFB91"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x2385F58",
+          "recordsRva": "0x2385C20",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x2385F70",
+          "recordsRva": "0x2385C20",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x2385F88",
+          "recordsRva": "0x2385E50",
+          "sequenceFrameCount": 22,
+          "animationFrameCount": 22,
+          "extra": "0x100",
+          "recordsSha256": "7DE07ACC9A799FDEB5E5E5C305E0C2912E3BE02FE1EEB93399F631C9EE012693"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2385FA0",
+          "recordsRva": "0x2385C20",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2385FB8",
+          "recordsRva": "0x2385C20",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2385FD0",
+          "recordsRva": "0x2385C20",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2385FE8",
+          "recordsRva": "0x2385C20",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2386000",
+          "recordsRva": "0x2385C20",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2386018",
+          "recordsRva": "0x2385C20",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897"
+        }
+      ]
+    },
+    {
+      "sequenceId": 25,
+      "groupRva": "0x2386350",
+      "descriptorsSha256": "A73A9060E59084DCD5A507E0EA56FC21786274D95676A033AD00469405C12BFF",
+      "slots": [
+        {
+          "weaponClassIndex": 0,
+          "descriptorRva": "0x2386350",
+          "recordsRva": "0x2386030",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "6BA95871E7E0A4775F1B9E345C7F98517E2EFE35A77D64496D4E84857E0D22EB"
+        },
+        {
+          "weaponClassIndex": 1,
+          "descriptorRva": "0x2386368",
+          "recordsRva": "0x23860B0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "336A2C5154E4B8A22186B96438A507C4CBFF2A4A87818A101D9B1A91F4B02A30"
+        },
+        {
+          "weaponClassIndex": 2,
+          "descriptorRva": "0x2386380",
+          "recordsRva": "0x2386110",
+          "sequenceFrameCount": 21,
+          "animationFrameCount": 21,
+          "extra": "0x100",
+          "recordsSha256": "717FFA4DD1BBACF5B1A480B9D461996022B227829D4F8ABF57C6A303F3B1BE5E"
+        },
+        {
+          "weaponClassIndex": 3,
+          "descriptorRva": "0x2386398",
+          "recordsRva": "0x2386190",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "336A2C5154E4B8A22186B96438A507C4CBFF2A4A87818A101D9B1A91F4B02A30"
+        },
+        {
+          "weaponClassIndex": 4,
+          "descriptorRva": "0x23863B0",
+          "recordsRva": "0x23861F0",
+          "sequenceFrameCount": 19,
+          "animationFrameCount": 19,
+          "extra": "0x100",
+          "recordsSha256": "1E09DB40882F2440D2D0E65A10D6C95F49BC00D14B10CA40C056B2D5B18B1649"
+        },
+        {
+          "weaponClassIndex": 5,
+          "descriptorRva": "0x23863C8",
+          "recordsRva": "0x2386270",
+          "sequenceFrameCount": 18,
+          "animationFrameCount": 18,
+          "extra": "0x100",
+          "recordsSha256": "EA56E59D79F2CE938AC3EF692E0662BCFE31E85B19E065F39832659A5252C251"
+        },
+        {
+          "weaponClassIndex": 6,
+          "descriptorRva": "0x23863E0",
+          "recordsRva": "0x2386270",
+          "sequenceFrameCount": 18,
+          "animationFrameCount": 18,
+          "extra": "0x100",
+          "recordsSha256": "EA56E59D79F2CE938AC3EF692E0662BCFE31E85B19E065F39832659A5252C251"
+        },
+        {
+          "weaponClassIndex": 7,
+          "descriptorRva": "0x23863F8",
+          "recordsRva": "0x23862E0",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "26DD19E9087AA375CB9DF92277F15EE789DD5DA7AC84D14EB752520A6CCBEBD3"
+        },
+        {
+          "weaponClassIndex": 8,
+          "descriptorRva": "0x2386410",
+          "recordsRva": "0x23860B0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "336A2C5154E4B8A22186B96438A507C4CBFF2A4A87818A101D9B1A91F4B02A30"
+        },
+        {
+          "weaponClassIndex": 9,
+          "descriptorRva": "0x2386428",
+          "recordsRva": "0x23860B0",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "336A2C5154E4B8A22186B96438A507C4CBFF2A4A87818A101D9B1A91F4B02A30"
+        },
+        {
+          "weaponClassIndex": 10,
+          "descriptorRva": "0x2386440",
+          "recordsRva": "0x2386190",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "336A2C5154E4B8A22186B96438A507C4CBFF2A4A87818A101D9B1A91F4B02A30"
+        },
+        {
+          "weaponClassIndex": 11,
+          "descriptorRva": "0x2386458",
+          "recordsRva": "0x2386190",
+          "sequenceFrameCount": 16,
+          "animationFrameCount": 16,
+          "extra": "0x100",
+          "recordsSha256": "336A2C5154E4B8A22186B96438A507C4CBFF2A4A87818A101D9B1A91F4B02A30"
+        },
+        {
+          "weaponClassIndex": 12,
+          "descriptorRva": "0x2386470",
+          "recordsRva": "0x2386030",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "6BA95871E7E0A4775F1B9E345C7F98517E2EFE35A77D64496D4E84857E0D22EB"
+        },
+        {
+          "weaponClassIndex": 13,
+          "descriptorRva": "0x2386488",
+          "recordsRva": "0x2386030",
+          "sequenceFrameCount": 17,
+          "animationFrameCount": 17,
+          "extra": "0x100",
+          "recordsSha256": "6BA95871E7E0A4775F1B9E345C7F98517E2EFE35A77D64496D4E84857E0D22EB"
+        }
+      ]
+    }
+  ],
+  "records": [
+    {
+      "recordsRva": "0x2382FB0",
+      "recordCount": 13,
+      "byteLength": 78,
+      "sha256": "79CF4A2C1A259156C5C88D4C9656ECA93DAF3B2FE965A53224468E12056FBCA8",
+      "bytes": "0000070000000000070100000000070200000000070300000000070400000000070500000000070600000000070700000000070800010000070900000000070A00000000070B00000000070C0000"
+    },
+    {
+      "recordsRva": "0x2383000",
+      "recordCount": 14,
+      "byteLength": 84,
+      "sha256": "0744B17BF1D24ABA4C487EBE8631A975F6DAA22ACCCDA6382EAFC0D83E4D90E0",
+      "bytes": "0000070000000000070100000000070200000000070300000000070400000000070500000000070600000000070700010000070800000000070900000000070A00000000070B00000000070C00000000070D0000"
+    },
+    {
+      "recordsRva": "0x2383060",
+      "recordCount": 18,
+      "byteLength": 108,
+      "sha256": "B31908FAA00D1538E32DCE57E2124C27046758DBD73C0DA10F712A1F985CE160",
+      "bytes": "0000070500000000070600030000070800000000070900010000070A00000000070B00000000070D00000000080600030000080800000000080900010000070A00000000070B00000000070D00000000080600030000080800000000080900010000080A00000000080D0000"
+    },
+    {
+      "recordsRva": "0x23830D0",
+      "recordCount": 21,
+      "byteLength": 126,
+      "sha256": "DEBFF213E688548C9F6350F66E29F3A54BA454F80F5BDD1FF2755F565E918A3C",
+      "bytes": "0000070200000000070700030000070900000000070A00010000070C00000000070D00000000070F00000000080400000000080600030000080900000000080A00010000070C00000000070D00000000070F00000000080400000000080600030000080900000000080A00010000080B00000000080D00000000080F0000"
+    },
+    {
+      "recordsRva": "0x23832A0",
+      "recordCount": 7,
+      "byteLength": 42,
+      "sha256": "DF87286E43038D31C0DCC37CA3A387F9B76720329052D23621C6FD054254ECEC",
+      "bytes": "0000080000000000080200000000080400000000080700010000080800000000080A00000000080D0000"
+    },
+    {
+      "recordsRva": "0x23832D0",
+      "recordCount": 8,
+      "byteLength": 48,
+      "sha256": "E9A27D3457CDCEAFCC7DAD66E9874CEE017A1F392B8077EDE68AE2FEF4E8681A",
+      "bytes": "0000070000000000070200000000070400000000070600000000070800010000070A00000000070D00000000070F0000"
+    },
+    {
+      "recordsRva": "0x2383450",
+      "recordCount": 16,
+      "byteLength": 96,
+      "sha256": "C31694F3A7B395E8A5160F15A99935FFC9A470343C1658600302E1B6368E1732",
+      "bytes": "00000D03000000000D04000000000D05000000000D06000000000D07000000000D08000000000D0A00000000080100000000080200000000080400000000080600000000080700010000080800000000080A00000000080B00000000080D0000"
+    },
+    {
+      "recordsRva": "0x2383600",
+      "recordCount": 15,
+      "byteLength": 90,
+      "sha256": "C47127A68AD96D156C3235AD7A737734F14E0687C413C1A97B3A6EA2056221EC",
+      "bytes": "0000030000010000030100010000030200010000030300010000030400010000030500010000030600010000030700010000070100000000070400000000070500030000070600010000070800000000070A00000000070C0000"
+    },
+    {
+      "recordsRva": "0x23837B0",
+      "recordCount": 6,
+      "byteLength": 36,
+      "sha256": "53AAB8793EE4C675B362B69674DCC74C78B30D039B2ACC46331B92B0A8981444",
+      "bytes": "0000080500000000080600000000080700010000080800000000080A00000000080C0000"
+    },
+    {
+      "recordsRva": "0x2383930",
+      "recordCount": 15,
+      "byteLength": 90,
+      "sha256": "70DB4A69D338A7AF9527FE18DE70271361880962E10F0EC830BB7944E1B81CB4",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A09000100000A0A000000000A0B000000000A0C000000000A0D0000"
+    },
+    {
+      "recordsRva": "0x2383AE0",
+      "recordCount": 13,
+      "byteLength": 78,
+      "sha256": "2BC9E42B413E7BC594E2296AFA7AA9891328AAF73CD6E5886C32EEAD6E22EB7C",
+      "bytes": "0000070000000000070100000000070200000000070300000000070400000000070600010000070700000000070800000000070900000000070A00000000070B00000000070C00000000070D0000"
+    },
+    {
+      "recordsRva": "0x2383B30",
+      "recordCount": 20,
+      "byteLength": 120,
+      "sha256": "F616B9015EE8EF0082FE19C4522B944501C4796B050EA5778803724455CE97CE",
+      "bytes": "0000070000000000070100000000070200000000070300000000070400000000070500000000070600000000070700000000070800000000070900000000070A00000000070B00010000070C00000000070D00000000070E00000000070F0000000007100000000007110000000007120000000007130000"
+    },
+    {
+      "recordsRva": "0x2383D00",
+      "recordCount": 21,
+      "byteLength": 126,
+      "sha256": "B231AEC18617EE7A4FAAAE87444A13FABBE72300D183DB369BB8E290769D2369",
+      "bytes": "0000070000000000070100000000070100000000070100000000070200000000070200000000070200000000070300000000070300000000070400000000070400000000070500000000070600000000070700010000070800000000070900000000070A00000000070B00000000070C00000000070D00000000070E0000"
+    },
+    {
+      "recordsRva": "0x2383D80",
+      "recordCount": 24,
+      "byteLength": 144,
+      "sha256": "C5F5409C607029B8A958E4A0540BAAC2069172E243039EAC491270A8A7B9EB9E",
+      "bytes": "0000070000000000070100000000070100000000070100000000070200000000070200000000070200000000070300000000070300000000070400000000070400000000070500000000070600000000070700000000070800000000070900010000070A00000000070B00000000070C00000000070D00000000070E00000000070F0000000007100000000007110000"
+    },
+    {
+      "recordsRva": "0x2383F60",
+      "recordCount": 16,
+      "byteLength": 96,
+      "sha256": "28D291B312BB402BFB76FAA03C48724306F445F65AA259227432915EBD9CBAA0",
+      "bytes": "0000070000000000070100000000070200000000070300000000070400000000070500000000070600000000080600000000070800000000080800000000070900000000080900000000070C00000000080C00010000070D00000000070E0000"
+    },
+    {
+      "recordsRva": "0x2383FC0",
+      "recordCount": 16,
+      "byteLength": 96,
+      "sha256": "E49994B9B84BDDED6C0ABE582CF51242FD8AC13BAD2CDC8F91FC20F369451354",
+      "bytes": "0000070000000000070100000000070200000000080200000000070600000000080600000000070900000000080900000000070C00000000080A00000000070E00000000080E00000000070F0000000007100000000007110000000000000000"
+    },
+    {
+      "recordsRva": "0x2384170",
+      "recordCount": 8,
+      "byteLength": 48,
+      "sha256": "B9902E745CB31BBD404C8A10EDB534BE2164C9A5CAE699C724C9E1A2A4BE23E6",
+      "bytes": "000007000000000007010000000007020000000007030001000007030000000007040000000007050000000007060001"
+    },
+    {
+      "recordsRva": "0x23842F0",
+      "recordCount": 17,
+      "byteLength": 102,
+      "sha256": "14E99616A8143190540F873EC53BF2B2BA8465DF8C6DC5F0EA2A160CF5C57F3A",
+      "bytes": "0000070100000000070200000000070400000000070600000000070700010000070900000000070B00000000070D00000000070E000000000F02000100000F04000000000F05000000000F06000000000F08000000000F09000000000F0A000000000F0B0000"
+    },
+    {
+      "recordsRva": "0x23844B0",
+      "recordCount": 19,
+      "byteLength": 114,
+      "sha256": "7052E31032DFB83A64D525A7737A1B52B04B079D9D760E2BE177B79789A2A7A1",
+      "bytes": "00000A00000000000A01000000000A03000000000A04000000000A05000000000A07000000000A08000000000A09000100000A09000000000A09000000000A09000000000A0A000000000A09000000000A09000000000A09000000000A0A000000000A0B000000000A0C000000000A0D0000"
+    },
+    {
+      "recordsRva": "0x2384680",
+      "recordCount": 15,
+      "byteLength": 90,
+      "sha256": "0FD4F2084A873DA8BE30DBAD43CCFD66D9B7E50634819366C8FD41969351802B",
+      "bytes": "00000D00000000000D01000000000D02000000000D03000000000D04000000000D05000100000D06000000000D07000000000D08000000000D09000000000D0A000000000D0B000100000D0C000000000D0D000000000D0E0001"
+    },
+    {
+      "recordsRva": "0x2384830",
+      "recordCount": 22,
+      "byteLength": 132,
+      "sha256": "5544A9D6CC31210892946F3A48CB2A57FD0B7F17B723F69EF1E2642435E45CA8",
+      "bytes": "00000D00000000000D01000000000D02000000000D03000000000D04000000000D05000100000D06000000000D07000000000D08000000000D09000000000D0A000000000D0B000100000D0C000000000D0D000000000D0E00000000070500000000070600010000070700000000070800000000070900000000070A00000000070B0000"
+    },
+    {
+      "recordsRva": "0x23848C0",
+      "recordCount": 25,
+      "byteLength": 150,
+      "sha256": "F1229336BDFAFF8D7A314887F26D77F8D8359B7071E6E68D9688BB8F3709E6ED",
+      "bytes": "00000D00000000000D01000000000D02000000000D03000000000D04000000000D05000100000D06000000000D07000000000D08000000000D09000000000D0A000000000D0B000100000D0C000000000D0D000000000D0E00000000070600000000070700010000070800000000070900000000070A00000000070B00000000070C00000000070D00000000070E00000000070F0000"
+    },
+    {
+      "recordsRva": "0x2384960",
+      "recordCount": 28,
+      "byteLength": 168,
+      "sha256": "FC2E60756518E780EFEC7D92399645FAE4991781A18CBA77B166AAE98E576B85",
+      "bytes": "00000D00000000000D01000000000D02000000000D03000000000D04000000000D05000100000D06000000000D07000000000D08000000000D09000000000D0A000000000D0B000100000D0C000000000D0D000000000D0E00000000070600000000070700000000070800000000070900010000070A00000000070B00000000070C00000000070D00000000070E00000000070F0000000007100000000007110000000007120000"
+    },
+    {
+      "recordsRva": "0x2384A10",
+      "recordCount": 27,
+      "byteLength": 162,
+      "sha256": "D40E2DE631977B450C67634EAF6D27AEDA376907BD14F4343077835E3FFA8F46",
+      "bytes": "00000D00000000000D01000000000D02000000000D03000000000D04000000000D05000100000D06000000000D07000000000D08000000000D09000000000D0A000000000D0B000100000D0C000000000D0D000000000D0E00000000070600000000070700000000070800010000070900000000070A00000000070B00000000070C00000000070D00000000070E00000000070F0000000007100000000007110000"
+    },
+    {
+      "recordsRva": "0x2384C10",
+      "recordCount": 12,
+      "byteLength": 72,
+      "sha256": "DD82F5FCF1AEC227C7FE1CD4B624F665A3231470864E165D6A9805CFD138C3E2",
+      "bytes": "00000B02000000000B03000000000B04000000000B06000000000B07000000000B08000100000F02000000000F04000000000F05000000000F07000100000F08000000000F0A0000"
+    },
+    {
+      "recordsRva": "0x2384DB0",
+      "recordCount": 12,
+      "byteLength": 72,
+      "sha256": "D0BCBEBD2A378035F94325837A7A14FFABEF02764B00AF796AB17D20B9372B64",
+      "bytes": "0000080000000000080100000000080200000000080300000000080400000000080500000000080600010000080700000000080800000000080900000000080A00000000080B0000"
+    },
+    {
+      "recordsRva": "0x2384E00",
+      "recordCount": 16,
+      "byteLength": 96,
+      "sha256": "692F50009CF5C2DFCED4DC1BA7C9280A55A77B77AD69A9BEC2E4691F98C3D461",
+      "bytes": "0000080000000000080100000000080200000000080300000000080400000000080500000000080600010000100300000000100400000000100500000000100600010000100700000000100800000000100900000000100A00000000100B0000"
+    },
+    {
+      "recordsRva": "0x2384FB0",
+      "recordCount": 19,
+      "byteLength": 114,
+      "sha256": "22CBF0C3405B560D7EEAC9BA2F181FC50E43745E6A7896CF0D8FF81E00AEA108",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000100000A08000000000A09000000000A0A000000000A0B000100000A0D000000000A0E000000000A0F000000000A10000000000A11000000000A120001000000000000"
+    },
+    {
+      "recordsRva": "0x2385180",
+      "recordCount": 20,
+      "byteLength": 120,
+      "sha256": "0D0FFD12476F4937CD3BB8B2BC21317055BFF786ED1EC1A95BAEFB22CF4FA346",
+      "bytes": "00000C00000000000C01000000000C02000000000C03000000000C04000100000C05000000000C02000000000C03000000000C04000100000C05000000000C02000000000C03000000000C04000000000C05000100000C06000000000C07000000000C08000000000C09000000000C0A000000000C0B0000"
+    },
+    {
+      "recordsRva": "0x2385350",
+      "recordCount": 15,
+      "byteLength": 90,
+      "sha256": "1D24C8E224165A173BCA4FFF23D19FD6BE625C8B7E56E494437BEBE38A806E65",
+      "bytes": "00000D00000000000D01000000000D02000000000D03000000000D04000000000D05000000000D06000000000D07000000000D08000000000D09000000000D09000100000D0A000000000D0B000000000D0C000000000D0D0000"
+    },
+    {
+      "recordsRva": "0x2385500",
+      "recordCount": 17,
+      "byteLength": 102,
+      "sha256": "954B91AB4747219B1E045F37847A12A15BA7E3BE9171082826D5985E16264F38",
+      "bytes": "00000D00000000000D01000000000D02000000000D03000000000D04000000000D05000000000D06000000000D07000000000D08000100000D09000000000D0A000100000D0B000000000D0C000100000D0C000000000D0D000100000D0D000000000D0E0000"
+    },
+    {
+      "recordsRva": "0x23856C0",
+      "recordCount": 23,
+      "byteLength": 138,
+      "sha256": "52D85B197BA660A0B1164AEDA9B157DD34A481FAD67FE30E0B1632EDC9EC79A9",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000100000C00000000000C01000000000C02000000000C03000000000C04000100000C05000000000C06000000000C07000000000C08000000000C09000000000C0A000000000C0B000000000C0C0000"
+    },
+    {
+      "recordsRva": "0x23858A0",
+      "recordCount": 16,
+      "byteLength": 96,
+      "sha256": "78D9EC190F070951BF8670DB7D00205782146DEC73E80B113B5AFE4A465416DD",
+      "bytes": "00000D0F000000000D0E000000000D0D000000000D0C000000000D0B000000000D0A000000000D09000000000D08000000000D07000000000D06000000000D05000000000D04000000000D03000000000D02000100000D01000000000D000000"
+    },
+    {
+      "recordsRva": "0x2385A50",
+      "recordCount": 19,
+      "byteLength": 114,
+      "sha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A09000000000A09000000000A0A000100000A0B000000000A0C000000000A0D000000000A0E000000000A0F000000000A100000"
+    },
+    {
+      "recordsRva": "0x2385C20",
+      "recordCount": 19,
+      "byteLength": 114,
+      "sha256": "173A5DE7CB97EFAF54449006CBD6B59409F991AFF4FF97A2C1429BF979A61897",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A09000000000A09000000000A0A000100000A0B000000000A0C000000000A0D000000000A0E000000000A0F000000000A100000"
+    },
+    {
+      "recordsRva": "0x2385CA0",
+      "recordCount": 16,
+      "byteLength": 96,
+      "sha256": "F5D33EFB89A723C18061E8A7385DB48134575C419FB715D1D3F3F48D95E09246",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000100000A0A000000000A0B000000000A0C000000000A0D000000000A0E000000000A0F0000"
+    },
+    {
+      "recordsRva": "0x2385D00",
+      "recordCount": 16,
+      "byteLength": 96,
+      "sha256": "F5D33EFB89A723C18061E8A7385DB48134575C419FB715D1D3F3F48D95E09246",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000100000A0A000000000A0B000000000A0C000000000A0D000000000A0E000000000A0F0000"
+    },
+    {
+      "recordsRva": "0x2385D60",
+      "recordCount": 18,
+      "byteLength": 108,
+      "sha256": "7F75D4A46F716A73CC0611C0D5383356A378B98774709982BFA1F3E08D9CFB91",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A0A000100000A0B000000000A0C000000000A0D000000000A0E000000000A0F000000000A10000000000A110000"
+    },
+    {
+      "recordsRva": "0x2385DD0",
+      "recordCount": 20,
+      "byteLength": 120,
+      "sha256": "85BEFD732DD010536923716A9CCA5CBA9DBC3A865E51A702B2FF855FC3A1331F",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A0A000100000A0B000000000A0C000000000A0D000000000A0E000000000A0F000000000A10000000000A11000000000A12000000000A130000"
+    },
+    {
+      "recordsRva": "0x2385E50",
+      "recordCount": 22,
+      "byteLength": 132,
+      "sha256": "7DE07ACC9A799FDEB5E5E5C305E0C2912E3BE02FE1EEB93399F631C9EE012693",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A0A000100000A0B000000000A0C000000000A0D000000000A0E000000000A0F000000000A10000000000A11000000000A12000000000A13000000000A14000000000A150000"
+    },
+    {
+      "recordsRva": "0x2386030",
+      "recordCount": 17,
+      "byteLength": 102,
+      "sha256": "6BA95871E7E0A4775F1B9E345C7F98517E2EFE35A77D64496D4E84857E0D22EB",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A09000000000A09000000000A0A000100000A0B000000000A0C000000000A0D000000000A0E0000"
+    },
+    {
+      "recordsRva": "0x23860B0",
+      "recordCount": 16,
+      "byteLength": 96,
+      "sha256": "336A2C5154E4B8A22186B96438A507C4CBFF2A4A87818A101D9B1A91F4B02A30",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A0A000100000A0B000000000A0C000000000A0D000000000A0E000000000A0F0000"
+    },
+    {
+      "recordsRva": "0x2386110",
+      "recordCount": 21,
+      "byteLength": 126,
+      "sha256": "717FFA4DD1BBACF5B1A480B9D461996022B227829D4F8ABF57C6A303F3B1BE5E",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A0A000000000A0B000100000A0C000000000A0D000000000A0E000000000A0F000000000A10000000000A11000000000A12000000000A13000000000A140000"
+    },
+    {
+      "recordsRva": "0x2386190",
+      "recordCount": 16,
+      "byteLength": 96,
+      "sha256": "336A2C5154E4B8A22186B96438A507C4CBFF2A4A87818A101D9B1A91F4B02A30",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A0A000100000A0B000000000A0C000000000A0D000000000A0E000000000A0F0000"
+    },
+    {
+      "recordsRva": "0x23861F0",
+      "recordCount": 19,
+      "byteLength": 114,
+      "sha256": "1E09DB40882F2440D2D0E65A10D6C95F49BC00D14B10CA40C056B2D5B18B1649",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A0A000000000A0B000000000A0C000100000A0D000000000A0E000000000A0F000000000A10000000000A11000000000A120000"
+    },
+    {
+      "recordsRva": "0x2386270",
+      "recordCount": 18,
+      "byteLength": 108,
+      "sha256": "EA56E59D79F2CE938AC3EF692E0662BCFE31E85B19E065F39832659A5252C251",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000000000A09000000000A0A000000000A0B000100000A0C000000000A0D000000000A0E000000000A0F000000000A10000000000A110000"
+    },
+    {
+      "recordsRva": "0x23862E0",
+      "recordCount": 17,
+      "byteLength": 102,
+      "sha256": "26DD19E9087AA375CB9DF92277F15EE789DD5DA7AC84D14EB752520A6CCBEBD3",
+      "bytes": "00000A00000000000A01000000000A02000000000A03000000000A04000000000A05000000000A06000000000A07000000000A08000100000A09000000000A0A000000000A0B000000000A0C000000000A0D000000000A0E000000000A0F000000000A100000"
+    }
+  ]
+}

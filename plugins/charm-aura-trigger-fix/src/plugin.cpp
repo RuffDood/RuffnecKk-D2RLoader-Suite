@@ -1,5 +1,6 @@
 #include <D2RLPlugin/api.h>
 #include <RuffnecKk/native_stat_compat.hpp>
+#include <RuffnecKk/tracked_native_transform_d2rl.hpp>
 
 #include "policy.hpp"
 
@@ -253,7 +254,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-charm-aura-trigger-fix",
     .name = "Charm Aura Trigger Fix",
-    .version = "1.7.0",
+    .version = "1.7.1",
     .author = "RuffnecKk",
     .description = "Reactivates inventory charm auras after death, corpse recovery, and zone changes.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -506,7 +507,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Charm Aura Trigger Fix 1.7.0: %s; diagnostics=%s; transitions=%llu; "
+        "Charm Aura Trigger Fix 1.7.1: %s; diagnostics=%s; transitions=%llu; "
         "corpse recoveries=%llu; native corpse refreshes=%llu; town respawns=%llu; "
         "native town refreshes=%llu; items scanned=%llu; aura charms refreshed=%llu; "
         "non-aura charms skipped=%llu; inactive charms skipped=%llu; active skills restored=%llu; active skill "
@@ -637,7 +638,8 @@ auto ValidateRuntime() noexcept -> bool {
     if (!NativeStats.BindCurrentProcess(
             Base,
             RuffnecKk::NativeStatCompat::ToMask(
-                RuffnecKk::NativeStatCompat::Helper::MergeStatLists))) {
+                RuffnecKk::NativeStatCompat::Helper::MergeStatLists),
+            RuffnecKk::TrackedNativeTransform::D2RLDiagnosticsContext(Context))) {
         char message[192]{};
         std::snprintf(message, sizeof(message),
             "CharmAuraTriggerFix: stat compatibility admission failed (%s).",
@@ -809,7 +811,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "Charm Aura Trigger Fix 1.7.0 by RuffnecKk loaded disabled; no hook or service registered.");
+        "Charm Aura Trigger Fix 1.7.1 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 

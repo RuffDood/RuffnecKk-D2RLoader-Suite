@@ -22,6 +22,7 @@ the native encoding, save and callback fields copied from the source row.
 | Attack Attempt | `item_skillonattackattempt` | `<FREE_STAT_ID_6>` | `CastOnAttackAttempt` |
 | Fixed while channeling | `item_skillwhilechanneling` | `<FREE_STAT_ID_7>` | `CastWhileChanneling` |
 | Source level while channeling | `item_skillwhilechannelingsamelevel` | `<FREE_STAT_ID_8>` | `CastWhileChannelingSameLevel` |
+| Block | `item_skillonblock` | `<FREE_BLOCK_STAT_ID>` | `CastOnBlock` |
 
 A source-conditioned family adds another distinct pair. This Frost Nova example
 is only a naming convention chosen by the consuming mod:
@@ -73,13 +74,14 @@ Copy `att-skill` once per row. Retain `*Enabled=1`, `func1=11`,
 | Source level while channeling | `cast-skill-while-channeling-same-level` | `<FREE_PROPERTY_ID_8>` | `item_skillwhilechannelingsamelevel` |
 | Fixed when Frost Nova is cast | `cast-skill-when-frost-nova` | `<FREE_PROPERTY_ID_9>` | `item_skillwhenfrostnova` |
 | Source level when Frost Nova is cast | `cast-skill-when-frost-nova-same-level` | `<FREE_PROPERTY_ID_10>` | `item_skillwhenfrostnovasamelevel` |
+| Block | `cast-skill-on-block` | `<FREE_BLOCK_PROPERTY_ID>` | `item_skillonblock` |
 
 The source-level name is deliberately explicit. There is no abbreviated
 `cast-skill-src`; `source` would mean the skill the player manually cast.
 
 Enter the channeling, source-family and combat stat IDs in the TOML. Use `0`
-to disable an unused fixed/source-level flavor. Every nonzero synthetic trigger
-ID must be distinct:
+to disable an unused fixed/source-level flavor. Every nonzero configured trigger
+ID must be distinct, including the native on-kill ID:
 
 ```toml
 [while_channeling]
@@ -97,7 +99,41 @@ attack_attempt_stat_id = <FREE_STAT_ID_6>
 critical_strike_stat_id = <FREE_STAT_ID_3>
 crushing_blow_stat_id = <FREE_STAT_ID_4>
 open_wounds_stat_id = <FREE_STAT_ID_5>
+
+[on_kill]
+stat_id = <NATIVE_OR_CLONED_KILL_STAT_ID>
+
+[on_block]
+stat_id = <FREE_BLOCK_STAT_ID>
 ```
+
+On Kill is the exception to the synthetic row recipe. Use native
+`item_skillonkill` (`*ID=196`) and `kill-skill`, or clone their complete rows
+into consumer-owned IDs. Keep **`itemevent1=kill`**, `itemeventfunc1=20` and
+their native encoding/save fields. A clone can be named
+`item_skillonkillconfigured`, with property `cast-skill-on-kill` and tooltip key
+`CastOnKillConfigured`. It is not a `doactive` family. Only the configured stat
+gets the player spell-kill eligibility extension; other native kill items keep
+their existing behavior. No weapon damage is added to spells.
+
+For Block, clone `item_skillonattack` as above and keep `itemevent1=doactive`.
+It belongs to the blocking player, with the incoming attacker as target.
+Confirmed shield and Assassin Weapon Block outcomes qualify; misses,
+Dodge/Avoid/Evade and zero damage without a block do not. Both new sections
+default to `stat_id=0`. Each nonzero ID must be distinct from every other
+configured trigger stat. Both additions use fixed-level encoding and preserve
+native item chance rolls. Set IDs back to zero to disable dispatch, but retain
+any table rows that saved items reference.
+
+Use these ordinary `descfunc=15` strings in every shipped locale:
+
+- `CastOnBlock`: `%d%% Chance to cast level %d %s when you Block`
+- `CastOnKillConfigured`: `%d%% Chance to cast level %d %s when you Kill an Enemy`
+
+The additions are a local source candidate. Synchronous proc recursion is
+guarded; delayed missile/DoT provenance, complete-stack gameplay, persistence
+and multiplayer remain runtime gates. No minion/mercenary event is promoted
+to its owner's trigger.
 
 ## 3. Add localization
 
@@ -305,8 +341,8 @@ Test at least these four combinations for custom skills:
 
 - The consuming mod owns and freezes all numeric IDs.
 - Do not reuse any shipped stat ID for a different event or encoding later.
-- Keep every channeling, source-family and combat ItemStatCost ID synchronized
-  with the TOML; all nonzero synthetic IDs must be distinct.
+- Keep every channeling, source-family, combat and configured kill ItemStatCost
+  ID synchronized with the TOML; all nonzero configured IDs must be distinct.
 - Keep `doactive` limited to EventFunc20 for this contract.
 - Keep the property name, stat name and localization key stable after items
   have shipped.
@@ -314,3 +350,37 @@ Test at least these four combinations for custom skills:
 - Test new custom source skills. Put non-repeating exclusions in
   `on_cast.exclude_skill_ids` and repeating/channelled exclusions in
   `while_channeling.exclude_skill_ids`.
+
+## Native admission for the unreleased kill/block extension
+
+The current offline evidence targets D2R 3.3.93847 only. The source version
+remains 1.1.1; these additions are not runtime-qualified release claims.
+
+| Surface | Verified RVA and role |
+|---|---|
+| Kill eligibility | `0x583B30` EventFunc20; `0x583BA5` admits a null damage pointer or hit flag `0x20` |
+| FinalizeDamage admission | `0x44A9B0`; witness `0x44A9BD` checks damage permission and a living defender |
+| Finalized-damage reporter | `0x451FB0`; single direct call `0x44AA1F`, expected return address `0x44AA24` |
+| Confirmed block outcome | witness `0x44AE13` reads damage `+4`, prioritizes Dodge/Avoid/Evade `0x380`, then tests BLOCK/WEAPONBLOCK `0x8010` |
+
+On Block hooks only the reporter entry, not the broad FinalizeDamage entry or
+the animation path. It runs the original reporter once, then dispatches once
+per admitted confirmed-block report. The native caller, player defender,
+item-skill capability and strict entry/admission/call/result fingerprints are
+required. Unknown entry ownership or changed witness bytes refuse activation;
+disabled features do not claim their additional native surfaces. Hook
+installation remains tracked by D2RLoader, and partial activation is inert
+until the existing deferred activation state publishes success.
+
+This seam covers the report before uninterruptible, soft-hit and block-animation
+suppression. The general missile path can normalize Weapon Block to BLOCK, so
+the public contract deliberately includes both and cannot promise shield-only
+classification. Dodge/Avoid/Evade, successful-hit/will-die contradictions and
+outcomes lacking a block flag are rejected; damage amount is never the test.
+
+Runtime qualification is still required for shield and Assassin Weapon Block,
+Amazon Dodge/Avoid/Evade, misses, absorb/zero damage, multi-hit and missiles,
+physical/elemental attacks, dual wield, PvP, minion/merc exclusions, synchronous
+proc-chain suppression and delayed missile attribution. Validate both supported
+coexistence load orders, clean exit, saved items and multiplayer server authority
+against the exact candidate DLL before describing those behaviors as proven.

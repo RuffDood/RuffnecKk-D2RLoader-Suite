@@ -33,6 +33,11 @@
 #include <string_view>
 #include <vector>
 
+extern "C" void FloatingDamageDirectCommitSite();
+extern "C" void FloatingDamagePeriodicCommitSite();
+extern "C" void* gFloatingDamageDirectContinuation{};
+extern "C" void* gFloatingDamagePeriodicContinuation{};
+
 namespace {
 constexpr std::uintptr_t HitpointsCommitContextRva = 0x44D083;
 constexpr std::uintptr_t HitpointsCommitCallRva = 0x44D093;
@@ -84,8 +89,6 @@ std::atomic<const RuffnecKk::OverlayHost::HostApiV2*> MapSenseOverlayHost{};
 std::mutex OverlayWorkerMutex;
 HANDLE OverlayStopEvent{};
 HANDLE OverlayWorker{};
-void* HitpointsCommitRelay{};
-void* PeriodicHitpointsCommitRelay{};
 
 #pragma pack(push, 1)
 struct UnitView {
@@ -185,7 +188,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-floating-damage",
     .name = "Floating Damage",
-    .version = "1.5.1",
+    .version = "1.5.2",
     .author = "RuffnecKk",
     .description = "Shows floating combat numbers and rolling damage per second.",
     .flags = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
@@ -1119,116 +1122,6 @@ bool MatchesSignature(
         static_cast<std::uint32_t>(expected.size()));
 }
 
-void* AllocateRelayPageNear(void* hint) noexcept {
-    SYSTEM_INFO systemInfo{};
-    GetSystemInfo(&systemInfo);
-    const auto granularity = static_cast<std::uintptr_t>(
-        systemInfo.dwAllocationGranularity);
-    const auto base = reinterpret_cast<std::uintptr_t>(hint)
-        & ~(granularity - 1);
-    for (std::uintptr_t delta = granularity;
-            delta < UINT64_C(0x70000000); delta += granularity) {
-        if (base > std::numeric_limits<std::uintptr_t>::max() - delta) break;
-        if (auto* memory = VirtualAlloc(
-                reinterpret_cast<void*>(base + delta),
-                systemInfo.dwPageSize,
-                MEM_COMMIT | MEM_RESERVE,
-                PAGE_READWRITE)) {
-            return memory;
-        }
-    }
-    return nullptr;
-}
-
-bool CreateHitpointsCommitRelay() noexcept {
-    HitpointsCommitRelay = AllocateRelayPageNear(Base + HitpointsCommitCallRva);
-    if (!HitpointsCommitRelay) return false;
-
-    std::array<std::uint8_t, 31> relay{
-        0x48,0x83,0xEC,0x38,
-        0x4C,0x89,0x74,0x24,0x20,
-        0x48,0x89,0x7C,0x24,0x28,
-        0x48,0xB8,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-        0xFF,0xD0,
-        0x48,0x83,0xC4,0x38,
-        0xC3,
-    };
-    const auto hookAddress = reinterpret_cast<std::uintptr_t>(
-        &HookHitpointsCommit);
-    std::memcpy(relay.data() + 16, &hookAddress, sizeof(hookAddress));
-    std::memcpy(HitpointsCommitRelay, relay.data(), relay.size());
-
-    DWORD previousProtection{};
-    if (!VirtualProtect(
-            HitpointsCommitRelay,
-            relay.size(),
-            PAGE_EXECUTE_READ,
-            &previousProtection)) {
-        VirtualFree(HitpointsCommitRelay, 0, MEM_RELEASE);
-        HitpointsCommitRelay = nullptr;
-        return false;
-    }
-    FlushInstructionCache(
-        GetCurrentProcess(), HitpointsCommitRelay, relay.size());
-
-    const auto relayAddress = reinterpret_cast<std::uintptr_t>(
-        HitpointsCommitRelay);
-    const auto baseAddress = reinterpret_cast<std::uintptr_t>(Base);
-    if (relayAddress < baseAddress
-            || relayAddress - baseAddress
-                > std::numeric_limits<std::uint32_t>::max()) {
-        VirtualFree(HitpointsCommitRelay, 0, MEM_RELEASE);
-        HitpointsCommitRelay = nullptr;
-        return false;
-    }
-    return true;
-}
-
-bool CreatePeriodicHitpointsCommitRelay() noexcept {
-    PeriodicHitpointsCommitRelay = AllocateRelayPageNear(
-        Base + PeriodicHitpointsCommitCallRva);
-    if (!PeriodicHitpointsCommitRelay) return false;
-
-    std::array<std::uint8_t, 21> relay{
-        0x48,0x83,0xEC,0x28,
-        0x48,0xB8,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-        0xFF,0xD0,
-        0x48,0x83,0xC4,0x28,
-        0xC3,
-    };
-    const auto hookAddress = reinterpret_cast<std::uintptr_t>(
-        &HookPeriodicHitpointsCommit);
-    std::memcpy(relay.data() + 6, &hookAddress, sizeof(hookAddress));
-    std::memcpy(PeriodicHitpointsCommitRelay, relay.data(), relay.size());
-
-    DWORD previousProtection{};
-    if (!VirtualProtect(
-            PeriodicHitpointsCommitRelay,
-            relay.size(),
-            PAGE_EXECUTE_READ,
-            &previousProtection)) {
-        VirtualFree(PeriodicHitpointsCommitRelay, 0, MEM_RELEASE);
-        PeriodicHitpointsCommitRelay = nullptr;
-        return false;
-    }
-    FlushInstructionCache(
-        GetCurrentProcess(),
-        PeriodicHitpointsCommitRelay,
-        relay.size());
-
-    const auto relayAddress = reinterpret_cast<std::uintptr_t>(
-        PeriodicHitpointsCommitRelay);
-    const auto baseAddress = reinterpret_cast<std::uintptr_t>(Base);
-    if (relayAddress < baseAddress
-            || relayAddress - baseAddress
-                > std::numeric_limits<std::uint32_t>::max()) {
-        VirtualFree(PeriodicHitpointsCommitRelay, 0, MEM_RELEASE);
-        PeriodicHitpointsCommitRelay = nullptr;
-        return false;
-    }
-    return true;
-}
-
 bool InstallDamageHook() noexcept {
     constexpr std::array<std::uint8_t, 32> checkStateExpected{
         0x48,0x89,0x5C,0x24,0x08,0x48,0x89,0x74,
@@ -1335,7 +1228,12 @@ bool InstallDamageHook() noexcept {
                 hitpointsCommitContextExpected)
             || !MatchesSignature(
                 PeriodicHitpointsCommitContextRva,
-                periodicHitpointsCommitContextExpected)) {
+                periodicHitpointsCommitContextExpected)
+            || !MatchesSignature(
+                HitpointsCommitCallRva, hitpointsCommitCallExpected)
+            || !MatchesSignature(
+                PeriodicHitpointsCommitCallRva,
+                periodicHitpointsCommitCallExpected)) {
         return false;
     }
     CheckState = reinterpret_cast<CheckStateFn>(Base + CheckStateRva);
@@ -1350,49 +1248,30 @@ bool InstallDamageHook() noexcept {
         Base + GetNativeHeightRva);
     GetNativeWidth = reinterpret_cast<GetNativeDimensionFn>(
         Base + GetNativeWidthRva);
-    if (!CreateHitpointsCommitRelay()) return false;
-    if (!CreatePeriodicHitpointsCommitRelay()) {
-        VirtualFree(HitpointsCommitRelay, 0, MEM_RELEASE);
-        HitpointsCommitRelay = nullptr;
-        return false;
-    }
+    gFloatingDamageDirectContinuation = Base + HitpointsCommitCallRva + 5;
+    gFloatingDamagePeriodicContinuation =
+        Base + PeriodicHitpointsCommitCallRva + 5;
     if (!Context->InstallInlineHook(
             UpdateCameraRva,
             updateCameraExpected.data(),
             static_cast<std::uint32_t>(updateCameraExpected.size()),
             HookUpdateCamera,
             &OriginalUpdateCamera)) {
-        VirtualFree(HitpointsCommitRelay, 0, MEM_RELEASE);
-        HitpointsCommitRelay = nullptr;
-        VirtualFree(PeriodicHitpointsCommitRelay, 0, MEM_RELEASE);
-        PeriodicHitpointsCommitRelay = nullptr;
         return false;
     }
-    const auto relayRva = reinterpret_cast<std::uintptr_t>(
-        HitpointsCommitRelay) - reinterpret_cast<std::uintptr_t>(Base);
-    if (!Context->PatchCallRel32(
+    if (!Context->InstallInlineHook(
             HitpointsCommitCallRva,
             hitpointsCommitCallExpected.data(),
             static_cast<std::uint32_t>(hitpointsCommitCallExpected.size()),
-            relayRva,
-            5)) {
-        VirtualFree(HitpointsCommitRelay, 0, MEM_RELEASE);
-        HitpointsCommitRelay = nullptr;
-        VirtualFree(PeriodicHitpointsCommitRelay, 0, MEM_RELEASE);
-        PeriodicHitpointsCommitRelay = nullptr;
+            &FloatingDamageDirectCommitSite)) {
         return false;
     }
-    const auto periodicRelayRva = reinterpret_cast<std::uintptr_t>(
-        PeriodicHitpointsCommitRelay) - reinterpret_cast<std::uintptr_t>(Base);
-    if (!Context->PatchCallRel32(
+    if (!Context->InstallInlineHook(
             PeriodicHitpointsCommitCallRva,
             periodicHitpointsCommitCallExpected.data(),
             static_cast<std::uint32_t>(
                 periodicHitpointsCommitCallExpected.size()),
-            periodicRelayRva,
-            5)) {
-        // The direct call may already target its relay. Keep both pages alive
-        // until D2RLoader rolls back the failed plugin transaction.
+            &FloatingDamagePeriodicCommitSite)) {
         return false;
     }
     return true;
@@ -1684,7 +1563,7 @@ auto ConsoleCommand(
         std::snprintf(
             message,
             sizeof(message),
-        "FloatingDamage 1.5.1: enabled=%s; runtime=%s; diagnostics=%s; in_game=%s; input_action=%s; renderer_role=%s; overlay_hooks=%s; presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; direct=%llu; periodic=%llu; queued=%llu; projected=%llu; rejected=%llu; forced=%llu; missed=%llu; request_drops=%llu; active=%zu; pending=%zu; font=%d; display=%.0fx%.0f; scale=%.3f.",
+        "FloatingDamage 1.5.2: enabled=%s; runtime=%s; diagnostics=%s; in_game=%s; input_action=%s; renderer_role=%s; overlay_hooks=%s; presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; direct=%llu; periodic=%llu; queued=%llu; projected=%llu; rejected=%llu; forced=%llu; missed=%llu; request_drops=%llu; active=%zu; pending=%zu; font=%d; display=%.0fx%.0f; scale=%.3f.",
             enabled ? "true" : "false",
             RuntimeActive.load(std::memory_order_acquire) ? "active" : "not installed",
             config.diagnosticsEnabled ? "true" : "false",
@@ -1781,6 +1660,24 @@ auto ConsoleCommand(
 }
 } // namespace
 
+extern "C" void __fastcall FloatingDamageDirectCommit(
+    UnitView* target,
+    std::int32_t statId,
+    std::int32_t newFixed,
+    std::uint32_t layer,
+    UnitView* source,
+    void* damage) noexcept {
+    HookHitpointsCommit(target, statId, newFixed, layer, source, damage);
+}
+
+extern "C" void __fastcall FloatingDamagePeriodicCommit(
+    UnitView* target,
+    std::int32_t statId,
+    std::int32_t newFixed,
+    std::uint32_t layer) noexcept {
+    HookPeriodicHitpointsCommit(target, statId, newFixed, layer);
+}
+
 extern "C" __declspec(dllexport)
 const RuffnecKk::FloatingDamageOverlay::ExternalOverlayApiV1* __cdecl
 RuffnecKkFloatingDamageGetOverlayApi(
@@ -1864,7 +1761,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     if (!FloatingDamage::GetConfig().enabled) {
         D3D12::SetDiagnosticLogCallback(nullptr);
         context->LogInfo(
-        "Floating Damage 1.5.1 by RuffnecKk disabled; no input action, renderer or combat hook was installed.");
+        "Floating Damage 1.5.2 by RuffnecKk disabled; no input action, renderer or combat hook was installed.");
         return true;
     }
     if (!RegisterInputAction())
@@ -1902,7 +1799,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     }
     FloatingDamage::SetTargetScreenPositionProvider(TryProjectTargetToScreen);
     RuntimeActive.store(true, std::memory_order_release);
-    context->LogInfo("FloatingDamage 1.5.1 active after complete native fingerprint validation with direct and periodic HP-loss capture, autonomous rendering when alone, and priority MapSense host coexistence.");
+    context->LogInfo("FloatingDamage 1.5.2 active after complete native fingerprint validation with direct and periodic HP-loss capture, autonomous rendering when alone, and priority MapSense host coexistence.");
     return true;
 }
 
@@ -1942,14 +1839,8 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     StopOverlayTransport();
     D3D12::SetOptionalKodiaFontPath(nullptr);
     D3D12::SetDiagnosticLogCallback(nullptr);
-    if (HitpointsCommitRelay) {
-        VirtualFree(HitpointsCommitRelay, 0, MEM_RELEASE);
-        HitpointsCommitRelay = nullptr;
-    }
-    if (PeriodicHitpointsCommitRelay) {
-        VirtualFree(PeriodicHitpointsCommitRelay, 0, MEM_RELEASE);
-        PeriodicHitpointsCommitRelay = nullptr;
-    }
+    gFloatingDamageDirectContinuation = nullptr;
+    gFloatingDamagePeriodicContinuation = nullptr;
     OriginalUpdateCamera = nullptr;
     GetNativeWidth = nullptr;
     GetNativeHeight = nullptr;

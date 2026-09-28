@@ -5,9 +5,10 @@
 #include "default_config.hpp"
 #include "native_fingerprint.hpp"
 #include "player_scaling_policy.hpp"
+#include "players_command.hpp"
+#include "player_controls.hpp"
 
 #include <Windows.h>
-#include <intrin.h>
 
 #include <algorithm>
 #include <array>
@@ -25,7 +26,16 @@
 #include <string>
 #include <vector>
 
-#pragma intrinsic(_AddressOfReturnAddress)
+extern "C" void PlayerXPlayersAtoiSite();
+extern "C" void PlayerXPlayersApplySite();
+extern "C" void PlayerXMonsterOffenseSite();
+extern "C" void PlayerXNoDropCountSite();
+extern "C" void PlayerXNoDropCapSite();
+extern "C" void* gPlayerXPlayersAtoiContinuation{};
+extern "C" void* gPlayerXPlayersApplyContinuation{};
+extern "C" void* gPlayerXMonsterOffenseContinuation{};
+extern "C" void* gPlayerXNoDropCountContinuation{};
+extern "C" void* gPlayerXNoDropCapContinuation{};
 
 namespace {
 
@@ -33,7 +43,6 @@ using namespace ruffneckk::player_scaling;
 
 constexpr wchar_t ConfigFileName[] =
     L"ruffneckk-playerx-scaling-tweaks.toml";
-constexpr std::size_t RelayStride = 32;
 
 using PlayersAtoiFn = std::int32_t(__fastcall*)(const char*) noexcept;
 using SetPlayerCountFn = void(__fastcall*)(void*, std::int32_t) noexcept;
@@ -43,24 +52,14 @@ using GetOfflineDifficultySettingFn = void*(__fastcall*)() noexcept;
 using GetPlayerCountBonusFn = void(__fastcall*)(
     void*, std::int32_t*, void*, void*) noexcept;
 using GetPlayerCountFn = std::int32_t(__fastcall*)(void*) noexcept;
-
-enum class RelayTarget : std::size_t {
-    PlayersAtoi,
-    SetPlayerCount,
-    MonsterOffense,
-    NoDropPlayerCount,
-    NoDropMonsterCap,
-    Count,
-};
+using GetCommandModeFn = std::int32_t(__fastcall*)() noexcept;
+using CommitPlayersCommandFn = bool(__fastcall*)(std::int32_t) noexcept;
 
 const D2RL::PluginContext* Context{};
 std::uintptr_t Base{};
 Config Settings{};
 std::string LoadedConfigPath{"embedded defaults"};
 HANDLE OwnershipMutex{};
-void* RelayPage{};
-std::array<std::uint64_t, static_cast<std::size_t>(RelayTarget::Count)>
-    RelayRvas{};
 PlayersAtoiFn RealPlayersAtoi{};
 SetPlayerCountFn RealSetPlayerCount{};
 SetOfflineDifficultyRangeFn RealSetOfflineDifficultyRange{};
@@ -68,6 +67,9 @@ GetOfflineDifficultySettingFn RealGetOfflineDifficultySetting{};
 GetPlayerCountBonusFn RealGetPlayerCountBonus{};
 RuffnecKk::NativeStatCompat::Adapter NativeStats{};
 GetPlayerCountFn RealGetPlayerCount{};
+GetCommandModeFn RealGetCommandMode{};
+CommitPlayersCommandFn RealCommitPlayersCommand{};
+PlayerControls Controls{};
 std::atomic_bool Operational{};
 std::atomic<std::uint64_t> CommandClamps{};
 std::atomic<std::uint64_t> BonusAdjustments{};
@@ -81,7 +83,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-playerx-scaling-tweaks",
     .name = "PlayerX Scaling Tweaks",
-    .version = "1.0.1",
+    .version = "1.2.0",
     .author = "RuffnecKk",
     .description = "Tweaks player-count floors and independent scaling caps.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -333,6 +335,15 @@ auto ValidateNativeFingerprint() noexcept -> bool {
         const char* label;
     };
     const Check checks[]{
+        {Matches(native::ArtificialPlayerCountSetterRva,
+            native::ArtificialPlayerCountSetterEntry),
+         "artificial player-count setter and previous-value rejection"},
+        {Matches(native::PlayersCommandModeRva, native::PlayersCommandModeEntry),
+         "/players mode getter"},
+        {Matches(native::PlayersCommandCommitRva, native::PlayersCommandCommitEntry),
+         "/players post-setting commit"},
+        {Matches(native::PlayersCommandCommitCallRva, native::PlayersCommandCommitCall),
+         "/players post-setting commit callsite"},
         {Matches(native::PlayersAtoiCallRva, native::PlayersAtoiCall),
          "/players parser callsite"},
         {Matches(native::PlayersApplyCallRva, native::PlayersApplyCall),
@@ -445,11 +456,12 @@ void __fastcall HookSetPlayerCount(
         std::int32_t nativeCount) noexcept {
     const auto requested = HasRequestedPlayers ? RequestedPlayers : nativeCount;
     HasRequestedPlayers = false;
-    const auto clamped = ClampPlayersCommand(requested, Settings);
+    const auto clamped = ApplyPlayersCommand(
+        session, requested, Settings,
+        RealSetOfflineDifficultyRange, RealSetPlayerCount);
     if (clamped != requested) {
         CommandClamps.fetch_add(1, std::memory_order_relaxed);
     }
-    RealSetPlayerCount(session, clamped);
 }
 
 void __fastcall HookGetPlayerCountBonus(
@@ -502,21 +514,18 @@ auto __fastcall HookMonsterOffensePlayerCount(
     return adjusted;
 }
 
-__declspec(noinline) auto __fastcall HookNoDropPlayerCount(void* game) noexcept
+__declspec(noinline) auto __fastcall HookNoDropPlayerCount(
+        void* game, std::int32_t* nearbyPartySlot) noexcept
         -> std::int32_t {
     const auto observedPlayers = RealGetPlayerCount(game);
     if (!Operational.load(std::memory_order_acquire)
-            || !IsNoDropPartySimulationEnabled(Settings)) {
+            || !IsNoDropAdjustmentEnabled(Settings)) {
         return observedPlayers;
     }
 
-    auto* const returnAddressSlot = static_cast<std::byte*>(
-        _AddressOfReturnAddress());
-    auto* const nearbyPartySlot = reinterpret_cast<std::int32_t*>(
-        returnAddressSlot + 0x48);
     const auto observedNearby = *nearbyPartySlot;
     const auto adjusted = ResolveNoDropCounts(
-        observedPlayers, observedNearby, Settings.noDrop);
+        observedPlayers, observedNearby, EffectiveNoDropConfig(Settings));
     if (adjusted.playersCommand != observedPlayers
             || adjusted.nearbyPartyMembers != observedNearby) {
         NoDropAdjustments.fetch_add(1, std::memory_order_relaxed);
@@ -528,84 +537,23 @@ __declspec(noinline) auto __fastcall HookNoDropPlayerCount(void* game) noexcept
 __declspec(noinline) auto __fastcall HookNoDropMonsterCap(
         void* monster,
         std::int32_t statId,
-        std::int32_t layer) noexcept -> std::int32_t {
+        std::int32_t layer,
+        const std::int32_t* effectiveNoDropSlot) noexcept -> std::int32_t {
     const auto observed = NativeStats.GetUnitStat(
         monster, statId, static_cast<std::uint16_t>(layer));
     if (!Operational.load(std::memory_order_acquire)
-            || !IsNoDropPartySimulationEnabled(Settings)) {
+            || !IsNoDropAdjustmentEnabled(Settings)) {
         return observed;
     }
 
-    const auto* const returnAddressSlot = static_cast<const std::byte*>(
-        _AddressOfReturnAddress());
-    const auto* const effectiveNoDropSlot =
-        reinterpret_cast<const std::int32_t*>(returnAddressSlot + 0x48);
     const auto effectiveNoDrop = NormalizePlayerCount(*effectiveNoDropSlot);
     const auto adjusted = ResolveNoDropMonsterCap(
         observed, effectiveNoDrop,
-        IsNoDropPartySimulationEnabled(Settings));
+        IsNoDropPartySimulationEnabled(Settings), Settings.noDrop.minimumEffectivePlayers);
     if (adjusted != observed) {
         NoDropAdjustments.fetch_add(1, std::memory_order_relaxed);
     }
     return adjusted;
-}
-
-auto AllocateNearCallsites(std::size_t size) noexcept -> void* {
-    SYSTEM_INFO systemInfo{};
-    GetSystemInfo(&systemInfo);
-    const auto granularity = static_cast<std::uintptr_t>(
-        systemInfo.dwAllocationGranularity);
-    const auto origin = (Base + native::PlayersAtoiCallRva)
-        & ~(granularity - 1U);
-    for (std::uintptr_t delta = granularity;
-         delta < 0x70000000ULL;
-         delta += granularity) {
-        if (origin > (std::numeric_limits<std::uintptr_t>::max)() - delta) {
-            break;
-        }
-        if (auto* memory = VirtualAlloc(
-                reinterpret_cast<void*>(origin + delta), size,
-                MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE)) {
-            return memory;
-        }
-    }
-    return nullptr;
-}
-
-auto PrepareRelays() noexcept -> bool {
-    constexpr auto targetCount = static_cast<std::size_t>(RelayTarget::Count);
-    const std::array<void*, targetCount> targets{
-        reinterpret_cast<void*>(&HookPlayersAtoi),
-        reinterpret_cast<void*>(&HookSetPlayerCount),
-        reinterpret_cast<void*>(&HookMonsterOffensePlayerCount),
-        reinterpret_cast<void*>(&HookNoDropPlayerCount),
-        reinterpret_cast<void*>(&HookNoDropMonsterCap),
-    };
-    SYSTEM_INFO systemInfo{};
-    GetSystemInfo(&systemInfo);
-    RelayPage = AllocateNearCallsites(systemInfo.dwPageSize);
-    if (!RelayPage) return false;
-    auto* bytes = static_cast<std::uint8_t*>(RelayPage);
-    for (std::size_t index{}; index < targets.size(); ++index) {
-        auto* relay = bytes + index * RelayStride;
-        relay[0] = 0xFF;
-        relay[1] = 0x25;
-        std::memset(relay + 2, 0, 4);
-        const auto target = reinterpret_cast<std::uint64_t>(targets[index]);
-        std::memcpy(relay + 6, &target, sizeof(target));
-        const auto relayAddress = reinterpret_cast<std::uintptr_t>(relay);
-        if (relayAddress < Base) return false;
-        RelayRvas[index] = relayAddress - Base;
-    }
-    DWORD previousProtection{};
-    if (!VirtualProtect(
-            RelayPage, targetCount * RelayStride, PAGE_EXECUTE_READ,
-            &previousProtection)) {
-        return false;
-    }
-    return FlushInstructionCache(
-        GetCurrentProcess(), RelayPage,
-        targetCount * RelayStride) != FALSE;
 }
 
 auto InstallBattleNetSimulationPatches() noexcept -> bool {
@@ -650,26 +598,49 @@ auto InstallBattleNetSimulationPatches() noexcept -> bool {
 }
 
 auto InstallHooks() noexcept -> bool {
-    const auto patchCall = [](std::uintptr_t rva, const auto& expected,
-            RelayTarget target) noexcept {
-        return Context->PatchCallRel32(
+    // Updating the Offline Difficulty setting is not enough: its observer
+    // calls this second setter, which otherwise discards every value above 8.
+    // Command/startup/hotkey inputs still pass through the configured bounds.
+    if (!Settings.battleNetSimulationEnabled
+            && Settings.maximumCommandPlayers > 8
+            && !Context->PatchBytes(native::ArtificialPlayerCountLimitRva,
+                native::ArtificialPlayerCountLimitOriginal.data(),
+                static_cast<std::uint32_t>(native::ArtificialPlayerCountLimitOriginal.size()),
+                native::ArtificialPlayerCountLimitPatched.data(),
+                static_cast<std::uint32_t>(native::ArtificialPlayerCountLimitPatched.size()))) {
+        Context->LogError(
+            "PlayerX Scaling Tweaks: artificial player-count limit reservation failed; Loader rollback required.");
+        return false;
+    }
+    // All five sites are complete five-byte CALL instructions. The Loader
+    // owns their inline hooks; each assembly replacement resumes at +5.
+    gPlayerXPlayersAtoiContinuation =
+        reinterpret_cast<void*>(Base + native::PlayersAtoiCallRva + 5);
+    gPlayerXPlayersApplyContinuation =
+        reinterpret_cast<void*>(Base + native::PlayersApplyCallRva + 5);
+    gPlayerXMonsterOffenseContinuation =
+        reinterpret_cast<void*>(Base + native::MonsterDamageStatCallRva + 5);
+    gPlayerXNoDropCountContinuation =
+        reinterpret_cast<void*>(Base + native::NoDropPlayerCountCallRva + 5);
+    gPlayerXNoDropCapContinuation =
+        reinterpret_cast<void*>(Base + native::NoDropMonsterCapCallRva + 5);
+    const auto installSite = [](std::uintptr_t rva, const auto& expected,
+            void (*target)()) noexcept {
+        return Context->InstallInlineHook(
             rva, expected.data(),
             static_cast<std::uint32_t>(expected.size()),
-            RelayRvas[static_cast<std::size_t>(target)],
-            static_cast<std::uint32_t>(expected.size()));
+            target);
     };
-    if (!patchCall(native::PlayersAtoiCallRva, native::PlayersAtoiCall,
-            RelayTarget::PlayersAtoi)
-            || !patchCall(native::PlayersApplyCallRva,
-                native::PlayersApplyCall, RelayTarget::SetPlayerCount)
-            || !patchCall(native::MonsterDamageStatCallRva,
-                native::MonsterDamageStatCall, RelayTarget::MonsterOffense)
-            || !patchCall(native::NoDropPlayerCountCallRva,
-                native::NoDropPlayerCountCall,
-                RelayTarget::NoDropPlayerCount)
-            || !patchCall(native::NoDropMonsterCapCallRva,
-                native::NoDropMonsterCapCall,
-                RelayTarget::NoDropMonsterCap)) {
+    if (!installSite(native::PlayersAtoiCallRva,
+            native::PlayersAtoiCall, &PlayerXPlayersAtoiSite)
+            || !installSite(native::PlayersApplyCallRva,
+                native::PlayersApplyCall, &PlayerXPlayersApplySite)
+            || !installSite(native::MonsterDamageStatCallRva,
+                native::MonsterDamageStatCall, &PlayerXMonsterOffenseSite)
+            || !installSite(native::NoDropPlayerCountCallRva,
+                native::NoDropPlayerCountCall, &PlayerXNoDropCountSite)
+            || !installSite(native::NoDropMonsterCapCallRva,
+                native::NoDropMonsterCapCall, &PlayerXNoDropCapSite)) {
         Context->LogError(
             "PlayerX Scaling Tweaks: managed callsite reservation failed; Loader rollback required.");
         return false;
@@ -689,6 +660,27 @@ auto InstallHooks() noexcept -> bool {
             && !InstallBattleNetSimulationPatches()) {
         return false;
     }
+    return true;
+}
+
+auto CanApplyPlayerControl() noexcept -> bool {
+    return Operational.load(std::memory_order_acquire)
+        && !Settings.battleNetSimulationEnabled
+        && RealGetCommandMode && AllowsPlayersCommand(RealGetCommandMode());
+}
+
+auto ApplyPlayerControl(std::int32_t players) noexcept -> bool {
+    if (!CanApplyPlayerControl()) return false;
+    auto* setting = RealGetOfflineDifficultySetting();
+    if (!setting) return false;
+    const auto accepted = ApplyPlayersCommand(setting, players, Settings,
+        RealSetOfflineDifficultyRange, RealSetPlayerCount);
+    // Match the native command's post-setter step (ECX=0). The original
+    // dispatcher ignores its result as well; do not run its chat-close step.
+    (void)RealCommitPlayersCommand(0);
+    char message[96]{};
+    std::snprintf(message, sizeof(message), "PlayerX: players %d applied.", accepted);
+    Context->WriteConsoleMessage(message);
     return true;
 }
 
@@ -716,10 +708,11 @@ auto Status(
     const auto writeBaseStatus = [&](const char* suffix) {
         return std::snprintf(
             message, sizeof(message),
-        "PlayerX Scaling Tweaks 1.0.1: active=%s; source=%s; players=%d..%d; life=%s/%d; xp=%s/%d; offense=%s/%d; nodrop=%s; config=%s%s",
+        "PlayerX Scaling Tweaks 1.2.0: active=%s; source=%s; players=%d..%d; start=%d; hotkeys=%zu; life=%s/%d; xp=%s/%d; offense=%s/%d; nodrop=%s; nodrop-min=%d; config=%s%s",
             Operational.load(std::memory_order_acquire) ? "true" : "false",
             Settings.battleNetSimulationEnabled ? "battle-net-simulation" : "native-command",
             Settings.minimumScalingPlayers, Settings.maximumCommandPlayers,
+            Settings.startGamePlayers, Settings.hotkeys.size(),
             Settings.monsterLife.enabled ? "scale" : "baseline",
             Settings.monsterLife.maximumPlayers,
             Settings.monsterExperience.enabled ? "scale" : "baseline",
@@ -728,7 +721,7 @@ auto Status(
             Settings.monsterOffense.maximumPlayers,
             IsNoDropPartySimulationEnabled(Settings)
                 ? "nearby-party-simulation" : "native",
-            LoadedConfigPath.c_str(), suffix);
+            Settings.noDrop.minimumEffectivePlayers, LoadedConfigPath.c_str(), suffix);
     };
     const auto length = writeBaseStatus(
         Settings.showUsageCounters ? "; counters=" : ".");
@@ -762,6 +755,33 @@ void ResetState() noexcept {
 
 } // namespace
 
+extern "C" std::int32_t __fastcall PlayerXPlayersAtoi(
+        const char* text) noexcept {
+    return HookPlayersAtoi(text);
+}
+
+extern "C" void __fastcall PlayerXPlayersApply(
+        void* session, std::int32_t nativeCount) noexcept {
+    HookSetPlayerCount(session, nativeCount);
+}
+
+extern "C" std::int32_t __fastcall PlayerXMonsterOffense(
+        void* monster, std::int32_t statId, std::int32_t layer) noexcept {
+    return HookMonsterOffensePlayerCount(monster, statId, layer);
+}
+
+extern "C" std::int32_t __fastcall PlayerXNoDropCount(
+        void* game, std::int32_t* nearbyPartySlot) noexcept {
+    return HookNoDropPlayerCount(game, nearbyPartySlot);
+}
+
+extern "C" std::int32_t __fastcall PlayerXNoDropCap(
+        void* monster, std::int32_t statId, std::int32_t layer,
+        const std::int32_t* effectiveNoDropSlot) noexcept {
+    return HookNoDropMonsterCap(
+        monster, statId, layer, effectiveNoDropSlot);
+}
+
 D2RL_PLUGIN_EXPORT auto D2RLoaderGetPluginInfo() noexcept
         -> const D2RL::PluginInfo* {
     return &Info;
@@ -786,7 +806,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     if (!Settings.enabled) {
         context->LogInfo(
-            "PlayerX Scaling Tweaks 1.0.1 by RuffnecKk loaded disabled; no hook was installed.");
+            "PlayerX Scaling Tweaks 1.2.0 by RuffnecKk loaded disabled; no hook was installed.");
         return true;
     }
     if (!AcquireOwnership() || !ValidateNativeFingerprint()) {
@@ -801,8 +821,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     RealGetOfflineDifficultySetting = At<GetOfflineDifficultySettingFn>(
         native::OfflineDifficultySecondaryGetterRva);
     RealGetPlayerCount = At<GetPlayerCountFn>(native::GetPlayerCountRva);
-    if (!PrepareRelays() || !InstallHooks()
+    RealGetCommandMode = At<GetCommandModeFn>(native::PlayersCommandModeRva);
+    RealCommitPlayersCommand = At<CommitPlayersCommandFn>(native::PlayersCommandCommitRva);
+    if (!Controls.Start(context, Settings, CanApplyPlayerControl, ApplyPlayerControl)
+            || !InstallHooks()
             || !ResetOfflineDifficultyToP1()) {
+        Controls.Stop();
         ReleaseOwnership();
         return false;
     }
@@ -812,7 +836,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     const auto* build = D2RL::GetBuildName(context);
     std::snprintf(
         message, sizeof(message),
-        "PlayerX Scaling Tweaks 1.0.1 by RuffnecKk active; build-name=%s is diagnostic only; source=%s; players=%d..%d; HP cap=%d; XP cap=%d; offense cap=%d; NoDrop=%s; installation=%s; TOML=%s.",
+        "PlayerX Scaling Tweaks 1.2.0 by RuffnecKk active; build-name=%s is diagnostic only; source=%s; players=%d..%d; HP cap=%d; XP cap=%d; offense cap=%d; NoDrop=%s; NoDrop minimum=%d; installation=%s; TOML=%s.",
         build && build[0] != '\0' ? build : "<unavailable>",
         Settings.battleNetSimulationEnabled ? "battle-net-simulation" : "native-command",
         Settings.minimumScalingPlayers, Settings.maximumCommandPlayers,
@@ -821,6 +845,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         Settings.monsterOffense.maximumPlayers,
         IsNoDropPartySimulationEnabled(Settings)
             ? "nearby-party-simulation" : "native",
+        Settings.noDrop.minimumEffectivePlayers,
         context->loadScope == D2RL::LoadScope::Mod ? "mod-local" : "global",
         LoadedConfigPath.c_str());
     context->LogInfo(message);
@@ -829,6 +854,9 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     Operational.store(false, std::memory_order_release);
+    Controls.Stop();
+    RealGetCommandMode = nullptr;
+    RealCommitPlayersCommand = nullptr;
     RealPlayersAtoi = nullptr;
     RealSetPlayerCount = nullptr;
     RealSetOfflineDifficultyRange = nullptr;
@@ -839,6 +867,9 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     ReleaseOwnership();
     Context = nullptr;
     Base = 0;
-    // Relay memory intentionally remains valid until process exit. D2RLoader
-    // restores managed callsites before unloading this DLL.
+    gPlayerXPlayersAtoiContinuation = nullptr;
+    gPlayerXPlayersApplyContinuation = nullptr;
+    gPlayerXMonsterOffenseContinuation = nullptr;
+    gPlayerXNoDropCountContinuation = nullptr;
+    gPlayerXNoDropCapContinuation = nullptr;
 }

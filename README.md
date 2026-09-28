@@ -1,5 +1,12 @@
 # RuffnecKk D2RLoader Suite
 
+This repository now holds plugin source code and research. New plugin downloads
+are distributed individually through the [D2RLoader Hub](https://d2rloader.net/).
+Historical Suite downloads remain available. The Suite 1.4.2 installation notes
+below describe that historical release; current source changes are not a new
+Suite release or a claim that every component has completed runtime testing.
+See [the research snapshot](research/README.md) for the laboratory documentation.
+
 
 
 Suite 1.4.2 contains 22 independent plugins and 18 optional memory patches.
@@ -81,7 +88,7 @@ control.
 | Plugin | What it does | Main options |
 |---|---|---|
 | Cube Quick Move | Ctrl-Click moves items to cube starting from the bottom right. | No extra options. |
-| Bulk Currency Deposit | Transfers supported stackable currency items from inventory to their assigned stash slots. | Controls hotkey, optional Inventory button, position, and item filters. |
+| Automatic Materials Deposit | Deposits supported materials into their assigned stash slots in one action. | Controls hotkey, optional Inventory button, position, and item filters. |
 | Equipped Item to Cube | Moves a Ctrl-clicked equipped item directly into the Cube. | No extra options. |
 | Mass Identify | Identifies items by Shift-right-clicking a Tome of Identify. | Free identification and optional Cube or stash coverage. |
 | Potion Auto Pickup | Sends ground potions to matching belt columns or inventory. | Potion priorities, belt columns, and inventory overflow. |
@@ -107,7 +114,7 @@ control.
 
 - Remote Stash: `Shift+R`
 - Floating Damage: `Shift+Z`
-- Bulk Currency Deposit: `Shift+D`
+- Automatic Materials Deposit: `Shift+D`
 
 These bindings are configurable in D2RLoader Controls. D2RLoader's current
 Input service supports keyboard bindings, but not mouse buttons.

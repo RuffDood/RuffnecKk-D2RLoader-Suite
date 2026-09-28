@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -34,9 +35,12 @@ namespace {
 std::string ReadTextFile(const std::filesystem::path& path) {
     std::ifstream input(path, std::ios::binary);
     REQUIRE(input);
-    return {
+    std::string content{
         std::istreambuf_iterator<char>(input),
         std::istreambuf_iterator<char>()};
+    // Source files may be checked out as CRLF while packaged TOML stays LF.
+    std::erase(content, '\r');
+    return content;
 }
 
 std::string_view Slice(
@@ -163,7 +167,6 @@ tooltip = 'Deposit "Currency" \ Now'
     REQUIRE(ParseToml(valid, parsed, error));
     REQUIRE(parsed.enabled);
     REQUIRE(parsed.inventoryButtonEnabled);
-    REQUIRE(parsed.itemDelayMs == 250);
     REQUIRE(parsed.button.x == 7);
     REQUIRE(parsed.button.y == 900);
     REQUIRE(parsed.button.tooltip == "Deposit \"Currency\" \\ Now");
@@ -173,7 +176,17 @@ tooltip = 'Deposit "Currency" \ Now'
     REQUIRE(!MatchesItemCodeFilter(parsed, *material));
     REQUIRE(!MatchesItemCodeFilter(parsed, *PackItemCode("gcv")));
 
-    REQUIRE(!ParseToml("[deposit]\nitem_delay_ms = 49\n", parsed, error));
+    Config legacy{};
+    for (const auto delay : {0, 49, 50, 100, 250, 1000, 1001}) {
+        const auto config = std::string{"[deposit]\nitem_delay_ms = "}
+            + std::to_string(delay) + "\n";
+        REQUIRE(ParseToml(config, legacy, error));
+        REQUIRE(legacy.button.tooltip == DefaultButtonTooltip);
+    }
+    REQUIRE(!ParseToml("[deposit]\nitem_delay_ms = -1\n", legacy, error));
+    REQUIRE(!ParseToml("[deposit]\nitem_delay_ms = 100.0\n", legacy, error));
+    REQUIRE(!ParseToml("[deposit]\nitem_delay_ms = true\n", legacy, error));
+    REQUIRE(!ParseToml("[deposit]\nitem_delay_ms = \"100\"\n", legacy, error));
     REQUIRE(!ParseToml(
         "[deposit]\nhotkey = \"SHIFT+D\"\n",
         parsed,
@@ -197,7 +210,7 @@ tooltip = 'Deposit "Currency" \ Now'
     REQUIRE(ParseToml(packagedConfig, packaged, error));
     REQUIRE(packaged.enabled);
     REQUIRE(!packaged.inventoryButtonEnabled);
-    REQUIRE(packaged.itemDelayMs == 100);
+    REQUIRE(packagedConfig.find("item_delay_ms =") == std::string::npos);
     REQUIRE(packaged.button.tooltip == DefaultButtonTooltip);
 
     std::array<std::uint8_t, 0x56> itemData{};
@@ -329,12 +342,59 @@ tooltip = 'Deposit "Currency" \ Now'
             "celestialrayone.whirlwind", true, true}, false, false)
         == Admission::Rejected);
 
+    // One call must attempt the entire snapshot despite an ordinary rejection
+    // or a candidate disappearing while an earlier transfer is processed.
+    std::deque<int> candidates{1, 2, 3, 4};
+    std::vector<int> inventory{1, 2, 3, 4};
+    std::vector<int> visited;
+    std::vector<int> submitted;
+    REQUIRE(ProcessBatchItems(candidates, [&](int id) {
+        visited.push_back(id);
+        const auto item = std::find(inventory.begin(), inventory.end(), id);
+        if (item == inventory.end()) return true; // stale snapshot entry
+        if (id == 2) return true; // native rejection, e.g. a full slot
+        submitted.push_back(id);
+        inventory.erase(item);
+        if (id == 1) std::erase(inventory, 3); // simulate changed inventory
+        return true;
+    }));
+    REQUIRE(candidates.empty());
+    REQUIRE((visited == std::vector<int>{1, 2, 3, 4}));
+    REQUIRE((submitted == std::vector<int>{1, 4}));
+    REQUIRE((inventory == std::vector<int>{2}));
+    REQUIRE(ProcessBatchItems(candidates, [](int) { REQUIRE(false); return false; }));
+
+    // Cancellation / native fault stops without attempting remaining entries.
+    candidates = {1, 2, 3};
+    visited.clear();
+    REQUIRE(!ProcessBatchItems(candidates, [&](int id) {
+        visited.push_back(id);
+        return id != 2;
+    }));
+    REQUIRE((visited == std::vector<int>{1, 2}));
+    REQUIRE((candidates == std::deque<int>{3}));
+    // Production cancellation also clears the queue; that must be safe inside
+    // the visitor and must not be mistaken for successful batch completion.
+    candidates = {1, 2, 3};
+    visited.clear();
+    REQUIRE(!ProcessBatchItems(candidates, [&](int id) {
+        visited.push_back(id);
+        candidates.clear();
+        return false;
+    }));
+    REQUIRE((visited == std::vector<int>{1}));
+    REQUIRE(candidates.empty());
+
     const auto source = ReadTextFile(BULK_CURRENCY_DEPOSIT_SOURCE_FILE);
+    const auto embeddedConfig = Slice(source, "R\"toml(", ")toml\";");
+    REQUIRE(embeddedConfig.substr(7) == packagedConfig);
+    REQUIRE(source.find(".name = \"Automatic Materials Deposit\"")
+        != std::string::npos);
     REQUIRE(source.find(".logicalId = \"bulk-currency-deposit\"")
         != std::string::npos);
-    REQUIRE(source.find(".displayName = \"Bulk Currency Deposit\"")
+    REQUIRE(source.find(".displayName = \"Automatic Materials Deposit\"")
         != std::string::npos);
-    REQUIRE(source.find(".version = \"1.1.3\"") != std::string::npos);
+    REQUIRE(source.find(".version = \"1.2.0\"") != std::string::npos);
     REQUIRE(source.find(".category = \"RuffnecKk Suite\"")
         != std::string::npos);
     REQUIRE(source.find("D2RL::Input::Key::D") != std::string::npos);
@@ -384,7 +444,7 @@ tooltip = 'Deposit "Currency" \ Now'
     REQUIRE(callbackQueue.find("ThreadService") == std::string_view::npos);
     REQUIRE(callbackQueue.find("ProcessDepositRequest")
         == std::string_view::npos);
-    REQUIRE(callbackQueue.find("ProcessNextItem") == std::string_view::npos);
+    REQUIRE(callbackQueue.find("ProcessBatch") == std::string_view::npos);
 
     const auto buttonCallback = Slice(
         source,
@@ -395,7 +455,7 @@ tooltip = 'Deposit "Currency" \ Now'
         != std::string_view::npos);
     REQUIRE(buttonCallback.find("ProcessDepositRequest")
         == std::string_view::npos);
-    REQUIRE(buttonCallback.find("ProcessNextItem")
+    REQUIRE(buttonCallback.find("ProcessBatch")
         == std::string_view::npos);
 
     const auto buttonServices = Slice(
@@ -434,13 +494,13 @@ tooltip = 'Deposit "Currency" \ Now'
         != std::string_view::npos);
     REQUIRE(inputCallback.find("ProcessDepositRequest")
         == std::string_view::npos);
-    REQUIRE(inputCallback.find("ProcessNextItem")
+    REQUIRE(inputCallback.find("ProcessBatch")
         == std::string_view::npos);
 
     const auto workerDispatch = Slice(
         source,
         "void DispatchPendingControlsRequest()",
-        "void DispatchDueBatchStep()");
+        "DWORD WINAPI InputThreadProc");
     REQUIRE(workerDispatch.find("ThreadService->runOnUiThread")
         != std::string_view::npos);
     REQUIRE(workerDispatch.find("ProcessInitialRequestOnUiThread")
@@ -449,19 +509,21 @@ tooltip = 'Deposit "Currency" \ Now'
     const auto initialUiCallback = Slice(
         source,
         "void __cdecl ProcessInitialRequestOnUiThread",
-        "void __cdecl ProcessNextItemOnUiThread");
-    REQUIRE(initialUiCallback.find("CallbackGuard")
-        != std::string_view::npos);
+        "D2RL::Input::ActionResult __cdecl OnControlsAction");
+    REQUIRE(initialUiCallback.find("CallbackGuard") != std::string_view::npos);
     REQUIRE(initialUiCallback.find("ProcessInitialRequest()")
         != std::string_view::npos);
-    const auto stepUiCallback = Slice(
-        source,
-        "void __cdecl ProcessNextItemOnUiThread",
-        "D2RL::Input::ActionResult __cdecl OnControlsAction");
-    REQUIRE(stepUiCallback.find("CallbackGuard")
-        != std::string_view::npos);
-    REQUIRE(stepUiCallback.find("ProcessNextItem()")
-        != std::string_view::npos);
+    REQUIRE(source.find("ScheduleNextStep") == std::string::npos);
+    REQUIRE(source.find("DispatchDueBatchStep") == std::string::npos);
+    REQUIRE(source.find("NextStepAt") == std::string::npos);
+    REQUIRE(source.find("Settings.itemDelayMs") == std::string::npos);
+    REQUIRE(source.find("ProcessBatchItems(PendingItems, ProcessBatchItem)")
+        != std::string::npos);
+    const auto batchItem = Slice(source, "bool ProcessBatchItem(", "void ProcessBatch()");
+    REQUIRE(batchItem.find("CallbackRundown.CanProcess()")
+        < batchItem.find("TryNativeTransfer("));
+    REQUIRE(batchItem.find("FindCurrentItem(inventory, candidate)")
+        < batchItem.find("TryNativeTransfer("));
 
     const auto worker = Slice(
         source,
@@ -527,5 +589,5 @@ tooltip = 'Deposit "Currency" \ Now'
         1);
     VerifyButtonFrameOrder(BULK_CURRENCY_DEPOSIT_BUTTON_FILE);
     VerifyButtonFrameOrder(BULK_CURRENCY_DEPOSIT_BUTTON_LOWEND_FILE);
-    std::cout << "Bulk Currency Deposit policy tests passed.\n";
+    std::cout << "Automatic Materials Deposit policy tests passed.\n";
 }

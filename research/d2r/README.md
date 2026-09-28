@@ -5,7 +5,7 @@ This is a documentation snapshot maintained from my own laboratory.
 
 ## Start here
 
-- [Known RVAs](known-rvas.json): native addresses, identified roles, confidence levels, provenance and limits. The snapshot contains 1,017 entries: 1,000 marked `high` and 17 marked `medium`.
+- [Known RVAs](known-rvas.json): 1,046 registry entries with native addresses, identified roles, confidence levels, provenance and limits. See the [snapshot record](../source-snapshot.json) for source identity and hashes.
 - [Findings](findings.md): detailed research conclusions, rejected hypotheses, ABI pitfalls and follow-up questions. The original French notes are preserved.
 - [DataTables atlas](datatables-atlas/README.md): seven documented compiled-table layouts, evidence records and partial C++/Ghidra headers. Read the laboratory-reference notes below before using its commands.
 

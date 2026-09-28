@@ -27,9 +27,6 @@ using namespace ruffneckk::resistance_floor;
 
 constexpr wchar_t ConfigFileName[] = L"ruffneckk-resistance-floor.toml";
 constexpr std::size_t MaximumOwnerDepth = 8;
-constexpr std::size_t RelayStride = 32;
-constexpr std::size_t RelayBytes = RelayStride * 2;
-constexpr std::uint32_t FloorPatchSize = 5;
 
 constexpr char DefaultConfig[] = R"toml(# Resistance Floor
 # Choose how low each group can push its six damage resistances.
@@ -113,7 +110,6 @@ const D2RL::PluginContext* Context{};
 std::uint8_t* Base{};
 Config Settings{};
 std::string LoadedConfigPath{"embedded defaults"};
-void* RelayPage{};
 GetUnitTypeFn GetUnitType{};
 GetMinionOwnerFn GetMinionOwner{};
 std::atomic_bool Operational{};
@@ -127,7 +123,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "resistance-floor",
     .name = "Resistance Floor",
-    .version = "1.0.2",
+    .version = "1.0.3",
     .author = "RuffnecKk",
     .description = "Lets configured units fall below the vanilla resistance floor.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -322,111 +318,36 @@ auto ValidateCoreRuntime() noexcept -> bool {
     return true;
 }
 
-auto AllocateNear(void* hint, std::size_t size) noexcept -> void* {
-    SYSTEM_INFO systemInfo{};
-    GetSystemInfo(&systemInfo);
-    const auto granularity = static_cast<std::uintptr_t>(
-        systemInfo.dwAllocationGranularity);
-    const auto aligned = reinterpret_cast<std::uintptr_t>(hint)
-        & ~(granularity - 1U);
-    for (std::uintptr_t delta = granularity;
-            delta < 0x70000000ULL; delta += granularity) {
-        if (aligned > std::numeric_limits<std::uintptr_t>::max() - delta) break;
-        const auto candidate = aligned + delta;
-        if (!CanEncodeRel32(
-                reinterpret_cast<std::uintptr_t>(hint), candidate)) {
-            break;
-        }
-        if (auto* memory = VirtualAlloc(
-                reinterpret_cast<void*>(candidate), size,
-                MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)) {
-            return memory;
-        }
-    }
-    return nullptr;
-}
-
-auto WriteAbsoluteJump(std::uint8_t* destination, const void* target) noexcept
-        -> bool {
-    if (!destination || !target) return false;
-    destination[0] = 0xFF;
-    destination[1] = 0x25;
-    destination[2] = destination[3] = destination[4] = destination[5] = 0;
-    const auto address = reinterpret_cast<std::uint64_t>(target);
-    std::memcpy(destination + 6, &address, sizeof(address));
-    return true;
-}
-
 auto InstallFloorRelays() noexcept -> bool {
-    RelayPage = AllocateNear(Base + FirstFloorSiteRva, RelayBytes);
-    if (!RelayPage) {
-        Context->LogError(
-            "ResistanceFloor: no executable relay page was available within rel32 reach.");
-        TraceLoad(
-            "ResistanceFloor: no executable relay page was available within rel32 reach.");
-        return false;
-    }
-    auto* relays = static_cast<std::uint8_t*>(RelayPage);
-    if (!WriteAbsoluteJump(
-            relays,
-            reinterpret_cast<const void*>(&ResistanceFloorFirstMidHook))
-            || !WriteAbsoluteJump(
-                relays + RelayStride,
-                reinterpret_cast<const void*>(&ResistanceFloorSecondMidHook))) {
-        return false;
-    }
-    DWORD previousProtection{};
-    if (!VirtualProtect(
-            relays, RelayBytes, PAGE_EXECUTE_READ, &previousProtection)) {
-        Context->LogError(
-            "ResistanceFloor: relay page protection could not be finalized.");
-        return false;
-    }
-    FlushInstructionCache(GetCurrentProcess(), relays, RelayBytes);
-
-    const auto relayAddress = reinterpret_cast<std::uintptr_t>(relays);
-    const auto baseAddress = reinterpret_cast<std::uintptr_t>(Base);
-    if (relayAddress < baseAddress
-            || !CanEncodeRel32(baseAddress + FirstFloorSiteRva, relayAddress)
-            || !CanEncodeRel32(
-                baseAddress + SecondFloorSiteRva,
-                relayAddress + RelayStride)) {
-        Context->LogError(
-            "ResistanceFloor: relay displacement validation failed.");
-        return false;
-    }
-    const auto relayRva = relayAddress - baseAddress;
+    // Each site begins with one complete five-byte MOV instruction. The
+    // Loader owns both inline hooks; the assembly replacements resume at
+    // the next instruction after selecting the configured floor.
     gResistanceFloorFirstContinuation = Base + FirstFloorContinuationRva;
     gResistanceFloorSecondContinuation = Base + SecondFloorContinuationRva;
-    if (!Context->PatchJmpRel32(
+    if (!Context->InstallInlineHook(
             FirstFloorSiteRva,
             FirstFloorSiteExpected.data(),
-            FloorPatchSize,
-            relayRva,
-            FloorPatchSize)) {
+            static_cast<std::uint32_t>(FirstFloorSiteExpected.size()),
+            &ResistanceFloorFirstMidHook)) {
         Context->LogError(
-            "ResistanceFloor: first resistance-floor relay was refused.");
-        TraceLoad(
-            "ResistanceFloor: first resistance-floor relay was refused.");
+            "ResistanceFloor: first resistance-floor site is already owned.");
+        TraceLoad("ResistanceFloor: first resistance-floor site was refused.");
         return false;
     }
-    TraceLoad("First resistance-floor relay installed.");
-    if (!Context->PatchJmpRel32(
+    TraceLoad("First resistance-floor site hook installed.");
+    if (!Context->InstallInlineHook(
             SecondFloorSiteRva,
             SecondFloorSiteExpected.data(),
-            FloorPatchSize,
-            relayRva + RelayStride,
-            FloorPatchSize)) {
+            static_cast<std::uint32_t>(SecondFloorSiteExpected.size()),
+            &ResistanceFloorSecondMidHook)) {
         Context->LogError(
-            "ResistanceFloor: second resistance-floor relay was refused.");
-        TraceLoad(
-            "ResistanceFloor: second resistance-floor relay was refused.");
+            "ResistanceFloor: second resistance-floor site is already owned.");
+        TraceLoad("ResistanceFloor: second resistance-floor site was refused.");
         return false;
     }
-    TraceLoad("Second resistance-floor relay installed.");
+    TraceLoad("Second resistance-floor site hook installed.");
     return true;
 }
-
 auto InstallCharacterDisplayPatch() noexcept -> bool {
     if (!Settings.display.syncCharacterScreen) return true;
     const auto floor = SelectConfiguredFloor(
@@ -503,7 +424,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Resistance Floor 1.0.2: active=%s; players=%s/%d; companions=%s/%d; monsters=%s/%d; character-screen=%s; usage-counters=%s; selections=%llu/%llu/%llu; vanilla=%llu; config=%s.",
+        "Resistance Floor 1.0.3: active=%s; players=%s/%d; companions=%s/%d; monsters=%s/%d; character-screen=%s; usage-counters=%s; selections=%llu/%llu/%llu; vanilla=%llu; config=%s.",
         Operational.load(std::memory_order_acquire) ? "true" : "false",
         Settings.players.enabled ? "on" : "off", Settings.players.floor,
         Settings.playerOwnedUnits.enabled ? "on" : "off",
@@ -565,7 +486,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     Context = context;
     Base = reinterpret_cast<std::uint8_t*>(context->exeBase);
     ResetState();
-    TraceLoad("Resistance Floor 1.0.2 load started.", true);
+    TraceLoad("Resistance Floor 1.0.3 load started.", true);
     if (!Base) {
         TraceLoad("Load refused: D2R executable base is unavailable.");
         return false;
@@ -584,7 +505,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     if (!Settings.enabled) {
         context->LogInfo(
-            "Resistance Floor 1.0.2 by RuffnecKk loaded disabled; no patch was installed.");
+            "Resistance Floor 1.0.3 by RuffnecKk loaded disabled; no patch was installed.");
         return true;
     }
     const auto* const observedBuild = D2RL::GetBuildName(context);
@@ -611,7 +532,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Resistance Floor 1.0.2 by RuffnecKk active for D2R %s; players=%d; companions=%d; monsters=%s/%d; Character Screen=%s; installation=%s; TOML=%s.",
+        "Resistance Floor 1.0.3 by RuffnecKk active for D2R %s; players=%d; companions=%d; monsters=%s/%d; Character Screen=%s; installation=%s; TOML=%s.",
         runtimeBuild,
         SelectConfiguredFloor(Settings, UnitClass::Player, FireResistanceStat),
         SelectConfiguredFloor(

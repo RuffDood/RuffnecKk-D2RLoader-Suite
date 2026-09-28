@@ -316,6 +316,9 @@ template <typename Value>
 }
 
 #include "native_stat_compat_contract.inc"
+namespace Loader131 {
+#include "native_stat_compat_contract_131.inc"
+}
 
 } // namespace
 
@@ -385,7 +388,13 @@ auto Adapter::BindCurrentProcess(std::uintptr_t mainImageBase, HelperMask requir
         const auto coreModule = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"D2RCore.dll"));
         if (!ImageRange(coreModule, core)) return false;
     }
-    return Bind({nullptr, ReadCurrentProcess, ValidateCurrentUnwind, ValidateCurrentExecutable}, main, core, contract, required, diagnostics);
+    const MemoryReader reader{nullptr, ReadCurrentProcess, ValidateCurrentUnwind, ValidateCurrentExecutable};
+    if (Bind(reader, main, core, contract, required, diagnostics)) return true;
+    // A new Core may relocate the same native helper graph. Try its separately
+    // witnessed contract only after the original exact contract fails; both
+    // paths still validate every required byte, reference and unwind record.
+    return &contract == &kAdmissionContract
+        && Bind(reader, main, core, Loader131::kAdmissionContract, required, diagnostics);
 }
 
 auto Adapter::GetUnitStat(void* unit, std::int32_t stat, std::uint16_t layer) const noexcept -> std::int32_t { if (!IsAdmitted(Helper::GetUnitStat)) return 0; return routes_[0] == Route::ProviderWide ? reinterpret_cast<ReadWideFn>(entries_[0])(unit, stat, static_cast<std::uint32_t>(layer)) : reinterpret_cast<ReadLegacyFn>(entries_[0])(unit, stat, layer); }

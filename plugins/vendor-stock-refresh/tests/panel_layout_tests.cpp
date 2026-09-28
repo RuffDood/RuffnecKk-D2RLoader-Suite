@@ -53,5 +53,13 @@ int main() {
     CHECK(smaller.valid && smaller.geometry.rect.x == 522 && smaller.geometry.rect.y == 1344);
     CHECK(!TranslateGoldWidget(gold[1], originalGold,
         {(std::numeric_limits<int>::max)(), 1260, 313, 58}).valid);
+    const WidgetGeometry full{{0,0,116,116},1.0F};
+    const auto roomy = FitButtonInArea({421,1371,313,120}, full);
+    CHECK(roomy.valid && roomy.geometry.scale == 1.0F && roomy.geometry.rect.y == 1371);
+    const auto tight = FitButtonInArea({421,1371,313,90}, full);
+    CHECK(tight.valid && tight.geometry.scale > 0.77F && tight.geometry.scale < 0.78F);
+    CHECK(tight.geometry.scale * 116 <= 90);
+    CHECK(!FitButtonInArea({0,0,313,7}, full).valid);
+    CHECK(!FitButtonInArea({0,0,0,120}, full).valid);
     return 0;
 }

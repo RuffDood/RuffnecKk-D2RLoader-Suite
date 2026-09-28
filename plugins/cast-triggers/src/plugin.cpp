@@ -16,6 +16,7 @@
 #endif
 
 #include <Windows.h>
+#include <intrin.h>
 
 #include <array>
 #include <atomic>
@@ -75,6 +76,15 @@ constexpr std::uintptr_t DestroyDamageRva = 0x4496E0;
 constexpr std::uintptr_t EventFunc15Rva = 0x584170;
 constexpr std::uintptr_t EventFunc16Rva = 0x583150;
 constexpr std::uintptr_t EventFunc20Rva = 0x583B30;
+constexpr std::uintptr_t EventFunc20DamageGateRva = 0x583BA5;
+// The sole native caller is FinalizeDamage's post-admission reporting call.
+// Observe here before uninterruptible/block-animation suppression, without
+// rerunning the native permission, death or defense predicates.
+constexpr std::uintptr_t ReportFinalizedDamageRva = 0x451FB0;
+constexpr std::uintptr_t FinalizeDamageAdmissionWitnessRva = 0x44A9BD;
+constexpr std::uintptr_t FinalizeDamageReportCallWitnessRva = 0x44AA13;
+constexpr std::uintptr_t FinalizeDamageReportReturnRva = 0x44AA24;
+constexpr std::uintptr_t FinalizeDamageBlockFlagsWitnessRva = 0x44AE13;
 constexpr std::uintptr_t ResolveActiveWeaponRva = 0x4242B0;
 constexpr std::uintptr_t GetSeedRva = 0x34A1E0;
 constexpr std::uintptr_t ActiveSkillLayoutWitnessRva = 0x33DBA0;
@@ -254,6 +264,39 @@ constexpr auto ActiveSkillLayoutWitnessExpected =
     0xFF,0x75,0x03,0x8B,0x41,0x30,0xC3,0xCC,
     });
 
+constexpr auto EventFunc20DamageGateExpected = std::to_array<std::uint8_t>({
+    0x48,0x8B,0x84,0x24,0x80,0x00,0x00,0x00,0xD3,0xFD,
+    0x48,0x85,0xC0,0x74,0x09,0xF6,0x00,0x20,
+    0x0F,0x84,0x40,0x01,0x00,0x00,
+});
+constexpr auto ReportFinalizedDamageExpected = std::to_array<std::uint8_t>({
+    0x40,0x53,0x41,0x54,0x41,0x55,0x41,0x57,
+    0x48,0x81,0xEC,0xE8,0x01,0x00,0x00,
+    0x48,0x8B,0x05,0x02,0x93,0x57,0x02,0x48,0x33,0xC4,
+    0x48,0x89,0x84,0x24,0xC0,0x01,0x00,0x00,
+});
+constexpr auto FinalizeDamageAdmissionWitnessExpected =
+        std::to_array<std::uint8_t>({
+    0x49,0x8B,0xD9,0x49,0x8B,0xF8,0x4C,0x8B,0xF2,0x48,0x8B,0xE9,
+    0xE8,0x92,0x36,0x04,0x00,0x85,0xC0,0x75,0x0C,
+    0xF7,0x03,0x00,0x10,0x00,0x00,0x0F,0x84,0xB7,0x08,0x00,0x00,
+    0x48,0x8B,0xCF,0xE8,0xDA,0x18,0xF0,0xFF,
+    0x85,0xC0,0x0F,0x85,0xA7,0x08,0x00,0x00,
+    0xF6,0x43,0x04,0x01,0x74,0x1F,
+});
+constexpr auto FinalizeDamageReportCallWitnessExpected =
+        std::to_array<std::uint8_t>({
+    0x4C,0x8B,0xCB,0x4C,0x8B,0xC7,0x49,0x8B,0xD6,0x48,0x8B,0xCD,
+    0xE8,0x8C,0x75,0x00,0x00,0xBA,0x36,0x00,0x00,0x00,
+    0x48,0x8B,0xCF,0xE8,0x7F,0xA7,0xEE,0xFF,
+});
+constexpr auto FinalizeDamageBlockFlagsWitnessExpected =
+        std::to_array<std::uint8_t>({
+    0x0F,0xB7,0x43,0x04,0xB9,0x80,0x03,0x00,0x00,0x66,0x85,0xC1,
+    0x0F,0x85,0xD4,0x02,0x00,0x00,0xB9,0x10,0x80,0x00,0x00,
+    0x66,0x85,0xC1,0x0F,0x84,0xB0,0x00,0x00,0x00,
+});
+
 using SkillHandlerFn = std::int32_t(__fastcall*)(
     void*, void*, std::int32_t, std::int32_t,
     std::int32_t, std::int32_t, std::int32_t) noexcept;
@@ -283,6 +326,8 @@ using FillDamageValuesFn = void(__fastcall*)(
 using DamageCopyFn = void*(__fastcall*)(void*, const void*) noexcept;
 using DamageMoveFn = void*(__fastcall*)(void*, void*) noexcept;
 using DamageDestroyFn = void(__fastcall*)(void*) noexcept;
+using ReportFinalizedDamageFn = void(__fastcall*)(
+    void*, void*, void*, void*) noexcept;
 using EventFunctionFn = std::int32_t(__fastcall*)(
     void*, std::int32_t, void*, void*, void*, std::int32_t, std::int32_t,
     std::int32_t, void*) noexcept;
@@ -364,6 +409,7 @@ DamageDestroyFn OriginalDestroyDamage{};
 EventFunctionFn OriginalEventFunc15{};
 EventFunctionFn OriginalEventFunc16{};
 EventFunctionFn OriginalEventFunc20{};
+ReportFinalizedDamageFn OriginalReportFinalizedDamage{};
 ResolveActiveWeaponFn ResolveActiveWeapon{};
 // Governed native dependencies 0x2F5020 and 0x33D4F0 are admitted by the
 // shared stat adapter; their exact Core provider contract lives in common.
@@ -413,6 +459,8 @@ std::atomic_uint64_t ChannelTargetsReused{};
 std::atomic_uint64_t CriticalOutcomes{};
 std::atomic_uint64_t CrushingBlowOutcomes{};
 std::atomic_uint64_t OpenWoundsOutcomes{};
+std::atomic_uint64_t BlockOutcomes{};
+std::atomic_uint64_t KillEligibilityExtensions{};
 std::atomic_uint64_t CombatDispatches{};
 std::atomic_uint64_t CombatChainsSuppressed{};
 std::atomic_uint64_t SyntheticStatsFiltered{};
@@ -1014,6 +1062,22 @@ bool ValidateNativeFingerprint() noexcept {
         && Check(EventFunc15Rva, EventFunc15Expected, "Open Wounds callback")
         && Check(EventFunc16Rva, EventFunc16Expected, "Crushing Blow callback")
         && Check(EventFunc20Rva, EventFunc20Expected, "item-skill callback")
+        && (Settings.onKillStatId == 0 || !Capabilities.itemSkillExecution
+            || Check(EventFunc20DamageGateRva, EventFunc20DamageGateExpected,
+                "on-kill item-skill damage eligibility"))
+        && (Settings.combatTriggers.blockStatId == 0
+            || !Capabilities.itemSkillExecution
+            || (Check(ReportFinalizedDamageRva, ReportFinalizedDamageExpected,
+                    "finalized-damage reporting entry")
+                && Check(FinalizeDamageAdmissionWitnessRva,
+                    FinalizeDamageAdmissionWitnessExpected,
+                    "finalized-damage native admission")
+                && Check(FinalizeDamageReportCallWitnessRva,
+                    FinalizeDamageReportCallWitnessExpected,
+                    "finalized-damage reporting call ABI")
+                && Check(FinalizeDamageBlockFlagsWitnessRva,
+                    FinalizeDamageBlockFlagsWitnessExpected,
+                    "finalized-damage block result layout")))
         && (!Capabilities.criticalStrikeTrigger || Check(
             ResolveActiveWeaponRva,
             ResolveActiveWeaponExpected,
@@ -1057,6 +1121,7 @@ const char* CombatTriggerName(CombatTriggerKind kind) noexcept {
     case CombatTriggerKind::CriticalStrike: return "critical-strike";
     case CombatTriggerKind::CrushingBlow: return "crushing-blow";
     case CombatTriggerKind::OpenWounds: return "open-wounds";
+    case CombatTriggerKind::Block: return "block";
     case CombatTriggerKind::None: return "none";
     }
     return "unknown";
@@ -1289,6 +1354,33 @@ bool DispatchCombatTrigger(
     return true;
 }
 
+// Logical native bounds 0x451FB0..0x4521BA. FinalizeDamage calls this once at
+// 0x44AA1F after damage permission and a living defender have been established.
+// It is before the uninterruptible/soft-hit/block-animation suppression paths.
+// Keep the original report first and do not write flags, copy D2Damage, reroll
+// defense, or retain a damage/unit pointer beyond this synchronous callback.
+__declspec(noinline) void __fastcall HookReportFinalizedDamage(
+        void* game, void* attacker, void* defender, void* damage) noexcept {
+    const bool nativeCaller = _ReturnAddress()
+        == Base + FinalizeDamageReportReturnRva;
+    const bool observe = IsNativeBehaviorActive()
+        && Capabilities.itemSkillExecution
+        && Settings.combatTriggers.blockStatId != 0
+        && nativeCaller && game && attacker && defender && damage
+        && GetUnitType(defender) == PlayerUnitType;
+    const auto flags = observe
+        ? ReadRecordValue<std::uint16_t>(
+            static_cast<const std::uint8_t*>(damage), DamageResultFlagsOffset)
+        : std::uint16_t{};
+    OriginalReportFinalizedDamage(game, attacker, defender, damage);
+    if (!observe || !IsConfirmedBlockResult(flags)) return;
+
+    BlockOutcomes.fetch_add(1, std::memory_order_relaxed);
+    // The player who blocked owns the item and seed; the incoming attacker is
+    // the native target. DispatchCombatTrigger enforces both recursion guards.
+    DispatchCombatTrigger(game, defender, attacker, CombatTriggerKind::Block);
+}
+
 void __fastcall HookFillDamageValues(
         void* game,
         void* attacker,
@@ -1481,6 +1573,25 @@ std::int32_t __fastcall HookEventFunc20(
                 PackedEventStatId(argument6))) {
         SyntheticStatsFiltered.fetch_add(1, std::memory_order_relaxed);
         return 0;
+    }
+    if (IsNativeBehaviorActive()
+            && Settings.onKillStatId != 0 && event == 9 && game
+            && ShouldExtendKillEligibility(
+                event, Settings.onKillStatId, PackedEventStatId(argument6),
+                attacker && GetUnitType(attacker) == PlayerUnitType,
+                damage != nullptr,
+                damage ? ReadRecordValue<std::uint32_t>(
+                    static_cast<const std::uint8_t*>(damage),
+                    DamageHitFlagsOffset) : 0,
+                ProcExecutionDepth, Capabilities.itemSkillExecution)) {
+        KillEligibilityExtensions.fetch_add(1, std::memory_order_relaxed);
+        if (Settings.diagnostics) {
+            RecordDiagnostic(
+                "CastTriggers diagnostic: native on-kill item eligibility extended without changing damage.");
+        }
+        return OriginalEventFunc20(
+            game, event, attacker, target, nullptr,
+            argument6, argument7, argument8, argument9);
     }
     return OriginalEventFunc20(
         game, event, attacker, target, damage,
@@ -2352,6 +2463,18 @@ std::int32_t __fastcall HookSkillHandler(
 }
 
 bool InstallHooks() noexcept {
+    if (Settings.combatTriggers.blockStatId != 0
+            && Capabilities.itemSkillExecution
+            && !Context->InstallInlineHook(
+                ReportFinalizedDamageRva,
+                ReportFinalizedDamageExpected.data(),
+                static_cast<std::uint32_t>(ReportFinalizedDamageExpected.size()),
+                HookReportFinalizedDamage,
+                &OriginalReportFinalizedDamage)) {
+        Context->LogError(
+            "CastTriggers: finalized-damage reporting entry is already owned or unavailable.");
+        return false;
+    }
     if (!Context->InstallInlineHook(
             DispatchUnitStatEventRva,
             DispatchUnitStatEventExpected.data(),
@@ -2562,6 +2685,9 @@ void LogNativeActivation(const D2RL::PluginContext* context,
         + std::to_string(Settings.combatTriggers.crushingBlowStatId)
         + "/"
         + std::to_string(Settings.combatTriggers.openWoundsStatId)
+        + "; on-kill-stat-id=" + std::to_string(Settings.onKillStatId)
+        + "; on-block-stat-id="
+        + std::to_string(Settings.combatTriggers.blockStatId)
         + "; diagnostics="
         + (Settings.diagnostics ? "buffered" : "off")
         + ".";
@@ -2790,6 +2916,15 @@ auto Status(
         static_cast<unsigned long long>(
             CriticalMarkerOverflows.load(std::memory_order_relaxed)));
     command->plugin->WriteConsoleMessage(combat);
+    char outcomes[256]{};
+    std::snprintf(outcomes, sizeof(outcomes),
+        "Cast Triggers kill/block: kill eligibility extensions=%llu; confirmed blocks=%llu; kill stat=%d; block stat=%d.",
+        static_cast<unsigned long long>(
+            KillEligibilityExtensions.load(std::memory_order_relaxed)),
+        static_cast<unsigned long long>(
+            BlockOutcomes.load(std::memory_order_relaxed)),
+        Settings.onKillStatId, Settings.combatTriggers.blockStatId);
+    command->plugin->WriteConsoleMessage(outcomes);
     if (Settings.diagnostics) {
         const auto trace = SnapshotDiagnosticTrace();
         char traceSummary[192]{};
@@ -2865,6 +3000,8 @@ void ResetState() noexcept {
     CriticalOutcomes.store(0, std::memory_order_relaxed);
     CrushingBlowOutcomes.store(0, std::memory_order_relaxed);
     OpenWoundsOutcomes.store(0, std::memory_order_relaxed);
+    BlockOutcomes.store(0, std::memory_order_relaxed);
+    KillEligibilityExtensions.store(0, std::memory_order_relaxed);
     CombatDispatches.store(0, std::memory_order_relaxed);
     CombatChainsSuppressed.store(0, std::memory_order_relaxed);
     SyntheticStatsFiltered.store(0, std::memory_order_relaxed);

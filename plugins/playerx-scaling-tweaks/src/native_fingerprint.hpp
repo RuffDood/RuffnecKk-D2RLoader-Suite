@@ -5,6 +5,29 @@
 
 namespace ruffneckk::player_scaling::native {
 
+// The final artificial-count setter retains its previous value above p8.
+inline constexpr std::uintptr_t ArtificialPlayerCountSetterRva = 0x425A60;
+inline constexpr std::array<std::uint8_t, 19> ArtificialPlayerCountSetterEntry{
+    0x8B, 0x05, 0xCA, 0x0F, 0x68, 0x02, 0x83, 0xF9, 0x08,
+    0x0F, 0x46, 0xC1, 0x89, 0x05, 0xBE, 0x0F, 0x68, 0x02, 0xC3};
+inline constexpr std::uintptr_t ArtificialPlayerCountLimitRva = 0x425A69;
+inline constexpr std::array<std::uint8_t, 3> ArtificialPlayerCountLimitOriginal{
+    0x0F, 0x46, 0xC1};
+inline constexpr std::array<std::uint8_t, 3> ArtificialPlayerCountLimitPatched{
+    0x89, 0xC8, 0x90};
+
+inline constexpr std::uintptr_t PlayersCommandModeRva = 0x8AF90;
+inline constexpr std::array<std::uint8_t, 7> PlayersCommandModeEntry{
+    0x8B, 0x05, 0x5E, 0x84, 0x99, 0x02, 0xC3};
+inline constexpr std::uintptr_t PlayersCommandCommitRva = 0xA07670;
+inline constexpr std::array<std::uint8_t, 24> PlayersCommandCommitEntry{
+    0x89, 0x4C, 0x24, 0x08, 0x48, 0x83, 0xEC, 0x58,
+    0x80, 0x3D, 0x41, 0xDD, 0xAB, 0x02, 0x00, 0x75,
+    0x07, 0x32, 0xC0, 0x48, 0x83, 0xC4, 0x58, 0xC3};
+inline constexpr std::uintptr_t PlayersCommandCommitCallRva = 0x188884;
+inline constexpr std::array<std::uint8_t, 7> PlayersCommandCommitCall{
+    0x33, 0xC9, 0xE8, 0xE5, 0xED, 0x87, 0x00};
+
 inline constexpr std::uintptr_t PlayersAtoiCallRva = 0x18885B;
 inline constexpr std::uintptr_t PlayersApplyCallRva = 0x18887F;
 inline constexpr std::uintptr_t PlayersRecognitionGateRva = 0x188833;

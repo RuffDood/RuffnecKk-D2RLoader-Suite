@@ -32,6 +32,26 @@
 #include <vector>
 
 extern "C" IMAGE_DOS_HEADER __ImageBase;
+extern "C" void RemoteStashTownSite0();
+extern "C" void RemoteStashTownSite1();
+extern "C" void RemoteStashTownSite2();
+extern "C" void RemoteStashTownSite3();
+extern "C" void RemoteStashTransferSite0();
+extern "C" void RemoteStashTransferSite1();
+extern "C" void RemoteStashTransferSite2();
+extern "C" void RemoteStashTransferSite3();
+extern "C" void RemoteStashTransferSite4();
+extern "C" void RemoteStashTransferSite5();
+extern "C" void RemoteStashTransferSite6();
+extern "C" void RemoteStashTransferSite7();
+extern "C" void RemoteStashTransitionSite();
+extern "C" void RemoteStashMovementCloseSite();
+extern "C" void RemoteStashSharedGoldSite();
+extern "C" void* gRemoteStashTownContinuation[4]{};
+extern "C" void* gRemoteStashTransferContinuation[8]{};
+extern "C" void* gRemoteStashTransitionContinuation{};
+extern "C" void* gRemoteStashMovementCloseContinuation{};
+extern "C" void* gRemoteStashSharedGoldContinuation{};
 
 namespace {
 using ruffneckk::remote_stash::BuildActiveModMpqRoots;
@@ -74,7 +94,7 @@ using ruffneckk::remote_stash::WidgetRect;
 
 constexpr std::size_t MaximumConfigBytes = 65'536;
 constexpr std::uint64_t MaximumCustomSpriteBytes = 64ULL * 1024ULL * 1024ULL;
-constexpr char PluginVersion[] = "2.3.2";
+constexpr char PluginVersion[] = "2.3.5";
 
 #define REMOTE_SITE(value) value
 
@@ -138,6 +158,8 @@ constexpr std::uint64_t CompanionInventoryCloseWindowMs = 2000;
 
 constexpr char ButtonLayoutVirtualPath[] =
     "data/global/ui/layouts/ruffneckk-remote-stash/inventory-button.json";
+constexpr char ButtonStringsVirtualPath[] =
+    "data/local/lng/strings/d2rloader/ruffneckk-remote-stash/strings.json";
 constexpr char ButtonSpriteVirtualPath[] =
     "data/hd/global/ui/d2rloader/ruffneckk-remote-stash/inventory-button.sprite";
 constexpr char ButtonLowendSpriteVirtualPath[] =
@@ -449,6 +471,8 @@ D2RL::Panels::ChildLayoutHandle ButtonChildLayout{
     D2RL::Panels::InvalidChildLayoutHandle};
 D2RL::Resources::RegistrationHandle ButtonLayoutResource{
     D2RL::Resources::InvalidHandle};
+D2RL::Resources::RegistrationHandle ButtonStringsResource{
+    D2RL::Resources::InvalidHandle};
 D2RL::Resources::RegistrationHandle ButtonSpriteResource{
     D2RL::Resources::InvalidHandle};
 D2RL::Resources::RegistrationHandle ButtonLowendSpriteResource{
@@ -544,7 +568,6 @@ thread_local bool RemoteHotkeyOpenTransitionScope{};
 thread_local bool RemoteMovementUiCloseScope{};
 void* GoldRangeStub{};
 void* GoldRangeTrampoline{};
-void* CallSiteRelayPage{};
 
 constexpr std::array<std::uint8_t, 17> RemoteOpenRequest{
     0x18,
@@ -989,6 +1012,7 @@ void UnregisterOwnedButton() noexcept {
         handle = D2RL::Resources::InvalidHandle;
     };
     unregisterResource(ButtonLayoutResource);
+    unregisterResource(ButtonStringsResource);
     unregisterResource(ButtonLowendSpriteResource);
     unregisterResource(ButtonSpriteResource);
 }
@@ -997,9 +1021,21 @@ bool RegisterOwnedButton() noexcept {
     std::vector<std::uint8_t> sprite;
     std::vector<std::uint8_t> lowend;
     if (!LoadButtonSpriteBytes(sprite, lowend)) return false;
+    std::vector<std::uint8_t> strings;
+    if (!LoadEmbeddedResource(REMOTE_STASH_STRINGS_RESOURCE_ID, strings)) {
+        Context->LogError("RemoteStash: embedded button translations are missing.");
+        return false;
+    }
     const auto layout = BuildButtonLayoutJson(EffectiveButtonSettings);
 
+    // Register namespaced translations before the layout which references them.
+    // The Loader selects the active D2R locale and refreshes language changes.
     if (!RegisterResource(
+            ButtonStringsVirtualPath,
+            strings.data(),
+            strings.size(),
+            ButtonStringsResource)
+        || !RegisterResource(
             ButtonSpriteVirtualPath,
             sprite.data(),
             sprite.size(),
@@ -1605,8 +1641,8 @@ bool IsRemoteClientStashTownCallsite(std::uintptr_t returnAddress) noexcept {
             ));
 }
 
-std::int32_t __fastcall HookIsRoomInTown(void* room) noexcept {
-    const auto returnAddress = reinterpret_cast<std::uintptr_t>(_ReturnAddress());
+std::int32_t __fastcall HookIsRoomInTown(
+        void* room, std::uintptr_t returnAddress) noexcept {
     if (IsRemoteClientStashTownCallsite(returnAddress)) {
         RemoteTownBypasses.fetch_add(1, std::memory_order_relaxed);
         return 1;
@@ -3404,140 +3440,55 @@ void CleanupFailedLoadSdkState() noexcept {
     GameLeftListener = D2RL::Lifecycle::InvalidHandle;
 }
 
-void* AllocateCallSiteRelayPageNear(void* hint) noexcept {
-    SYSTEM_INFO systemInfo{};
-    GetSystemInfo(&systemInfo);
-    const auto granularity = static_cast<std::uintptr_t>(
-        systemInfo.dwAllocationGranularity
-    );
-    const auto base = reinterpret_cast<std::uintptr_t>(hint) & ~(granularity - 1);
-
-    for (std::uintptr_t delta = granularity;
-         delta < 0x70000000ULL;
-         delta += granularity) {
-        if (base > std::numeric_limits<std::uintptr_t>::max() - delta) break;
-        if (auto* memory = VirtualAlloc(
-                reinterpret_cast<void*>(base + delta),
-                systemInfo.dwPageSize,
-                MEM_COMMIT | MEM_RESERVE,
-                PAGE_READWRITE
-            )) {
-            return memory;
-        }
-    }
-    return nullptr;
-}
-
-bool WriteAbsoluteJumpRelay(
-    std::uint8_t* destination,
-    const void* target
-) noexcept {
-    if (!destination || !target) return false;
-    constexpr std::size_t RelaySize = 14;
-    std::array<std::uint8_t, RelaySize> relay{
-        0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    };
-    const auto targetAddress = reinterpret_cast<std::uintptr_t>(target);
-    std::memcpy(relay.data() + 6, &targetAddress, sizeof(targetAddress));
-    std::memcpy(destination, relay.data(), relay.size());
-    return true;
-}
-
-template<std::size_t Count>
-bool PatchCallSites(
-    const std::array<RelativeCallSite, Count>& sites,
-    std::uintptr_t relayRva
-) noexcept {
-    for (const auto& site : sites) {
-        if (!Context->PatchCallRel32(
-                site.rva,
-                site.expected.data(),
-                static_cast<std::uint32_t>(site.expected.size()),
-                relayRva,
-                static_cast<std::uint32_t>(site.expected.size())
-            )) {
-            return false;
-        }
-    }
-    return true;
-}
-
 bool InstallComposableCallSiteRedirects() noexcept {
-    constexpr std::size_t RelayStride = 16;
-    constexpr std::size_t RelayCount = 5;
-    constexpr std::size_t RelayBytes = RelayStride * RelayCount;
-
-    CallSiteRelayPage = AllocateCallSiteRelayPageNear(
-        Base + IsRoomInTownCallSites.front().rva
-    );
-    if (!CallSiteRelayPage) return false;
-
-    auto* relays = static_cast<std::uint8_t*>(CallSiteRelayPage);
-    if (!WriteAbsoluteJumpRelay(
-            relays,
-            reinterpret_cast<const void*>(&HookIsRoomInTown)
-        )
-        || !WriteAbsoluteJumpRelay(
-            relays + RelayStride,
-            reinterpret_cast<const void*>(&HookTransferItemToInventoryPage)
-        )
-        || (HotkeySettings.hotkeyEnabled && !WriteAbsoluteJumpRelay(
-            relays + RelayStride * 2,
-            reinterpret_cast<const void*>(&HookStashInterfaceTransition)
-        ))
-        || !WriteAbsoluteJumpRelay(
-            relays + RelayStride * 3,
-            reinterpret_cast<const void*>(&HookMovementUiClose)
-        )
-        || !WriteAbsoluteJumpRelay(
-            relays + RelayStride * 4,
-            reinterpret_cast<const void*>(&HookSharedGoldDeposit)
-        )) {
-        VirtualFree(CallSiteRelayPage, 0, MEM_RELEASE);
-        CallSiteRelayPage = nullptr;
-        return false;
-    }
-
-    DWORD previousProtection{};
-    if (!VirtualProtect(
-            CallSiteRelayPage,
-            RelayBytes,
-            PAGE_EXECUTE_READ,
-            &previousProtection
-        )) {
-        VirtualFree(CallSiteRelayPage, 0, MEM_RELEASE);
-        CallSiteRelayPage = nullptr;
-        return false;
-    }
-    FlushInstructionCache(GetCurrentProcess(), CallSiteRelayPage, RelayBytes);
-
-    const auto relayAddress = reinterpret_cast<std::uintptr_t>(CallSiteRelayPage);
-    const auto baseAddress = reinterpret_cast<std::uintptr_t>(Base);
-    if (relayAddress < baseAddress) return false;
-    const auto relayRva = relayAddress - baseAddress;
-    const auto coreRedirectsInstalled =
-        PatchCallSites(IsRoomInTownCallSites, relayRva)
-        && PatchCallSites(
-            TransferItemToInventoryPageCallSites,
-            relayRva + RelayStride
-        )
-        && PatchCallSites(
-            MovementUiCloseCallSites,
-            relayRva + RelayStride * 3
-        )
-        && PatchCallSites(
-            SharedGoldDepositCallSites,
-            relayRva + RelayStride * 4
-        );
-    if (!coreRedirectsInstalled) return false;
-    return !HotkeySettings.hotkeyEnabled
-        || PatchCallSites(
-            StashInterfaceTransitionCallSites,
-            relayRva + RelayStride * 2
-        );
+    // Each witnessed site is one complete five-byte CALL instruction. Keep
+    // ownership with the Loader while preserving the original target calls.
+    constexpr std::array<void (*)(), 4> townHooks{
+        &RemoteStashTownSite0, &RemoteStashTownSite1,
+        &RemoteStashTownSite2, &RemoteStashTownSite3};
+    constexpr std::array<void (*)(), 8> transferHooks{
+        &RemoteStashTransferSite0, &RemoteStashTransferSite1,
+        &RemoteStashTransferSite2, &RemoteStashTransferSite3,
+        &RemoteStashTransferSite4, &RemoteStashTransferSite5,
+        &RemoteStashTransferSite6, &RemoteStashTransferSite7};
+    constexpr std::array<void (*)(), 1> transitionHook{
+        &RemoteStashTransitionSite};
+    constexpr std::array<void (*)(), 1> movementHook{
+        &RemoteStashMovementCloseSite};
+    constexpr std::array<void (*)(), 1> goldHook{
+        &RemoteStashSharedGoldSite};
+    const auto installGroup = [](
+            const auto& sites, const auto& hooks,
+            void** continuations) noexcept -> bool {
+        if (sites.size() != hooks.size()) return false;
+        for (std::size_t index{}; index < sites.size(); ++index) {
+            continuations[index] = Base + sites[index].rva + 5;
+            if (!Context->InstallInlineHook(
+                    sites[index].rva,
+                    sites[index].expected.data(),
+                    static_cast<std::uint32_t>(sites[index].expected.size()),
+                    hooks[index])) {
+                return false;
+            }
+        }
+        return true;
+    };
+    return installGroup(
+            IsRoomInTownCallSites, townHooks,
+            gRemoteStashTownContinuation)
+        && installGroup(
+            TransferItemToInventoryPageCallSites, transferHooks,
+            gRemoteStashTransferContinuation)
+        && installGroup(
+            MovementUiCloseCallSites, movementHook,
+            &gRemoteStashMovementCloseContinuation)
+        && installGroup(
+            SharedGoldDepositCallSites, goldHook,
+            &gRemoteStashSharedGoldContinuation)
+        && (!HotkeySettings.hotkeyEnabled || installGroup(
+            StashInterfaceTransitionCallSites, transitionHook,
+            &gRemoteStashTransitionContinuation));
 }
-
 auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void*) noexcept
     -> D2RL::ConsoleCommandResult {
     if (!command || !command->plugin) return D2RL::ConsoleCommandResult::Failed;
@@ -3581,6 +3532,7 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
         ButtonChildLayout != D2RL::Panels::InvalidChildLayoutHandle
             ? "registered" : "disabled",
         ButtonLayoutResource != D2RL::Resources::InvalidHandle
+                && ButtonStringsResource != D2RL::Resources::InvalidHandle
                 && ButtonSpriteResource != D2RL::Resources::InvalidHandle
                 && ButtonLowendSpriteResource != D2RL::Resources::InvalidHandle
             ? "registered" : "disabled",
@@ -3702,6 +3654,35 @@ void RegisterStatusCommand() noexcept {
 }
 } // namespace
 
+extern "C" std::int32_t __fastcall RemoteStashTown(
+        void* room, std::uintptr_t callerReturnAddress) noexcept {
+    return HookIsRoomInTown(room, callerReturnAddress);
+}
+
+extern "C" bool __fastcall RemoteStashTransfer(
+        void* item, void* destinationUnit,
+        std::uint8_t inventoryPage, std::uint8_t destinationKind,
+        bool transferMode, void* placementOut) noexcept {
+    return HookTransferItemToInventoryPage(
+        item, destinationUnit, inventoryPage, destinationKind,
+        transferMode, placementOut);
+}
+
+extern "C" void __fastcall RemoteStashTransition(
+        std::int32_t mode, bool transitionFlag) noexcept {
+    HookStashInterfaceTransition(mode, transitionFlag);
+}
+
+extern "C" void __fastcall RemoteStashMovementClose(
+        std::int32_t closeMode, std::int32_t secondary) noexcept {
+    HookMovementUiClose(closeMode, secondary);
+}
+
+extern "C" std::int32_t __fastcall RemoteStashSharedGold(
+        void* panel, std::int32_t amount) noexcept {
+    return HookSharedGoldDeposit(panel, amount);
+}
+
 namespace RuffnecKk::RemoteStash {
 
 bool Load(
@@ -3746,6 +3727,7 @@ bool Load(
     GameLeftListener = D2RL::Lifecycle::InvalidHandle;
     ButtonChildLayout = D2RL::Panels::InvalidChildLayoutHandle;
     ButtonLayoutResource = D2RL::Resources::InvalidHandle;
+    ButtonStringsResource = D2RL::Resources::InvalidHandle;
     ButtonSpriteResource = D2RL::Resources::InvalidHandle;
     ButtonLowendSpriteResource = D2RL::Resources::InvalidHandle;
     UsesSdkInput = false;
@@ -3812,7 +3794,6 @@ bool Load(
     RemoteMovementUiCloseScope = false;
     GoldRangeStub = nullptr;
     GoldRangeTrampoline = nullptr;
-    CallSiteRelayPage = nullptr;
     OriginalSharedGoldDeposit = nullptr;
     try {
         const std::lock_guard lock(RemoteSessionsMutex);
@@ -3830,7 +3811,7 @@ bool Load(
     if (!HotkeySettings.enabled) {
         RegisterStatusCommand();
         context->LogInfo(
-            "Remote Stash 2.3.2 by RuffnecKk disabled; no hook, input action, listener, resource, or child layout was registered.");
+            "Remote Stash 2.3.5 by RuffnecKk disabled; no hook, input action, listener, resource, or child layout was registered.");
         return true;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
@@ -4183,10 +4164,6 @@ void Unload() noexcept {
         GoldRangeStub = nullptr;
     }
     GoldRangeTrampoline = nullptr;
-    if (CallSiteRelayPage) {
-        VirtualFree(CallSiteRelayPage, 0, MEM_RELEASE);
-        CallSiteRelayPage = nullptr;
-    }
     HotkeySettings = {};
     EffectiveButtonSettings = {};
     ButtonSettingsSource = "D2RLoader TOML [button]";
@@ -4204,6 +4181,7 @@ void Unload() noexcept {
     GameLeftListener = D2RL::Lifecycle::InvalidHandle;
     ButtonChildLayout = D2RL::Panels::InvalidChildLayoutHandle;
     ButtonLayoutResource = D2RL::Resources::InvalidHandle;
+    ButtonStringsResource = D2RL::Resources::InvalidHandle;
     ButtonSpriteResource = D2RL::Resources::InvalidHandle;
     ButtonLowendSpriteResource = D2RL::Resources::InvalidHandle;
     UsesSdkInput = false;

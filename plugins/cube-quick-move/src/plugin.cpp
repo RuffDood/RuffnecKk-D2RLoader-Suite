@@ -11,7 +11,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <limits>
 #include <string>
 
 namespace RuffnecKk::CubeQuickMove {
@@ -125,8 +124,6 @@ using ResolveOccupancyGridFn = void*(__fastcall*)(
 const D2RL::PluginContext* Context{};
 std::uint8_t* Base{};
 Config Settings{};
-void* RelayStub{};
-std::uint64_t RelayRva{};
 FindFreePositionFn FindFreePosition{};
 GetItemDimensionsFn GetItemDimensions{};
 GetItemDataContextFn GetItemDataContext{};
@@ -147,7 +144,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-cube-quick-move",
     .name = "Cube Quick Move",
-    .version = "1.0.3",
+    .version = "1.0.4",
     .author = "RuffnecKk",
     .description = "Places quick-moved Cube items from the bottom-right.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -238,77 +235,11 @@ bool ResolveBottomRight(
     );
 }
 
-void* AllocateNear(void* hint, std::size_t size) noexcept {
-    SYSTEM_INFO systemInfo{};
-    GetSystemInfo(&systemInfo);
-    const auto granularity = static_cast<std::uintptr_t>(
-        systemInfo.dwAllocationGranularity
-    );
-    const auto base = reinterpret_cast<std::uintptr_t>(hint)
-        & ~(granularity - 1);
-
-    for (std::uintptr_t delta = granularity;
-         delta < 0x70000000ULL;
-         delta += granularity) {
-        if (base <= (std::numeric_limits<std::uintptr_t>::max)() - delta) {
-            if (auto* memory = VirtualAlloc(
-                    reinterpret_cast<void*>(base + delta),
-                    size,
-                    MEM_COMMIT | MEM_RESERVE,
-                    PAGE_EXECUTE_READWRITE
-                )) {
-                return memory;
-            }
-        }
-    }
-    return nullptr;
-}
-
-bool InstallCallSiteRedirect(void* target) noexcept {
-    constexpr std::size_t RelaySize = 14;
-    auto* callSite = Base + CubeCallSites.front().rva;
-    RelayStub = AllocateNear(callSite, RelaySize);
-    if (!RelayStub) return false;
-
-    auto* relay = static_cast<std::uint8_t*>(RelayStub);
-    relay[0] = 0xFF;
-    relay[1] = 0x25;
-    relay[2] = 0x00;
-    relay[3] = 0x00;
-    relay[4] = 0x00;
-    relay[5] = 0x00;
-    const auto targetAddress = reinterpret_cast<std::uint64_t>(target);
-    std::memcpy(relay + 6, &targetAddress, sizeof(targetAddress));
-    FlushInstructionCache(GetCurrentProcess(), RelayStub, RelaySize);
-
-    DWORD previousProtection{};
-    if (!VirtualProtect(RelayStub, RelaySize, PAGE_EXECUTE_READ, &previousProtection)) {
-        VirtualFree(RelayStub, 0, MEM_RELEASE);
-        RelayStub = nullptr;
-        return false;
-    }
-
-    const auto relayAddress = reinterpret_cast<std::uintptr_t>(RelayStub);
-    const auto baseAddress = reinterpret_cast<std::uintptr_t>(Base);
-    if (relayAddress < baseAddress) {
-        VirtualFree(RelayStub, 0, MEM_RELEASE);
-        RelayStub = nullptr;
-        return false;
-    }
-
-    RelayRva = static_cast<std::uint64_t>(relayAddress - baseAddress);
+bool IsCubeCapableCallSite(std::uintptr_t rva) noexcept {
     for (const auto& site : CubeCallSites) {
-        if (!Context->PatchCallRel32(
-                site.rva,
-                site.expected.data(),
-                static_cast<std::uint32_t>(site.expected.size()),
-                RelayRva,
-                static_cast<std::uint32_t>(site.expected.size())
-            )) {
-            return false;
-        }
+        if (site.rva == rva) return true;
     }
-    return true;
+    return false;
 }
 
 std::int32_t __fastcall HookFindFreePosition(
@@ -334,6 +265,9 @@ std::int32_t __fastcall HookFindFreePosition(
         freeY,
         page
     );
+    // The inline hook sees every caller. Only the 27 previously redirected
+    // call sites may change placement; all other callers retain vanilla output.
+    if (!IsCubeCapableCallSite(callSiteRva)) return vanillaResult;
     CubeCalls.fetch_add(1, std::memory_order_relaxed);
     if (page == CubePage) {
         PageThreeCalls.fetch_add(1, std::memory_order_relaxed);
@@ -440,7 +374,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Cube Quick Move 1.0.3: %s; diagnostics=%s; callSites=%llu; calls=%llu; "
+        "Cube Quick Move 1.0.4: %s; diagnostics=%s; callSites=%llu; calls=%llu; "
         "page3=%llu; redirected=%llu; vanilla=%llu; safeFallbacks=%llu; "
         "lastCallSite=0x%llX; lastPage3CallSite=0x%llX.",
         Settings.enabled ? "active" : "disabled",
@@ -459,7 +393,6 @@ auto Status(
 }
 
 void ResetCounters() noexcept {
-    RelayRva = 0;
     CubeCalls.store(0, std::memory_order_relaxed);
     PageThreeCalls.store(0, std::memory_order_relaxed);
     RedirectedPlacements.store(0, std::memory_order_relaxed);
@@ -493,7 +426,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "CubeQuickMove 1.0.3 by RuffnecKk loaded disabled; no patch or service registered.");
+            "CubeQuickMove 1.0.4 by RuffnecKk loaded disabled; no patch or service registered.");
         return true;
     }
 
@@ -516,14 +449,18 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
 
-    FindFreePosition = At<FindFreePositionFn>(FindFreePositionRva);
     GetItemDimensions = At<GetItemDimensionsFn>(GetItemDimensionsRva);
     GetItemDataContext = At<GetItemDataContextFn>(GetItemDataContextRva);
     BuildGridContext = At<BuildGridContextFn>(BuildGridContextRva);
     ResolveOccupancyGrid = At<ResolveOccupancyGridFn>(ResolveOccupancyGridRva);
 
-    if (!InstallCallSiteRedirect(reinterpret_cast<void*>(&HookFindFreePosition))) {
-        context->LogError("CubeQuickMove: call-site redirects failed.");
+    if (!context->InstallInlineHook(
+            FindFreePositionRva,
+            FindFreePositionExpected.data(),
+            static_cast<std::uint32_t>(FindFreePositionExpected.size()),
+            HookFindFreePosition,
+            &FindFreePosition)) {
+        context->LogError("CubeQuickMove: FindFreePosition hook failed.");
         return false;
     }
 
@@ -539,17 +476,15 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "CubeQuickMove 1.0.3 by RuffnecKk active; %llu Cube-capable call-sites redirect through relay RVA 0x%llX.",
-        static_cast<unsigned long long>(CubeCallSites.size()),
-        static_cast<unsigned long long>(RelayRva)
+        "CubeQuickMove 1.0.4 by RuffnecKk active; function hook limits Cube placement changes to %llu verified call-sites.",
+        static_cast<unsigned long long>(CubeCallSites.size())
     );
     context->LogInfo(message);
     return true;
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
-    // D2RLoader restores the registered rel32 patches. Keep the relay allocated
-    // until process exit so an in-flight native call can never target freed code.
+    // D2RLoader owns and restores the inline hook and its original trampoline.
     FindFreePosition = nullptr;
     GetItemDimensions = nullptr;
     GetItemDataContext = nullptr;

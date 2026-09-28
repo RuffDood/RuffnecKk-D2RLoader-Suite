@@ -1,13 +1,58 @@
 # Remote Stash — Inventory Button and Migration Guide
 
-Remote Stash 2.3.2 creates its own keyboard-and-mouse Inventory button. The
-default RuffnecKk chest artwork is embedded in the DLL, and its placement is
+Remote Stash 2.3.5 creates its own keyboard-and-mouse Inventory button. The
+bronze chest, recessed frame and side ornaments are embedded in the DLL, and placement is
 calculated from the Inventory layout that is actually loaded by the game.
 
 This 2.x line is the canonical Remote Stash baseline for future releases of
 the RuffnecKk D2RLoader Suite.
 
 No Inventory JSON merge and no sprite copy into a mod MPQ are required.
+
+The self-contained button has transparent surroundings so the active Inventory's
+own texture shows around the carved recess. Its four states are normal bronze, disabled iron, darker pressed,
+and softly highlighted bronze on hover. The tooltip reads **Open Stash** in English
+and follows the game's selected language automatically. Translations for all
+13 D2R locales are embedded; no language setting or companion MPQ is needed.
+
+The plugin does not replace the Inventory background, grid, equipment positions
+or storage capacity. Smaller inventories keep their own panel. Placement uses
+the active panel's geometry; unusual skins may still need offset adjustments.
+
+## Upgrade from the withdrawn full-panel assets
+
+The older Inventory Layout Assets r1/r2 downloads replaced complete panel files;
+they are not required for 2.3.5. If you installed them, restore your own backed-up
+inventory layouts and background textures. Remove their appearance override at
+`data/global/ui/layouts/ruffneckk-remote-stash/button.toml`, or adapt it if it also
+contains your own custom settings. Do not install another mod's panel to undo it.
+
+Then replace the plugin DLL, preserve your hotkey configuration, and use
+`placement = "auto"`, zero offsets, `width = 128`, `height = 80`, and empty sprite
+paths in `[button]` to select the portable embedded design. Restart the game.
+The old full-panel files cannot be automatically restored by the DLL because
+their previous contents belong to the player's mod.
+
+## Upgrade the button from 2.3.3 or earlier
+
+The new default click area is `128 × 80` Inventory-layout units; the chest sits
+inside that area with transparent padding. Existing configuration files are
+preserved, so an explicit `176 × 112` setting keeps the larger size. To adopt
+the compact appearance, change only these entries in your existing `[button]`
+section, leaving your hotkey and other settings intact:
+
+```toml
+width = 128
+height = 80
+```
+
+Empty `sprite_file` and `lowend_sprite_file` entries select the embedded artwork.
+If your active mod supplies `button.toml`, its appearance settings take priority;
+adjust that file instead. Intentional custom artwork and sizes remain supported.
+
+Mod authors can translate or rename this tooltip with the string key
+`ruffneckk-remote-stash:OpenStash` in their own localization JSON. This does not
+replace the game's `OpenCurrentStashLegend` or affect other controls.
 
 ## Let each active mod skin a global installation
 
@@ -76,7 +121,7 @@ ambiguous configuration is rejected instead of choosing one silently.
    configuration file does not already exist.
 3. Keep `inventory_button_enabled = true` to use the physical button.
 
-The default button uses the four-state RuffnecKk chest, measures `176 × 112`,
+The default button uses the four-state RuffnecKk chest, measures `128 × 80`,
 and opens Remote Stash through its private message. It never reuses the native
 Drop Gold action.
 

@@ -187,11 +187,29 @@ function Test-AllowedGroundOverlap {
         $allowed -contains $Right.Artifact
 }
 
+function Test-AllowedPickupAutomationOverlap {
+    param(
+        [Parameter(Mandatory)][object]$Left,
+        [Parameter(Mandatory)][object]$Right
+    )
+
+    $isSuitePair = $Left.Domain -eq 'suite' -and $Right.Domain -eq 'suite'
+    $isPickupGroup = $Left.SelectionGroup -eq 'potion-pickup-automation' -and
+        $Right.SelectionGroup -eq 'potion-pickup-automation'
+    if (-not ($isSuitePair -and $isPickupGroup)) {
+        return $false
+    }
+    $allowed = @('ruffneckk-auto-pickup', 'ruffneckk-potion-auto-pickup')
+    return $Left.Owner -ne $Right.Owner -and
+        $allowed -contains $Left.Owner -and $allowed -contains $Right.Owner
+}
+
 function Assert-NoOverlaps {
     param(
         [Parameter(Mandatory)][object[]]$Ranges,
         [Parameter(Mandatory)][string]$Label,
-        [switch]$AllowGroundPair
+        [switch]$AllowGroundPair,
+        [switch]$AllowPickupAutomationPair
     )
 
     $ordered = @($Ranges | Sort-Object Rva, End, Domain, Owner)
@@ -202,6 +220,9 @@ function Assert-NoOverlaps {
             if ($right.Rva -ge $left.End) { break }
             if (-not (Test-RangesOverlap -Left $left -Right $right)) { continue }
             if ($AllowGroundPair -and (Test-AllowedGroundOverlap -Left $left -Right $right)) {
+                continue
+            }
+            if ($AllowPickupAutomationPair -and (Test-AllowedPickupAutomationOverlap -Left $left -Right $right)) {
                 continue
             }
             $start = if ($left.Rva -gt $right.Rva) { $left.Rva } else { $right.Rva }
@@ -334,7 +355,8 @@ function Invoke-NativeWriteValidation {
     }
     $sdkV4Commit = '6eb8f8b6192868214706bd6d528c5294f2f551b7'
     $expectedSdkV4Components = @(
-        'ruffneckk-vendor-stock-refresh'
+        'ruffneckk-vendor-stock-refresh',
+        'ruffneckk-mass-identify'
     )
     if (-not (Has-Property -Object $Manifest.target -Name 'pluginSdkOverrides')) {
         throw 'The PluginSDK v4 override registry is missing.'
@@ -342,7 +364,7 @@ function Invoke-NativeWriteValidation {
     $actualSdkV4Components = @($Manifest.target.pluginSdkOverrides.PSObject.Properties.Name)
     if ($actualSdkV4Components.Count -ne $expectedSdkV4Components.Count -or
         @($expectedSdkV4Components | Where-Object { $_ -notin $actualSdkV4Components }).Count -ne 0) {
-        throw 'PluginSDK v4 overrides must contain exactly Vendor Stock Refresh.'
+        throw 'PluginSDK v4 overrides must contain exactly Vendor Stock Refresh and Mass Identify.'
     }
     foreach ($componentId in $expectedSdkV4Components) {
         if ([string]$Manifest.target.pluginSdkOverrides.$componentId -ne $sdkV4Commit) {
@@ -370,6 +392,10 @@ function Invoke-NativeWriteValidation {
     foreach ($plugin in @($Manifest.suitePlugins)) {
         $id = [string]$plugin.id
         $pluginsById[$id] = $plugin
+        $selectionGroup = ''
+        if (Has-Property -Object $plugin -Name 'selectionGroup') {
+            $selectionGroup = [string]$plugin.selectionGroup
+        }
         $sourceRelative = Normalize-RelativePath -Path ([string]$plugin.source)
         $sourcePath = Join-Path $Root ($sourceRelative.Replace('/', '\'))
         if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
@@ -386,7 +412,7 @@ function Invoke-NativeWriteValidation {
             throw "Suite component '$id' declares fixed writes and a contradictory no-write rationale."
         }
         foreach ($write in $writes) {
-            $range = New-OwnershipRange -Domain 'suite' -Owner $id -Write $write
+            $range = New-OwnershipRange -Domain 'suite' -Owner $id -Write $write -SelectionGroup $selectionGroup
             if ($range.Kind -eq 'sdk-inline-hook' -and
                 $range.Size -ne [UInt64]$Manifest.policy.inlineHookEntryWriteBytes) {
                 throw "$id inline-hook ownership span at 0x$($range.Rva.ToString('X')) must be $($Manifest.policy.inlineHookEntryWriteBytes) bytes."
@@ -510,7 +536,7 @@ function Invoke-NativeWriteValidation {
         Assert-SameStringSet -Expected $expectedCalls -Actual $actualCalls -Label "$id validated call-through RVAs"
     }
 
-    Assert-NoOverlaps -Ranges @($suiteRanges) -Label 'Suite-to-Suite'
+    Assert-NoOverlaps -Ranges @($suiteRanges) -Label 'Suite-to-Suite' -AllowPickupAutomationPair
     Assert-NoCrossOverlaps -LeftRanges @($suiteRanges) -RightRanges @($patchRanges) -Label 'Suite-to-patch'
     Assert-NoCrossOverlaps -LeftRanges @($suiteRanges) -RightRanges @($externalRanges) -Label 'Suite-to-yinyin'
     Assert-NoOverlaps -Ranges @($patchRanges) -Label 'Patch-to-patch' -AllowGroundPair
