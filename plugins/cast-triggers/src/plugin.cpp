@@ -8,11 +8,19 @@
 #include <RuffnecKk/tracked_native_transform_d2rl.hpp>
 
 #include "cast_triggers_policy.hpp"
+#include "callsite_witnesses.hpp"
+#include "caster_body.hpp"
+#include "damage_body.hpp"
+#include "proc_presentation.hpp"
+#include "wide_event_bridge.hpp"
+#include "wide_event_contract.hpp"
+#include "teleport_dispatch.hpp"
+#include "teleport_contract.hpp"
 #if defined(RUFFNECKK_DAMAGE_CLEANUP_V1)
 #include "damage_cleanup_provider.hpp"
 #define RUFFNECKK_CAST_VERSION "1.0.2"
 #else
-#define RUFFNECKK_CAST_VERSION "1.1.1"
+#define RUFFNECKK_CAST_VERSION "1.1.12"
 #endif
 
 #include <Windows.h>
@@ -210,6 +218,16 @@ constexpr auto FillDamageValuesExpected = std::to_array<std::uint8_t>({
     0x10,0x05,0x00,0x00,0x48,0x8B,0x05,0x85,
     0xF2,0x57,0x02,0x48,0x33,0xC4,0x48,0x89,
     0x84,0x24,0xD0,0x04,0x00,0x00,
+});
+// Post-critical witness ends at CALL: the following instruction is independently
+// redirected by Core. We neither own nor overwrite that continuation.
+constexpr std::array<callsites::Site, 2> DamageMeasurementSites{{
+    {0x44C2AC, 0x44D710, 0, {0x8D,0x51,0x01,0x44,0x89,0x7C,0x24,0x20,0xE8,0x5F,0x14,0x00,0x00,0x89,0x47,0x18,0x45,0x85,0xF6,0x75,0x67}},
+    {0x44C3E6, 0x2F5020, 1, {0xC0,0x48,0x8B,0xCE,0x41,0x8D,0x50,0x31,0xE8,0x35,0x8C,0xEA,0xFF,0x44,0x8B,0xF0,0x41,0xC1,0xE6,0x08,0x41}, 13},
+}};
+constexpr auto DamageBodyExpected = std::to_array<std::uint8_t>({
+    0x48,0x89,0x4C,0x24,0x68,0x49,0x8B,0xF9,
+    0x4D,0x8B,0xE0,0x48,0x8B,0xF2,0x48,0x85,0xD2,
 });
 constexpr auto CopyDamageExpected = std::to_array<std::uint8_t>({
     0x48,0x89,0x5C,0x24,0x08,0x48,0x89,0x6C,
@@ -958,7 +976,7 @@ auto ClassifyComposableSite(
         const auto message = std::string("CastTriggers: ") + label
             + " is owned by compatible plugin "
             + std::string(compatibleOwner)
-            + "; the dependent Cast Triggers capability will remain off.";
+            + "; Cast Triggers preserves this entry owner using separate interception sites.";
         Context->LogWarn(message.c_str());
         return NativeSiteDisposition::CompatibleForeignOwner;
     }
@@ -1009,7 +1027,12 @@ bool ValidateNativeFingerprint() noexcept {
         return false;
     }
 
-    return (!Capabilities.sourceSkillTriggers
+    if (!callsites::Validate(Base, DamageMeasurementSites)) {
+        Context->LogError("CastTriggers: critical measurement call witnesses rejected.");
+        return false;
+    }
+    return Check(FillDamageValuesRva + 30, DamageBodyExpected, "damage builder body")
+        && (!Capabilities.sourceSkillTriggers
             || Check(
             SkillHandlerContextWitnessRva,
             SkillHandlerContextWitnessExpected,
@@ -1381,6 +1404,29 @@ __declspec(noinline) void __fastcall HookReportFinalizedDamage(
     DispatchCombatTrigger(game, defender, attacker, CombatTriggerKind::Block);
 }
 
+// Laboratory measurement only: two separate native calls bracket critical scaling.
+struct DamageMeasurement { void* damage{}; int before{}; int after{}; bool seenBefore{}; bool seenAfter{}; };
+thread_local DamageMeasurement* CurrentDamageMeasurement{};
+int __fastcall MeasureBeforeCritical(void* unit, int a2, int a3, int a4,
+        int a5, int a6, int a7, std::uint8_t a8) noexcept {
+    using Fn = int(__fastcall*)(void*, int, int, int, int, int, int, std::uint8_t);
+    const auto result = reinterpret_cast<Fn>(Base + 0x44D710)(unit,a2,a3,a4,a5,a6,a7,a8);
+    if (CurrentDamageMeasurement) {
+        CurrentDamageMeasurement->before = result;
+        CurrentDamageMeasurement->seenBefore = true;
+    }
+    return result;
+}
+int __fastcall MeasureAfterCritical(void* unit, int stat, int layer) noexcept {
+    if (CurrentDamageMeasurement && CurrentDamageMeasurement->damage) {
+        CurrentDamageMeasurement->after = ReadRecordValue<std::int32_t>(
+            static_cast<const std::uint8_t*>(CurrentDamageMeasurement->damage), 0x18);
+        CurrentDamageMeasurement->seenAfter = true;
+    }
+    using Fn = int(__fastcall*)(void*, int, int);
+    return reinterpret_cast<Fn>(Base + 0x2F5020)(unit,stat,layer);
+}
+
 void __fastcall HookFillDamageValues(
         void* game,
         void* attacker,
@@ -1411,6 +1457,9 @@ void __fastcall HookFillDamageValues(
             CriticalPredicted.fetch_add(1, std::memory_order_relaxed);
         }
     }
+    DamageMeasurement measurement{damage};
+    auto* const previousMeasurement = CurrentDamageMeasurement;
+    CurrentDamageMeasurement = inspectCritical && Settings.diagnostics ? &measurement : nullptr;
     OriginalFillDamageValues(
         game,
         attacker,
@@ -1418,6 +1467,14 @@ void __fastcall HookFillDamageValues(
         damage,
         mode,
         sourceDamage);
+    CurrentDamageMeasurement = previousMeasurement;
+    if (inspectCritical && Settings.diagnostics && measurement.seenBefore && measurement.seenAfter) {
+        char message[240]{};
+        std::snprintf(message, sizeof(message),
+            "CastTriggers diagnostic: critical scaling before=%d after=%d bonus-stat434=%d physical-units=1/256.",
+            measurement.before, measurement.after, NativeStats.GetUnitStat(attacker, 434, 0));
+        RecordDiagnostic(message);
+    }
     const auto hitFlags = damage
         ? ReadRecordValue<std::uint32_t>(
             static_cast<const std::uint8_t*>(damage),
@@ -1564,6 +1621,19 @@ std::int32_t __fastcall HookEventFunc20(
         std::int32_t argument7,
         std::int32_t argument8,
         void* argument9) noexcept {
+    const bool traceCastEvent = IsNativeBehaviorActive()
+        && Settings.diagnostics && CastDispatchDepth != 0;
+    if (traceCastEvent) {
+        char message[256]{};
+        const auto layer = static_cast<std::uint32_t>(argument6) & 0xFFFFU;
+        const auto stat = PackedEventStatId(argument6);
+        std::snprintf(message, sizeof(message),
+            "CastTriggers diagnostic: item-event entered event=%d stat=%d layer=%u value=%d damage=%d.",
+            event, stat, layer,
+            attacker ? NativeStats.GetUnitStat(attacker, static_cast<std::uint16_t>(stat), static_cast<std::uint16_t>(layer)) : 0,
+            damage ? 1 : 0);
+        RecordDiagnostic(message);
+    }
     if (IsNativeBehaviorActive()
             && !ShouldExposeSyntheticStat(
                 Settings,
@@ -1593,9 +1663,61 @@ std::int32_t __fastcall HookEventFunc20(
             game, event, attacker, target, nullptr,
             argument6, argument7, argument8, argument9);
     }
-    return OriginalEventFunc20(
+    const auto nativeEventResult = OriginalEventFunc20(
         game, event, attacker, target, damage,
         argument6, argument7, argument8, argument9);
+    if (traceCastEvent) {
+        char message[128]{};
+        std::snprintf(message, sizeof(message),
+            "CastTriggers diagnostic: item-event returned result=%d.", nativeEventResult);
+        RecordDiagnostic(message);
+    }
+    return nativeEventResult;
+}
+
+std::uint8_t* WideEventCore{};
+
+bool BeforeWideEffect(void* game, int event, void* owner, void*,
+        void*& damage, std::uint64_t key, wide_events::Effect effect) {
+    if (!IsNativeBehaviorActive()) return true;
+    if (reinterpret_cast<void*>(effect) != WideEventCore + wide_events::Effect20Rva)
+        return true;
+    const auto stat = wide_events::StatId(key);
+    if (!ShouldExposeSyntheticStat(Settings, ActiveSourceTrigger,
+            ActiveSourceSkillId, ActiveCombatTrigger, stat)) {
+        SyntheticStatsFiltered.fetch_add(1, std::memory_order_relaxed);
+        return false;
+    }
+    if (game && ShouldExtendKillEligibility(event, Settings.onKillStatId, stat,
+            owner && GetUnitType(owner) == PlayerUnitType, damage != nullptr,
+            damage ? ReadRecordValue<std::uint32_t>(
+                static_cast<const std::uint8_t*>(damage), DamageHitFlagsOffset) : 0,
+            ProcExecutionDepth, Capabilities.itemSkillExecution)) {
+        damage = nullptr; // Per-invocation copy; never alter shared D2Damage.
+        KillEligibilityExtensions.fetch_add(1, std::memory_order_relaxed);
+        RecordDiagnostic("CastTriggers diagnostic: wide on-kill eligibility extended.");
+    }
+    return true;
+}
+
+void AfterWideEffect(void* game, void* owner, void* target, void* damage,
+        wide_events::Effect effect, int result) {
+    auto* frame = ActiveCombatObservation;
+    if (!IsNativeBehaviorActive() || !result || !frame || frame->game != game
+            || frame->attacker != owner || frame->target != target
+            || frame->damage != damage) return;
+    if (reinterpret_cast<void*>(effect) == WideEventCore + wide_events::Effect15Rva)
+        frame->openWounds = true;
+    if (reinterpret_cast<void*>(effect) == WideEventCore + wide_events::Effect16Rva)
+        frame->crushingBlow = true;
+}
+
+int __fastcall HookWideEventDispatch(void* game, int event, void* owner,
+        void* target, void* damage, void* callback) {
+    using Dispatch = int(*)(void*, int, void*, void*, void*, void*);
+    wide_events::Bridge bridge(callback, BeforeWideEffect, AfterWideEffect);
+    return reinterpret_cast<Dispatch>(Base + 0x5881E0)(
+        game, event, owner, target, damage, &bridge);
 }
 
 std::int32_t __fastcall HookDispatchUnitStatEvent(
@@ -2163,7 +2285,8 @@ std::int32_t __fastcall HookCastItemSkillOnTarget(
         && ShouldResolveTriggeredSkillTarget(
             caster == CastDispatchSourceUnit,
             target == CastDispatchSourceUnit,
-            flag);
+            flag,
+            ActiveCombatTrigger != CombatTriggerKind::None);
     const auto sourceTargetKind = CastDispatchSourceTargetKind;
     void* const sourceTarget = CastDispatchSourceTarget;
     const auto positionX = CastDispatchTargetX;
@@ -2225,19 +2348,21 @@ std::int32_t __fastcall HookCastItemSkillOnTarget(
             NativeUnitTargetProcs.fetch_add(1, std::memory_order_relaxed);
         }
     }
-    if (inCastDispatch && Settings.diagnostics) {
+    if (Settings.diagnostics) {
         char message[448]{};
         std::snprintf(
             message,
             sizeof(message),
-            "CastTriggers diagnostic: %s proc skill=%d requested-level=%d effective-level=%d position-result=%d unit-target-result=%d result=%d.",
+            "CastTriggers diagnostic: %s proc skill=%d requested-level=%d effective-level=%d position-result=%d unit-target-result=%d result=%d dispatch=%d flag=%d.",
             routeName,
             skillId,
             requestedLevel,
             skillLevel,
             positionResult,
             unitTargetResult,
-            result);
+            result,
+            inCastDispatch ? 1 : 0,
+            flag);
         RecordDiagnostic(message);
     }
     return result;
@@ -2278,95 +2403,29 @@ std::int32_t __fastcall HookCastItemSkillAtPosition(
             FixedLevelProcs.fetch_add(1, std::memory_order_relaxed);
         }
     }
-    if (inCastDispatch && Settings.diagnostics) {
+    if (Settings.diagnostics) {
         char message[256]{};
         std::snprintf(
             message,
             sizeof(message),
-            "CastTriggers diagnostic: position proc skill=%d requested-level=%d effective-level=%d result=%d.",
+            "CastTriggers diagnostic: position proc skill=%d requested-level=%d effective-level=%d result=%d dispatch=%d flag=%d.",
             skillId,
             requestedLevel,
             skillLevel,
-            result);
+            result,
+            inCastDispatch ? 1 : 0,
+            flag);
         RecordDiagnostic(message);
     }
     return result;
 }
 
-std::int32_t __fastcall HookSkillHandler(
-        void* game,
-        void* unit,
-        std::int32_t skillId,
-        std::int32_t skillLevel,
-        std::int32_t consumeResources,
-        std::int32_t itemCast,
-        std::int32_t itemEffect) noexcept {
-    if (!IsNativeBehaviorActive()) {
-        return OriginalSkillHandler(
-            game, unit, skillId, skillLevel, consumeResources, itemCast,
-            itemEffect);
-    }
-    const auto unitType = unit ? GetUnitType(unit) : 6;
-    const bool preCastCandidate =
-        IsNativeBehaviorActive()
-        && CastDispatchDepth == 0
-        && ProcExecutionDepth == 0
-        && !SourceTargetObservationActive
-        && unitType == PlayerUnitType
-        && skillLevel > 0
-        && consumeResources == 1
-        && itemCast == 0
-        && itemEffect == 0;
-    std::uint64_t sourceFlags{};
-    const auto sourceTriggerKind = preCastCandidate
-        ? ClassifyEligibleSourceRecord(game, skillId, sourceFlags)
-        : SourceTriggerKind::None;
-    const bool eligibleSourceRecord =
-        sourceTriggerKind != SourceTriggerKind::None;
-    NativeSourceTargetDescriptor sourceDescriptor{};
+void DispatchEligibleSourceCast(void* game, void* unit, int skillId,
+        int skillLevel, SourceTriggerKind sourceTriggerKind,
+        std::uint64_t sourceFlags, NativeSourceTargetDescriptor sourceDescriptor) noexcept {
     bool usedPlayerInputDescriptor = false;
     bool reusedChannelTarget = false;
     bool expiredPlayerInput = false;
-    std::int32_t nativeResult{};
-    if (eligibleSourceRecord) {
-        void* const sourcePath = GetDynamicPath(unit);
-        SourceTargetObservationScope observation(game, unit, sourcePath);
-        nativeResult = OriginalSkillHandler(
-            game,
-            unit,
-            skillId,
-            skillLevel,
-            consumeResources,
-            itemCast,
-            itemEffect);
-        sourceDescriptor = observation.Snapshot();
-    } else {
-        nativeResult = OriginalSkillHandler(
-            game,
-            unit,
-            skillId,
-            skillLevel,
-            consumeResources,
-            itemCast,
-            itemEffect);
-    }
-    if (!IsNativeBehaviorActive()
-            || CastDispatchDepth != 0) {
-        return nativeResult;
-    }
-
-    ManualCastsObserved.fetch_add(1, std::memory_order_relaxed);
-    if (!IsManualPlayerCast(
-            nativeResult,
-            consumeResources,
-            itemCast,
-            itemEffect,
-            unitType)
-            || skillLevel <= 0
-            || !eligibleSourceRecord) {
-        return nativeResult;
-    }
-
     EligibleCasts.fetch_add(1, std::memory_order_relaxed);
     const auto sourceFrame = ReadCurrentGameFrame(game);
     NativeSourceTargetDescriptor inputDescriptor{};
@@ -2414,7 +2473,7 @@ std::int32_t __fastcall HookSkillHandler(
                     Settings.whileChanneling.intervalFrames);
                 RecordDiagnostic(message);
             }
-            return nativeResult;
+            return;
         }
         ChannelingDispatches.fetch_add(1, std::memory_order_relaxed);
     }
@@ -2452,17 +2511,279 @@ std::int32_t __fastcall HookSkillHandler(
         sourceDescriptor.y,
         sourceTriggerKind,
         skillId);
-    OriginalDispatchUnitStatEvent(
+    // Laboratory probe for this BKVince fixture only: stat 395 is the
+    // source-level Nova ring, layer=(skill 48 << 6) | level marker 63.
+    // This read has no effect on triggering and is not a product stat default.
+    if (Settings.diagnostics) {
+        char message[128]{};
+        std::snprintf(message, sizeof(message),
+            "CastTriggers diagnostic: BKVince fixture Nova stat=395 layer=3135 chance=%d.",
+            NativeStats.GetUnitStat(unit, 395, 3135));
+        RecordDiagnostic(message);
+    }
+    const auto dispatchResult = OriginalDispatchUnitStatEvent(
         game,
         DoActiveEvent,
         unit,
         unit,
         nullptr);
+    if (Settings.diagnostics) {
+        char message[128]{};
+        std::snprintf(message, sizeof(message),
+            "CastTriggers diagnostic: source item-event dispatch returned result=%d.", dispatchResult);
+        RecordDiagnostic(message);
+    }
     EventDispatches.fetch_add(1, std::memory_order_relaxed);
+    return;
+}
+
+struct PendingTeleportCast {
+    void* game;
+    void* unit;
+    int skillId;
+    int skillLevel;
+    SourceTriggerKind kind;
+    std::uint64_t flags;
+    bool dispatched{};
+};
+thread_local PendingTeleportCast* PendingManualCast{};
+thread_local PendingTeleportCast* RelocatingTeleport{};
+thread_local void* TeleportNotificationOwner{};
+
+void __fastcall HookQueuePositionProc(void* unit, int skill, int level,
+        std::uint16_t x, std::uint16_t y, int flag) noexcept {
+    using Queue = void(*)(void*,int,int,std::uint16_t,std::uint16_t,int);
+    teleport::NotifyBeforeMove(unit && unit == TeleportNotificationOwner, [&]() {
+        // Native 0x9A serialization normally reads the origin on the next update,
+        // after Teleport. Send now so its client relocation precedes Teleport's.
+        using GetPointer = void*(*)(void*);
+        using GetObservers = void(*)(void*,void***,std::size_t*);
+        using Send = void(*)(void*,std::uint8_t,std::uint32_t,std::uint16_t,
+            std::uint16_t,int,std::uint16_t,std::uint16_t,std::uint16_t,std::uint8_t,int);
+        auto* path = GetDynamicPath(unit);
+        auto* room = reinterpret_cast<GetPointer>(Base + 0x34B440)(unit);
+        auto* owner = reinterpret_cast<GetPointer>(Base + 0x48FDE0)(unit);
+        if (!path || !room || !owner) return false;
+        void** observers{};
+        std::size_t count{};
+        reinterpret_cast<GetObservers>(Base + 0x2EFB20)(room,&observers,&count);
+        if (count && !observers) return false;
+        const auto originX = ReadRecordValue<std::uint16_t>(static_cast<const std::uint8_t*>(path),2);
+        const auto originY = ReadRecordValue<std::uint16_t>(static_cast<const std::uint8_t*>(path),6);
+        const auto id = ReadRecordValue<std::uint32_t>(static_cast<const std::uint8_t*>(unit),8);
+        teleport::NotifyObservers(owner,observers,count,[&](void* client) {
+            reinterpret_cast<Send>(Base + 0x47FC60)(client,0,id,x,y,skill,
+                originX,originY,static_cast<std::uint8_t>(flag),
+                static_cast<std::uint8_t>(level),1);
+        });
+        char notification[192]{};
+        std::snprintf(notification,sizeof(notification),
+            "CastTriggers diagnostic: teleport proc notification before relocation origin=(%u,%u) target=(%u,%u).",
+            static_cast<unsigned>(originX),static_cast<unsigned>(originY),
+            static_cast<unsigned>(x),static_cast<unsigned>(y));
+        RecordDiagnostic(notification);
+        return true;
+    }, [&]() {
+        reinterpret_cast<Queue>(Base + 0x5391A0)(unit,skill,level,x,y,flag);
+    });
+}
+
+int __fastcall HookTeleportRelocation(void* game, void* unit, void* room,
+        int x, int y, int collisionMode, int movementMode) noexcept {
+    const auto* pending = PendingManualCast;
+    auto* eligible = pending && pending->game == game && pending->unit == unit
+        && ProcExecutionDepth == 0 && CastDispatchDepth == 0
+        ? PendingManualCast : nullptr;
+    teleport::PointerScope scope(RelocatingTeleport, eligible);
+    using Relocate = int(*)(void*,void*,void*,int,int,int,int);
+    return reinterpret_cast<Relocate>(Base + 0x491CA0)(
+        game,unit,room,x,y,collisionMode,movementMode);
+}
+
+int __fastcall HookTeleportPathMove(void* path, void* unit, void* room,
+        int x, int y) noexcept {
+    auto* pending = RelocatingTeleport;
+    if (IsNativeBehaviorActive() && pending && pending->unit == unit
+            && path == GetDynamicPath(unit)) {
+        teleport::BeforeMove(pending->dispatched, [&]() {
+            NativeSourceTargetDescriptor descriptor{
+                NativeSourceTargetKind::Position,nullptr,x,y};
+            RecordDiagnostic("CastTriggers diagnostic: teleport proc before relocation.");
+            teleport::PointerScope notificationScope(TeleportNotificationOwner,unit);
+            DispatchEligibleSourceCast(pending->game,unit,pending->skillId,
+                pending->skillLevel,pending->kind,pending->flags,descriptor);
+        });
+    }
+    using Move = int(*)(void*,void*,void*,int,int);
+    return reinterpret_cast<Move>(Base + 0x381890)(path,unit,room,x,y);
+}
+
+std::int32_t __fastcall HookSkillHandler(
+        void* game,
+        void* unit,
+        std::int32_t skillId,
+        std::int32_t skillLevel,
+        std::int32_t consumeResources,
+        std::int32_t itemCast,
+        std::int32_t itemEffect) noexcept {
+    if (!IsNativeBehaviorActive()) {
+        return OriginalSkillHandler(
+            game, unit, skillId, skillLevel, consumeResources, itemCast,
+            itemEffect);
+    }
+    const auto unitType = unit ? GetUnitType(unit) : 6;
+    const bool preCastCandidate =
+        IsNativeBehaviorActive()
+        && CastDispatchDepth == 0
+        && ProcExecutionDepth == 0
+        && !SourceTargetObservationActive
+        && unitType == PlayerUnitType
+        && skillLevel > 0
+        && consumeResources == 1
+        && itemCast == 0
+        && itemEffect == 0;
+    std::uint64_t sourceFlags{};
+    const auto sourceTriggerKind = preCastCandidate
+        ? ClassifyEligibleSourceRecord(game, skillId, sourceFlags)
+        : SourceTriggerKind::None;
+    const bool eligibleSourceRecord =
+        sourceTriggerKind != SourceTriggerKind::None;
+    NativeSourceTargetDescriptor sourceDescriptor{};
+    PendingTeleportCast pending{game,unit,skillId,skillLevel,sourceTriggerKind,sourceFlags};
+    std::int32_t nativeResult{};
+    if (eligibleSourceRecord) {
+        void* const sourcePath = GetDynamicPath(unit);
+        SourceTargetObservationScope observation(game, unit, sourcePath);
+        teleport::PointerScope pendingScope(PendingManualCast, &pending);
+        nativeResult = OriginalSkillHandler(
+            game,
+            unit,
+            skillId,
+            skillLevel,
+            consumeResources,
+            itemCast,
+            itemEffect);
+        sourceDescriptor = observation.Snapshot();
+    } else {
+        nativeResult = OriginalSkillHandler(
+            game,
+            unit,
+            skillId,
+            skillLevel,
+            consumeResources,
+            itemCast,
+            itemEffect);
+    }
+    if (!IsNativeBehaviorActive()
+            || CastDispatchDepth != 0) {
+        return nativeResult;
+    }
+
+    if (Settings.diagnostics && unitType == PlayerUnitType && consumeResources == 1
+            && itemCast == 0 && itemEffect == 0) {
+        char message[192]{};
+        std::snprintf(message, sizeof(message),
+            "CastTriggers diagnostic: source returned skill=%d level=%d result=%d eligible-record=%d.",
+            skillId, skillLevel, nativeResult, eligibleSourceRecord ? 1 : 0);
+        RecordDiagnostic(message);
+    }
+    ManualCastsObserved.fetch_add(1, std::memory_order_relaxed);
+    if (!IsManualPlayerCast(
+            nativeResult,
+            consumeResources,
+            itemCast,
+            itemEffect,
+            unitType)
+            || skillLevel <= 0
+            || !eligibleSourceRecord) {
+        return nativeResult;
+    }
+
+    if (!pending.dispatched) {
+        DispatchEligibleSourceCast(game, unit, skillId, skillLevel,
+            sourceTriggerKind, sourceFlags, sourceDescriptor);
+    }
     return nativeResult;
 }
 
 bool InstallHooks() noexcept {
+    if (!teleport::Validate(Base)) {
+        Context->LogError("CastTriggers: teleport native contract mismatch; no hooks installed.");
+        return false;
+    }
+    // Validate every site before any mutation; forwarding remains safe if a
+    // later installation fails and deferred activation stays inactive.
+    for (const auto& site : callsites::NativeSites) {
+        if (!callsites::Validate(Base, std::span{&site, std::size_t{1}})) {
+            char message[160]{};
+            std::snprintf(message, sizeof(message),
+                "CastTriggers: native call-site witness rejected at RVA 0x%llX; no hooks installed.",
+                static_cast<unsigned long long>(site.rva));
+            Context->LogError(message);
+            return false;
+        }
+    }
+    // The Core provider owns 0x5881E0. Intercept its native caller, preserving
+    // the provider and any existing damage callback through a borrowed bridge.
+    auto* core = reinterpret_cast<std::uint8_t*>(GetModuleHandleW(L"D2RCore.dll"));
+    const auto dispatchExport = core ? GetProcAddress(
+        reinterpret_cast<HMODULE>(core), "DispatchWideEffects") : nullptr;
+    if (dispatchExport) {
+        constexpr std::array<std::uint8_t,5> call{0xE8,0xE9,0xAB,0x13,0x00};
+        if (reinterpret_cast<void*>(dispatchExport) != core + wide_events::DispatchExportRva
+                || !wide_events::Validate(core)
+                || !wide_events::ValidateNativeProvider(Base, core)) {
+            Context->LogError("CastTriggers: wide event provider contract mismatch; no hooks installed.");
+            return false;
+        }
+        WideEventCore = core;
+        auto* relay = callsites::Allocate(reinterpret_cast<std::uintptr_t>(Base),
+            {reinterpret_cast<void*>(HookWideEventDispatch), reinterpret_cast<void*>(HookWideEventDispatch),
+             reinterpret_cast<void*>(HookWideEventDispatch), reinterpret_cast<void*>(HookWideEventDispatch)});
+        std::array<std::uint8_t,5> patch{};
+        if (!relay || !callsites::EncodeCall(reinterpret_cast<std::uintptr_t>(Base + 0x44D5F2),
+                reinterpret_cast<std::uintptr_t>(relay), patch)
+                || !Context->PatchBytes(0x44D5F2, call.data(), 5, patch.data(), 5)) return false;
+    }
+    auto* teleportRelays = callsites::Allocate(reinterpret_cast<std::uintptr_t>(Base),
+        {reinterpret_cast<void*>(HookTeleportRelocation), reinterpret_cast<void*>(HookTeleportPathMove),
+         reinterpret_cast<void*>(HookQueuePositionProc), reinterpret_cast<void*>(HookTeleportPathMove)});
+    if (!teleportRelays) return false;
+    for (const auto& site : teleport::Sites) {
+        std::array<std::uint8_t,5> patch{};
+        if (!callsites::EncodeCall(reinterpret_cast<std::uintptr_t>(Base + site.rva),
+                reinterpret_cast<std::uintptr_t>(teleportRelays + site.relay * 16),patch)
+                || !Context->PatchBytes(site.rva,site.witness.data()+8,5,patch.data(),5)) return false;
+    }
+    OriginalSkillHandler = reinterpret_cast<decltype(OriginalSkillHandler)>(Base + SkillHandlerRva);
+    OriginalPlayerSkillPositionInput = reinterpret_cast<decltype(OriginalPlayerSkillPositionInput)>(Base + PlayerSkillPositionInputRva);
+    OriginalCastItemSkillOnTarget = reinterpret_cast<decltype(OriginalCastItemSkillOnTarget)>(Base + CastItemSkillOnTargetRva);
+    OriginalCastItemSkillAtPosition = reinterpret_cast<decltype(OriginalCastItemSkillAtPosition)>(Base + CastItemSkillAtPositionRva);
+    const std::array<void*, 4> wrappers{
+        reinterpret_cast<void*>(HookSkillHandler),
+        reinterpret_cast<void*>(HookPlayerSkillPositionInput),
+        reinterpret_cast<void*>(HookCastItemSkillOnTarget),
+        reinterpret_cast<void*>(HookCastItemSkillAtPosition)};
+    // Process-lifetime storage: Loader owns call patches, never free a relay
+    // while a registered call might still reach it.
+    auto* const relays = callsites::Allocate(reinterpret_cast<std::uintptr_t>(Base), wrappers);
+    if (!relays) {
+        Context->LogError("CastTriggers: could not allocate executable call relays; any installed wrappers remain forwarding-only.");
+        return false;
+    }
+    for (const auto& site : callsites::NativeSites) {
+        // Core can call item-cast entries directly, bypassing native call
+        // sites. Intercept both caster bodies; only source/input use call relays.
+        if (site.relay >= 2) continue;
+        std::array<std::uint8_t, 5> replacement{};
+        if (!callsites::EncodeCall(reinterpret_cast<std::uintptr_t>(Base + site.rva),
+                reinterpret_cast<std::uintptr_t>(relays + site.relay * 16), replacement)
+                || !Context->PatchBytes(site.rva, site.witness.data() + 8, 5,
+                    replacement.data(), 5)) {
+            Context->LogError("CastTriggers: native call-site patch refused; installed wrappers remain forwarding-only.");
+            return false;
+        }
+    }
     if (Settings.combatTriggers.blockStatId != 0
             && Capabilities.itemSkillExecution
             && !Context->InstallInlineHook(
@@ -2516,15 +2837,26 @@ bool InstallHooks() noexcept {
             "CastTriggers: Crushing Blow callback hook is already owned or unavailable.");
         return false;
     }
+    const auto measurementRelays = callsites::Allocate(reinterpret_cast<std::uintptr_t>(Base),
+        {reinterpret_cast<void*>(MeasureBeforeCritical), reinterpret_cast<void*>(MeasureAfterCritical),
+         reinterpret_cast<void*>(MeasureBeforeCritical), reinterpret_cast<void*>(MeasureAfterCritical)});
+    if (!measurementRelays) return false;
+    for (const auto& site : DamageMeasurementSites) {
+        std::array<std::uint8_t,5> replacement{};
+        if (!callsites::EncodeCall(reinterpret_cast<std::uintptr_t>(Base + site.rva),
+                reinterpret_cast<std::uintptr_t>(measurementRelays + site.relay * 16), replacement)
+                || !Context->PatchBytes(site.rva, site.witness.data()+8, 5, replacement.data(), 5)) return false;
+    }
+    DamageBodyWrapper = reinterpret_cast<void*>(HookFillDamageValues);
+    DamageSecurityCookie = Base + 0x29CB2C8;
+    OriginalFillDamageValues = DamageBodyResume;
     if (Capabilities.criticalStrikeTrigger
             && !Context->InstallInlineHook(
-            FillDamageValuesRva,
-            FillDamageValuesExpected.data(),
-            static_cast<std::uint32_t>(FillDamageValuesExpected.size()),
-            HookFillDamageValues,
-            &OriginalFillDamageValues)) {
-        Context->LogError(
-            "CastTriggers: damage builder hook is already owned or unavailable.");
+            FillDamageValuesRva + 30,
+            DamageBodyExpected.data(),
+            static_cast<std::uint32_t>(DamageBodyExpected.size()),
+            reinterpret_cast<void*>(DamageBodyDetour), &DamageBodyOriginal)) {
+        Context->LogError("CastTriggers: damage builder body interception unavailable.");
         return false;
     }
     if (Capabilities.criticalStrikeTrigger
@@ -2558,18 +2890,6 @@ bool InstallHooks() noexcept {
             &OriginalDestroyDamage)) {
         Context->LogError(
             "CastTriggers: damage destructor hook is already owned or unavailable.");
-        return false;
-    }
-    if (Capabilities.positionInput
-            && !Context->InstallInlineHook(
-            PlayerSkillPositionInputRva,
-            PlayerSkillPositionInputExpected.data(),
-            static_cast<std::uint32_t>(
-                PlayerSkillPositionInputExpected.size()),
-            HookPlayerSkillPositionInput,
-            &OriginalPlayerSkillPositionInput)) {
-        Context->LogError(
-            "CastTriggers: player position input executor hook is already owned or unavailable.");
         return false;
     }
     if (!Context->InstallInlineHook(
@@ -2618,40 +2938,21 @@ bool InstallHooks() noexcept {
             "CastTriggers: native target Y observer hook is already owned or unavailable.");
         return false;
     }
-    if (Capabilities.itemSkillExecution
-            && !Context->InstallInlineHook(
-            CastItemSkillOnTargetRva,
-            CastItemSkillOnTargetExpected.data(),
-            static_cast<std::uint32_t>(
-                CastItemSkillOnTargetExpected.size()),
-            HookCastItemSkillOnTarget,
-            &OriginalCastItemSkillOnTarget)) {
-        Context->LogError(
-            "CastTriggers: target item-skill caster hook is already owned or unavailable.");
-        return false;
-    }
-    if (Capabilities.itemSkillExecution
-            && !Context->InstallInlineHook(
-            CastItemSkillAtPositionRva,
-            CastItemSkillAtPositionExpected.data(),
-            static_cast<std::uint32_t>(
-                CastItemSkillAtPositionExpected.size()),
-            HookCastItemSkillAtPosition,
-            &OriginalCastItemSkillAtPosition)) {
-        Context->LogError(
-            "CastTriggers: position item-skill caster hook is already owned or unavailable.");
-        return false;
-    }
-
-    if (Capabilities.sourceSkillTriggers
-            && !Context->InstallInlineHook(
-            SkillHandlerRva,
-            SkillHandlerExpected.data(),
-            static_cast<std::uint32_t>(SkillHandlerExpected.size()),
-            HookSkillHandler,
-            &OriginalSkillHandler)) {
-        Context->LogError(
-            "CastTriggers: central skill handler hook is already owned or unavailable.");
+    // Body interception follows either the pristine entry or Whirlwind's policy.
+    // The adapters undo/replay only the exact, validated native prologue.
+    CastTargetWrapper = reinterpret_cast<void*>(HookCastItemSkillOnTarget);
+    CastPositionWrapper = reinterpret_cast<void*>(HookCastItemSkillAtPosition);
+    OriginalCastItemSkillOnTarget = CastTargetResume;
+    OriginalCastItemSkillAtPosition = CastPositionResume;
+    if (!Context->InstallInlineHook(CastItemSkillOnTargetRva + 24,
+            CastItemSkillOnTargetExpected.data() + 24,
+            static_cast<std::uint32_t>(CastItemSkillOnTargetExpected.size() - 24),
+            reinterpret_cast<void*>(CastTargetBodyDetour), &CastTargetBodyOriginal)
+            || !Context->InstallInlineHook(CastItemSkillAtPositionRva + 22,
+            CastItemSkillAtPositionExpected.data() + 22,
+            static_cast<std::uint32_t>(CastItemSkillAtPositionExpected.size() - 22),
+            reinterpret_cast<void*>(CastPositionBodyDetour), &CastPositionBodyOriginal)) {
+        Context->LogError("CastTriggers: item-cast body interception unavailable; activation refused.");
         return false;
     }
     return true;
@@ -2731,6 +3032,15 @@ void __cdecl OnDataTablesLoaded(
             "CastTriggers: deferred native fingerprint rejected; plugin remains loaded and inert.");
         return;
     }
+    if (GetModuleHandleW(L"d2rl-celestialrayone-cast-on-cast.dll")) {
+        RefuseDeferredNativeActivation("CastTriggers: remove the separate Cast on Cast DLL; the unified plugin owns this behavior.");
+        return;
+    }
+    if (!ProcPresentation::Prepare(Context, {Settings.serverProcAim,
+            Settings.clientProcAim, Settings.clientMissileRewind})) {
+        RefuseDeferredNativeActivation("CastTriggers: proc presentation preparation rejected; no hooks installed.");
+        return;
+    }
     ResolveNativeFunctions();
     if (!InstallHooks()) {
         RefuseDeferredNativeActivation(
@@ -2751,9 +3061,14 @@ void __cdecl OnDataTablesLoaded(
         "CastTriggers 1.0.2 candidate: damage cleanup ABI v1 ready; not release eligible.");
 #endif
 
+    if (!ProcPresentation::Install()) {
+        RefuseDeferredNativeActivation("CastTriggers: proc presentation install failed; partial native patches may remain. Close the game before retrying.");
+        return;
+    }
     if (!PublishNativeActivation()) {
         return;
     }
+    ProcPresentation::Enable();
     LogNativeActivation(Context, event->revision);
 }
 
@@ -2925,6 +3240,9 @@ auto Status(
             BlockOutcomes.load(std::memory_order_relaxed)),
         Settings.onKillStatId, Settings.combatTriggers.blockStatId);
     command->plugin->WriteConsoleMessage(outcomes);
+    char presentationStatus[384]{};
+    ProcPresentation::Describe(presentationStatus, sizeof(presentationStatus));
+    Context->WriteConsoleMessage(presentationStatus);
     if (Settings.diagnostics) {
         const auto trace = SnapshotDiagnosticTrace();
         char traceSummary[192]{};
@@ -3051,12 +3369,12 @@ constexpr D2RL::PluginInfo Info{
 #if defined(RUFFNECKK_DAMAGE_CLEANUP_V1)
     .version = "1.0.2",
 #else
-    .version = "1.1.1",
+    .version = RUFFNECKK_CAST_VERSION,
 #endif
     .author = "RuffnecKk",
     .description =
         "Triggers item skills from spells, attack attempts, and combat outcomes.",
-    .flags = D2RL::PluginFlags::Server | D2RL::PluginFlags::NativeHooks,
+    .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
 };
 
 } // namespace
@@ -3111,6 +3429,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
+    RuffnecKk::CastTriggers::ProcPresentation::Stop();
     RuffnecKk::CastTriggers::TryTransitionNativeActivation(
         ruffneckk::cast_triggers::DeferredNativeActivationTransition::BeginStopping);
     RuffnecKk::CastTriggers::Operational.store(

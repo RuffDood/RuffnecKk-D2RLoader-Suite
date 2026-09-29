@@ -1,49 +1,38 @@
-# RuffnecKk Cast Triggers
-# Triggers item skills from spells, attack attempts, and combat outcomes.
+# Cast Triggers — modder configuration
+# See README.md for item properties and tooltips. Restart after changes.
+# Stat mappings use ItemStatCost.txt *ID; 0 disables that mapping.
+# Use unique nonzero IDs from your mod. Never renumber saved-item stats.
+# Items choose the triggered spell, chance and level; this file chooses triggers.
+# Commented examples are inactive.
 
 enabled = true
 
 [on_cast]
-# Empty means every eligible non-repeating spell. A non-empty list narrows
-# source skills to these numeric Skills.txt IDs. It cannot opt attacks in.
+# [] = all eligible non-channelled spells. Example: [47, 54] = Fire Ball/Teleport.
 include_skill_ids = []
-
-# Applied after include_skill_ids. Use this for custom spells that should never
-# activate cast-on-cast item properties.
+# Exclusions win. Example: [54] excludes Teleport.
 exclude_skill_ids = []
 
 [on_kill]
-# Extends native player kill-event item stats to spell kills. This stat ID is
-# consumed by the mod's ItemStatCost.txt row; set it to 0 to disable the
-# extension. It is not a synthetic doactive stat.
+# Example: 196 extends standard item_skillonkill to player spell kills.
+# Check your mod's ID. Triggered missile kills can trigger On Kill again.
 stat_id = 0
 
 [while_channeling]
-# Repeating/channelled spells use their own item properties and stat IDs.
 enabled = true
-
-# D2R runs at 25 server frames per second. The default 50 frames is 2 seconds.
-# The first successful channel tick triggers immediately, then this interval
-# limits how often another native item chance roll may occur.
+# First chance roll is immediate; this spaces later rolls during channeling.
+# 10 = 0.4s, 25 = 1s, 50 = 2s. Does not delay other trigger families.
 interval_frames = 50
-
-# These IDs must match the separate fixed-level and source-level channeling
-# rows added to ItemStatCost.txt. Leave both at 0 to disable channeling procs.
+# Map your separate fixed/source-level channel stats. Both 0 = no channel procs.
 fixed_stat_id = 0
 same_level_stat_id = 0
-
-# Empty means every otherwise eligible repeating/channelled spell.
+# Example: [41] = Inferno only; [] = all eligible channelled spells.
 include_skill_ids = []
-
-# Applied after include_skill_ids. Weapon attacks remain ineligible.
 exclude_skill_ids = []
 
-# Optional source-conditioned families apply only to ordinary, non-channelled
-# casts. Each family owns distinct ItemStatCost.txt rows. The item property
-# still chooses the skill to cast, its chance, and its fixed/source level.
-# Add as many blocks as the mod needs. A live block requires at least one
-# nonzero stat ID; replace the zero placeholders before uncommenting it.
-#
+# Optional: a separate property triggered only by Frost Nova (44).
+# The item can choose another spell, e.g. Fire Ball (47), 100% chance, level 12.
+# Set at least one mapping to your stat ID before uncommenting this block.
 # [[source_skill_triggers]]
 # name = "frost_nova"
 # source_skill_ids = [44]
@@ -51,21 +40,27 @@ exclude_skill_ids = []
 # same_level_stat_id = 0
 
 [combat_triggers]
-# These IDs must match free ItemStatCost.txt IDs owned by the consuming
-# mod. Set an unused trigger to 0. Nonzero IDs must be distinct.
+# Map each property's stat ID. The item must also have the combat modifier
+# needed to produce the outcome; an on-Crushing-Blow proc does not grant CB.
+# Attack Attempt includes misses. Critical Strike excludes Deadly Strike.
 attack_attempt_stat_id = 0
 critical_strike_stat_id = 0
 crushing_blow_stat_id = 0
 open_wounds_stat_id = 0
 
 [on_block]
-# Dispatches the consuming mod's doactive item stat only when the defender has
-# a confirmed shield block or Assassin Weapon Block result. Set it to 0 to
-# disable it. Its nonzero ID must be distinct from every other trigger ID.
+# Map your block-proc stat. Example item: 100% level 1 Frost Nova (44).
+# Requires an actual shield block or Weapon Block, not simply casting a skill.
 stat_id = 0
 
 [diagnostics]
-# Retains the latest detailed events in a bounded in-memory trace. The
-# cast-triggers console command always exposes counters and prints the retained
-# entries when this setting is true.
+# true: restart, test, then run cast-triggers in the console for event details.
 enabled = false
+
+[proc_presentation]
+# CelestialRayOne's Cast on Cast corrections, integrated with permission.
+# Original mechanics credited upstream to ESR.
+# Remove the separate Cast on Cast DLL.
+server_proc_aim = true        # Correct actual item-proc missile aiming.
+client_proc_aim = true        # Match displayed procs to their intended target.
+client_missile_rewind = true  # Draw the first frame one movement step back.

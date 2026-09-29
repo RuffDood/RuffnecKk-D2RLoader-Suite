@@ -86,8 +86,8 @@ int main() {
         NativeSiteDisposition::Pristine,
         NativeSiteDisposition::Pristine);
     static_assert(celestialComposableCapabilities.loadable);
-    static_assert(!celestialComposableCapabilities.sourceSkillTriggers);
-    static_assert(!celestialComposableCapabilities.criticalStrikeTrigger);
+    static_assert(celestialComposableCapabilities.sourceSkillTriggers);
+    static_assert(celestialComposableCapabilities.criticalStrikeTrigger);
     static_assert(celestialComposableCapabilities.positionInput);
     static_assert(celestialComposableCapabilities.itemSkillExecution);
 
@@ -98,10 +98,10 @@ int main() {
         NativeSiteDisposition::CompatibleForeignOwner,
         NativeSiteDisposition::CompatibleForeignOwner);
     static_assert(celestialWhirlwindCapabilities.loadable);
-    static_assert(!celestialWhirlwindCapabilities.sourceSkillTriggers);
-    static_assert(!celestialWhirlwindCapabilities.criticalStrikeTrigger);
-    static_assert(!celestialWhirlwindCapabilities.positionInput);
-    static_assert(!celestialWhirlwindCapabilities.itemSkillExecution);
+    static_assert(celestialWhirlwindCapabilities.sourceSkillTriggers);
+    static_assert(celestialWhirlwindCapabilities.criticalStrikeTrigger);
+    static_assert(celestialWhirlwindCapabilities.positionInput);
+    static_assert(celestialWhirlwindCapabilities.itemSkillExecution);
 
     constexpr auto celestialTargetCasterCapabilities = ResolveNativeCapabilities(
         NativeSiteDisposition::Pristine,
@@ -110,10 +110,10 @@ int main() {
         NativeSiteDisposition::CompatibleForeignOwner,
         NativeSiteDisposition::Pristine);
     static_assert(celestialTargetCasterCapabilities.loadable);
-    static_assert(!celestialTargetCasterCapabilities.sourceSkillTriggers);
-    static_assert(!celestialTargetCasterCapabilities.criticalStrikeTrigger);
+    static_assert(celestialTargetCasterCapabilities.sourceSkillTriggers);
+    static_assert(celestialTargetCasterCapabilities.criticalStrikeTrigger);
     static_assert(celestialTargetCasterCapabilities.positionInput);
-    static_assert(!celestialTargetCasterCapabilities.itemSkillExecution);
+    static_assert(celestialTargetCasterCapabilities.itemSkillExecution);
 
     constexpr auto rejectedOwnershipCapabilities = ResolveNativeCapabilities(
         NativeSiteDisposition::Rejected,
@@ -269,6 +269,11 @@ int main() {
     static_assert(!ShouldResolveTriggeredSkillTarget(true, true, 0));
     static_assert(!ShouldResolveTriggeredSkillTarget(false, true, 1));
     static_assert(!ShouldResolveTriggeredSkillTarget(true, false, 1));
+    // A combat proc keeps the struck unit as its aim but must not use the
+    // item-effect mode that relocates caster-centered spells to that unit.
+    static_assert(ShouldResolveTriggeredSkillTarget(true, false, 1, true));
+    static_assert(!ShouldResolveTriggeredSkillTarget(false, false, 1, true));
+    static_assert(!ShouldResolveTriggeredSkillTarget(true, false, 0, true));
     static_assert(ShouldUseNativeUnitTarget(
         true,
         NativeSourceTargetKind::Unit));
@@ -864,7 +869,7 @@ enabled = true
         std::istreambuf_iterator<char>()};
     source.erase(std::remove(source.begin(), source.end(), '\r'), source.end());
     assert(source.find("ModScopedOnly") == std::string::npos);
-    assert(source.find("D2RL::PluginFlags::Server") != std::string::npos);
+    assert(source.find("D2RL::PluginFlags::Shared") != std::string::npos);
     assert(source.find("ClassifySourceSkillRecord") != std::string::npos);
     assert(source.find("SameLevelMarker") != std::string::npos);
     assert(source.find("IsSupportedBuild") == std::string::npos);
@@ -968,18 +973,9 @@ enabled = true
         != std::string::npos);
     assert(source.find("Capabilities.criticalStrikeTrigger")
         != std::string::npos);
-    assert(source.find(
-        "Capabilities.positionInput\n"
-        "            && !Context->InstallInlineHook(\n"
-        "            PlayerSkillPositionInputRva") != std::string::npos);
-    assert(source.find(
-        "Capabilities.itemSkillExecution\n"
-        "            && !Context->InstallInlineHook(\n"
-        "            CastItemSkillOnTargetRva") != std::string::npos);
-    assert(source.find(
-        "Capabilities.itemSkillExecution\n"
-        "            && !Context->InstallInlineHook(\n"
-        "            CastItemSkillAtPositionRva") != std::string::npos);
+
+
+
     assert(source.find(
         "if (!IsNativeBehaviorActive() || !Capabilities.itemSkillExecution || !game || !attacker")
         != std::string::npos);

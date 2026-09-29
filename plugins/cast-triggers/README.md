@@ -1,9 +1,7 @@
-# Cast Triggers 1.1.1
+# Cast Triggers 1.1.12
 
-The current source adds an opt-in **spell-kill extension for vanilla On Kill**
-and a new **On Block** trigger family. These additions are an unreleased local
-candidate; their gameplay, persistence and multiplayer qualification remains
-open. The component version is unchanged.
+By **RuffnecKk**, with integrated **Cast on Cast aiming and visual corrections
+by CelestialRayOne (Celestial)**, used with his permission.
 
 Cast Triggers adds Path of Exile-style skill procs to Diablo II: Resurrected
 items.
@@ -252,31 +250,17 @@ each matching item entry retains its normal chance roll.
 
 Both IDs must be distinct from every configured channel/source/combat stat.
 Use fixed-level item properties for these families; neither derives a source
-skill level. The existing guards suppress synchronous synthetic proc chains
-and prevent the on-kill extension during an item-skill execution. Delayed
-missiles and damage-over-time outlive those guards and still require runtime
-qualification. All dispatch occurs on the authoritative server. PvP and
-TCP/IP ownership, full-stack coexistence and save/reload are separate open
-tests for this candidate.
+skill level. A triggered missile that kills another enemy can activate On Kill again.
+For example, a kill can trigger Fire Ball, and a kill caused by that Fire Ball
+can trigger another Fire Ball. This is intentional On Kill behavior. It does
+not mean that every triggered spell counts as a new manual cast.
+Trigger decisions and chance rolls run on the server. Multiplayer, PvP,
+damage-over-time kills and minion/mercenary attribution are not newly qualified
+by the single-player tests for this release.
 
 To disable either addition, set its ID to `0`. Keep ItemStatCost rows and IDs
 that saved items use; removing them is not a safe rollback. A DLL rollback must
 also restore its compatible TOML, since older versions reject the new sections.
-
-### Offline fixture
-
-`tools/build-test-fixture.cjs` produces data and TOML only. It uses the governed
-Diablo workspace parser; set `DIABLO_WORKSPACE` when that workspace is not the
-Suite's sibling `Diablo` directory. Pass a fresh output directory, build label,
-mod name, source Excel directory and source `item-modifiers.json` path. It
-never copies a packaged DLL or installs its output.
-
-The added recipes use chipped amethyst for configured on-kill Fire Ball,
-chipped topaz for unchanged native on-kill Fire Ball, chipped sapphire for
-on-block Nova, and amethyst plus sapphire for both configured families on one
-ring. They use 100% chance and fixed level 12 for deterministic qualification.
-The fixture's configured on-kill row is a clone; testing the native-stat option
-requires a separate TOML fixture with `on_kill.stat_id=196`.
 
 ## Put a proc on an item or affix
 
@@ -332,8 +316,90 @@ The source skill and triggered skill are separate. In a property named
 
 
 
+## Integrated Cast on Cast features — CelestialRayOne
+
+**Full credit for the three aiming and visual corrections below goes to
+CelestialRayOne (Celestial), author of Cast on Cast.** They are adapted from his
+code and integrated with his permission. His upstream attribution to **ESR**
+for the original Diablo II 2.4 patch mechanics is preserved as well.
+
+| Option | What it changes |
+|---|---|
+| `server_proc_aim` | Corrects native item-proc missile aiming toward the intended target on the server, where the actual skill is executed. |
+| `client_proc_aim` | Corrects the matching client target handling so the displayed proc follows its intended target and origin. |
+| `client_missile_rewind` | Places a newly created client missile one movement step farther back, making its first visible frame start closer to its origin. This does not add server damage. |
+
+All three options default to `true`:
+
+```toml
+[proc_presentation]
+server_proc_aim = true
+client_proc_aim = true
+client_missile_rewind = true
+```
+
+Add this section once to an existing configuration, or use the supplied TOML.
+Set an individual option to `false` to disable that correction. Completely
+close and restart the game after changing these settings; hot reload is not
+supported.
+
+These corrections require no new ItemStatCost rows, Properties rows, tooltip
+strings or Cube recipes. The server and client aiming corrections apply to
+native item procs passing through the affected skill paths, beyond just
+Cast Triggers' on-cast family. The rewind adjustment also affects ordinary
+missiles created through the shared standard client missile builder; it is
+not limited to triggered missiles and does not cover every possible effect.
+
+**Remove the separate Cast on Cast DLL before using this combined plugin.**
+Cast Triggers supplies the cast-event handling and incorporates these three
+corrections; running both is not supported. This does not require removing
+Celestial's other plugins.
+
+### Target and origin examples
+
+- A manual cast with a ground target can trigger Fire Ball toward that target.
+- Nova and Frost Nova expand from the triggering character, including the
+  tested critical-strike, Crushing Blow, Open Wounds and block cases.
+- A Teleport on-cast Fire Ball starts at the departure point and aims toward
+  the selected destination. Cast Triggers additionally sends this proc's visual
+  notification before relocation so its original position is preserved.
+- Combat-triggered skills use their event target; they do not generally read
+  the player's current cursor position.
+
+The Teleport notification correction and integration with Cast Triggers are
+RuffnecKk's work. The three merged aiming/presentation features retain
+CelestialRayOne's authorship.
+
+## Status and troubleshooting
+
+Run the following in the D2RLoader console:
+
+```text
+cast-triggers
+```
+
+It reports plugin activation, trigger counters, and the three proc presentation
+options. For retained event details, enable `[diagnostics] enabled = true` in
+the TOML, restart the game, reproduce the behavior, then run the command again.
+Disable detailed diagnostics for ordinary play.
+
+The supplied configuration is a generic modder starter: optional numeric stat
+mappings are `0`, diagnostics are off, and all three presentation options are
+on. Replace the stat mappings with your mod's IDs to enable those families.
+Do not copy BKVince's numeric IDs into another mod without checking its tables.
+
+This DLL was tested in BKVince with D2RLoader 1.3.1-beta and Battle.net D2R
+3.3.93847. Confirmed single-player checks include spell kills, intentional
+On Kill missile chains, Open Wounds, Crushing Blow, critical strikes including
+Whirlwind, actual shield blocks, absence of block procs during Battle Orders,
+and Teleport's departure origin and cursor aim. These results do not establish
+multiplayer, Steam, CrossOver or every consuming mod's compatibility.
+
 ## Credits
 
-- Author: `RuffnecKk`.
+- **RuffnecKk** — Cast Triggers, its trigger families, integration and subsequent fixes.
+- **CelestialRayOne (Celestial / Bogdan Bulai)** — original Cast on Cast code for server proc aiming, client proc target/origin handling, and missile first-frame rewind. Integrated with his permission; full credit for these features remains his.
+- **ESR** — original Diablo II 2.4 patch mechanics, as credited by CelestialRayOne upstream.
+- The adapted code is covered by the MIT license. Keep the accompanying `THIRD-PARTY-NOTICES.md`, including its copyright and permission text, with redistributed copies.
 - D2MOO is the semantic reference for item properties and server skill behavior.
 - D2RLoader and its PluginSDK provide the plugin runtime.

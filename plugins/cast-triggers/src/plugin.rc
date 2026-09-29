@@ -8,8 +8,8 @@ D2RL_PLUGIN_MANIFEST_RESOURCE_ID RCDATA { D2RL_PLUGIN_RESOURCE_DWORD(D2RL_PLUGIN
 FILEVERSION 1,0,2,0
 PRODUCTVERSION 1,0,2,0
 #else
-FILEVERSION 1,1,1,0
-PRODUCTVERSION 1,1,1,0
+FILEVERSION 1,1,12,0
+PRODUCTVERSION 1,1,12,0
 #endif
 BEGIN
   BLOCK "StringFileInfo"
@@ -21,7 +21,7 @@ BEGIN
 #if defined(RUFFNECKK_DAMAGE_CLEANUP_V1)
       VALUE "FileVersion", "1.0.2"
 #else
-      VALUE "FileVersion", "1.1.1"
+      VALUE "FileVersion", "1.1.12"
 #endif
       VALUE "InternalName", "cast-triggers"
       VALUE "OriginalFilename", "d2rl-ruffneckk-cast-triggers.dll"
@@ -29,7 +29,7 @@ BEGIN
 #if defined(RUFFNECKK_DAMAGE_CLEANUP_V1)
       VALUE "ProductVersion", "1.0.2"
 #else
-      VALUE "ProductVersion", "1.1.1"
+      VALUE "ProductVersion", "1.1.12"
 #endif
     END
   END

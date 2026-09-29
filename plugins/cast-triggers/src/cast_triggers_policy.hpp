@@ -174,18 +174,18 @@ constexpr auto ResolveNativeCapabilities(
         || targetItemSkill == NativeSiteDisposition::Rejected
         || positionItemSkill == NativeSiteDisposition::Rejected;
     const bool itemSkillExecution =
-        targetItemSkill == NativeSiteDisposition::Pristine
-        && positionItemSkill == NativeSiteDisposition::Pristine;
+        targetItemSkill != NativeSiteDisposition::Rejected
+        && positionItemSkill != NativeSiteDisposition::Rejected;
     return {
         .loadable = !rejected,
         .sourceSkillTriggers =
             itemSkillExecution
-            && skillHandler == NativeSiteDisposition::Pristine
-            && positionInput == NativeSiteDisposition::Pristine,
+            && skillHandler != NativeSiteDisposition::Rejected
+            && positionInput != NativeSiteDisposition::Rejected,
         .criticalStrikeTrigger =
             itemSkillExecution
-            && damageBuilder == NativeSiteDisposition::Pristine,
-        .positionInput = positionInput == NativeSiteDisposition::Pristine,
+            && damageBuilder != NativeSiteDisposition::Rejected,
+        .positionInput = positionInput != NativeSiteDisposition::Rejected,
         .itemSkillExecution = itemSkillExecution,
     };
 }
@@ -228,6 +228,9 @@ struct Config {
     std::vector<SourceSkillTriggerConfig> sourceSkillTriggers;
     CombatTriggerConfig combatTriggers;
     bool diagnostics{};
+    bool serverProcAim{true};
+    bool clientProcAim{true};
+    bool clientMissileRewind{true};
 };
 
 constexpr CombatTriggerKind CombatTriggerForStatId(
@@ -523,9 +526,10 @@ constexpr bool ShouldExtendKillEligibility(
 constexpr bool ShouldResolveTriggeredSkillTarget(
         bool casterIsSource,
         bool targetIsSource,
-        std::int32_t itemTargetFlag) noexcept {
+        std::int32_t itemTargetFlag,
+        bool combatTrigger = false) noexcept {
     return casterIsSource
-        && targetIsSource
+        && (targetIsSource || combatTrigger)
         && itemTargetFlag == NativeEventEffectTargetFlag;
 }
 
@@ -684,6 +688,7 @@ inline bool ParseToml(
                     && key != "while_channeling"
                     && key != "source_skill_triggers"
                     && key != "combat_triggers"
+                    && key != "proc_presentation"
                     && key != "diagnostics") {
                 error = "unknown top-level setting or section: "
                     + std::string(key.str());
@@ -990,6 +995,21 @@ inline bool ParseToml(
         if (!HasDistinctConfiguredTriggerStatIds(parsed)) {
             error = "all nonzero configured trigger stat IDs must be distinct";
             return false;
+        }
+
+        if (const auto* node = root.get("proc_presentation")) {
+            const auto* table = node->as_table();
+            if (!table) { error = "proc_presentation must be a TOML table"; return false; }
+            for (const auto& [key, value] : *table) {
+                bool* setting = key == "server_proc_aim" ? &parsed.serverProcAim
+                    : key == "client_proc_aim" ? &parsed.clientProcAim
+                    : key == "client_missile_rewind" ? &parsed.clientMissileRewind : nullptr;
+                if (!setting || !value.is_boolean()) {
+                    error = "unknown or non-boolean proc_presentation setting: " + std::string(key.str());
+                    return false;
+                }
+                *setting = *value.value<bool>();
+            }
         }
 
         if (const auto* diagnosticsNode = root.get("diagnostics")) {
