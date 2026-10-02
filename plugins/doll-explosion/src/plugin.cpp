@@ -46,41 +46,70 @@ constexpr auto RequiredStatHelpers = native_stat::ToMask(
     native_stat::Helper::GetUnitStat);
 
 constexpr char DefaultConfig[] = R"toml(# Doll Explosion
-# Delays classic Stygian Doll death blasts and makes their physical damage configurable.
-# Default damage ranges, delay and radius follow Project Diablo 2 (PD2) Season 13's damage model.
+# Delays undead Doll death blasts and lets you choose their physical damage.
+# Defaults use Project Diablo 2 (PD2) Season 13's fixed damage ranges,
+# a 25-frame delay and a radius of 4 native tiles.
+#
+# Edit the values below, then restart the game for the changes to take effect.
+# Enter doll-explosion in the Loader console to check the active settings.
+# Keep all sections, including the damage formula you are not currently using.
+# Unknown keys, duplicate monster IDs and invalid values prevent plugin loading.
 
-# File format version. Leave this value unchanged.
+# Configuration format version, not the plugin's release version. Leave at 1.
 config_version = 1
 
 [targets]
-# Retail D2R undead Doll variants (bonefetish1 through bonefetish7).
+# Retail D2R undead Doll variants: bonefetish1 through bonefetish7.
+# These numbers are monster IDs from monstats.txt, not monster names.
+# If your mod changes these IDs, replace them with that mod's equivalent IDs.
+# Use 1–64 unique IDs, each an integer from 0 to 65535.
 monstats_ids = [212, 213, 214, 215, 216, 690, 691]
 
 [explosion]
-# D2R runs at 25 simulation frames per second. Set 0 for an immediate blast.
+# Time between the Doll's death and its blast. D2R uses 25 frames per second.
+# Examples: 0 = immediate, 25 = 1 second, 50 = 2 seconds.
+# Whole numbers only; allowed range: 0–32767 frames.
 delay_frames = 25
-# Native tile radius used by the server-side area-damage routine.
+
+# Blast radius in native game tiles. A larger value reaches farther.
+# This changes the blast's reach, not the amount of damage it rolls.
+# Whole numbers only; allowed range: 1–64. Default: 4.
 radius = 4
 
 [damage]
-# Supported values: "fixed", "source_max_life_percent".
-# "fixed" uses the PD2 Season 13 physical-damage ranges below.
+# Choose exactly one formula:
+# "fixed" uses the difficulty's [damage.fixed] range, independent of Doll life.
+# "source_max_life_percent" uses [damage.source_max_life_percent] instead.
+# Both sections must remain present; only the selected formula applies damage.
+# Default: "fixed", following PD2 Season 13's physical-damage ranges below.
 formula = "fixed"
 
 [damage.fixed]
-# Inclusive physical-damage ranges in displayed hit points.
+# Used only with formula = "fixed". Values are physical damage in hit points.
+# Each array is [minimum, maximum], with both endpoints included in the roll.
+# For constant damage, set both endpoints equal, for example [100, 100].
+# Use whole numbers from 0 to 8388607; minimum must not exceed maximum.
+# These are the PD2 Season 13 defaults for each game difficulty.
 normal = [18, 30]
 nightmare = [54, 96]
 hell = [318, 540]
 
 [damage.source_max_life_percent]
-# Inclusive integer-percent rolls against the dying Doll's maximum life.
+# Optional retail-inspired ranges, used only with formula = "source_max_life_percent".
+# Derived from retail difficulty modifiers (50/35/20%) and the native 60–100% roll.
+# Applied to the dying Doll's actual maximum life; not an exact retail damage reproduction.
+# Each array is [minimum percent, maximum percent], with both endpoints included.
+# Example: a Doll with 1000 maximum life and a [12, 20] roll deals 120–200 raw damage.
+# Changes to the Doll's maximum life can therefore change this formula's damage.
+# Use whole percentages from 0 to 100; minimum must not exceed maximum.
 normal = [30, 50]
 nightmare = [21, 35]
 hell = [12, 20]
 
 [diagnostics]
-# Adds event and fallback counters to the doll-explosion console status.
+# Diagnostic preference shown as counters=on/off by the doll-explosion command.
+# The current version prints event counters with either value.
+# This setting does not change targets, delay, radius or damage.
 show_usage_counters = false
 )toml";
 
