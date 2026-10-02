@@ -17,6 +17,7 @@ set(RUFFNECKK_SUITE_PLUGIN_DIRECTORIES
     bulk-skill-point-allocation
     progressive-affixes
     cast-triggers
+    doll-explosion
     armageddon-hurricane-ctc-fix
     resistance-floor
     extended-act-level-ids

@@ -1,0 +1,37 @@
+# Doll Explosion
+# Delays classic Stygian Doll death blasts and makes their physical damage configurable.
+# Default damage ranges, delay and radius follow Project Diablo 2 (PD2) Season 13's damage model.
+
+# File format version. Leave this value unchanged.
+config_version = 1
+
+[targets]
+# Retail D2R undead Doll variants (bonefetish1 through bonefetish7).
+monstats_ids = [212, 213, 214, 215, 216, 690, 691]
+
+[explosion]
+# D2R runs at 25 simulation frames per second. Set 0 for an immediate blast.
+delay_frames = 25
+# Native tile radius used by the server-side area-damage routine.
+radius = 4
+
+[damage]
+# Supported values: "fixed", "source_max_life_percent".
+# "fixed" uses the PD2 Season 13 physical-damage ranges below.
+formula = "fixed"
+
+[damage.fixed]
+# Inclusive physical-damage ranges in displayed hit points.
+normal = [18, 30]
+nightmare = [54, 96]
+hell = [318, 540]
+
+[damage.source_max_life_percent]
+# Inclusive integer-percent rolls against the dying Doll's maximum life.
+normal = [30, 50]
+nightmare = [21, 35]
+hell = [12, 20]
+
+[diagnostics]
+# Adds event and fallback counters to the doll-explosion console status.
+show_usage_counters = false
