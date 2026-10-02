@@ -43,11 +43,11 @@ configuration names are preserved in this source integration.
 
 ## Source and validation status
 
-This is **0.1.6 source integration**, with strict native fingerprints and shared
+This is **1.0.0 Hub candidate source**, with strict native fingerprints and shared
 native stat-provider admission. It is not an individual Hub release or a new
 Suite download. The build remains ineligible for public archives.
 
-Version 0.1.6 fixes an assertion in the delayed visual constructor by resolving
+Version 1.0.0 carries forward the 0.1.6 incubation fix for an assertion in the delayed visual constructor by resolving
 the original Doll by GUID and class at expiry. Missing, changed or revived owners
 safely suppress the event. The carrier remains the damage source; the native
 dispatcher retains missile removal ownership.

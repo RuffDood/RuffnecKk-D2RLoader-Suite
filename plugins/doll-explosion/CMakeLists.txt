@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(DollExplosion VERSION 0.1.6 LANGUAGES CXX RC)
+    project(DollExplosion VERSION 1.0.0 LANGUAGES CXX RC)
     include(CTest)
 else()
     enable_language(RC)

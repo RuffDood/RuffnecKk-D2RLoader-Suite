@@ -212,7 +212,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "doll-explosion",
     .name = "Doll Explosion",
-    .version = "0.1.6",
+    .version = "1.0.0",
     .author = "RuffnecKk",
     .description = "Delays Stygian Doll death blasts and makes their physical damage configurable.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -1380,7 +1380,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Doll Explosion 0.1.6: active=%s; targets=%zu; delay=%df; radius=%d; formula=%s; counters=%s; target-deaths=%llu; scheduled=%llu; immediate=%llu; completed=%llu; failed=%llu; revive-skips=%llu; native-deathDmg-skips=%llu; sidecar-full=%llu; TOML=%s.",
+        "Doll Explosion 1.0.0: active=%s; targets=%zu; delay=%df; radius=%d; formula=%s; counters=%s; target-deaths=%llu; scheduled=%llu; immediate=%llu; completed=%llu; failed=%llu; revive-skips=%llu; native-deathDmg-skips=%llu; sidecar-full=%llu; TOML=%s.",
         Operational.load(std::memory_order_acquire) ? "true" : "false",
         Settings.targetMonsterIds.size(),
         Settings.delayFrames,
@@ -1635,7 +1635,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Doll Explosion 0.1.6 by RuffnecKk active for observed D2R %s; targets=%zu; delay=%df; radius=%d; formula=%s; installation=%s; TOML=%s.",
+        "Doll Explosion 1.0.0 by RuffnecKk active for observed D2R %s; targets=%zu; delay=%df; radius=%d; formula=%s; installation=%s; TOML=%s.",
         runtimeBuild,
         Settings.targetMonsterIds.size(),
         Settings.delayFrames,
