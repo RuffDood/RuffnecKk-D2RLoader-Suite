@@ -425,9 +425,9 @@ foreach ($entry in $pluginEntries) {
         }
         $shippedConfigPath = Join-Path $pluginDirectory 'config\ruffneckk-mapsense.toml'
         $shippedConfigText = Get-Content -LiteralPath $shippedConfigPath -Raw
-        if ($shippedConfigText -notmatch '(?m)^schema_version\s*=\s*19\s*$' -or
+        if ($shippedConfigText -notmatch '(?m)^schema_version\s*=\s*21\s*$' -or
             $shippedConfigText -notmatch '(?m)^interface_scale\s*=\s*"automatic"\s*$') {
-            $errors.Add('mapsense shipped configuration must default schema-19 interface scaling to automatic.')
+            $errors.Add('mapsense shipped configuration must default schema-21 interface scaling to automatic.')
         }
     }
     elseif ($slug -eq 'auto-pickup') {

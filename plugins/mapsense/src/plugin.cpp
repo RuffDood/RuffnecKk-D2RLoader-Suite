@@ -13,6 +13,7 @@
 #include "imgui_settings_panel.hpp"
 #include "mapsense_config.hpp"
 #include "mapsense_data_catalog.hpp"
+#include "txt_mode.hpp"
 #include "navigation_engine.hpp"
 #include "navigation_resolver.hpp"
 #include "native_automap_marker.hpp"
@@ -74,19 +75,23 @@ enum class Action {
     ToggleRevealAll,
     DisableRevealAll,
     ToggleMenu,
+    ToggleMenuVisibility,
 };
 
 std::array ActionTokens{
     Action::ToggleRevealAll,
     Action::ToggleMenu,
+    Action::ToggleMenuVisibility,
 };
 
 const D2RL::PluginContext* Context{};
+TxtModeSource StartupTxtMode{TxtModeSource::Unavailable};
 const D2RL::InputServiceV1* InputService{};
 const D2RL::LifecycleServiceV1* LifecycleService{};
 const D2RL::ThreadServiceV1* ThreadService{};
 Config Settings{};
 std::atomic_bool RevealMapPreference{};
+std::atomic_bool MenuVisibilityPreference{true};
 std::atomic_bool Operational{};
 std::atomic_bool FeaturesEnabled{true};
 std::atomic_bool HostApiAvailable{};
@@ -98,7 +103,6 @@ std::atomic_bool PoiAvailable{};
 std::atomic_bool UiLanguageReady{};
 std::atomic_bool UiLanguagePendingLogged{};
 std::atomic_bool DataCatalogAttemptLogged{};
-std::atomic_bool ActiveTxtWithoutModeLogged{};
 std::atomic_bool DataCatalogLocalizationPendingLogged{};
 std::atomic_uint64_t SessionEpoch{1};
 std::atomic_uint64_t CurrentSessionGeneration{};
@@ -383,7 +387,7 @@ HANDLE HostRetryStopEvent{};
 HANDLE HostRetryWorker{};
 std::mutex ConfigSaveMutex;
 std::string PendingConfigSave;
-bool PendingRevealPreferenceSave{};
+bool PendingPreferenceSave{};
 bool ConfigSaveDrainScheduled{};
 std::mutex DataCatalogLoadMutex;
 std::mutex HostUiTaskMutex;
@@ -596,38 +600,6 @@ void LogDataCatalogLoad(
     }
 }
 
-[[nodiscard]] auto CommandLineEnablesTxtMode() noexcept -> bool {
-    int argumentCount{};
-    auto** const arguments = CommandLineToArgvW(
-        GetCommandLineW(),
-        &argumentCount);
-    if (arguments == nullptr) return false;
-    auto enabled = false;
-    for (int index = 1; index < argumentCount; ++index) {
-        if (CompareStringOrdinal(
-                arguments[index],
-                -1,
-                L"-txt",
-                -1,
-                TRUE) == CSTR_EQUAL) {
-            enabled = true;
-            break;
-        }
-    }
-    LocalFree(arguments);
-    return enabled;
-}
-
-[[nodiscard]] auto HasActiveTxtFamily(
-        const MapSenseDataCatalog& catalog) noexcept -> bool {
-    return std::any_of(
-        catalog.FamilyStatuses().begin(),
-        catalog.FamilyStatuses().end(),
-        [](const auto& status) {
-            return status.state == DataCatalogFamilyState::ActiveTxt;
-        });
-}
-
 [[nodiscard]] auto BuildNativeAutomapPoiCollectionMask() noexcept
         -> std::uint32_t {
     if (!FeaturesEnabled.load(std::memory_order_acquire)
@@ -703,21 +675,12 @@ void ApplyNativeAutomapPoiCollectionSettings() noexcept {
     std::scoped_lock lock(DataCatalogLoadMutex);
     if (DataCatalog.load(std::memory_order_acquire) != nullptr) return true;
 
-    auto catalogLoad = MapSenseDataCatalog::Load(Context);
+    MapSenseDataCatalogLoadOptions options{};
+    options.preferActiveTxtOverBin = TxtModeEnabled(StartupTxtMode);
+    auto catalogLoad = MapSenseDataCatalog::Load(Context, options);
     if (!DataCatalogAttemptLogged.exchange(
             true, std::memory_order_acq_rel)) {
         LogDataCatalogLoad(catalogLoad);
-    }
-    if (catalogLoad.catalog != nullptr
-        && HasActiveTxtFamily(*catalogLoad.catalog)
-        && !CommandLineEnablesTxtMode()) {
-        if (Context != nullptr
-            && !ActiveTxtWithoutModeLogged.exchange(
-                true, std::memory_order_acq_rel)) {
-            Context->LogWarn(
-                "MapSense: active mod TXT catalogs require the D2R -txt launch argument; localized labels and data-driven objects are disabled to prevent TXT/BIN divergence.");
-        }
-        catalogLoad.catalog.reset();
     }
     if (catalogLoad.catalog == nullptr) return false;
 
@@ -752,7 +715,7 @@ void ApplyNativeAutomapPoiCollectionSettings() noexcept {
     }
     if (Context != nullptr) {
         Context->LogInfo(
-            "MapSense: the localized TXT catalog is ready after D2R language initialization.");
+            "MapSense: the localized data catalog is ready after D2R language initialization; TXT-only overrides are supported without -txt and ambiguous BIN-backed families remain disabled.");
     }
     return true;
 }
@@ -813,7 +776,8 @@ auto ExecuteAction(Action action) noexcept -> RevealOutcome {
         case Action::ArmRevealAll: return ArmRevealAll();
         case Action::ToggleRevealAll: return ToggleRevealAll();
         case Action::DisableRevealAll: return DisableRevealAll();
-        case Action::ToggleMenu: return RevealOutcome::Unavailable;
+        case Action::ToggleMenu:
+        case Action::ToggleMenuVisibility: return RevealOutcome::Unavailable;
     }
     return RevealOutcome::Unavailable;
 }
@@ -833,6 +797,7 @@ auto ExecuteAction(Action action) noexcept -> RevealOutcome {
         case Action::ToggleRevealAll: return "toggle-reveal-all";
         case Action::DisableRevealAll: return "disable-reveal-all";
         case Action::ToggleMenu: return "toggle-menu";
+        case Action::ToggleMenuVisibility: return "toggle-menu-visibility";
     }
     return "unknown";
 }
@@ -848,7 +813,7 @@ auto RequestNavigationRefresh(
     std::int32_t levelId,
     bool refreshRevealedActPoiDefinitions = false) noexcept -> bool;
 auto ExecuteTrackedRevealAction(Action action) noexcept -> RevealOutcome;
-void QueueRevealPreferenceSave() noexcept;
+void QueuePersistentPreferenceSave() noexcept;
 auto RequestRememberedRevealForCurrentSession(
     std::int32_t targetLevelId = UnknownRevealLevelId,
     std::uint32_t delayMilliseconds = 0U,
@@ -878,9 +843,22 @@ void __cdecl DrainActionsOnUi(
             != SessionEpoch.load(std::memory_order_acquire)) {
             continue;
         }
-        if (request.action == Action::ToggleMenu) {
+        if (request.action == Action::ToggleMenu
+            || request.action == Action::ToggleMenuVisibility) {
             if (!GameplayReady.load(std::memory_order_acquire)) {
                 SetD3D12ImGuiMenuOpen(false);
+                continue;
+            }
+            if (request.action == Action::ToggleMenuVisibility) {
+                // Preserve expanded/collapsed state and keep all map features
+                // running. The host clears hit bounds and releases capture.
+                // Toggle the preference, not the renderer's temporary
+                // visibility during loading or game teardown.
+                const bool visible = !MenuVisibilityPreference.load(
+                    std::memory_order_acquire);
+                MenuVisibilityPreference.store(visible, std::memory_order_release);
+                SetD3D12ImGuiMenuOpen(visible);
+                QueuePersistentPreferenceSave();
                 continue;
             }
             bool expanded = MenuExpanded.load(std::memory_order_acquire);
@@ -891,6 +869,8 @@ void __cdecl DrainActionsOnUi(
                 std::memory_order_acquire)) {
             }
             SetD3D12ImGuiMenuOpen(true);
+            MenuVisibilityPreference.store(true, std::memory_order_release);
+            QueuePersistentPreferenceSave();
             continue;
         }
         if (!FeaturesEnabled.load(std::memory_order_acquire)
@@ -998,7 +978,7 @@ auto __cdecl OnAction(
     if (!virtualKeyAccepted) {
         return D2RL::Input::ActionResult::Ignored;
     }
-    if (action == Action::ToggleMenu
+    if ((action == Action::ToggleMenu || action == Action::ToggleMenuVisibility)
         && !GameplayReady.load(std::memory_order_acquire)) {
         return D2RL::Input::ActionResult::Ignored;
     }
@@ -1120,11 +1100,14 @@ auto RequestNavigationRefresh(
         CancelPendingNavigationRefresh();
         return false;
     }
+    const auto routing = AcquireNavigationRoutingOptions();
+    if (!routing) { CancelPendingNavigationRefresh(); return false; }
     const auto startedAt = GetTickCount64();
     const auto navigationResult = RefreshNavigationDestinations(
         sessionGeneration,
         levelId,
-        Settings.navigation.customLevels.targets);
+        Settings.navigation.customLevels.targets,
+        *routing);
 #if defined(RUFFNECKK_MAPSENSE_ENABLE_GPS_ROUTE_DIAGNOSTICS) \
     && RUFFNECKK_MAPSENSE_ENABLE_GPS_ROUTE_DIAGNOSTICS
     LogGpsRefreshReadiness(sessionGeneration, levelId, navigationResult);
@@ -1195,11 +1178,14 @@ void __cdecl RetryNavigationOnUi(
         return;
     }
 
+    const auto routing = AcquireNavigationRoutingOptions();
+    if (!routing) { CancelPendingNavigationRefresh(); return; }
     const auto startedAt = GetTickCount64();
     const auto navigationResult = RefreshNavigationDestinations(
         attempt.sessionGeneration,
         attempt.levelId,
-        Settings.navigation.customLevels.targets);
+        Settings.navigation.customLevels.targets,
+        *routing);
 #if defined(RUFFNECKK_MAPSENSE_ENABLE_GPS_ROUTE_DIAGNOSTICS) \
     && RUFFNECKK_MAPSENSE_ENABLE_GPS_ROUTE_DIAGNOSTICS
     LogGpsRefreshReadiness(attempt.sessionGeneration, attempt.levelId, navigationResult);
@@ -2742,7 +2728,7 @@ auto ExecuteTrackedRevealAction(Action action) noexcept -> RevealOutcome {
             ? !RevealMapPreference.load(std::memory_order_acquire)
             : action == Action::ArmRevealAll;
         RevealMapPreference.store(enabled, std::memory_order_release);
-        QueueRevealPreferenceSave();
+        QueuePersistentPreferenceSave();
         action = enabled ? Action::ArmRevealAll : Action::DisableRevealAll;
     }
     if (action == Action::DisableRevealAll) {
@@ -2953,7 +2939,8 @@ void __cdecl OnGameplayEvent(
         (void)EnsureLocalizedDataCatalogReady(event->sessionGeneration);
         GameplayReady.store(true, std::memory_order_release);
         MenuExpanded.store(false, std::memory_order_release);
-        SetD3D12ImGuiMenuOpen(true);
+        SetD3D12ImGuiMenuOpen(
+            MenuVisibilityPreference.load(std::memory_order_acquire));
         SetRevealReplayPlayerReady(event->sessionGeneration);
         if (!RequestRememberedRevealForCurrentSession(
                 UnknownRevealLevelId,
@@ -3072,7 +3059,7 @@ void WriteStatus(const D2RL::PluginContext* context) noexcept {
     std::snprintf(
         message,
         sizeof(message),
-            "RuffnecKk MapSense 2.0.2: active=%s; reveal-map-provider=%s; gameplay=%s; reveal-all=%s; markers=%s; immunity-scan=%s; renderer-hooks=%s; renderer=%s; chest-textures=%s; input=%s; menu=%s; presents=%llu; rendered=%llu; level traversals=%llu; rooms=%llu; failures=%llu; traversal limits=%llu; static-poi=candidates/materialized/released/failures:%llu/%llu/%llu/%llu; static-active-room-calls=0; automap-pulses=%llu; table-scans=%llu; buckets=%llu; table-limits=%llu; automap units=%llu; monsters=%llu; enemy-rejects=dead/unit/class/alignment:%llu/%llu/%llu/%llu; filter-faults=%llu; hostiles=%llu; hostile-bands=0-80/81-140/141-220/>220:%llu/%llu/%llu/%llu; projection-rejects=%llu; clip-rejects=%llu; max-hostile-subtiles=%u; max-accepted-subtiles=%u; max-published-subtiles=%u; accepted=%llu; inserted=%llu; refreshed=%llu; fresh=%llu; expired=%llu; marker waits=%llu; storage faults=%llu; marker faults=%llu.",
+            "RuffnecKk MapSense 2.2.0: active=%s; reveal-map-provider=%s; gameplay=%s; reveal-all=%s; markers=%s; immunity-scan=%s; renderer-hooks=%s; renderer=%s; chest-textures=%s; input=%s; menu=%s; presents=%llu; rendered=%llu; level traversals=%llu; rooms=%llu; failures=%llu; traversal limits=%llu; static-poi=candidates/materialized/released/failures:%llu/%llu/%llu/%llu; static-active-room-calls=0; automap-pulses=%llu; table-scans=%llu; buckets=%llu; table-limits=%llu; automap units=%llu; monsters=%llu; enemy-rejects=dead/unit/class/alignment:%llu/%llu/%llu/%llu; filter-faults=%llu; hostiles=%llu; hostile-bands=0-80/81-140/141-220/>220:%llu/%llu/%llu/%llu; projection-rejects=%llu; clip-rejects=%llu; max-hostile-subtiles=%u; max-accepted-subtiles=%u; max-published-subtiles=%u; accepted=%llu; inserted=%llu; refreshed=%llu; fresh=%llu; expired=%llu; marker waits=%llu; storage faults=%llu; marker faults=%llu.",
         IsRevealEngineActive() ? "true" : "false",
         IsExternalLabelProviderActive() ? "ready" : "unavailable",
         GameplayReady.load(std::memory_order_acquire) ? "ready" : "inactive",
@@ -3480,13 +3467,14 @@ auto RegisterInputActions() noexcept -> bool {
     constexpr std::array definitions{
         Definition{"toggle-reveal-all", "Toggle Reveal Map"},
         Definition{"toggle-settings", "Toggle MapSense Settings"},
+        Definition{"hide-menu", "MapSense Toggle Hide/Show Menu"},
     };
 
     for (std::size_t index = 0; index < definitions.size(); ++index) {
 #if defined(RUFFNECKK_MAPSENSE_ENABLE_GPS_ROUTE_DIAGNOSTICS) \
     && RUFFNECKK_MAPSENSE_ENABLE_GPS_ROUTE_DIAGNOSTICS
         // The private GPS diagnostic build gives the runner a deterministic
-        // reveal control. Public builds keep both actions unbound by default.
+        // reveal control. Menu actions remain unbound by default.
         const auto diagnosticPrimary = index == 0U
             ? D2RL::Input::Key::F11 : D2RL::Input::Key::None;
 #else
@@ -3513,13 +3501,13 @@ auto RegisterInputActions() noexcept -> bool {
                 Context, &registration, &ActionHandles[index])
                 != D2RL::Input::Result::Success
             || ActionHandles[index] == D2RL::Input::InvalidHandle) {
-            if (index + 1U == definitions.size()) {
+            if (ActionTokens[index] == Action::ToggleMenu) {
                 Context->LogWarn(
                     "MapSense: the optional settings Controls action could not be registered.");
                 continue;
             }
             Context->LogError(
-                "MapSense: a required reveal Controls action could not be registered.");
+                "MapSense: a required reveal or Hide Menu Controls action could not be registered.");
             return false;
         }
     }
@@ -3575,12 +3563,12 @@ void __cdecl DrainSettingsSaveOnUi(
         std::string serialized;
         {
             std::scoped_lock lock(ConfigSaveMutex);
-            if (PendingConfigSave.empty() && !PendingRevealPreferenceSave) {
+            if (PendingConfigSave.empty() && !PendingPreferenceSave) {
                 ConfigSaveDrainScheduled = false;
                 return;
             }
             serialized.swap(PendingConfigSave);
-            PendingRevealPreferenceSave = false;
+            PendingPreferenceSave = false;
         }
         if (!Operational.load(std::memory_order_acquire)
             || context == nullptr) {
@@ -3600,7 +3588,7 @@ void __cdecl DrainSettingsSaveOnUi(
             },
             [context](const std::string& document) {
                 return context->WriteConfig(document.c_str());
-            });
+            }, MenuVisibilityPreference.load(std::memory_order_acquire));
         if (result == MenuSettingsSaveResult::ReadFailed) {
             context->LogWarn("MapSense: settings were not saved because the current configuration could not be read; manual edits were preserved.");
         } else if (result == MenuSettingsSaveResult::InvalidDocument) {
@@ -3611,12 +3599,12 @@ void __cdecl DrainSettingsSaveOnUi(
     }
 }
 
-void QueueRevealPreferenceSave() noexcept {
+void QueuePersistentPreferenceSave() noexcept {
     if (!Operational.load(std::memory_order_acquire) || Context == nullptr
         || ThreadService == nullptr || ThreadService->runOnUiThread == nullptr) return;
     {
         std::scoped_lock lock(ConfigSaveMutex);
-        PendingRevealPreferenceSave = true;
+        PendingPreferenceSave = true;
         if (ConfigSaveDrainScheduled) return;
         ConfigSaveDrainScheduled = true;
     }
@@ -3624,7 +3612,7 @@ void QueueRevealPreferenceSave() noexcept {
         != D2RL::Threads::Result::Success) {
         std::scoped_lock lock(ConfigSaveMutex);
         ConfigSaveDrainScheduled = false;
-        Context->LogWarn("MapSense: Reveal Map preference save could not be queued.");
+        Context->LogWarn("MapSense: persistent preference save could not be queued.");
     }
 }
 
@@ -3768,6 +3756,8 @@ auto DrawMapSensePanel(bool* open, float menuScale, void*) noexcept
     }
     auto expanded = MenuExpanded.load(std::memory_order_acquire);
     const auto featuresBefore = FeaturesEnabled.load(std::memory_order_acquire);
+    const auto adaptBefore = Settings.navigation.routing.adaptToModConnections;
+    const auto townBefore = Settings.navigation.routing.townShortcuts;
     const auto bounds = DrawImGuiSettingsPanel(
         Settings, expanded, CurrentSessionGeneration.load(std::memory_order_acquire),
         RevealMapPreference.load(std::memory_order_acquire), menuScale, OnImGuiSettingsAction
@@ -3786,7 +3776,21 @@ auto DrawMapSensePanel(bool* open, float menuScale, void*) noexcept
     }
 #else
     (void)PublishNavigationLinePolicy(NavigationLinePolicyFromSettings());
+
 #endif
+    if (adaptBefore != Settings.navigation.routing.adaptToModConnections
+            || townBefore != Settings.navigation.routing.townShortcuts) {
+        if (PublishNavigationRoutingOptions(Settings.navigation.routing)) {
+            SetNavigationTownShortcutsEnabled(Settings.navigation.routing.townShortcuts);
+            InvalidateNavigationProjection();
+            ArmPendingNavigationRefresh(CurrentSessionGeneration.load(std::memory_order_acquire),
+                UnknownNavigationLevelId, 0U, false);
+        } else {
+            Settings.navigation.routing.adaptToModConnections = adaptBefore;
+            Settings.navigation.routing.townShortcuts = townBefore;
+            if (Context != nullptr) Context->LogWarn("MapSense: routing settings could not be updated; previous options remain active.");
+        }
+    }
     if (featuresBefore != Settings.enabled) {
         ApplyMapSenseFeatureState(Settings.enabled);
     } else {
@@ -6261,7 +6265,7 @@ constexpr D2RL::PluginInfo PluginInfo{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-mapsense",
     .name = "RuffnecKk MapSense",
-    .version = "2.0.2",
+    .version = "2.2.0",
     .author = "RuffnecKk",
     .description = "Reveals maps, marks monsters, and draws navigation guidance.",
     .flags = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
@@ -6282,11 +6286,18 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
     Context = context;
+    StartupTxtMode = CaptureTxtMode();
+    if (StartupTxtMode == TxtModeSource::LoaderConfiguration) {
+        Context->LogInfo("MapSense: explicit TXT priority enabled by the global D2RLoader launch_arguments setting captured at plugin startup.");
+    } else if (StartupTxtMode == TxtModeSource::Unavailable) {
+        Context->LogWarn("MapSense: startup TXT-priority detection is unavailable; TXT-only overrides remain eligible, while ambiguous BIN-backed families fail closed.");
+    } else if (StartupTxtMode == TxtModeSource::Disabled) {
+        Context->LogInfo("MapSense: no explicit -txt at startup; TXT-only overrides remain eligible, while ambiguous BIN-backed families fail closed.");
+    }
     ResetUiLanguage();
     UiLanguageReady.store(false, std::memory_order_release);
     UiLanguagePendingLogged.store(false, std::memory_order_release);
     DataCatalogAttemptLogged.store(false, std::memory_order_release);
-    ActiveTxtWithoutModeLogged.store(false, std::memory_order_release);
     DataCatalogLocalizationPendingLogged.store(
         false, std::memory_order_release);
     LastNativeUiDiagnosticSnapshot.store(
@@ -6314,7 +6325,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     {
         std::scoped_lock lock(ConfigSaveMutex);
         PendingConfigSave.clear();
-        PendingRevealPreferenceSave = false;
+        PendingPreferenceSave = false;
         ConfigSaveDrainScheduled = false;
     }
     {
@@ -6326,7 +6337,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     CancelPendingNavigationRefresh(true);
     ResetRevealReplayProcessState();
     if (!LoadConfig(Settings)) return false;
+    if (!PublishNavigationRoutingOptions(Settings.navigation.routing)) {
+        context->LogError("MapSense: navigation routing settings could not be published.");
+        return false;
+    }
     RevealMapPreference.store(Settings.revealMap, std::memory_order_release);
+    MenuVisibilityPreference.store(Settings.menu.visible, std::memory_order_release);
     FeaturesEnabled.store(
         Settings.enabled,
         std::memory_order_release);
@@ -6418,6 +6434,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     InitializeNavigationEngine();
     (void)PublishNavigationLinePolicy(NavigationLinePolicyFromSettings());
+    SetNavigationTownShortcutsEnabled(Settings.navigation.routing.townShortcuts);
     if (!InitializeNavigationResolver(
             context,
             Settings.diagnostics)) {
@@ -6574,7 +6591,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         loadedMessage,
         sizeof(loadedMessage),
-        "RuffnecKk MapSense 2.0.2 loaded; labels/objects=%s; native-seed-atlas=%s; monster-markers=%s; Direct-navigation=%s; Reveal-Map=%s; settings=active; native-panel-occlusion=%s.",
+        "RuffnecKk MapSense 2.2.0 loaded; labels/objects=%s; native-seed-atlas=%s; monster-markers=%s; Direct-navigation=%s; Reveal-Map=%s; settings=active; native-panel-occlusion=%s.",
         poiRuntimeAvailable ? "pending-localization" : "unavailable",
         externalLabelsAvailable ? "active" : "unavailable",
         markerAvailable ? "active" : "unavailable",
@@ -6622,7 +6639,7 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     {
         std::scoped_lock lock(ConfigSaveMutex);
         PendingConfigSave.clear();
-        PendingRevealPreferenceSave = false;
+        PendingPreferenceSave = false;
         ConfigSaveDrainScheduled = false;
     }
     {
@@ -6640,7 +6657,6 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     UiLanguageReady.store(false, std::memory_order_release);
     UiLanguagePendingLogged.store(false, std::memory_order_release);
     DataCatalogAttemptLogged.store(false, std::memory_order_release);
-    ActiveTxtWithoutModeLogged.store(false, std::memory_order_release);
     DataCatalogLocalizationPendingLogged.store(
         false, std::memory_order_release);
     LastNativeUiDiagnosticSnapshot.store(

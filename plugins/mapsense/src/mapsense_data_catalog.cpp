@@ -767,6 +767,7 @@ enum class LayerResolutionState : std::uint8_t {
     None,
     Text,
     BinaryOnly,
+    BinaryPriorityConflict,
     Invalid,
 };
 
@@ -780,7 +781,8 @@ struct LayerResolution final {
 [[nodiscard]] auto ResolveLayer(
         const std::vector<std::filesystem::path>& directories,
         const TableSpec& spec,
-        std::size_t maximumBytes) -> LayerResolution {
+        std::size_t maximumBytes,
+        bool preferTxtOverBin = true) -> LayerResolution {
     LayerResolution result{};
     std::vector<std::pair<std::filesystem::path, std::string>> texts;
     for (const auto& directory : directories) {
@@ -804,6 +806,18 @@ struct LayerResolution final {
             result.path = binPath;
             result.error = "binary override exists without its auditable TXT "
                 "source at " + DisplayPath(binPath);
+            return result;
+        }
+        // D2RLoader supports TXT-only tables without -txt. A BIN sibling
+        // introduces ambiguity: only explicit TXT priority permits its source
+        // to describe the loaded table. Do not fall back to vanilla for this
+        // family, or discard unrelated TXT-only/fallback families.
+        if (bin == FilePresence::Regular && !preferTxtOverBin) {
+            result.state = LayerResolutionState::BinaryPriorityConflict;
+            result.path = binPath;
+            result.error = "a BIN override exists but explicit TXT priority "
+                "was not established; the family is disabled at "
+                + DisplayPath(binPath);
             return result;
         }
         if (txt != FilePresence::Regular) continue;
@@ -1973,7 +1987,8 @@ auto MapSenseDataCatalog::Load(
             }
 
             auto source = ResolveLayer(
-                directories.active, spec, limits.maximumTableBytes);
+                directories.active, spec, limits.maximumTableBytes,
+                options.preferActiveTxtOverBin);
             bool fallback{};
             if (source.state == LayerResolutionState::None) {
                 source = ResolveLayer(
@@ -1991,13 +2006,15 @@ auto MapSenseDataCatalog::Load(
                           "vanilla TXT fallback.");
                 continue;
             }
-            if (source.state == LayerResolutionState::BinaryOnly) {
+            if (source.state == LayerResolutionState::BinaryOnly
+                    || source.state == LayerResolutionState::BinaryPriorityConflict) {
                 status.state = DataCatalogFamilyState::BinaryOnlyConflict;
                 status.sourcePath = source.path;
                 diagnostics.Add(
                     DataCatalogDiagnosticSeverity::Error,
                     spec.family,
-                    "binary_without_txt",
+                    source.state == LayerResolutionState::BinaryOnly
+                        ? "binary_without_txt" : "binary_without_txt_priority",
                     source.error);
                 continue;
             }

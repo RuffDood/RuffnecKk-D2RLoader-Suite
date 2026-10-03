@@ -469,8 +469,24 @@ auto CheckedNavigationSubtileCoordinate(
 
 auto EvaluateNavigationResolutionCompleteness(
         std::int32_t currentLevelId,
-        std::span<const NavigationExitCandidate> exits) noexcept
+        std::span<const NavigationExitCandidate> exits,
+        const NavigationRoutePlan* routePlan) noexcept
         -> NavigationResolutionCompleteness {
+    if (routePlan != nullptr) {
+        const auto hasExit = [exits](std::int32_t target) noexcept {
+            return std::any_of(exits.begin(), exits.end(),
+                [target](const NavigationExitCandidate& exit) noexcept {
+                    return exit.targetLevelId == target;
+                });
+        };
+        const auto progression = std::span(routePlan->progression).first(routePlan->progressionCount);
+        const auto quests = std::span(routePlan->quests).first(routePlan->questCount);
+        return (!routePlan->progressionRequiresExit
+                || std::any_of(progression.begin(), progression.end(), hasExit))
+            && std::all_of(quests.begin(), quests.end(), hasExit)
+            ? NavigationResolutionCompleteness::Complete
+            : NavigationResolutionCompleteness::PartialRetryable;
+    }
     const auto requiredProgression = std::find_if(
         ProgressionGraph.begin(),
         ProgressionGraph.end(),
@@ -501,13 +517,13 @@ auto BuildNavigationDestinations(
         const NavigationPolicyInput& input,
         std::span<NavigationSubtileDestination> output) noexcept -> std::size_t {
     if (input.currentLevelId == UnknownNavigationLevelId
-        || input.inTown
+        || (input.inTown && (input.routePlan == nullptr || !input.routePlan->allowTownShortcut))
         || output.empty()) {
         return 0U;
     }
 
     std::size_t count{};
-    if (input.waypoint != nullptr) {
+    if (!input.inTown && input.waypoint != nullptr) {
         AppendUnique(
             output,
             count,
@@ -523,16 +539,20 @@ auto BuildNavigationDestinations(
             });
     }
 
-    const auto progressionTarget = input.progressionTargetOverride.has_value()
+    auto progressionTarget = input.progressionTargetOverride.has_value()
         ? input.progressionTargetOverride
         : SelectMainProgressionTargetFor(input.currentLevelId, input.exits);
+    if (input.routePlan != nullptr && !input.progressionTargetOverride.has_value()) {
+        progressionTarget = SelectPlannedMainProgressionTarget(*input.routePlan, input.exits);
+    }
     const auto durielPortalReplacesOrifice = input.currentLevelId >= 66
         && input.currentLevelId <= 72
         && progressionTarget.value_or(UnknownNavigationLevelId) == 73;
     for (const auto& exit : input.exits) {
-        const auto staticQuestRoute = IsStaticQuestRouteTarget(
-            input.currentLevelId,
-            exit.targetLevelId);
+        const auto staticQuestRoute = input.routePlan != nullptr
+            ? HasNavigationRouteTarget(std::span(input.routePlan->quests).first(
+                input.routePlan->questCount), exit.targetLevelId)
+            : IsStaticQuestRouteTarget(input.currentLevelId, exit.targetLevelId);
         if (progressionTarget && exit.targetLevelId == *progressionTarget
             && !staticQuestRoute) {
             AppendUnique(
@@ -549,7 +569,7 @@ auto BuildNavigationDestinations(
                         exit.useExactClientCoordinates,
                 });
         }
-        if (ContainsLevelId(
+        if (!input.inTown && ContainsLevelId(
                 input.customTargetLevelIds,
                 exit.targetLevelId)) {
             AppendUnique(
@@ -584,6 +604,7 @@ auto BuildNavigationDestinations(
     }
 
     for (const auto& quest : input.questTargets) {
+        if (input.inTown) break;
         // In the true tomb, object 152 is the pre-portal staff orifice. Once
         // the exact class-100 portal to Duriel's Lair exists, green owns that
         // progression and the now-stale red orifice must disappear.

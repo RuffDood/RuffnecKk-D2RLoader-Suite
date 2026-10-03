@@ -408,7 +408,8 @@ void RunNativeAutomapObservation(
     const auto observation = observe();
     if (callback != nullptr) {
         callback(pass.currentLevelId,
-            ShouldRequestNavigationRefresh(observation, pass.inTown),
+            ShouldRequestNavigationRefresh(observation, pass.inTown,
+                AreNavigationTownShortcutsEnabled()),
             NativeAutomapObservationPhase::AfterObservation, userData);
     }
 }

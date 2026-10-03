@@ -1201,6 +1201,10 @@ auto DrawImGuiSettingsPanel(
             }
 
             if (section(UiTextId::Navigation)) {
+                saveRequested |= ImGui::Checkbox(UiText(UiTextId::AdaptModShortcuts),
+                    &config.navigation.routing.adaptToModConnections);
+                saveRequested |= ImGui::Checkbox(UiText(UiTextId::TownShortcutRoutes),
+                    &config.navigation.routing.townShortcuts);
                 saveRequested |= ImGui::SliderFloat(
                     UiText(UiTextId::LineThickness),
                     &config.navigation.lineThickness,

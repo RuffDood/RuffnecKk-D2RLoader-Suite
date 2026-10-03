@@ -409,6 +409,64 @@ void WritePlacementCatalog(const std::filesystem::path& excel) {
         "1\t1\t141\t2\tCycleBKey\t255\r\n");
 }
 
+void CheckTxtOnlyCatalogAdmission() {
+    using namespace RuffnecKk::MapSense;
+    ScopedCatalogTestDirectory directory("txt-only-admission");
+    const auto excel = directory.Path() / "TestMod.mpq/data/global/excel";
+    const auto vanilla = directory.Path() / "vanilla";
+    WriteCompleteCatalog(vanilla, "VanillaLevelKey");
+    // A mod changing elite density must keep its localized area/waypoint label.
+    WriteCatalogFixture(excel / "levels.txt",
+        "Name\tId\tLevelName\tWaypoint\tMonUMin\tMonUMax\r\n"
+        "Town\t12\tLevelKey\t0\t4\t8\r\n");
+    const auto root = directory.Path().wstring();
+    const auto context = MakeCatalogContext(root.c_str());
+    MapSenseDataCatalogLoadOptions options{}; // No explicit -txt.
+    options.vanillaExcelDirectories.push_back(vanilla);
+    auto result = MapSenseDataCatalog::Load(&context, options);
+    CHECK(result.catalog != nullptr);
+    if (!result.catalog) return;
+    const auto* level = result.catalog->FindLevel(12);
+    CHECK(level != nullptr && level->name.localized);
+    CHECK(level != nullptr && level->name.key == "LevelKey");
+    CHECK(level != nullptr && !level->waypointLabelUtf8.empty());
+    CHECK(result.catalog->AllFamiliesAvailable());
+    WriteCatalogFixture(excel / "levels.bin", "potentially different BIN");
+    result = MapSenseDataCatalog::Load(&context, options);
+    CHECK(result.catalog != nullptr);
+    if (!result.catalog) return;
+    CHECK(result.catalog->FindLevel(12) == nullptr);
+    CHECK(result.catalog->FamilyStatus(DataCatalogFamily::Levels).state
+        == DataCatalogFamilyState::BinaryOnlyConflict);
+    CHECK(result.catalog->FamilyStatus(DataCatalogFamily::Objects).Available());
+    CHECK(HasCatalogDiagnostic(result, "binary_without_txt_priority"));
+    options.preferActiveTxtOverBin = true;
+    result = MapSenseDataCatalog::Load(&context, options);
+    CHECK(result.catalog != nullptr && result.catalog->FindLevel(12) != nullptr);
+    // A BIN in the other supported active root is also an override. It must
+    // block fallback even if the TXT lives in the folder-style MPQ root.
+    std::filesystem::remove(excel / "levels.bin");
+    const auto looseExcel = directory.Path() / "data/global/excel";
+    WriteCatalogFixture(looseExcel / "levels.bin", "other root BIN");
+    options.preferActiveTxtOverBin = false;
+    result = MapSenseDataCatalog::Load(&context, options);
+    CHECK(result.catalog != nullptr && result.catalog->FindLevel(12) == nullptr);
+    CHECK(HasCatalogDiagnostic(result, "binary_without_txt"));
+    std::filesystem::remove(looseExcel / "levels.bin");
+    // An ambiguous Objects table must not suppress a safe Levels label.
+    WriteCompleteCatalog(excel);
+    WriteCatalogFixture(excel / "objects.bin", "different Objects BIN");
+    result = MapSenseDataCatalog::Load(&context, options);
+    CHECK(result.catalog != nullptr && result.catalog->FindLevel(12) != nullptr);
+    CHECK(result.catalog != nullptr
+        && !result.catalog->FamilyStatus(DataCatalogFamily::Objects).Available());
+    // A malformed source retains parser failure rather than vanilla fallback.
+    WriteCatalogFixture(excel / "levels.txt", "invalid table\n");
+    result = MapSenseDataCatalog::Load(&context, options);
+    CHECK(result.catalog != nullptr && result.catalog->FindLevel(12) == nullptr);
+    CHECK(HasCatalogDiagnostic(result, "table_parse_failed"));
+}
+
 void CheckMapSenseDataCatalogContract() {
     using namespace RuffnecKk::MapSense;
     try {
@@ -5850,6 +5908,26 @@ void CheckTownWaypointLabelPolicy() {
 
 int main(int argc, char** argv) {
     using namespace RuffnecKk::MapSense;
+    CheckTxtOnlyCatalogAdmission();
+    if (argc == 2 && std::string_view(argv[1]) == "--txt-only-regression") {
+        std::cout << "TXT-only catalog regression: " << (Failures ? "FAIL" : "PASS") << '\n';
+        return Failures ? EXIT_FAILURE : EXIT_SUCCESS;
+    }
+
+    // Read-only smoke check of a player's configuration, without the shipped
+    // defaults assertions below or any writes to the supplied file.
+    if (argc == 3 && std::string_view(argv[1]) == "--validate-config") {
+        try {
+            const auto config = ParseConfig(ReadFile(argv[2]));
+            const auto serialized = SerializeConfig(config);
+            CHECK(SerializeConfig(ParseConfig(serialized)) == serialized);
+            std::cout << "Configuration accepted; semantic round trip verified.\n";
+        } catch (const std::exception& exception) {
+            std::cerr << "Configuration rejected: " << exception.what() << '\n';
+            ++Failures;
+        }
+        return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    }
 
     static_assert(NativeUnitClassIdOffset == 0x04U);
     static_assert(NativeUnitIdentityLayoutWitnessRva == 0x34B7B2U);
@@ -5941,7 +6019,7 @@ int main(int argc, char** argv) {
     CheckWaypointLabelResolutionPolicy();
     CheckExitLabelViewportPolicy();
 
-    static_assert(CurrentConfigSchemaVersion == 19);
+    static_assert(CurrentConfigSchemaVersion == 21);
     static_assert(MenuThemes.size() == 10U);
     static_assert(MenuScales.size() == 6U);
     static_assert(ResolveMenuScale(MenuScale::Automatic, 4.0F / 3.0F)
@@ -6650,7 +6728,7 @@ theme = "arcane_sanctuary"
         == MenuScale::Automatic);
     const auto serializedSchema16 = SerializeConfig(
         schema16FeatureMastersAndTheme);
-    CHECK(serializedSchema16.find("schema_version = 19")
+    CHECK(serializedSchema16.find("schema_version = 21")
         != std::string::npos);
     CHECK(serializedSchema16.find("features_enabled") == std::string::npos);
     CHECK(serializedSchema16.find("[overlay]\nenabled")
@@ -6658,7 +6736,7 @@ theme = "arcane_sanctuary"
     CHECK(serializedSchema16.find("[monsters]\nenabled = false")
         != std::string::npos);
     CHECK(serializedSchema16.find(
-        "[menu]\ntheme = \"arcane_sanctuary\"")
+        "theme = \"arcane_sanctuary\"")
         != std::string::npos);
     CHECK(serializedSchema16.find("interface_scale = \"automatic\"")
         != std::string::npos);
@@ -6930,6 +7008,24 @@ enabled = true
     CHECK(ParseConfig(document).revealMap);
     CHECK(ParseConfig(document).navigation.customLevels.targets == externalEdit.navigation.customLevels.targets);
     CHECK(!roundTrip.hud.mercenaryHealth);
+    // Persist both choices through the production save path and a fresh parse
+    // (as at process startup), while preserving external configuration edits.
+    CHECK(ParseConfig("schema_version = 19\n[menu]\nshow_launcher = true").menu.visible);
+    CHECK(ParseConfig("schema_version = 20").menu.visible);
+    CHECK(Throws([] { (void)ParseConfig("schema_version = 20\n[menu]\nvisible = 1"); }));
+    CHECK(SaveMenuSettingsDocument({}, false, readDocument, writeDocument, false)
+        == MenuSettingsSaveResult::Saved);
+    CHECK(!ParseConfig(document).menu.visible);
+    CHECK(ParseConfig(document).navigation.customLevels.targets == externalEdit.navigation.customLevels.targets);
+    // A queued panel snapshot from before hiding cannot restore visibility.
+    CHECK(SaveMenuSettingsDocument(serialized, true, readDocument, writeDocument, false)
+        == MenuSettingsSaveResult::Saved);
+    CHECK(!ParseConfig(document).menu.visible);
+    CHECK(ParseConfig(document).revealMap);
+    CHECK(SaveMenuSettingsDocument({}, true, readDocument, writeDocument, true)
+        == MenuSettingsSaveResult::Saved);
+    CHECK(ParseConfig(document).menu.visible);
+    CHECK(ParseConfig(document).navigation.customLevels.targets == externalEdit.navigation.customLevels.targets);
     CHECK(!roundTrip.hud.sessionTimer);
     CHECK(!roundTrip.hud.experienceTracker);
     CHECK(!roundTrip.menu.showLauncher);

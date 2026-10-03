@@ -135,6 +135,8 @@ constexpr std::array<Translation, UiTextCount> TextCatalog{{
     {{"Harrogath Frost", "哈洛加斯冰霜", "Harrogath-Frost", "Escarcha de Harrogath", "Givre d’Harrogath", "Gelo di Harrogath", "하로가스의 서리", "Szron Harrogath", "ハロガスの霜", "Geada de Harrogath", "Мороз Харрогата", "哈洛加斯冰霜"}},
     {{"Blood Moor", "鮮血荒地", "Blutmoor", "Páramo Sangriento", "Lande sanglante", "Brughiera Insanguinata", "핏빛 황무지", "Krwawe Wrzosowisko", "血の荒野", "Charneca Sangrenta", "Кровавое болото", "鲜血荒地"}},
     {{"High Contrast", "高對比", "Hoher Kontrast", "Alto contraste", "Contraste élevé", "Contrasto elevato", "고대비", "Wysoki kontrast", "ハイコントラスト", "Alto contraste", "Высокая контрастность", "高对比"}},
+    {{"Adapt routes to mod shortcuts", "依模組捷徑調整路線", "Routen an Mod-Abkürzungen anpassen", "Adaptar rutas a atajos del mod", "Adapter les itinéraires aux raccourcis du mod", "Adatta i percorsi alle scorciatoie della mod", "모드 지름길에 맞게 경로 조정", "Dostosuj trasy do skrótów moda", "MODの近道にルートを合わせる", "Adaptar rotas aos atalhos do mod", "Учитывать сокращённые пути мода", "根据模组捷径调整路线"}},
+    {{"Show shortcut routes in towns", "在城鎮顯示捷徑路線", "Abkürzungsrouten in Städten anzeigen", "Mostrar rutas de atajos en ciudades", "Afficher les raccourcis en ville", "Mostra le scorciatoie in città", "마을에서 지름길 경로 표시", "Pokaż skróty w miastach", "町で近道ルートを表示", "Mostrar atalhos nas cidades", "Показывать сокращённые пути в городах", "在城镇显示捷径路线"}},
 }};
 
 static_assert(TextCatalog.size() == UiTextCount);

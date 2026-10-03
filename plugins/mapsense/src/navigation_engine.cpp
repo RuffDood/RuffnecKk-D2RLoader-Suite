@@ -26,6 +26,8 @@ std::atomic_flag StateLock = ATOMIC_FLAG_INIT;
 std::array<NavigationSubtileDestination, MaximumNavigationDestinations>
     Destinations{};
 std::size_t DestinationCount{};
+bool TownShortcutBatch{};
+std::atomic_bool TownShortcutsEnabled{};
 std::array<NavigationLineSnapshot, MaximumNavigationDestinations>
     ProjectedLines{};
 std::size_t ProjectedLineCount{};
@@ -300,6 +302,7 @@ void ConsumePendingNavigationInvalidationsLocked() noexcept {
 void ClearDestinationsLocked() noexcept {
     GpsPlayerTrailCount = 0U;
     DestinationCount = 0U;
+    TownShortcutBatch = false;
     ++DestinationRevision;
     ClearProjectedLinesLocked();
     ClearGpsRoutesLocked();
@@ -457,6 +460,14 @@ auto ConvertNavigationClientToSubtileCoordinates(
     return true;
 }
 
+void SetNavigationTownShortcutsEnabled(bool enabled) noexcept {
+    TownShortcutsEnabled.store(enabled, std::memory_order_release);
+}
+
+auto AreNavigationTownShortcutsEnabled() noexcept -> bool {
+    return TownShortcutsEnabled.load(std::memory_order_acquire);
+}
+
 void InitializeNavigationEngine() noexcept {
     StateLockGuard lock(true);
     Active.store(false, std::memory_order_release);
@@ -464,9 +475,11 @@ void InitializeNavigationEngine() noexcept {
         std::make_shared<const NavigationLinePolicySnapshot>(
             DefaultNavigationPolicy()),
         std::memory_order_release);
+    TownShortcutsEnabled.store(false, std::memory_order_release);
     SessionGeneration = 0U;
     LevelId = UnknownNavigationLevelId;
     DestinationCount = 0U;
+    TownShortcutBatch = false;
     DestinationRevision = 1U;
     ObservedLevelChanges = 0U;
     ClearProjectedLinesLocked();
@@ -638,7 +651,7 @@ auto PublishNavigationDestinations(
         std::uint64_t sessionGeneration,
         std::int32_t levelId,
         const NavigationSubtileDestination* destinations,
-        std::size_t destinationCount) noexcept -> bool {
+        std::size_t destinationCount, bool allowTownShortcut) noexcept -> bool {
     if (!Active.load(std::memory_order_acquire)
         || levelId == UnknownNavigationLevelId
         || destinationCount > MaximumNavigationDestinations
@@ -646,7 +659,9 @@ auto PublishNavigationDestinations(
         return false;
     }
     for (std::size_t index = 0U; index < destinationCount; ++index) {
-        if (!IsValidKind(destinations[index].kind)
+        if ((allowTownShortcut && destinations[index].kind != NavigationLineKind::Progression
+                && destinations[index].kind != NavigationLineKind::Quest)
+            || !IsValidKind(destinations[index].kind)
             || !IsValidSelection(destinations[index].selection)) {
             return false;
         }
@@ -658,7 +673,7 @@ auto PublishNavigationDestinations(
         || levelId != LevelId) {
         return false;
     }
-    if (destinationCount == DestinationCount
+    if (allowTownShortcut == TownShortcutBatch && destinationCount == DestinationCount
         && (destinationCount == 0U
             || std::equal(destinations, destinations + destinationCount,
                 Destinations.begin()))) {
@@ -668,6 +683,7 @@ auto PublishNavigationDestinations(
         std::copy_n(destinations, destinationCount, Destinations.begin());
     }
     DestinationCount = destinationCount;
+    TownShortcutBatch = allowTownShortcut;
     ++DestinationRevision;
     ClearProjectedLinesLocked();
     ClearGpsRoutesLocked();
@@ -716,7 +732,7 @@ auto ObserveNavigationAutomapPass(
         note(NavigationAutomapObservationReason::LevelChanged);
         return NavigationAutomapObservationResult::LevelChanged;
     }
-    if (pass.inTown) {
+    if (pass.inTown && !(TownShortcutBatch && AreNavigationTownShortcutsEnabled())) {
         if (DestinationCount != 0U) {
             ClearDestinationsLocked();
         } else {

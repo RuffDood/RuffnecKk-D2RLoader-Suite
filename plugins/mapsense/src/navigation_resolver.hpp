@@ -1181,7 +1181,8 @@ void ShutdownNavigationResolver() noexcept;
 [[nodiscard]] auto RefreshNavigationDestinations(
     std::uint64_t sessionGeneration,
     std::int32_t expectedLevelId,
-    std::span<const CustomLevelTarget> customTargets) noexcept
+    std::span<const CustomLevelTarget> customTargets,
+    const NavigationRoutingOptions& routing) noexcept
     -> NavigationRefreshResult;
 
 // Called synchronously from MapSense's already-owned DRLG_InitLevel hook,

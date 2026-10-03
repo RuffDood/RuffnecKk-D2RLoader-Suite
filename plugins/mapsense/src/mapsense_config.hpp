@@ -1,6 +1,7 @@
 #pragma once
 
 #include "navigation_engine.hpp"
+#include "navigation_routing.hpp"
 
 #include <toml++/toml.hpp>
 
@@ -24,7 +25,7 @@
 
 namespace RuffnecKk::MapSense {
 
-inline constexpr std::int64_t CurrentConfigSchemaVersion = 19;
+inline constexpr std::int64_t CurrentConfigSchemaVersion = 21;
 
 inline constexpr float MinimumMonsterMarkerSize = 3.0F;
 inline constexpr float MaximumMonsterMarkerSize = 40.0F;
@@ -342,6 +343,7 @@ struct NavigationOptions {
         {1.0F, 0.231F, 0.188F, 1.0F},
     };
     CustomLevelLineOptions customLevels{};
+    NavigationRoutingOptions routing{};
 };
 
 struct HudOptions {
@@ -452,6 +454,7 @@ inline auto ParseMenuScale(std::string_view text) -> MenuScale {
 }
 
 struct MenuOptions {
+    bool visible{true};
     MenuTheme theme{MenuTheme::SanctuaryGold};
     MenuScale interfaceScale{MenuScale::Automatic};
     bool showLauncher{true};
@@ -1136,6 +1139,45 @@ inline void ValidateCustomLevelName(std::string_view name) {
     }
 }
 
+inline auto ReadNavigationRouting(const toml::table& navigation) -> NavigationRoutingOptions {
+    NavigationRoutingOptions result{};
+    const auto* routing = ReadOptionalTable(navigation, "routing");
+    if (routing == nullptr) return result;
+    RejectUnknownKeys(*routing, {"adapt_to_mod_connections", "town_shortcuts", "overrides"}, "navigation.routing");
+    result.adaptToModConnections = ReadOptional(*routing, "adapt_to_mod_connections", true);
+    result.townShortcuts = ReadOptional(*routing, "town_shortcuts", false);
+    const auto* node = routing->get("overrides");
+    if (node == nullptr) return result;
+    const auto* routes = node->as_array();
+    if (routes == nullptr || routes->size() > MaximumCustomLevelTargets)
+        throw std::runtime_error("MapSense routing overrides must be an array of at most 128 entries");
+    for (const auto& entry : *routes) {
+        const auto* route = entry.as_table();
+        if (route == nullptr) throw std::runtime_error("MapSense routing override must be a table");
+        RejectUnknownKeys(*route, {"from_level_id", "to_level_id", "kind"}, "navigation.routing.overrides");
+        const auto readId = [route](std::string_view key) {
+            const auto* value = route->get(key);
+            const auto id = value != nullptr && value->is_integer()
+                ? value->value<std::int32_t>() : std::optional<std::int32_t>{};
+            if (!id || *id < MinimumCustomLevelId || *id > MaximumCustomLevelId)
+                throw std::runtime_error("MapSense routing level ID is outside its supported range");
+            return *id;
+        };
+        const auto from = readId("from_level_id");
+        const auto to = readId("to_level_id");
+        const auto kind = (*route)["kind"].value<std::string>();
+        if (from == to || !kind || (*kind != "progression" && *kind != "quest"))
+            throw std::runtime_error("MapSense route requires distinct levels and kind progression or quest");
+        const auto lineKind = *kind == "quest" ? NavigationLineKind::Quest : NavigationLineKind::Progression;
+        if (std::any_of(result.overrides.begin(), result.overrides.end(),
+                [from, lineKind](const NavigationRouteOverride& existing) {
+                    return existing.fromLevelId == from && existing.kind == lineKind;
+                })) throw std::runtime_error("MapSense route overrides cannot repeat the same source and kind");
+        result.overrides.push_back({from, to, lineKind});
+    }
+    return result;
+}
+
 inline auto ReadCustomLevelTargets(
         const toml::table& customLevels) -> std::vector<CustomLevelTarget> {
     const auto* targetsNode = customLevels.get("targets");
@@ -1535,7 +1577,7 @@ inline auto ParseConfig(const toml::table& root) -> Config {
     if (const auto* navigation = ReadOptionalTable(root, "navigation")) {
         RejectUnknownKeys(
             *navigation,
-            {"line_thickness", "waypoint", "progression", "quests", "custom_levels"},
+            {"line_thickness", "waypoint", "progression", "quests", "custom_levels", "routing"},
             "navigation");
         config.navigation.lineThickness = ReadOptionalFloat(
             *navigation,
@@ -1558,6 +1600,7 @@ inline auto ParseConfig(const toml::table& root) -> Config {
             "quests",
             config.navigation.quests,
             *schemaVersion);
+        config.navigation.routing = ReadNavigationRouting(*navigation);
         config.navigation.customLevels = ReadCustomLevelLineOptions(
             *navigation,
             std::move(config.navigation.customLevels),
@@ -1585,10 +1628,18 @@ inline auto ParseConfig(const toml::table& root) -> Config {
     }
     if (const auto* menu = ReadOptionalTable(root, "menu")) {
         if (*schemaVersion >= 17) {
-            RejectUnknownKeys(
-                *menu,
-                {"theme", "interface_scale", "show_launcher", "start_expanded", "remember_position", "position_x", "position_y"},
-                "menu");
+            if (*schemaVersion >= 20) {
+                RejectUnknownKeys(
+                    *menu,
+                    {"visible", "theme", "interface_scale", "show_launcher", "start_expanded", "remember_position", "position_x", "position_y"},
+                    "menu");
+                config.menu.visible = ReadOptional(*menu, "visible", true);
+            } else {
+                RejectUnknownKeys(
+                    *menu,
+                    {"theme", "interface_scale", "show_launcher", "start_expanded", "remember_position", "position_x", "position_y"},
+                    "menu");
+            }
             config.menu.theme = ReadOptionalMenuTheme(
                 *menu,
                 "theme",
@@ -1614,7 +1665,7 @@ inline auto ParseConfig(const toml::table& root) -> Config {
         }
         config.menu.showLauncher = ReadOptional(
             *menu, "show_launcher", config.menu.showLauncher);
-        // Panel visibility is session UI state, never a saved preference.
+        // Expanded/collapsed state remains per-game UI state.
         (void)ReadOptional(*menu, "start_expanded", false);
         config.menu.rememberPosition = ReadOptional(
             *menu, "remember_position", config.menu.rememberPosition);
@@ -1909,9 +1960,23 @@ inline auto SerializeConfig(const Config& config) -> std::string {
     SerializeCustomLevelTargets(
         output,
         config.navigation.customLevels.targets);
+    output << "\n[navigation.routing]\n"
+        << "adapt_to_mod_connections = " << config.navigation.routing.adaptToModConnections << "\n"
+        << "town_shortcuts = " << config.navigation.routing.townShortcuts << "\n"
+        << "# Use overrides only when automatic shortcut detection cannot choose your route.\n"
+        << "# The destination must be directly connected; save and restart D2R after editing this list.\n"
+        << "# { from_level_id = 129, to_level_id = 131, kind = \"progression\" }\n"
+        << "overrides = [\n";
+    for (const auto& route : config.navigation.routing.overrides) {
+        output << "  { from_level_id = " << route.fromLevelId << ", to_level_id = " << route.toLevelId
+            << ", kind = \"" << (route.kind == NavigationLineKind::Quest ? "quest" : "progression") << "\" },\n";
+    }
+    output << "]\n";
     output
         << "\n"
         << "[menu]\n"
+        << "# Remembers the Hide/Show Menu choice across games and restarts.\n"
+        << "visible = " << config.menu.visible << "\n"
         << "theme = \"" << MenuThemeToString(config.menu.theme) << "\"\n"
         << "interface_scale = \""
         << MenuScaleToString(config.menu.interfaceScale) << "\"\n"
@@ -1927,14 +1992,17 @@ inline auto SerializeConfig(const Config& config) -> std::string {
 // Shared by the queued menu-save path and its external-edit regression.
 inline auto SerializeMenuSettingsForSave(
         std::string_view snapshot, std::string_view latestDocument,
-        std::optional<bool> revealPreference = std::nullopt) -> std::string {
+        std::optional<bool> revealPreference = std::nullopt,
+        std::optional<bool> menuVisibility = std::nullopt) -> std::string {
     auto settings = ParseConfig(snapshot);
     auto latest = ParseConfig(latestDocument);
     // This list is deliberately owned by the text editor. Empty means the
     // player removed every destination; never resurrect the startup list.
     settings.navigation.customLevels.targets =
         std::move(latest.navigation.customLevels.targets);
+    settings.navigation.routing.overrides = std::move(latest.navigation.routing.overrides);
     if (revealPreference.has_value()) settings.revealMap = *revealPreference;
+    if (menuVisibility.has_value()) settings.menu.visible = *menuVisibility;
     return SerializeConfig(settings);
 }
 
@@ -1944,13 +2012,14 @@ enum class MenuSettingsSaveResult { Saved, ReadFailed, InvalidDocument, WriteFai
 // A preference-only save uses the current document for all ordinary settings.
 template <typename ReadDocument, typename WriteDocument>
 inline auto SaveMenuSettingsDocument(std::string_view snapshot, bool revealPreference,
-        ReadDocument&& read, WriteDocument&& write) noexcept -> MenuSettingsSaveResult {
+        ReadDocument&& read, WriteDocument&& write,
+        std::optional<bool> menuVisibility = std::nullopt) noexcept -> MenuSettingsSaveResult {
     try {
         std::string latest;
         if (!read(latest)) return MenuSettingsSaveResult::ReadFailed;
         const auto merged = SerializeMenuSettingsForSave(
             snapshot.empty() ? std::string_view(latest) : snapshot,
-            latest, revealPreference);
+            latest, revealPreference, menuVisibility);
         return write(merged) ? MenuSettingsSaveResult::Saved
                             : MenuSettingsSaveResult::WriteFailed;
     } catch (...) {

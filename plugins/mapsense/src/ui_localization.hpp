@@ -127,6 +127,8 @@ enum class UiTextId : std::uint16_t {
     ThemeHarrogathFrost,
     ThemeBloodMoor,
     ThemeHighContrast,
+    AdaptModShortcuts,
+    TownShortcutRoutes,
     Count,
 };
 

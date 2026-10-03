@@ -226,6 +226,8 @@ struct MapSenseDataCatalogLoadOptions final {
     // packaged "vanilla-excel" folder next to the plugin.
     std::vector<std::filesystem::path> vanillaExcelDirectories{};
     MapSenseDataCatalogLimits limits{};
+    // Explicit -txt establishes TXT priority when a BIN override exists.
+    bool preferActiveTxtOverBin{};
 };
 
 class MapSenseDataCatalog;

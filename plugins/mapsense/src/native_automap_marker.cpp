@@ -1563,10 +1563,18 @@ auto ValidateRuntime(const D2RL::PluginContext* context) noexcept -> bool {
     const auto check = [context](
             std::uintptr_t rva,
             const auto& expected) noexcept {
-        return context->CheckExpectedBytes(
+        const auto matches = context->CheckExpectedBytes(
             rva,
             expected.data(),
             static_cast<std::uint32_t>(expected.size()));
+        if (!matches) {
+            char message[160]{};
+            std::snprintf(message, sizeof(message),
+                "MapSense: marker witness mismatch at RVA 0x%llX (%zu bytes).",
+                static_cast<unsigned long long>(rva), expected.size());
+            context->LogWarn(message);
+        }
+        return matches;
     };
     return check(GetLocalDataContextRva, localContextExpected)
         && check(GetLocalPlayerRva, localPlayerExpected)

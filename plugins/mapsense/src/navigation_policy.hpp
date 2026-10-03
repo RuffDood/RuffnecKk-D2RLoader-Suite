@@ -1,6 +1,7 @@
 #pragma once
 
 #include "navigation_engine.hpp"
+#include "navigation_routing.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -44,6 +45,7 @@ struct NavigationPolicyInput final {
     std::span<const NavigationPointCandidate> questTargets{};
     std::span<const std::int32_t> customTargetLevelIds{};
     std::optional<std::int32_t> progressionTargetOverride{};
+    const NavigationRoutePlan* routePlan{};
 };
 
 // Most levels have one forward exit. A small bounded alternative set covers
@@ -164,7 +166,8 @@ struct NavigationPresetProgressionTarget final {
 // until the active object appears, and no guessed point is ever published.
 [[nodiscard]] auto EvaluateNavigationResolutionCompleteness(
     std::int32_t currentLevelId,
-    std::span<const NavigationExitCandidate> exits) noexcept
+    std::span<const NavigationExitCandidate> exits,
+    const NavigationRoutePlan* routePlan = nullptr) noexcept
     -> NavigationResolutionCompleteness;
 
 // Builds an immutable batch for PublishNavigationDestinations. The resolver

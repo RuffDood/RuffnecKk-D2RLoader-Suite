@@ -223,9 +223,9 @@ enum class NavigationAutomapObservationResult : std::uint8_t {
 
 [[nodiscard]] constexpr auto ShouldRequestNavigationRefresh(
         NavigationAutomapObservationResult observation,
-        bool inTown) noexcept -> bool {
+        bool inTown, bool allowTownShortcuts = false) noexcept -> bool {
     return observation == NavigationAutomapObservationResult::LevelChanged
-        && !inTown;
+        && (!inTown || allowTownShortcuts);
 }
 
 struct NavigationEngineStatus final {
@@ -368,6 +368,8 @@ struct NavigationGpsRouteDestination final {
     const NavigationLinePolicySnapshot& policy,
     std::span<NavigationGpsRouteDestination> output) noexcept -> std::size_t;
 
+void SetNavigationTownShortcutsEnabled(bool enabled) noexcept;
+[[nodiscard]] auto AreNavigationTownShortcutsEnabled() noexcept -> bool;
 void InitializeNavigationEngine() noexcept;
 void ShutdownNavigationEngine() noexcept;
 
@@ -400,7 +402,7 @@ void ResetNavigationLevel(
     std::uint64_t sessionGeneration,
     std::int32_t levelId,
     const NavigationSubtileDestination* destinations,
-    std::size_t destinationCount) noexcept -> bool;
+    std::size_t destinationCount, bool allowTownShortcut = false) noexcept -> bool;
 
 // Called only from the existing native automap hook when D2R renders the local
 // player. All subtile-to-client conversion and automap projection occurs

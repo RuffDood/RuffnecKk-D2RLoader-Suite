@@ -1,8 +1,8 @@
 # RuffnecKk MapSense configuration.
 # Configure normal settings in the in-game MapSense menu.
-# Only navigation.custom_levels.targets is intended for manual editing.
+# Edit navigation.custom_levels.targets and navigation.routing.overrides manually.
 
-schema_version = 19
+schema_version = 21
 
 [general]
 # Master switch for every MapSense feature. The settings panel remains available.
@@ -179,7 +179,20 @@ targets = [
   { level_id = 119 },                 # Icy Cellar
 ]
 
+# Follow known campaign and quest shortcuts from the mod's loaded connections.
+[navigation.routing]
+adapt_to_mod_connections = true
+# Show supported town shortcuts, such as green Docks -> Travincal or red Lut Gholein -> Sewers 3.
+town_shortcuts = false
+# Optional explicit routes for ambiguous or new connections. The destination
+# must be directly connected. Save and restart D2R after editing this list.
+# { from_level_id = 129, to_level_id = 131, kind = "progression" }
+# { from_level_id = 43, to_level_id = 64, kind = "quest" }
+overrides = []
+
 [menu]
+# Remembers the Hide/Show Menu choice across games and restarts.
+visible = true
 # Changes only the MapSense settings panel palette.
 theme = "sanctuary_gold"
 # Scales only the MapSense settings panel. Use automatic for backbuffer-based scaling.

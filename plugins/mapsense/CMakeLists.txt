@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(RuffnecKkMapSense VERSION 2.0.2 LANGUAGES C CXX RC)
+    project(RuffnecKkMapSense VERSION 2.2.0 LANGUAGES C CXX RC)
     include(CTest)
     option(RUFFNECKK_SUITE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
@@ -75,10 +75,11 @@ add_library(ruffneckk_mapsense SHARED
     $<$<BOOL:${RUFFNECKK_MAPSENSE_GPS_ROUTE_DIAGNOSTICS}>:src/gps_route_provider.cpp>
     src/imgui_settings_panel.cpp
     src/localized_fonts.cpp
+    src/txt_mode.cpp
     src/mapsense_data_catalog.cpp
     src/navigation_engine.cpp
     src/navigation_level_catalog.cpp
-    src/navigation_policy.cpp
+    src/navigation_policy.cpp src/navigation_routing.cpp
     src/navigation_resolver.cpp
     src/native_automap_marker.cpp
     src/native_automap_missile.cpp
@@ -179,7 +180,7 @@ if(BUILD_TESTING)
         src/gps_route_coordinator_tests.cpp
         src/gps_route_coordinator.cpp
         src/navigation_engine.cpp
-        src/navigation_policy.cpp)
+        src/navigation_policy.cpp src/navigation_routing.cpp)
     target_compile_features(ruffneckk_mapsense_gps_coordinator_tests PRIVATE cxx_std_20)
     target_compile_definitions(ruffneckk_mapsense_gps_coordinator_tests PRIVATE
         WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
@@ -313,7 +314,7 @@ if(BUILD_TESTING)
         src/mapsense_tests.cpp
         src/navigation_engine.cpp
         src/navigation_level_catalog.cpp
-        src/navigation_policy.cpp
+        src/navigation_policy.cpp src/navigation_routing.cpp
         src/overlay_scene.cpp
         src/ui_localization.cpp
     )
@@ -338,4 +339,29 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/config/ruffneckk-mapsense.toml"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/RuffnecKkMapSenseAutomapSprites.msp"
     )
+    add_test(NAME ruffneckk.mapsense.txt-only-catalog
+        COMMAND ruffneckk_mapsense_tests --txt-only-regression)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(ruffneckk_mapsense_txt_mode_tests src/txt_mode.cpp src/txt_mode_tests.cpp)
+    target_compile_features(ruffneckk_mapsense_txt_mode_tests PRIVATE cxx_std_20)
+    target_compile_definitions(ruffneckk_mapsense_txt_mode_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+    target_link_libraries(ruffneckk_mapsense_txt_mode_tests PRIVATE tomlplusplus::tomlplusplus shell32)
+    if(MSVC)
+        target_compile_options(ruffneckk_mapsense_txt_mode_tests PRIVATE /W4 /permissive- /EHsc /utf-8
+            $<$<BOOL:${RUFFNECKK_SUITE_WARNINGS_AS_ERRORS}>:/WX>)
+    endif()
+    add_test(NAME ruffneckk.mapsense.txt-mode COMMAND ruffneckk_mapsense_txt_mode_tests)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(ruffneckk_mapsense_routing_tests
+        src/navigation_routing_tests.cpp src/navigation_routing.cpp src/navigation_policy.cpp src/navigation_engine.cpp)
+    target_link_libraries(ruffneckk_mapsense_routing_tests PRIVATE tomlplusplus::tomlplusplus)
+    target_compile_features(ruffneckk_mapsense_routing_tests PRIVATE cxx_std_20)
+    if(MSVC)
+        target_compile_options(ruffneckk_mapsense_routing_tests PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
+    endif()
+    add_test(NAME ruffneckk.mapsense.adaptive-routing COMMAND ruffneckk_mapsense_routing_tests)
 endif()

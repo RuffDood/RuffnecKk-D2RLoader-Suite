@@ -3895,7 +3895,14 @@ void ToggleD3D12ImGuiMenu() noexcept {
     }
     const bool isOpen = !wasOpen;
     AwaitingFirstBounds.store(isOpen, std::memory_order_release);
-    if (!isOpen) PublishPanelBounds({});
+    if (!isOpen) {
+        const bool releasedOwnedButton = CancelOwnedMouseButtons();
+        const HWND window = PublishedGameWindow.load(std::memory_order_acquire);
+        if (releasedOwnedButton && window != nullptr && GetCapture() == window) {
+            ReleaseCapture();
+        }
+        PublishPanelBounds({});
+    }
 }
 
 void SetD3D12ImGuiMenuOpen(bool open) noexcept {

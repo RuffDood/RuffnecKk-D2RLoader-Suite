@@ -176,6 +176,7 @@ using FindWaypointRoomAndCoordinatesFn = void*(__fastcall*)(
 struct CandidateBatch final {
     std::int32_t levelId{UnknownNavigationLevelId};
     bool inTown{};
+    NavigationRoutePlan routePlan{};
     std::array<NavigationExitCandidate, MaximumNavigationDestinations> exits{};
     std::size_t exitCount{};
     std::array<
@@ -2318,6 +2319,7 @@ enum class VisibilityTargetResolution : std::uint8_t {
 [[nodiscard]] auto InitializeRequestedTargetLevelsUnchecked(
         const ClientLevelView& current,
         std::span<const std::int32_t> customTargetLevelIds,
+        const NavigationRoutingOptions& routing,
         CandidateBatch& batch) noexcept -> bool {
     auto* const sourceVis = GetLevelVis(
         current.dataContext,
@@ -2328,13 +2330,12 @@ enum class VisibilityTargetResolution : std::uint8_t {
         visibleTargetIds[slot] = sourceVis[slot];
     }
 
-    std::array<
-        std::int32_t,
-        MaximumCustomLevelTargets + MaximumMainProgressionTargets
-            + MaximumStaticQuestRouteTargets> targetIds{};
-    const auto targetCount = BuildNavigationPreparationTargets(
-        current.levelId,
-        customTargetLevelIds,
+    batch.routePlan = BuildAdaptiveNavigationRoutePlan(
+        current.levelId, visibleTargetIds, routing, batch.inTown);
+    if (batch.inTown && !batch.routePlan.allowTownShortcut) return true;
+    std::array<std::int32_t, MaximumCustomLevelTargets + 2U * MaximumAdaptiveRouteTargets> targetIds{};
+    const auto targetCount = BuildAdaptiveNavigationPreparationTargets(
+        batch.routePlan, batch.inTown ? std::span<const std::int32_t>{} : customTargetLevelIds,
         targetIds);
     for (std::size_t index = 0U; index < targetCount; ++index) {
         // A global custom list may contain destinations from every act. Never
@@ -2427,6 +2428,7 @@ void FinalizeCanyonCorrectTomb(CandidateBatch& batch) noexcept {
 [[nodiscard]] auto EnumerateCurrentLevelUnchecked(
         std::int32_t expectedLevelId,
         std::span<const std::int32_t> customTargetLevelIds,
+        const NavigationRoutingOptions& routing,
         CandidateBatch& batch) noexcept -> bool {
     __try {
         if (GetLocalDataContext == nullptr || GetLocalPlayer == nullptr
@@ -2473,22 +2475,14 @@ void FinalizeCanyonCorrectTomb(CandidateBatch& batch) noexcept {
         batch.inTown = IsRoomInTown(activeRoom) != 0;
 
         if (!batch.inTown) {
-            // DRLG links are lazy. Initialize only the requested progression
-            // and configured targets before source-room materialization so
-            // forward links such as Barracks -> Jail 1 and Jail 1 -> Jail 2
-            // exist during this same refresh. Towns deliberately skip these
-            // navigation-only targets, but still enumerate their physical
-            // boundaries below so exit labels remain available.
+            // Correct-tomb selection retains its existing quest-state witness.
+            // Mod routes are prepared below from the loaded direct Vis links.
             if (!PrepareCanyonCorrectTombUnchecked(current, batch)) {
                 return false;
             }
-            if (!InitializeRequestedTargetLevelsUnchecked(
-                    current,
-                    customTargetLevelIds,
-                    batch)) {
-                return false;
-            }
         }
+        if (!InitializeRequestedTargetLevelsUnchecked(
+                current, customTargetLevelIds, routing, batch)) return false;
         // Waypoint labels are object POIs, not navigation lines. Town owners
         // resolve to a complete empty entry; non-town levels keep the exact
         // generated preset independently of the navigation-line policy.
@@ -3421,23 +3415,25 @@ void LogBoundedNavigationDiagnostics(
         static_cast<unsigned long long>(batch.pendingCollisionRoomCount));
     Context->LogInfo(message);
 
-    const auto preferredProgression = MainProgressionTargetFor(batch.levelId);
+    const auto preferredProgression = batch.routePlan.progressionCount != 0U
+        ? std::optional<std::int32_t>(batch.routePlan.progression[0]) : std::nullopt;
     const auto selectedProgression = batch.hasCorrectTomb
             && batch.durielRewardGranted
         ? std::optional<std::int32_t>(batch.correctTombLevelId)
-        : SelectMainProgressionTargetFor(
-            batch.levelId,
+        : SelectPlannedMainProgressionTarget(batch.routePlan,
             std::span(batch.exits.data(), batch.exitCount));
     std::snprintf(
         message,
         sizeof(message),
-        "MapSense diagnostic resolver: level=%d preferred-progression=%d selected-progression=%d candidate-found=%d selection-count=%zu destination-count=%zu.",
+        "MapSense diagnostic resolver: level=%d preferred-progression=%d selected-progression=%d candidate-found=%d selection-count=%zu destination-count=%zu adaptive-ambiguous=%d town-shortcut=%d.",
         batch.levelId,
         preferredProgression.value_or(UnknownNavigationLevelId),
         selectedProgression.value_or(UnknownNavigationLevelId),
         selectedProgression.has_value() ? 1 : 0,
         batch.exitSelectionCount,
-        destinations.size());
+        destinations.size(),
+        batch.routePlan.ambiguousProgression ? 1 : 0,
+        batch.routePlan.allowTownShortcut ? 1 : 0);
     Context->LogInfo(message);
 
     for (std::size_t index = 0U;
@@ -3599,7 +3595,8 @@ void ShutdownNavigationResolver() noexcept {
 auto RefreshNavigationDestinations(
         std::uint64_t sessionGeneration,
         std::int32_t expectedLevelId,
-        std::span<const CustomLevelTarget> customTargets) noexcept
+        std::span<const CustomLevelTarget> customTargets,
+        const NavigationRoutingOptions& routing) noexcept
         -> NavigationRefreshResult {
     if (!Active.load(std::memory_order_acquire)) {
         return NavigationRefreshResult::Failed;
@@ -3619,6 +3616,7 @@ auto RefreshNavigationDestinations(
     if (!EnumerateCurrentLevelUnchecked(
             expectedLevelId,
             std::span(customIds.data(), customIdCount),
+            routing,
             batch)) {
         Rooms.fetch_add(batch.roomCount, std::memory_order_relaxed);
         Presets.fetch_add(batch.presetCount, std::memory_order_relaxed);
@@ -3668,6 +3666,7 @@ auto RefreshNavigationDestinations(
                 customIds.data(),
                 customIdCount),
             .progressionTargetOverride = correctTombProgressionOverride,
+            .routePlan = &batch.routePlan,
         },
         destinations);
 
@@ -3685,15 +3684,15 @@ auto RefreshNavigationDestinations(
         batch.pendingVisibilityTargetCount,
         std::memory_order_relaxed);
 
-    // Publishing an empty town line batch is intentional: it clears any line
-    // from the level active before the transition. The independently retained
-    // waypoint label may still be published below.
+    // Towns publish either their admitted shortcut routes or an empty batch
+    // that clears stale lines. Labels remain independent of this decision.
     if (!BindNavigationLevelForPublish(sessionGeneration, batch.levelId)
         || !PublishNavigationDestinations(
             sessionGeneration,
             batch.levelId,
             destinations.data(),
-            destinationCount)) {
+            destinationCount,
+            batch.routePlan.allowTownShortcut)) {
         Failures.fetch_add(1U, std::memory_order_relaxed);
         return NavigationRefreshResult::Failed;
     }
@@ -3798,11 +3797,12 @@ auto RefreshNavigationDestinations(
         publishedProgressionX,
         publishedProgressionY);
 
-    if (batch.inTown) return NavigationRefreshResult::Complete;
+    if (batch.inTown && !batch.routePlan.allowTownShortcut) return NavigationRefreshResult::Complete;
 
     const auto completeness = EvaluateNavigationResolutionCompleteness(
         batch.levelId,
-        std::span(batch.exits.data(), batch.exitCount));
+        std::span(batch.exits.data(), batch.exitCount),
+        &batch.routePlan);
     if (batch.pendingWaypoint || batch.pendingCorrectTomb
         || batch.pendingCollisionRoomCount != 0U
         || batch.pendingRoomTileRoomCount != 0U
