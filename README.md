@@ -1,11 +1,11 @@
 # RuffnecKk D2RLoader Suite
 
-This repository holds buildable plugin source code. New plugin downloads
+This repository holds buildable plugin source code and research. New plugin downloads
 are distributed individually through the [D2RLoader Hub](https://d2rloader.net/).
 Historical Suite downloads remain available. The Suite 1.4.2 installation notes
 below describe that historical release; current source changes are not a new
 Suite release or a claim that every component has completed runtime testing.
-Research, validation notes, plugin guides, caches, and generated previews stay outside the tracked source tree.
+The [research snapshot](research/README.md) remains available. Plugin guides, caches, and generated previews stay outside the tracked plugin source tree.
 
 
 

@@ -1,0 +1,787 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "ruffneckk-d2r33-datatables-atlas-v1",
+  "targetRuntime": {
+    "version": "3.3.93847",
+    "build": 93847,
+    "architecture": "x86-64"
+  },
+  "corpus": {
+    "workbenchPath": "reverse-engineering/d2r-3.2.92777",
+    "provenanceBuild": 92777,
+    "imageBase": "0x140000000",
+    "canonicalImageSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715",
+    "analysisImageSha256": "673E8C0B2E89563E75525B24D137098EFD07B2DB4ED42ADEC56AA1ADDF0E63AB",
+    "coveredBuilds": [
+      {
+        "build": 92777,
+        "status": "byte-exact",
+        "evidenceIds": ["workbench-manifest"]
+      },
+      {
+        "build": 93847,
+        "status": "byte-exact",
+        "evidenceIds": ["governed-equivalence"]
+      }
+    ]
+  },
+  "dataTables": {
+    "accessorRva": "0x300A90",
+    "contextCount": 4,
+    "globalEntryStride": "0x10",
+    "evidenceIds": ["get-datatables-for-context"]
+  },
+  "scope": {
+    "expectedTableIds": [
+      "states",
+      "skills",
+      "item-stat-cost",
+      "item-types",
+      "objects",
+      "items",
+      "shrines"
+    ],
+    "excluded": [
+      "callback tables and dispatch arrays",
+      "hooks and runtime mutation",
+      "save-format structures",
+      "unproven full record layouts"
+    ]
+  },
+  "evidence": [
+    {
+      "id": "workbench-manifest",
+      "kind": "json-pointer",
+      "path": "reverse-engineering/d2r-3.2.92777/workbench.json",
+      "pointer": "/target",
+      "expected": {
+        "build": 92777,
+        "architecture": "x86-64",
+        "imageBase": "0x140000000"
+      },
+      "supports": ["coverage:92777", "corpus:identity"],
+      "claims": {
+        "coverage:92777": true,
+        "corpus:identity": true
+      }
+    },
+    {
+      "id": "governed-equivalence",
+      "kind": "text-witness",
+      "path": "reverse-engineering/d2r-3.2.92777/findings.md",
+      "needle": "La cible produit D2R 3.3.93847 réutilise le corpus natif vérifié provenant du",
+      "supports": ["coverage:93847"],
+      "claims": { "coverage:93847": true }
+    },
+    {
+      "id": "get-datatables-for-context",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "GetDataTablesForContext",
+      "rva": "0x300A90",
+      "supports": ["datatables:accessor", "datatables:contexts", "datatables:entry-stride"],
+      "claims": {
+        "datatables:accessor": "0x300A90",
+        "datatables:contexts": 4,
+        "datatables:entry-stride": "0x10"
+      }
+    },
+    {
+      "id": "states-stride",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "DATATBLS_CompileStatesTxt_RecordStrideWitness",
+      "rva": "0x3083D7",
+      "supports": ["states:record-size"],
+      "claims": { "states:record-size": "0x44" }
+    },
+    {
+      "id": "states-records",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "DATATBLS_CompileStatesTxt_VectorLayoutWitness",
+      "rva": "0x30843C",
+      "supports": ["states:records"],
+      "claims": { "states:records": "0x290" }
+    },
+    {
+      "id": "states-count",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "STATES_ToggleState_DataTablesLayoutWitness",
+      "rva": "0x3354E0",
+      "supports": ["states:count"],
+      "claims": { "states:count": "0x298" }
+    },
+    {
+      "id": "states-overlay1",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "DATATBLS_CompileStatesTxt_OverlayFieldWitness",
+      "rva": "0x307EB3",
+      "supports": ["states:field:overlay1"],
+      "claims": {
+        "states:field:overlay1": { "offset": "0x2", "size": 2, "type": "uint16_t" }
+      }
+    },
+    {
+      "id": "skills-layout",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "DATATBLS_GetSkillsTxtRecordForContext",
+      "rva": "0x97790",
+      "supports": [
+        "skills:records",
+        "skills:count",
+        "skills:record-size",
+        "skills:field:flags",
+        "skills:field:player-animation",
+        "skills:field:sequence-transition"
+      ],
+      "claims": {
+        "skills:records": "0x11B0",
+        "skills:count": "0x11B8",
+        "skills:record-size": "0x2EC",
+        "skills:field:flags": { "offset": "0x24", "size": 8, "type": "uint64_t" },
+        "skills:field:player-animation": { "offset": "0x30", "size": 1, "type": "uint8_t" },
+        "skills:field:sequence-transition": { "offset": "0x32", "size": 1, "type": "uint8_t" }
+      }
+    },
+    {
+      "id": "skills-item-effect",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "SKILLITEM_HandleItemEffectSkill",
+      "rva": "0x589930",
+      "supports": ["skills:field:item-effect"],
+      "claims": {
+        "skills:field:item-effect": { "offset": "0x20A", "size": 2, "type": "uint16_t" }
+      }
+    },
+    {
+      "id": "item-stat-cost-compile",
+      "kind": "native-site",
+      "path": "reverse-engineering/d2r-3.2.92777/isc12/native-sites.json",
+      "siteId": "loader-generic-compile-call",
+      "rva": "0x31EC7B",
+      "supports": ["item-stat-cost:record-size"],
+      "claims": { "item-stat-cost:record-size": "0x144" }
+    },
+    {
+      "id": "item-stat-cost-count",
+      "kind": "native-site",
+      "path": "reverse-engineering/d2r-3.2.92777/isc12/native-sites.json",
+      "siteId": "loader-count-cap",
+      "rva": "0x31ED31",
+      "supports": ["item-stat-cost:count"],
+      "claims": { "item-stat-cost:count": "0x1260" }
+    },
+    {
+      "id": "item-stat-cost-linker",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "DATATBLS_ItemStatCostStatLinkerDescriptor",
+      "rva": "0x31E35E",
+      "supports": [
+        "item-stat-cost:linker",
+        "item-stat-cost:field:stat-id",
+        "item-stat-cost:post-processing"
+      ],
+      "claims": {
+        "item-stat-cost:linker": "0x1270",
+        "item-stat-cost:field:stat-id": { "offset": "0x0", "size": 2, "type": "uint16_t" },
+        "item-stat-cost:post-processing": true
+      }
+    },
+    {
+      "id": "item-stat-cost-fields",
+      "kind": "native-site",
+      "path": "reverse-engineering/d2r-3.2.92777/isc12/native-sites.json",
+      "siteId": "loader-descfunc-record-layout",
+      "rva": "0x31F0F1",
+      "supports": ["item-stat-cost:field:desc-priority", "item-stat-cost:field:desc-func"],
+      "claims": {
+        "item-stat-cost:field:desc-priority": { "offset": "0x30", "size": 2, "type": "int16_t" },
+        "item-stat-cost:field:desc-func": { "offset": "0x32", "size": 1, "type": "uint8_t" }
+      }
+    },
+    {
+      "id": "item-stat-cost-lifecycle",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "DATATBLS_ItemStatCostStatLinkerTeardown",
+      "rva": "0x313ACE",
+      "supports": ["item-stat-cost:records", "item-stat-cost:post-processing"],
+      "claims": {
+        "item-stat-cost:records": "0x1258",
+        "item-stat-cost:post-processing": true
+      }
+    },
+    {
+      "id": "item-types-layout",
+      "kind": "json-pointer",
+      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/sdk-candidates.json",
+      "pointer": "/compiledTables/1",
+      "expected": {
+        "name": "itemtypes",
+        "recordsOffset": "0x1348",
+        "countOffset": "0x1350",
+        "countType": "uint64_t",
+        "recordSize": "0xE8",
+        "confidence": "high"
+      },
+      "supports": ["item-types:records", "item-types:count", "item-types:record-size"],
+      "claims": {
+        "item-types:records": "0x1348",
+        "item-types:count": "0x1350",
+        "item-types:record-size": "0xE8"
+      }
+    },
+    {
+      "id": "item-types-code",
+      "kind": "text-witness",
+      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "needle": "std::uint32_t code;              // +0x00",
+      "supports": ["item-types:field:code"],
+      "claims": {
+        "item-types:field:code": { "offset": "0x0", "size": 4, "type": "uint32_t" }
+      }
+    },
+    {
+      "id": "item-types-equiv1",
+      "kind": "text-witness",
+      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "needle": "std::uint16_t equivalentTypeOne; // +0x04",
+      "supports": ["item-types:field:equivalent-type-one"],
+      "claims": {
+        "item-types:field:equivalent-type-one": { "offset": "0x4", "size": 2, "type": "uint16_t" }
+      }
+    },
+    {
+      "id": "item-types-equiv2",
+      "kind": "text-witness",
+      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "needle": "std::uint16_t equivalentTypeTwo; // +0x06",
+      "supports": ["item-types:field:equivalent-type-two"],
+      "claims": {
+        "item-types:field:equivalent-type-two": { "offset": "0x6", "size": 2, "type": "uint16_t" }
+      }
+    },
+    {
+      "id": "item-types-repair",
+      "kind": "text-witness",
+      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "needle": "std::uint8_t repair;             // +0x08",
+      "supports": ["item-types:field:repair"],
+      "claims": {
+        "item-types:field:repair": { "offset": "0x8", "size": 1, "type": "uint8_t" }
+      }
+    },
+    {
+      "id": "objects-layout",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "DATATBLS_GetObjectsTxtRecord",
+      "rva": "0x38FD00",
+      "supports": [
+        "objects:records",
+        "objects:count",
+        "objects:record-size",
+        "objects:field:sub-class",
+        "objects:field:lockable",
+        "objects:field:init-fn",
+        "objects:field:operate-fn"
+      ],
+      "claims": {
+        "objects:records": "0x1528",
+        "objects:count": "0x1530",
+        "objects:record-size": "0x168",
+        "objects:field:sub-class": { "offset": "0x127", "size": 1, "type": "uint8_t" },
+        "objects:field:lockable": { "offset": "0x12F", "size": 1, "type": "uint8_t" },
+        "objects:field:init-fn": { "offset": "0x15C", "size": 2, "type": "uint16_t" },
+        "objects:field:operate-fn": { "offset": "0x15E", "size": 2, "type": "uint16_t" }
+      }
+    },
+    {
+      "id": "objects-parm0",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "OBJECTS_InitFunction01_Shrine",
+      "rva": "0x50E450",
+      "supports": ["objects:field:parm0"],
+      "claims": {
+        "objects:field:parm0": { "offset": "0x134", "size": 4, "type": "int32_t" }
+      }
+    },
+    {
+      "id": "items-layout",
+      "kind": "json-pointer",
+      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/sdk-candidates.json",
+      "pointer": "/compiledTables/2",
+      "expected": {
+        "name": "items",
+        "recordsOffset": "0x15A0",
+        "countOffset": "0x15A8",
+        "countType": "uint64_t",
+        "recordSize": "0x1C0",
+        "confidence": "high"
+      },
+      "supports": ["items:records", "items:count", "items:record-size"],
+      "claims": {
+        "items:records": "0x15A0",
+        "items:count": "0x15A8",
+        "items:record-size": "0x1C0"
+      }
+    },
+    {
+      "id": "items-compile",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "DATATBLS_CompileItemsTxt",
+      "rva": "0x315FD0",
+      "supports": ["items:post-processing"],
+      "claims": { "items:post-processing": true }
+    },
+    {
+      "id": "items-durability",
+      "kind": "text-witness",
+      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "needle": "std::uint8_t durability;       // +0x121",
+      "supports": ["items:field:durability"],
+      "claims": {
+        "items:field:durability": { "offset": "0x121", "size": 1, "type": "uint8_t" }
+      }
+    },
+    {
+      "id": "items-no-durability",
+      "kind": "text-witness",
+      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "needle": "std::uint8_t noDurability;     // +0x122",
+      "supports": ["items:field:no-durability"],
+      "claims": {
+        "items:field:no-durability": { "offset": "0x122", "size": 1, "type": "uint8_t" }
+      }
+    },
+    {
+      "id": "items-primary-type",
+      "kind": "text-witness",
+      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "needle": "std::uint16_t primaryType;     // +0x12E",
+      "supports": ["items:field:primary-type"],
+      "claims": {
+        "items:field:primary-type": { "offset": "0x12E", "size": 2, "type": "uint16_t" }
+      }
+    },
+    {
+      "id": "shrines-layout",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "DATATBLS_GetShrinesTxtRecord",
+      "rva": "0x38FE40",
+      "supports": ["shrines:records", "shrines:count", "shrines:record-size"],
+      "claims": {
+        "shrines:records": "0x19B0",
+        "shrines:count": "0x19B8",
+        "shrines:record-size": "0x1C"
+      }
+    },
+    {
+      "id": "shrines-level-min",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "OBJECTS_InitFunction01_ShrineSelectionLoop",
+      "rva": "0x50E510",
+      "supports": ["shrines:field:level-min"],
+      "claims": {
+        "shrines:field:level-min": { "offset": "0x18", "size": 1, "type": "uint8_t" }
+      }
+    }
+  ],
+  "tables": [
+    {
+      "id": "states",
+      "displayName": "StatesTxt",
+      "sourceTables": ["states.txt"],
+      "records": {
+        "status": "proven",
+        "value": "0x290",
+        "evidenceIds": ["states-records"]
+      },
+      "count": {
+        "status": "proven",
+        "value": "0x298",
+        "evidenceIds": ["states-count"]
+      },
+      "recordSize": {
+        "status": "proven",
+        "value": "0x44",
+        "evidenceIds": ["states-stride"]
+      },
+      "recordFields": [
+        {
+          "id": "overlay1",
+          "name": "Overlay1",
+          "offset": "0x2",
+          "size": 2,
+          "type": "uint16_t",
+          "status": "proven",
+          "evidenceIds": ["states-overlay1"]
+        }
+      ],
+      "postProcessing": {
+        "status": "unknown",
+        "summary": "Post-compilation passes are outside A1 and remain unclassified.",
+        "evidenceIds": []
+      }
+    },
+    {
+      "id": "skills",
+      "displayName": "SkillsTxt",
+      "sourceTables": ["skills.txt"],
+      "records": {
+        "status": "proven",
+        "value": "0x11B0",
+        "evidenceIds": ["skills-layout"]
+      },
+      "count": {
+        "status": "proven",
+        "value": "0x11B8",
+        "evidenceIds": ["skills-layout"]
+      },
+      "recordSize": {
+        "status": "proven",
+        "value": "0x2EC",
+        "evidenceIds": ["skills-layout"]
+      },
+      "recordFields": [
+        {
+          "id": "flags",
+          "name": "Flags",
+          "offset": "0x24",
+          "size": 8,
+          "type": "uint64_t",
+          "status": "proven",
+          "evidenceIds": ["skills-layout"]
+        },
+        {
+          "id": "player-animation",
+          "name": "PlayerAnimation",
+          "offset": "0x30",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["skills-layout"]
+        },
+        {
+          "id": "sequence-transition",
+          "name": "SequenceTransition",
+          "offset": "0x32",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["skills-layout"]
+        },
+        {
+          "id": "item-effect",
+          "name": "ItemEffect",
+          "offset": "0x20A",
+          "size": 2,
+          "type": "uint16_t",
+          "status": "proven",
+          "evidenceIds": ["skills-item-effect"]
+        }
+      ],
+      "postProcessing": {
+        "status": "unknown",
+        "summary": "Post-compilation passes are outside A1 and remain unclassified.",
+        "evidenceIds": []
+      }
+    },
+    {
+      "id": "item-stat-cost",
+      "displayName": "ItemStatCostTxt",
+      "sourceTables": ["itemstatcost.txt"],
+      "records": {
+        "status": "proven",
+        "value": "0x1258",
+        "evidenceIds": ["item-stat-cost-lifecycle"]
+      },
+      "count": {
+        "status": "proven",
+        "value": "0x1260",
+        "evidenceIds": ["item-stat-cost-count"]
+      },
+      "linker": {
+        "status": "proven",
+        "value": "0x1270",
+        "evidenceIds": ["item-stat-cost-linker"]
+      },
+      "recordSize": {
+        "status": "proven",
+        "value": "0x144",
+        "evidenceIds": ["item-stat-cost-compile"]
+      },
+      "recordFields": [
+        {
+          "id": "stat-id",
+          "name": "StatId",
+          "offset": "0x0",
+          "size": 2,
+          "type": "uint16_t",
+          "status": "proven",
+          "evidenceIds": ["item-stat-cost-linker"]
+        },
+        {
+          "id": "desc-priority",
+          "name": "DescPriority",
+          "offset": "0x30",
+          "size": 2,
+          "type": "int16_t",
+          "status": "proven",
+          "evidenceIds": ["item-stat-cost-fields"]
+        },
+        {
+          "id": "desc-func",
+          "name": "DescFunc",
+          "offset": "0x32",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["item-stat-cost-fields"]
+        }
+      ],
+      "postProcessing": {
+        "status": "proven",
+        "summary": "Builds a name-to-index linker and a DescFunc ordering vector; linker ownership ends during table teardown.",
+        "evidenceIds": ["item-stat-cost-linker", "item-stat-cost-lifecycle"]
+      }
+    },
+    {
+      "id": "item-types",
+      "displayName": "ItemTypesTxt",
+      "sourceTables": ["itemtypes.txt"],
+      "records": {
+        "status": "proven",
+        "value": "0x1348",
+        "evidenceIds": ["item-types-layout"]
+      },
+      "count": {
+        "status": "proven",
+        "value": "0x1350",
+        "evidenceIds": ["item-types-layout"]
+      },
+      "recordSize": {
+        "status": "proven",
+        "value": "0xE8",
+        "evidenceIds": ["item-types-layout"]
+      },
+      "recordFields": [
+        {
+          "id": "code",
+          "name": "Code",
+          "offset": "0x0",
+          "size": 4,
+          "type": "uint32_t",
+          "status": "proven",
+          "evidenceIds": ["item-types-code"]
+        },
+        {
+          "id": "equivalent-type-one",
+          "name": "EquivalentTypeOne",
+          "offset": "0x4",
+          "size": 2,
+          "type": "uint16_t",
+          "status": "proven",
+          "evidenceIds": ["item-types-equiv1"]
+        },
+        {
+          "id": "equivalent-type-two",
+          "name": "EquivalentTypeTwo",
+          "offset": "0x6",
+          "size": 2,
+          "type": "uint16_t",
+          "status": "proven",
+          "evidenceIds": ["item-types-equiv2"]
+        },
+        {
+          "id": "repair",
+          "name": "Repair",
+          "offset": "0x8",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["item-types-repair"]
+        }
+      ],
+      "postProcessing": {
+        "status": "unknown",
+        "summary": "Equivalence-LUT construction is known to exist but is not catalogued by A1.",
+        "evidenceIds": []
+      }
+    },
+    {
+      "id": "objects",
+      "displayName": "ObjectsTxt",
+      "sourceTables": ["objects.txt"],
+      "records": {
+        "status": "proven",
+        "value": "0x1528",
+        "evidenceIds": ["objects-layout"]
+      },
+      "count": {
+        "status": "proven",
+        "value": "0x1530",
+        "evidenceIds": ["objects-layout"]
+      },
+      "recordSize": {
+        "status": "proven",
+        "value": "0x168",
+        "evidenceIds": ["objects-layout"]
+      },
+      "recordFields": [
+        {
+          "id": "sub-class",
+          "name": "SubClass",
+          "offset": "0x127",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["objects-layout"]
+        },
+        {
+          "id": "lockable",
+          "name": "Lockable",
+          "offset": "0x12F",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["objects-layout"]
+        },
+        {
+          "id": "parm0",
+          "name": "Parm0",
+          "offset": "0x134",
+          "size": 4,
+          "type": "int32_t",
+          "status": "candidate",
+          "evidenceIds": ["objects-parm0"],
+          "notes": "The offset and dword consumer are governed; a compiler descriptor has not yet been promoted."
+        },
+        {
+          "id": "init-fn",
+          "name": "InitFn",
+          "offset": "0x15C",
+          "size": 2,
+          "type": "uint16_t",
+          "status": "proven",
+          "evidenceIds": ["objects-layout"]
+        },
+        {
+          "id": "operate-fn",
+          "name": "OperateFn",
+          "offset": "0x15E",
+          "size": 2,
+          "type": "uint16_t",
+          "status": "proven",
+          "evidenceIds": ["objects-layout"]
+        }
+      ],
+      "postProcessing": {
+        "status": "unknown",
+        "summary": "Post-compilation passes are outside A1 and remain unclassified.",
+        "evidenceIds": []
+      }
+    },
+    {
+      "id": "items",
+      "displayName": "ItemsTxt",
+      "sourceTables": ["armor.txt", "weapons.txt", "misc.txt"],
+      "records": {
+        "status": "proven",
+        "value": "0x15A0",
+        "evidenceIds": ["items-layout"]
+      },
+      "count": {
+        "status": "proven",
+        "value": "0x15A8",
+        "evidenceIds": ["items-layout"]
+      },
+      "recordSize": {
+        "status": "proven",
+        "value": "0x1C0",
+        "evidenceIds": ["items-layout"]
+      },
+      "recordFields": [
+        {
+          "id": "durability",
+          "name": "Durability",
+          "offset": "0x121",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["items-durability"]
+        },
+        {
+          "id": "no-durability",
+          "name": "NoDurability",
+          "offset": "0x122",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["items-no-durability"]
+        },
+        {
+          "id": "primary-type",
+          "name": "PrimaryType",
+          "offset": "0x12E",
+          "size": 2,
+          "type": "uint16_t",
+          "status": "proven",
+          "evidenceIds": ["items-primary-type"]
+        }
+      ],
+      "postProcessing": {
+        "status": "proven",
+        "summary": "Compiles armor, weapons and misc records, concatenates them into one Items vector and builds associated lookup structures.",
+        "evidenceIds": ["items-compile"]
+      }
+    },
+    {
+      "id": "shrines",
+      "displayName": "ShrinesTxt",
+      "sourceTables": ["shrines.txt"],
+      "records": {
+        "status": "proven",
+        "value": "0x19B0",
+        "evidenceIds": ["shrines-layout"]
+      },
+      "count": {
+        "status": "proven",
+        "value": "0x19B8",
+        "evidenceIds": ["shrines-layout"]
+      },
+      "recordSize": {
+        "status": "proven",
+        "value": "0x1C",
+        "evidenceIds": ["shrines-layout"]
+      },
+      "recordFields": [
+        {
+          "id": "level-min",
+          "name": "LevelMin",
+          "offset": "0x18",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "candidate",
+          "evidenceIds": ["shrines-level-min"],
+          "notes": "The consumer proves the offset; the byte width remains a candidate until its compiler descriptor is promoted."
+        }
+      ],
+      "postProcessing": {
+        "status": "unknown",
+        "summary": "Post-compilation passes are outside A1 and remain unclassified.",
+        "evidenceIds": []
+      }
+    }
+  ]
+}

@@ -33,7 +33,6 @@ SHA256SUMS
 
 # Laboratory material is local; the public repository contains buildable source.
 /analysis-cache/
-/research/
 /plugins/**/*.md
 !/plugins/**/THIRD-PARTY-NOTICES.md
 /plugins/vendor-stock-refresh/assets/artwork/generated-footer.png

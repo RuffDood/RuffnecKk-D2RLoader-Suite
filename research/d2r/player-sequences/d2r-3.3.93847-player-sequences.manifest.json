@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "target": {
+    "product": "Diablo II: Resurrected",
+    "version": "3.3",
+    "build": 93847,
+    "nativeCorpusProvenance": "D2R 3.2.92777",
+    "analysisImageSha256": "673E8C0B2E89563E75525B24D137098EFD07B2DB4ED42ADEC56AA1ADDF0E63AB",
+    "imageBase": "0x140000000"
+  },
+  "reference": {
+    "name": "D2MOO",
+    "commit": "19019806df7f3e877fa105b05395d1e3597e2316",
+    "role": "semantic-reference-only",
+    "source": "source/D2Common/src/DataTbls/SequenceTbls.cpp",
+    "policy": "Semantic names and legacy topology only; all addresses and bytes are proved independently in D2R."
+  },
+  "sources": {
+    "plrmode": {
+      "path": "data-vanilla3.3/data/data/global/excel/plrmode.txt",
+      "sha256": "23106DA08603BC215624E2837F3990B5ED4B5521BBE8B4A80B0EA6B6502FB8E3",
+      "roundTripByteExact": true,
+      "eol": "CRLF"
+    },
+    "skills": {
+      "path": "data-vanilla3.3/data/data/global/excel/skills.txt",
+      "sha256": "56944CB6B6B0F3C57F7B690977987A732AFEAFC961FA9DC969E7796E54C93F3F",
+      "roundTripByteExact": true,
+      "eol": "CRLF"
+    }
+  },
+  "nativeLayout": {
+    "sequenceNumberResolverRva": "0x33DBC0",
+    "playerSequenceResolverRva": "0x3CB890",
+    "playerSequenceTableRva": "0x2386650",
+    "weaponClassMapRva": "0x2386730",
+    "staticWeaponClassMapRva": "0x19EAF70",
+    "recordSize": 6,
+    "descriptorSize": 24,
+    "weaponClassCount": 14,
+    "playerSequenceSlotCount": 26,
+    "activePlayerSequenceCount": 25,
+    "descriptorExtraValues": [
+      "0x100"
+    ],
+    "ambiguousStaticGroupSeeds": [
+      {
+        "sequenceId": 6,
+        "rvas": [
+          "0x1992660",
+          "0x1992DF0"
+        ]
+      }
+    ]
+  },
+  "counts": {
+    "legacySemanticArrays": 34,
+    "legacySemanticGroups": 23,
+    "nativeUniqueArrays": 47,
+    "nativeUniqueArrayContents": 44,
+    "nativeRecordRows": 808,
+    "mappingRows": 350,
+    "availableMappings": 235,
+    "unavailableMappings": 115,
+    "currentPlayerSkillRows": 29
+  },
+  "proofs": {
+    "governedImageHashVerified": true,
+    "governedD2MooPinVerified": true,
+    "installedBuildIdentityVerified": true,
+    "runtimeLayoutValidated": true,
+    "selectorAndRoutingWitnessesExact": true,
+    "everyRuntimeGroupHasStaticSeeds": true,
+    "everyRuntimeRecordHasStaticSeeds": true,
+    "legacySemanticRoutingAndBytesExact": true,
+    "generatedTablesRoundTripByteExact": true
+  },
+  "outputs": {
+    "runtime": {
+      "path": "reverse-engineering/d2r-3.2.92777/player-sequences/d2r-3.3.93847-player-sequence-runtime.json",
+      "sha256": "69FC9555EEE79D8380368B664C4E6AF43C5A5AAF8581961E160BCAB0C8592FE7",
+      "bytes": 131479
+    },
+    "records": {
+      "path": "reverse-engineering/d2r-3.2.92777/player-sequences/d2r-3.3.93847-player-sequence-records.tsv",
+      "sha256": "11A013974A6F01205F722BA283A9DDBB88FEA899270A3F5A6B3B35DF80AAA9A8",
+      "bytes": 80727
+    },
+    "mapping": {
+      "path": "reverse-engineering/d2r-3.2.92777/player-sequences/d2r-3.3.93847-player-sequence-map.tsv",
+      "sha256": "8151497ADC42275714CC18F71358C3BC13EAEAE37F22343B0A078C98D5A954F0",
+      "bytes": 40658
+    }
+  },
+  "unresolved": [
+    "The semantic meaning of the 64-bit descriptor field after the two frame counts remains unproved.",
+    "The complete client/server consumer graph beyond the authoritative resolver remains to be inventoried.",
+    "Variable-length replacement safety and ownership are not proved by this documentary extraction.",
+    "No runtime loading or gameplay modification is implemented in this phase."
+  ]
+}
