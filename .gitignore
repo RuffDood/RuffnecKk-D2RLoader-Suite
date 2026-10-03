@@ -30,3 +30,13 @@ SHA256SUMS
 /logs/
 /runtime/
 /validation/
+
+# Laboratory material is local; the public repository contains buildable source.
+/analysis-cache/
+/research/
+/plugins/**/*.md
+!/plugins/**/THIRD-PARTY-NOTICES.md
+/plugins/vendor-stock-refresh/assets/artwork/generated-footer.png
+/plugins/vendor-stock-refresh/assets/artwork/vendor-refresh-frame.png
+/plugins/vendor-stock-refresh/assets/artwork/vendorforge_bg-preview.png
+/plugins/vendor-stock-refresh/assets/artwork/vendorshop_bg-preview.png
