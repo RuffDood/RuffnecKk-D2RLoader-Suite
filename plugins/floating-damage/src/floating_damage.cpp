@@ -46,6 +46,7 @@ const char* kFontPresetLabels[] = {
     "Segoe UI", "Arial", "Calibri", "Georgia", "Verdana", "Tahoma",
     "Trebuchet MS", "Consolas", "Times New Roman", "Courier New",
     "Comic Sans MS", "Impact", "Kodia (active mod asset)",
+    "Exocet (active mod asset, default)",
 };
 struct TickPopup {
     std::string text;
@@ -1227,7 +1228,7 @@ void DrawSettingsPanel(float menuScale)
         cfg.fontIndex = fontIndex;
         showTooltipOnHover(
             "Font",
-            "Choose the typeface used for floating damage numbers.\n\nDefaults to font index 0 (Segoe UI). Kodia is available at index 12 when the active mod provides it; otherwise index 12 safely falls back to Segoe UI.");
+            "Choose the typeface used for floating damage numbers.\n\nThe default is Exocet at index 13. Kodia is available at index 12. Both use the active mod's font assets and fall back to Segoe UI when unavailable.");
 
         settingCheckbox(
             "Color by Damage Type",

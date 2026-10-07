@@ -188,7 +188,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-floating-damage",
     .name = "Floating Damage",
-    .version = "1.5.2",
+    .version = "1.5.3",
     .author = "RuffnecKk",
     .description = "Shows floating combat numbers and rolling damage per second.",
     .flags = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
@@ -1277,8 +1277,9 @@ bool InstallDamageHook() noexcept {
     return true;
 }
 
-std::filesystem::path FindOptionalKodiaFont(
-    const D2RL::PluginContext* context) noexcept {
+std::filesystem::path FindOptionalModFont(
+    const D2RL::PluginContext* context,
+    const char* relativePath) noexcept {
     if (!context) return {};
     try {
         std::vector<std::filesystem::path> candidates;
@@ -1287,9 +1288,9 @@ std::filesystem::path FindOptionalKodiaFont(
             if (context->activeMod && context->activeMod[0] != '\0') {
                 candidates.push_back(
                     root / (std::string(context->activeMod) + ".mpq")
-                        / "data/hd/ui/fonts/kodia.ttf");
+                        / relativePath);
             }
-            candidates.push_back(root / "data/hd/ui/fonts/kodia.ttf");
+            candidates.push_back(root / relativePath);
         };
         if (context->modDirectory)
             appendCandidates(std::filesystem::path(context->modDirectory));
@@ -1563,7 +1564,7 @@ auto ConsoleCommand(
         std::snprintf(
             message,
             sizeof(message),
-        "FloatingDamage 1.5.2: enabled=%s; runtime=%s; diagnostics=%s; in_game=%s; input_action=%s; renderer_role=%s; overlay_hooks=%s; presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; direct=%llu; periodic=%llu; queued=%llu; projected=%llu; rejected=%llu; forced=%llu; missed=%llu; request_drops=%llu; active=%zu; pending=%zu; font=%d; display=%.0fx%.0f; scale=%.3f.",
+        "FloatingDamage 1.5.3: enabled=%s; runtime=%s; diagnostics=%s; in_game=%s; input_action=%s; renderer_role=%s; overlay_hooks=%s; presents=%llu; queues=%llu; imgui_attempts=%llu; imgui_failures=%llu; init_stage=%u; overlay_frames=%llu; camera_frames=%llu; context_misses=%llu; captured=%llu; direct=%llu; periodic=%llu; queued=%llu; projected=%llu; rejected=%llu; forced=%llu; missed=%llu; request_drops=%llu; active=%zu; pending=%zu; font=%d; display=%.0fx%.0f; scale=%.3f.",
             enabled ? "true" : "false",
             RuntimeActive.load(std::memory_order_acquire) ? "active" : "not installed",
             config.diagnosticsEnabled ? "true" : "false",
@@ -1761,7 +1762,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     if (!FloatingDamage::GetConfig().enabled) {
         D3D12::SetDiagnosticLogCallback(nullptr);
         context->LogInfo(
-        "Floating Damage 1.5.2 by RuffnecKk disabled; no input action, renderer or combat hook was installed.");
+        "Floating Damage 1.5.3 by RuffnecKk disabled; no input action, renderer or combat hook was installed.");
         return true;
     }
     if (!RegisterInputAction())
@@ -1771,15 +1772,24 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
         return false;
     }
     D3D12::SetDllModule(Module);
-    const auto kodiaFont = FindOptionalKodiaFont(context);
+    const auto kodiaFont = FindOptionalModFont(context, "data/hd/ui/fonts/kodia.ttf");
+    const auto exocetFont = FindOptionalModFont(
+        context, "data/hd/ui/fonts/exocetblizzardot-medium.otf");
     D3D12::SetOptionalKodiaFontPath(
         kodiaFont.empty() ? nullptr : kodiaFont.c_str());
+    D3D12::SetOptionalExocetFontPath(
+        exocetFont.empty() ? nullptr : exocetFont.c_str());
+    context->LogInfo(
+        exocetFont.empty()
+            ? "FloatingDamage: Exocet was not found in the active mod; font index 13 will fall back to index 0."
+            : "FloatingDamage: active-mod Exocet detected for default font index 13.");
     context->LogInfo(
         kodiaFont.empty()
             ? "FloatingDamage: Kodia was not found in the active mod; font index 12 will fall back to index 0."
             : "FloatingDamage: active-mod Kodia detected for font index 12.");
     if (!StartOverlayTransport()) {
         D3D12::SetOptionalKodiaFontPath(nullptr);
+        D3D12::SetOptionalExocetFontPath(nullptr);
         D3D12::SetDiagnosticLogCallback(nullptr);
         UnregisterLifecycleListeners();
         LifecycleService = nullptr;
@@ -1790,6 +1800,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     if (!InstallDamageHook()) {
         StopOverlayTransport();
         D3D12::SetOptionalKodiaFontPath(nullptr);
+        D3D12::SetOptionalExocetFontPath(nullptr);
         D3D12::SetDiagnosticLogCallback(nullptr);
         UnregisterLifecycleListeners();
         LifecycleService = nullptr;
@@ -1799,7 +1810,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
     }
     FloatingDamage::SetTargetScreenPositionProvider(TryProjectTargetToScreen);
     RuntimeActive.store(true, std::memory_order_release);
-    context->LogInfo("FloatingDamage 1.5.2 active after complete native fingerprint validation with direct and periodic HP-loss capture, autonomous rendering when alone, and priority MapSense host coexistence.");
+    context->LogInfo("FloatingDamage 1.5.3 active after complete native fingerprint validation with direct and periodic HP-loss capture, autonomous rendering when alone, and priority MapSense host coexistence.");
     return true;
 }
 
@@ -1838,6 +1849,7 @@ D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     }
     StopOverlayTransport();
     D3D12::SetOptionalKodiaFontPath(nullptr);
+    D3D12::SetOptionalExocetFontPath(nullptr);
     D3D12::SetDiagnosticLogCallback(nullptr);
     gFloatingDamageDirectContinuation = nullptr;
     gFloatingDamagePeriodicContinuation = nullptr;

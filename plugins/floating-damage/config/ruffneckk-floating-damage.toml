@@ -9,13 +9,15 @@ enabled = true
 # Safety limit for active and queued numbers. Valid range: 1 to 4096.
 max_numbers_on_screen = 160
 
-# Windows font index:
+# Font index (13 Exocet is the default):
 # 0 Segoe UI, 1 Arial, 2 Calibri, 3 Georgia, 4 Verdana, 5 Tahoma,
 # 6 Trebuchet MS, 7 Consolas, 8 Times New Roman, 9 Courier New,
-# 10 Comic Sans MS, 11 Impact, 12 Kodia.
+# 10 Comic Sans MS, 11 Impact, 12 Kodia, 13 Exocet.
 # Kodia is read from the active mod at data/hd/ui/fonts/kodia.ttf and is not
-# bundled. If it cannot be loaded, index 12 safely falls back to index 0.
-font_index = 0
+# bundled. Exocet is read from the active mod at
+# data/hd/ui/fonts/exocetblizzardot-medium.otf and is not bundled either.
+# If either mod font is unavailable, its index safely falls back to index 0.
+font_index = 13
 
 # false uses the normal/critical colors for every hit. true uses the physical,
 # fire, lightning, cold, poison, and magic colors below.

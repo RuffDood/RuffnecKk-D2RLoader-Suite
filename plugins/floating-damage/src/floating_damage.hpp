@@ -73,7 +73,7 @@ struct Config {
     int previewNumberCount = 8;
     float previewSpread = 32.0f;
 
-    int fontIndex = 0;
+    int fontIndex = 13;
 
     bool colorByDamageType = false;
     ImVec4 normalColor = ImVec4(0.92f, 0.92f, 0.88f, 1.0f);

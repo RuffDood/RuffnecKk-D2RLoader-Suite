@@ -34,14 +34,16 @@ $resource = Get-Content -Raw -LiteralPath (
 $config = Get-Content -Raw -LiteralPath (
     Join-Path $PluginDirectory 'config\ruffneckk-floating-damage.toml')
 
-Assert-Policy ($rendererHeader -match 'kFloatingDamageFontCount\s*=\s*13') `
-    'the public font range must include Kodia index 12'
+Assert-Policy ($rendererHeader -match 'kFloatingDamageFontCount\s*=\s*14') `
+    'the public font range must include Exocet index 13'
 Assert-Policy ($renderer -match 'constexpr\s+int\s+KodiaFontIndex\s*=\s*12') `
     'Kodia must keep stable font index 12'
 Assert-Policy ($renderer -match 'std::vector<unsigned char>\s+ModFontBytes') `
     'the active-mod font bytes must use persistent ModFontBytes storage'
-Assert-Policy ($renderer -match 'AddFontFromMemoryTTF\([\s\S]*?ModFontBytes\.data\(\)') `
+Assert-Policy ($renderer -match 'LoadModFont\(KodiaFontIndex, OptionalKodiaFontPath, ModFontBytes') `
     'Kodia must be rebuilt from persistent ModFontBytes'
+Assert-Policy ($renderer -match 'LoadModFont\(ExocetFontIndex, OptionalExocetFontPath, ExocetFontBytes') `
+    'Exocet must be rebuilt from persistent ExocetFontBytes'
 
 $resetRenderer = [regex]::Match(
     $renderer,
@@ -49,11 +51,13 @@ $resetRenderer = [regex]::Match(
 Assert-Policy $resetRenderer.Success 'ResetRenderer could not be audited'
 Assert-Policy (-not $resetRenderer.Value.Contains('ModFontBytes.clear()')) `
     'ResetRenderer must retain Kodia bytes across 4K/2K swap-chain rebuilds'
+Assert-Policy (-not $resetRenderer.Value.Contains('ExocetFontBytes.clear()')) `
+    'ResetRenderer must retain Exocet bytes across swap-chain rebuilds'
 Assert-Policy ($renderer -match 'FailRendererInitialization\([\s\S]*?ResetRendererState\(\)') `
     'partial ImGui initialization failures must release renderer state'
 
-Assert-Policy ($config -match '(?m)^font_index\s*=\s*0\s*$') `
-    'the shipped configuration must retain the Community Pack default font index'
+Assert-Policy ($config -match '(?m)^font_index\s*=\s*13\s*$') `
+    'the shipped configuration must default to Exocet index 13'
 Assert-Policy ($config -match '(?m)^enabled\s*=\s*true\s*$') `
     'the shipped configuration must enable the plugin by default'
 Assert-Policy ($config -match '(?ms)^\[diagnostics\].*?^enabled\s*=\s*false\s*$') `
@@ -159,10 +163,10 @@ Assert-Policy (-not $plugin.Contains('only D2R builds')) `
     'compatibility refusal must be based on the native fingerprint, not named builds'
 Assert-Policy ($plugin -match 'validating the complete native fingerprint') `
     'the observed build name must remain diagnostic while the full fingerprint is checked'
-Assert-Policy ($plugin -match '\.version\s*=\s*"1\.5\.2"') `
-    'the plugin metadata must identify the Loader 1.3.1 compatibility update as 1.5.2'
-Assert-Policy ($resource -match 'FILEVERSION\s+1,5,2,0') `
-    'the Windows file version must identify the Loader 1.3.1 compatibility update as 1.5.2'
+Assert-Policy ($plugin -match '\.version\s*=\s*"1\.5\.3"') `
+    'the plugin metadata must identify the Exocet default update as 1.5.3'
+Assert-Policy ($resource -match 'FILEVERSION\s+1,5,3,0') `
+    'the Windows file version must identify the Exocet default update as 1.5.3'
 Assert-Policy ($plugin -match 'GetModuleHandleW\(\s*L"d2rl-ruffneckk-mapsense\.dll"\)') `
     'the renderer handoff must resolve the canonical public MapSense module name'
 Assert-Policy ($plugin -match 'GetModuleHandleW\(L"RuffnecKkMapSense\.dll"\)') `

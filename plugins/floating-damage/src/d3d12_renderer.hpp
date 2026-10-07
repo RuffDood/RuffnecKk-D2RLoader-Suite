@@ -16,7 +16,7 @@ struct ImFont;
 
 namespace D3D12 {
 
-constexpr int kFloatingDamageFontCount = 13;
+constexpr int kFloatingDamageFontCount = 14;
 using DiagnosticLogCallback = void(__cdecl*)(const char* message) noexcept;
 
 struct OverlayDiagnostics {
@@ -33,6 +33,7 @@ struct OverlayDiagnostics {
 
 void SetDllModule(HMODULE module) noexcept;
 void SetOptionalKodiaFontPath(const wchar_t* path) noexcept;
+void SetOptionalExocetFontPath(const wchar_t* path) noexcept;
 void SetDiagnosticLogCallback(DiagnosticLogCallback callback) noexcept;
 void SetExternalOverlayAvailability(bool available) noexcept;
 bool RegisterNamedExternalOverlay(

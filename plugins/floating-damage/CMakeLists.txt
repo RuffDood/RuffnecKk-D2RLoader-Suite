@@ -128,6 +128,16 @@ if(BUILD_TESTING)
         COMMAND ruffneckk_floating_damage_tests "${FLOATING_DAMAGE_CONFIG}"
     )
 
+    set(FLOATING_DAMAGE_TEST_EXOCET_FONT "" CACHE FILEPATH
+        "Local Exocet OpenType asset for font atlas validation; never packaged")
+    if(FLOATING_DAMAGE_TEST_EXOCET_FONT)
+        add_test(
+            NAME ruffneckk.floating-damage.exocet-atlas
+            COMMAND ruffneckk_floating_damage_tests
+                "${FLOATING_DAMAGE_CONFIG}" "${FLOATING_DAMAGE_TEST_EXOCET_FONT}"
+        )
+    endif()
+
     if(MSVC)
         get_filename_component(FLOATING_DAMAGE_MSVC_BIN_DIR
             "${CMAKE_LINKER}" DIRECTORY

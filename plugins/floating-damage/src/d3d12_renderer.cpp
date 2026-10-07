@@ -123,6 +123,8 @@ enum DiagnosticMessage : std::uint32_t {
     KodiaUnavailableMessage = 1u << 6,
     FenceWaitFailedMessage = 1u << 7,
     FenceSignalFailedMessage = 1u << 8,
+    ExocetLoadedMessage = 1u << 9,
+    ExocetUnavailableMessage = 1u << 10,
 };
 
 struct HookCallGuard {
@@ -175,12 +177,15 @@ bool FailRendererInitialization(
 
 std::array<ImFont*, kFloatingDamageFontCount> FloatingFonts{};
 std::filesystem::path OptionalKodiaFontPath;
-// Kodia belongs to the active mod and is not distributed in this DLL. Keep
-// its bytes alive across ResetRenderer() so an ImGui rebuild after a 4K/2K
-// swap-chain resize can add font index 12 again from the same stable buffer.
+std::filesystem::path OptionalExocetFontPath;
+// Mod fonts are not distributed in this DLL. Keep their bytes alive across
+// ResetRenderer() so an ImGui rebuild after a swap-chain resize can add
+// indices 12 and 13 again from the same stable buffers.
 std::vector<unsigned char> ModFontBytes;
+std::vector<unsigned char> ExocetFontBytes;
 constexpr int SystemFontCount = 12;
 constexpr int KodiaFontIndex = 12;
+constexpr int ExocetFontIndex = 13;
 constexpr std::array<const char*, SystemFontCount> SystemFontFiles{
     "segoeui.ttf", "arial.ttf", "calibri.ttf", "georgia.ttf",
     "verdana.ttf", "tahoma.ttf", "trebuc.ttf", "consola.ttf",
@@ -232,8 +237,8 @@ void ResetRendererState() noexcept {
     CapturedQueue.store(nullptr, std::memory_order_release);
     CommandQueue.Reset();
     FloatingFonts.fill(nullptr);
-    // ModFontBytes deliberately survives renderer resets and resolution
-    // changes. ImGui receives it again when the font atlas is recreated.
+    // Both mod font buffers survive renderer resets and resolution changes.
+    // ImGui receives them again when the font atlas is recreated.
     NextFenceValue = 1;
     LastFrameTime = {};
 }
@@ -243,13 +248,15 @@ void ResetRenderer() noexcept {
     ResetRendererState();
 }
 
-bool EnsureModFontBytes() noexcept {
-    if (!ModFontBytes.empty()) return true;
-    if (OptionalKodiaFontPath.empty()) return false;
+bool EnsureModFontBytes(
+    const std::filesystem::path& path,
+    std::vector<unsigned char>& bytes) noexcept {
+    if (!bytes.empty()) return true;
+    if (path.empty()) return false;
 
     try {
         std::ifstream file(
-            OptionalKodiaFontPath,
+            path,
             std::ios::binary | std::ios::ate);
         const std::streampos end = file ? file.tellg() : std::streampos{};
         if (!file || end <= 0
@@ -265,12 +272,43 @@ bool EnsureModFontBytes() noexcept {
                 static_cast<std::streamsize>(loaded.size()))) {
             return false;
         }
-        ModFontBytes = std::move(loaded);
+        bytes = std::move(loaded);
         return true;
     }
     catch (...) {
         return false;
     }
+}
+
+void LoadModFont(
+    int index,
+    const std::filesystem::path& path,
+    std::vector<unsigned char>& bytes,
+    const char* name,
+    DiagnosticMessage unavailableMessage,
+    DiagnosticMessage loadedMessage,
+    const char* unavailableText,
+    const char* loadedText) noexcept {
+    FloatingFonts[index] = nullptr;
+    if (path.empty()) return;
+    if (!EnsureModFontBytes(path, bytes)) {
+        LogDiagnosticOnce(unavailableMessage, unavailableText);
+        return;
+    }
+
+    ImFontConfig config{};
+    config.OversampleH = 1;
+    config.OversampleV = 1;
+    config.PixelSnapH = true;
+    config.FontDataOwnedByAtlas = false;
+    strncpy_s(config.Name, name, _TRUNCATE);
+    // ImGui's stb engine handles both TrueType and OpenType CFF assets here.
+    FloatingFonts[index] = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
+        bytes.data(), static_cast<int>(bytes.size()), 32.0f, &config,
+        ImGui::GetIO().Fonts->GetGlyphRangesDefault());
+    LogDiagnosticOnce(
+        FloatingFonts[index] ? loadedMessage : unavailableMessage,
+        FloatingFonts[index] ? loadedText : unavailableText);
 }
 
 bool LoadFonts() noexcept {
@@ -314,36 +352,14 @@ bool LoadFonts() noexcept {
         }
     }
 
-    FloatingFonts[KodiaFontIndex] = nullptr;
-    if (OptionalKodiaFontPath.empty()) return true;
-    if (!EnsureModFontBytes()) {
-        LogDiagnosticOnce(
-            KodiaUnavailableMessage,
-            "FloatingDamage: Kodia could not be read from the active mod; font index 12 falls back to index 0.");
-        return true;
-    }
-
-    ImFontConfig config{};
-    config.OversampleH = 1;
-    config.OversampleV = 1;
-    config.PixelSnapH = true;
-    config.FontDataOwnedByAtlas = false;
-    strncpy_s(config.Name, "FloatingDamageFont12-Kodia", _TRUNCATE);
-    FloatingFonts[KodiaFontIndex] = io.Fonts->AddFontFromMemoryTTF(
-        ModFontBytes.data(),
-        static_cast<int>(ModFontBytes.size()),
-        32.0f,
-        &config,
-        io.Fonts->GetGlyphRangesDefault());
-    if (!FloatingFonts[KodiaFontIndex]) {
-        LogDiagnosticOnce(
-            KodiaUnavailableMessage,
-            "FloatingDamage: Kodia was rejected by the font atlas; font index 12 falls back to index 0.");
-        return true;
-    }
-    LogDiagnosticOnce(
-        KodiaLoadedMessage,
+    LoadModFont(KodiaFontIndex, OptionalKodiaFontPath, ModFontBytes,
+        "FloatingDamageFont12-Kodia", KodiaUnavailableMessage, KodiaLoadedMessage,
+        "FloatingDamage: Kodia could not be loaded from the active mod; font index 12 falls back to index 0.",
         "FloatingDamage: active-mod Kodia loaded as font index 12.");
+    LoadModFont(ExocetFontIndex, OptionalExocetFontPath, ExocetFontBytes,
+        "FloatingDamageFont13-Exocet", ExocetUnavailableMessage, ExocetLoadedMessage,
+        "FloatingDamage: Exocet could not be loaded from the active mod; font index 13 falls back to index 0.",
+        "FloatingDamage: active-mod Exocet loaded as font index 13.");
     return true;
 }
 
@@ -717,6 +733,25 @@ void SetOptionalKodiaFontPath(const wchar_t* path) noexcept {
         OptionalKodiaFontPath.clear();
         if (!RendererInitialized)
             ModFontBytes.clear();
+    }
+}
+
+void SetOptionalExocetFontPath(const wchar_t* path) noexcept {
+    std::scoped_lock lock(RenderMutex);
+    try {
+        const std::filesystem::path requested = path
+            ? std::filesystem::path(path)
+            : std::filesystem::path{};
+        if (requested == OptionalExocetFontPath) return;
+        OptionalExocetFontPath = requested;
+        // The lifecycle clears this only after the renderer releases its atlas.
+        if (!RendererInitialized)
+            ExocetFontBytes.clear();
+    }
+    catch (...) {
+        OptionalExocetFontPath.clear();
+        if (!RendererInitialized)
+            ExocetFontBytes.clear();
     }
 }
 

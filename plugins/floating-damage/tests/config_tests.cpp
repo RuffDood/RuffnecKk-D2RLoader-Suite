@@ -2,6 +2,7 @@
 #include "default_config.hpp"
 
 #include <cmath>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -52,11 +53,49 @@ bool AcceptLegacyHotkeyWithoutApplying(std::string_view text) {
         && output.fontIndex == defaults.fontIndex;
 }
 
+bool CheckExocetAtlas(const char* path) {
+    std::ifstream input(path, std::ios::binary);
+    // ImGui borrows the same stable bytes again after an atlas rebuild.
+    std::string bytes{std::istreambuf_iterator<char>(input),
+        std::istreambuf_iterator<char>()};
+    if (!Expect(input.is_open() && !input.bad() && bytes.size() > 4,
+            "Could not read the Exocet test asset.")) return false;
+    if (!Expect(bytes.compare(0, 4, "OTTO") == 0,
+            "Expected the actual OpenType CFF Exocet asset.")) return false;
+    bool ok = true;
+    for (int rebuild = 0; rebuild < 2; ++rebuild) {
+        ImFontAtlas atlas;
+        ImFontConfig settings{};
+        settings.FontDataOwnedByAtlas = false;
+        settings.OversampleH = 1;
+        settings.OversampleV = 1;
+        settings.PixelSnapH = true;
+        ImFont* font = atlas.AddFontFromMemoryTTF(bytes.data(),
+            static_cast<int>(bytes.size()), 32.0f, &settings,
+            atlas.GetGlyphRangesDefault());
+        if (!Expect(font != nullptr && atlas.Build(),
+                "Exocet atlas creation or rebuild failed.")) return false;
+        for (ImWchar digit = '0'; digit <= '9'; ++digit) {
+            const ImFontGlyph* glyph = font->FindGlyphNoFallback(digit);
+            ok &= Expect(glyph != nullptr && glyph->Visible
+                && glyph->AdvanceX > 0.0f && glyph->X1 > glyph->X0
+                && glyph->Y1 > glyph->Y0,
+                "Exocet damage digit did not rasterize.");
+        }
+        unsigned char* pixels = nullptr;
+        int width = 0, height = 0;
+        atlas.GetTexDataAsAlpha8(&pixels, &width, &height);
+        ok &= Expect(pixels != nullptr && width > 0 && height > 0,
+            "Exocet atlas pixels are missing.");
+    }
+    return ok;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 2) {
-        std::cerr << "Expected the shipped TOML path.\n";
+    if (argc != 2 && argc != 3) {
+        std::cerr << "Expected the shipped TOML path and optional Exocet asset path.\n";
         return 2;
     }
     std::ifstream input(argv[1], std::ios::binary);
@@ -76,7 +115,19 @@ int main(int argc, char** argv) {
     ok &= Expect(config.enabled, "enabled mismatch");
     ok &= Expect(!config.diagnosticsEnabled, "diagnostics mismatch");
     ok &= Expect(config.maxNumbersOnScreen == 160, "max_numbers mismatch");
-    ok &= Expect(config.fontIndex == 0, "default font_index mismatch");
+    ok &= Expect(config.fontIndex == 13, "default font_index mismatch");
+    const FloatingDamage::Config defaults{};
+    ok &= Expect(defaults.fontIndex == 13, "constructed font default mismatch");
+    FloatingDamage::Config sparse{};
+    ok &= Expect(FloatingDamage::ParseConfigToml(
+        "[general]\nenabled = true\n", sparse, error) && sparse.fontIndex == 13,
+        "omitted font setting must default to Exocet");
+    for (int index = 0; index <= 13; ++index) {
+        FloatingDamage::Config selected{};
+        const std::string text = "[general]\nfont_index = " + std::to_string(index) + "\n";
+        ok &= Expect(FloatingDamage::ParseConfigToml(text, selected, error)
+            && selected.fontIndex == index, "explicit font selection changed");
+    }
     ok &= Expect(!config.colorByDamageType, "color_by_damage_type mismatch");
 
     auto legacyShipped = shipped;
@@ -101,10 +152,10 @@ int main(int argc, char** argv) {
     }
 
     auto kodiaConfig = shipped;
-    const auto defaultFont = kodiaConfig.find("font_index = 0");
+    const auto defaultFont = kodiaConfig.find("font_index = 13");
     ok &= Expect(defaultFont != std::string::npos, "default font setting missing");
     if (defaultFont != std::string::npos) {
-        kodiaConfig.replace(defaultFont, std::string("font_index = 0").size(),
+        kodiaConfig.replace(defaultFont, std::string("font_index = 13").size(),
             "font_index = 12");
         FloatingDamage::Config kodia{};
         std::string kodiaError;
@@ -171,7 +222,7 @@ int main(int argc, char** argv) {
     ok &= Expect(RejectWithoutMutation("[general]\ntoggle_hotkey = \"D\"\n"), "wrong-table key accepted");
     ok &= Expect(RejectWithoutMutation("[general]\nmax_numbers_on_screen = nope\n"), "bad integer accepted");
     ok &= Expect(RejectWithoutMutation("[animation]\nspawn_size = nan\n"), "non-finite number accepted");
-    ok &= Expect(RejectWithoutMutation("[general]\nfont_index = 13\n"), "out-of-range font accepted");
+    ok &= Expect(RejectWithoutMutation("[general]\nfont_index = 14\n"), "out-of-range font accepted");
     ok &= Expect(RejectWithoutMutation("[colors]\nnormal = [1.1, 0, 0, 1]\n"), "out-of-range color accepted");
     ok &= Expect(AcceptLegacyHotkeyWithoutApplying(
         "[hotkey]\n"
@@ -184,5 +235,6 @@ int main(int argc, char** argv) {
     ok &= Expect(RejectWithoutMutation("enabled = true\n"), "setting before table accepted");
     ok &= Expect(RejectWithoutMutation("[general\nenabled = true\n"), "malformed table accepted");
 
+    if (argc == 3) ok &= CheckExocetAtlas(argv[2]);
     return ok ? 0 : 1;
 }
