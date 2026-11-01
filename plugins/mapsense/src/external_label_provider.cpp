@@ -1,4 +1,5 @@
 #include "external_label_provider.hpp"
+#include "helper_failure_diagnostics.hpp"
 
 #include "external_atlas_cache.hpp"
 #include "mapsense_data_catalog.hpp"
@@ -440,6 +441,36 @@ void RememberFailedRequestLocked(const RequestKey& key) noexcept {
     }
 }
 
+void LogHelperCommandFailure(const Request& request, ExternalLabelProviderOperation operation,
+        const char* stage, DWORD windowsError, bool hasExitCode, DWORD exitCode,
+        bool timedOut, std::wstring_view command, std::wstring_view workingDirectory,
+        std::string_view output) noexcept {
+    if (Context == nullptr) return;
+    try {
+        const auto utf8 = [](std::wstring_view text) {
+            if (text.empty() || text.size() > static_cast<std::size_t>(INT_MAX)) return std::string{};
+            const auto length = WideCharToMultiByte(CP_UTF8, 0, text.data(),
+                static_cast<int>(text.size()), nullptr, 0, nullptr, nullptr);
+            if (length <= 0) return std::string{};
+            std::string converted(static_cast<std::size_t>(length), '\0');
+            (void)WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()),
+                converted.data(), length, nullptr, nullptr);
+            return converted;
+        };
+        const auto commandUtf8 = utf8(command);
+        const auto directoryUtf8 = utf8(workingDirectory);
+        const auto message = Detail::FormatHelperFailure({
+            .stage=stage, .operation=static_cast<std::uint32_t>(operation),
+            .seed=request.seed, .difficulty=request.difficulty, .act=request.act,
+            .level=request.currentLevelId, .windowsError=windowsError,
+            .exitCodeKnown=hasExitCode, .exitCode=exitCode, .timedOut=timedOut,
+            .command=commandUtf8, .workingDirectory=directoryUtf8, .output=output});
+        Context->LogWarn(message.c_str());
+    } catch (...) {
+        Context->LogWarn("MapSense: helper failed; detailed failure formatting was unavailable.");
+    }
+}
+
 [[nodiscard]] auto RunHelperCommand(
         std::wstring_view arguments,
         const Request& request,
@@ -457,11 +488,17 @@ void RememberFailedRequestLocked(const RequestKey& key) noexcept {
     };
     HANDLE readRaw{};
     HANDLE writeRaw{};
-    if (!CreatePipe(&readRaw, &writeRaw, &security, 0U)) return result;
+    if (!CreatePipe(&readRaw, &writeRaw, &security, 0U)) {
+        LogHelperCommandFailure(request, operation, "create-pipe", GetLastError(),
+            false, 0, false, arguments, {}, {});
+        return result;
+    }
     UniqueHandle readPipe(readRaw);
     UniqueHandle writePipe(writeRaw);
     if (!SetHandleInformation(
             readPipe.Get(), HANDLE_FLAG_INHERIT, 0U)) {
+        LogHelperCommandFailure(request, operation, "pipe-inheritance", GetLastError(),
+            false, 0, false, arguments, {}, {});
         return result;
     }
 
@@ -474,6 +511,8 @@ void RememberFailedRequestLocked(const RequestKey& key) noexcept {
             ? workingDirectoryOverride->wstring()
             : HelperPath.parent_path().wstring();
     } catch (...) {
+        LogHelperCommandFailure(request, operation, "command-allocation", 0,
+            false, 0, false, arguments, {}, {});
         return result;
     }
     std::vector<wchar_t> mutableCommand(command.begin(), command.end());
@@ -501,6 +540,9 @@ void RememberFailedRequestLocked(const RequestKey& key) noexcept {
             workingDirectory.c_str(),
             &startup,
             &processInfo)) {
+        const auto error = GetLastError();
+        LogHelperCommandFailure(request, operation, "create-process", error,
+            false, 0, false, command, workingDirectory, output);
         return result;
     }
     UniqueHandle process(processInfo.hProcess);
@@ -522,23 +564,30 @@ void RememberFailedRequestLocked(const RequestKey& key) noexcept {
 
     const auto started = GetTickCount64();
     bool success = true;
+    const char* failureStage = "process-exit";
+    DWORD failureWindowsError{};
     for (;;) {
         if (!ReadAvailablePipe(readPipe.Get(), output)) {
+            failureStage = "read-output-or-response-limit";
             success = false;
             break;
         }
         const auto wait = WaitForSingleObject(process.Get(), 5U);
         if (wait == WAIT_OBJECT_0) {
             success = ReadAvailablePipe(readPipe.Get(), output);
+            if (!success) failureStage = "drain-output-or-response-limit";
             break;
         }
         if (wait == WAIT_FAILED) {
+            failureStage = "wait-process";
+            failureWindowsError = GetLastError();
             success = false;
             break;
         }
         if (GetTickCount64() - started
             > ExternalLabelProviderOperationTimeoutMilliseconds(operation)) {
             result.timedOut = true;
+            failureStage = "timeout";
             TerminateProcess(process.Get(), ERROR_TIMEOUT);
             WaitForSingleObject(process.Get(), 1'000U);
             success = false;
@@ -564,12 +613,20 @@ void RememberFailedRequestLocked(const RequestKey& key) noexcept {
     DWORD exitCode{};
     const bool hasExitCode = GetExitCodeProcess(process.Get(), &exitCode)
         != FALSE;
+    if (!hasExitCode) {
+        failureStage = "query-exit-code";
+        failureWindowsError = GetLastError();
+    }
     result.cancelled = cancellationRequested
         || (hasExitCode && exitCode == ERROR_CANCELLED);
     if (!hasExitCode || exitCode != 0U || result.cancelled) {
         success = false;
     }
     result.succeeded = success;
+    if (!result.succeeded && !result.cancelled) {
+        LogHelperCommandFailure(request, operation, failureStage, failureWindowsError,
+            hasExitCode, exitCode, result.timedOut, command, workingDirectory, output);
+    }
     return result;
 }
 

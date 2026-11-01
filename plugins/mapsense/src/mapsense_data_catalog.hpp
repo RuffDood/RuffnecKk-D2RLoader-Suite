@@ -304,6 +304,8 @@ public:
             -> const DataCatalogMonStats* {
         return FindMonStats(classId);
     }
+    // Descriptive Class names can repeat; ambiguous textual lookups return null.
+    // Use FindObjectById for the engine's stable row-ordinal identity.
     [[nodiscard]] auto FindObject(std::string_view classId) const noexcept
         -> const DataCatalogObject*;
     [[nodiscard]] auto FindObjectById(std::uint32_t objectId) const noexcept

@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(RuffnecKkMapSense VERSION 2.2.0 LANGUAGES C CXX RC)
+    project(RuffnecKkMapSense VERSION 2.2.2 LANGUAGES C CXX RC)
     include(CTest)
     option(RUFFNECKK_SUITE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
@@ -82,6 +82,8 @@ add_library(ruffneckk_mapsense SHARED
     src/navigation_policy.cpp src/navigation_routing.cpp
     src/navigation_resolver.cpp
     src/native_automap_marker.cpp
+    src/automap_hook_bridge.cpp
+    src/reimagined_stat_compat.cpp
     src/native_automap_missile.cpp
     src/native_automap_poi.cpp
     src/native_ui_state.cpp
@@ -141,6 +143,31 @@ if(MSVC)
 endif()
 
 if(BUILD_TESTING)
+    add_executable(ruffneckk_mapsense_helper_failure_tests src/helper_failure_diagnostics_tests.cpp)
+    target_compile_features(ruffneckk_mapsense_helper_failure_tests PRIVATE cxx_std_20)
+    target_compile_options(ruffneckk_mapsense_helper_failure_tests PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
+    add_test(NAME ruffneckk.mapsense.helper-failure-diagnostics COMMAND ruffneckk_mapsense_helper_failure_tests)
+    add_executable(ruffneckk_mapsense_reimagined_stat_tests
+        src/reimagined_stat_compat.cpp src/reimagined_stat_compat_tests.cpp)
+    target_link_libraries(ruffneckk_mapsense_reimagined_stat_tests PRIVATE
+        RuffnecKk::Common RuffnecKk::NativeStatCompat)
+    target_compile_definitions(ruffneckk_mapsense_reimagined_stat_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_compile_options(ruffneckk_mapsense_reimagined_stat_tests PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
+    set(RUFFNECKK_MAPSENSE_MAPS_TEST_DLL "" CACHE FILEPATH "Offline reference Reimagined Maps DLL")
+    if(RUFFNECKK_MAPSENSE_MAPS_TEST_DLL)
+        add_test(NAME ruffneckk.mapsense.reimagined-stat-redirect
+            COMMAND ruffneckk_mapsense_reimagined_stat_tests "${RUFFNECKK_MAPSENSE_MAPS_TEST_DLL}")
+    endif()
+    add_executable(ruffneckk_mapsense_automap_bridge_tests
+        src/automap_hook_bridge.cpp src/automap_hook_bridge_tests.cpp)
+    target_link_libraries(ruffneckk_mapsense_automap_bridge_tests PRIVATE RuffnecKk::Common)
+    target_compile_definitions(ruffneckk_mapsense_automap_bridge_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_compile_options(ruffneckk_mapsense_automap_bridge_tests PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
+    set(RUFFNECKK_MAPSENSE_PYRE_TEST_DLL "" CACHE FILEPATH "Offline reference Pyre DLL for the compatibility regression")
+    if(RUFFNECKK_MAPSENSE_PYRE_TEST_DLL)
+        add_test(NAME ruffneckk.mapsense.automap-pyre-bridge
+            COMMAND ruffneckk_mapsense_automap_bridge_tests "${RUFFNECKK_MAPSENSE_PYRE_TEST_DLL}")
+    endif()
     add_executable(ruffneckk_mapsense_tracked_native_transform_tests
         src/tracked_native_transform_compat_tests.cpp)
     target_compile_features(ruffneckk_mapsense_tracked_native_transform_tests PRIVATE cxx_std_20)

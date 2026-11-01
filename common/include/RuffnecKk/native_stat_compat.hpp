@@ -33,9 +33,16 @@ struct MemoryReader final {
 using ObserveTrackedTransformFn = bool(*)(void* userData, std::uintptr_t mainImageBase,
     std::uintptr_t targetAddress, std::span<const std::byte> expected,
     TrackedNativeTransform::Observation& observation) noexcept;
+// Optional consumer-owned structural proof for a native import-slot redirect.
+// This only admits the redirect: the complete underlying Core contract remains
+// mandatory, and calls continue through the native entry, preserving the owner.
+using ValidateProviderRedirectFn = bool(*)(void* userData, std::uintptr_t mainImageBase,
+    std::uint32_t nativeRva, std::uintptr_t slotAddress,
+    std::uintptr_t actualTarget, std::uintptr_t expectedCoreTarget) noexcept;
 struct TransformDiagnostics final {
     void* userData{};
     ObserveTrackedTransformFn observe{};
+    ValidateProviderRedirectFn validateProviderRedirect{};
 };
 
 struct DirectCallWitness final { std::uint32_t siteRva; std::uint32_t targetRva; };

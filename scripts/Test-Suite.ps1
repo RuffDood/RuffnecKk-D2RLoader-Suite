@@ -374,7 +374,12 @@ foreach ($entry in $pluginEntries) {
         $approvedIsInGameLookup = $sourceText -match 'GetProcAddress\s*\(\s*core\s*,\s*D2RL::CoreExports::IsInGameInfo\.name\s*\)'
         $approvedCommandLookup = $sourceText -match 'GetProcAddress\s*\(\s*core\s*,\s*D2RL::CoreExports::ExecuteConsoleCommandInfo\.name\s*\)'
         $approvedFloatingDamageLookup = $sourceText -match 'GetProcAddress\s*\(\s*floatingDamage\s*,\s*"RuffnecKkFloatingDamageUseMapSenseOverlayHost"\s*\)'
-        if ($getProcAddressMatches.Count -ne 5 -or -not $approvedD3D12Lookup -or
+        $approvedMapsStatOwnershipLookup =
+            $sourceText -match 'GetProcAddress\(module,\s*"D2RLMapsOwnsStatReaderHook"\)'
+        if (-not $approvedMapsStatOwnershipLookup) {
+            $errors.Add("mapsense must validate the exact Reimagined Maps stat-reader ownership export.")
+        }
+        if ($getProcAddressMatches.Count -ne 6 -or -not $approvedD3D12Lookup -or
             -not $approvedD3D12DebugLookup -or
             -not $approvedIsInGameLookup -or -not $approvedCommandLookup -or
             -not $approvedFloatingDamageLookup) {

@@ -1,4 +1,6 @@
 #include "native_automap_marker.hpp"
+#include "automap_hook_bridge.hpp"
+#include "reimagined_stat_compat.hpp"
 #include "tracked_native_transform_compat.hpp"
 
 #include "navigation_engine.hpp"
@@ -1409,7 +1411,8 @@ __declspec(noinline) void __fastcall HookRenderAutomapUnit(
     RefreshTrackedMonsters(scan);
 }
 
-auto ValidateRuntime(const D2RL::PluginContext* context) noexcept -> bool {
+auto ValidateRuntime(const D2RL::PluginContext* context,
+        Detail::AutomapHookRoute& hookRoute) noexcept -> bool {
     constexpr std::array<std::uint8_t, 10> localContextExpected{
         0x8B, 0x05, 0x2E, 0x84, 0x99, 0x02, 0xC3, 0xCC,
         0xCC, 0xCC};
@@ -1611,7 +1614,7 @@ auto ValidateRuntime(const D2RL::PluginContext* context) noexcept -> bool {
             clientUnitHashTableExpected)
         && Detail::ValidateClientUnitHashLookup(
             context, clientUnitHashLookupExpected, true)
-        && check(RenderAutomapUnitRva, renderUnitExpected);
+        && Detail::QualifyAutomapHookRoute(context, renderUnitExpected, hookRoute);
 }
 
 } // namespace
@@ -1625,7 +1628,8 @@ auto InitializeNativeAutomapMarker(
         return false;
     }
     if (Active.load(std::memory_order_acquire)) return true;
-    if (!ValidateRuntime(context)) {
+    Detail::AutomapHookRoute hookRoute{};
+    if (!ValidateRuntime(context, hookRoute)) {
         context->LogWarn(
             "MapSense: native automap marker signature or ABI mismatch; marker hook refused.");
         return false;
@@ -1636,14 +1640,18 @@ auto InitializeNativeAutomapMarker(
             RuffnecKk::NativeStatCompat::Helper::GetUnitStat)
         | RuffnecKk::NativeStatCompat::ToMask(
             RuffnecKk::NativeStatCompat::Helper::GetUnitAlignment);
+    auto statDiagnostics = RuffnecKk::TrackedNativeTransform::D2RLDiagnosticsContext(context);
+    statDiagnostics.validateProviderRedirect = Detail::ValidateReimaginedStatRedirect;
     if (!candidateUnitStatAdapter.BindCurrentProcess(
             context->exeBase,
             requiredStatHelpers,
-            RuffnecKk::TrackedNativeTransform::D2RLDiagnosticsContext(context))) {
+            statDiagnostics)) {
+        Detail::LogStatAdmissionFailure(context);
         context->LogWarn(
             "MapSense: native stat compatibility admission failed; marker hook refused.");
         return false;
     }
+    context->LogInfo("MapSense: native GetUnitStat and GetUnitAlignment compatibility validated; active stat redirects are preserved.");
     DiagnosticContext = navigationProjectionDiagnosticsEnabled
         ? context
         : nullptr;
@@ -1729,12 +1737,8 @@ auto InitializeNativeAutomapMarker(
         0xEC, 0x40, 0x48, 0x8B, 0xFA, 0x4C, 0x8D, 0x44,
         0x24, 0x68, 0x48, 0x8D, 0x54, 0x24, 0x60, 0x48,
         0x8B, 0xE9, 0xE8, 0xF1, 0x01, 0x00, 0x00, 0x84};
-    if (!context->InstallInlineHook(
-            RenderAutomapUnitRva,
-            renderUnitExpected.data(),
-            static_cast<std::uint32_t>(renderUnitExpected.size()),
-            HookRenderAutomapUnit,
-            &OriginalRenderAutomapUnit)) {
+    if (!Detail::InstallAutomapHookRoute(context, renderUnitExpected,
+            hookRoute, HookRenderAutomapUnit, OriginalRenderAutomapUnit)) {
         ShutdownNativeAutomapMissile();
         Base = nullptr;
         GetLocalDataContext = nullptr;
@@ -1775,6 +1779,7 @@ void ShutdownNativeAutomapMarker() noexcept {
     CollectionEnabled.store(false, std::memory_order_release);
     ImmunityCollectionEnabled.store(false, std::memory_order_release);
     Active.store(false, std::memory_order_release);
+    Detail::RestoreAutomapHookRoute();
     ShutdownNativeAutomapMissile();
     LevelObservedCallback.store(nullptr, std::memory_order_release);
     LevelObservedUserData.store(nullptr, std::memory_order_release);

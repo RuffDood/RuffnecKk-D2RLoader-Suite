@@ -177,8 +177,12 @@ template <typename Value>
     std::uintptr_t destination{};
     std::uintptr_t padding{};
     std::uintptr_t tail{};
-    if (!ReadValue(reader, main, slot, destination) || destination != expectedExport
+    if (!ReadValue(reader, main, slot, destination)
         || !AddOffset(entry, prefix.size(), padding) || !AddOffset(entry, helper.patchSpan, tail)) return false;
+    if (destination != expectedExport
+        && (diagnostics.validateProviderRedirect == nullptr
+            || !diagnostics.validateProviderRedirect(diagnostics.userData,
+                main.base, helper.nativeRva, slot, destination, expectedExport))) return false;
     if (!helper.paddingExpectedHex.empty() && !MatchesHex(reader, main, padding, helper.paddingExpectedHex)) return false;
     if (!MatchesHex(reader, main, tail, helper.unchangedNativeTailExpectedHex)) return false;
 

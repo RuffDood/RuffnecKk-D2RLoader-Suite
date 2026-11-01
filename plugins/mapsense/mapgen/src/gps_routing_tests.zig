@@ -317,3 +317,117 @@ test "GPS context and loaded terrain share the effective table buffers" {
     try t.expectEqual(pf.TeleportRule.forbidden, level.teleport);
     try t.expect(level.cells.len > 0);
 }
+
+test "GPS walking approaches a shortcut from the reachable side of its entrance" {
+    const f = try Fixture.createSized(120, 40);
+    defer f.destroy();
+    // The entrance marker is in a wall. The closest clear cell is on the
+    // disconnected side; the player's usable approach is slightly farther.
+    _ = f.lv.editTerrain(.{ .x0 = 60, .y0 = 0, .x1 = 63, .y1 = 39 }, .{ .add = 1 });
+    var route = try f.query(.{ .x = 10, .y = 20 }, .{ .x = 63, .y = 20 }, .walk);
+    defer route.deinit();
+    const moves = route.legs[0].moves;
+    try t.expectEqual(@as(i32, 10), moves[0].x);
+    try t.expect(moves[moves.len - 1].x < 60);
+    for (moves) |move| try t.expect(crossClear(f.lv, move));
+}
+
+test "GPS walking keeps a clear but disconnected exact destination unreachable" {
+    const f = try Fixture.createSized(120, 40);
+    defer f.destroy();
+    _ = f.lv.editTerrain(.{ .x0 = 60, .y0 = 0, .x1 = 63, .y1 = 39 }, .{ .add = 1 });
+    try t.expectError(error.Unreachable, f.query(.{ .x = 10, .y = 20 }, .{ .x = 66, .y = 20 }, .walk));
+}
+
+test "GPS walking bounds an entrance approach outside the current level" {
+    const f = try Fixture.createSized(120, 40);
+    defer f.destroy();
+    var route = try f.query(.{ .x = 10, .y = 20 }, .{ .x = -1, .y = 20 }, .walk);
+    defer route.deinit();
+    const last = route.legs[0].moves[route.legs[0].moves.len - 1];
+    try t.expect(last.x >= 0 and last.x < 10);
+    try t.expect(crossClear(f.lv, last));
+    try t.expectError(error.GoalBlocked, f.query(.{ .x = 10, .y = 20 }, .{ .x = -49, .y = 20 }, .walk));
+    try t.expectError(error.GoalBlocked, f.query(.{ .x = 10, .y = 20 }, .{ .x = std.math.maxInt(i32), .y = std.math.maxInt(i32) }, .walk));
+    try t.expectError(error.GoalBlocked, f.query(.{ .x = 10, .y = 20 }, .{ .x = std.math.minInt(i32), .y = std.math.minInt(i32) }, .teleport));
+}
+
+fn overrideLevelField(source: []const u8, id: []const u8, name: []const u8, value: []const u8) ![]u8 {
+    var lines = std.mem.splitScalar(u8, source, '\n');
+    var headers = std.mem.splitScalar(u8, lines.next().?, '\t');
+    var id_column: ?usize = null;
+    var field_column: ?usize = null;
+    var column: usize = 0;
+    while (headers.next()) |header| : (column += 1) {
+        if (std.mem.eql(u8, header, "Id")) id_column = column;
+        if (std.mem.eql(u8, header, name)) field_column = column;
+    }
+    const key_column = id_column orelse return error.MissingFixtureColumn;
+    const target_column = field_column orelse return error.MissingFixtureColumn;
+    while (lines.next()) |line| {
+        var fields = std.mem.splitScalar(u8, line, '\t');
+        var matches = false;
+        var target: ?[]const u8 = null;
+        column = 0;
+        while (fields.next()) |field| : (column += 1) {
+            if (column == key_column) matches = std.mem.eql(u8, field, id);
+            if (column == target_column) target = field;
+        }
+        if (!matches) continue;
+        const field = target orelse return error.MissingFixtureField;
+        const offset = @intFromPtr(field.ptr) - @intFromPtr(source.ptr);
+        return std.mem.concat(t.allocator, u8, &.{ source[0..offset], value, source[offset + field.len ..] });
+    }
+    return error.MissingFixtureLevel;
+}
+
+test "GPS generates a QoL Stony Field shortcut with disconnected skipped floors" {
+    var table = try t.allocator.dupe(u8, data.file("Levels"));
+    defer t.allocator.free(table);
+    // Exact a1_stony_shortcut table changes recorded from QoL Map & Waypoint
+    // 9.1: entrances point directly to Dark Wood and the old cave is detached.
+    const changes = [_][3][]const u8{
+        .{ "4", "Vis3", "5" },  .{ "4", "Vis4", "5" },
+        .{ "4", "Vis5", "5" },  .{ "4", "Vis6", "5" },
+        .{ "5", "Vis3", "4" },  .{ "5", "Vis4", "4" },
+        .{ "5", "Vis5", "4" },  .{ "5", "Vis6", "4" },
+        .{ "10", "Vis0", "0" }, .{ "10", "Vis1", "0" },
+        .{ "14", "Vis1", "0" },
+    };
+    for (changes) |change| {
+        const updated = try overrideLevelField(table, change[0], change[1], change[2]);
+        t.allocator.free(table);
+        table = updated;
+    }
+    const environment = try gps.Environment.create(t.allocator, 1337, .hell, .{ .levels = table });
+    defer environment.destroy();
+    try environment.loadAct(0);
+    const level = environment.world.level(4) orelse return error.MissingFixtureLevel;
+    var shortcut_count: usize = 0;
+    var routed = false;
+    const pass = try (try environment.router.navFor(level)).passMapFor(gps.options(.walk).mask, .small);
+    const components = try pass.components(t.allocator);
+    for (level.exits) |exit| {
+        if (exit.to_level == 5) shortcut_count += 1;
+        try t.expect(exit.to_level != 10);
+        if (exit.to_level != 5 or routed) continue;
+        const goal = pf.grid.nearestPassable(pass, exit.x, exit.y, gps.goal_snap_radius) orelse continue;
+        const component = components[pass.index(goal.x, goal.y)];
+        for (components, 0..) |candidate_component, index| {
+            if (candidate_component != component) continue;
+            const x: i32 = @intCast(index % @as(usize, @intCast(level.w)));
+            const y: i32 = @intCast(index / @as(usize, @intCast(level.w)));
+            if (@abs(x - goal.x) + @abs(y - goal.y) < 100) continue;
+            var route = try gps.route(&environment.router, .{ .level = 4, .x = x, .y = y }, .{ .level = 4, .x = exit.x, .y = exit.y }, .walk);
+            defer route.deinit();
+            try t.expect(route.moveCount() >= 2);
+            for (route.legs[0].moves) |move| try t.expect(crossClear(level, move));
+            const follow = (try gps.followGrid(&environment.router, level, .walk)).?;
+            try t.expect(follow.layout.width == @as(u32, @intCast(level.w)));
+            routed = true;
+            break;
+        }
+    }
+    try t.expect(shortcut_count > 0);
+    try t.expect(routed);
+}

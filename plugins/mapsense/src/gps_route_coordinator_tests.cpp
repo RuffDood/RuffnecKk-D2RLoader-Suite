@@ -2,6 +2,7 @@
 #include "gps_route_readiness.hpp"
 #include "native_automap_marker.hpp"
 #include "navigation_policy.hpp"
+#include "navigation_routing.hpp"
 
 #include <algorithm>
 #include <array>
@@ -199,6 +200,103 @@ void CompleteHelperBatch(std::size_t moveCount = 2U) {
     for (std::size_t index = 0U; index < Requests.size(); ++index) {
         CompleteHelperRequest(index, moveCount);
     }
+}
+
+void CheckQolWalkingShortcuts() {
+    struct Shortcut final {
+        std::int32_t from;
+        std::int32_t to;
+        NavigationLineKind kind;
+        bool town{};
+    };
+    const std::array shortcuts{
+        Shortcut{4, 5, NavigationLineKind::Progression},
+        Shortcut{20, 25, NavigationLineKind::Quest},
+        Shortcut{28, 32, NavigationLineKind::Progression},
+        Shortcut{33, 35, NavigationLineKind::Progression},
+        Shortcut{35, 37, NavigationLineKind::Progression},
+        Shortcut{40, 49, NavigationLineKind::Quest, true},
+        Shortcut{43, 64, NavigationLineKind::Quest},
+        Shortcut{40, 74, NavigationLineKind::Progression, true},
+        Shortcut{78, 91, NavigationLineKind::Quest},
+        Shortcut{75, 83, NavigationLineKind::Progression, true},
+        Shortcut{83, 101, NavigationLineKind::Progression},
+        Shortcut{103, 107, NavigationLineKind::Progression, true},
+        Shortcut{113, 118, NavigationLineKind::Progression},
+        Shortcut{120, 129, NavigationLineKind::Progression},
+        Shortcut{129, 131, NavigationLineKind::Progression},
+    };
+    for (const auto shortcut : shortcuts) {
+        ResetGpsRouteCoordinator(41U);
+        ResetNavigationSession(41U);
+        ResetNavigationLevel(41U, shortcut.from);
+        NavigationRoutingOptions options{};
+        options.townShortcuts = shortcut.town;
+        SetNavigationTownShortcutsEnabled(shortcut.town);
+        const auto plan = BuildAdaptiveNavigationRoutePlan(
+            shortcut.from, std::array{shortcut.to}, options, shortcut.town);
+        const std::array exits{NavigationExitCandidate{
+            .destinationId = 101U, .targetLevelId = shortcut.to,
+            .subtileX = 40, .subtileY = 10}};
+        std::array<NavigationSubtileDestination, 8U> destinations{};
+        const auto count = BuildNavigationDestinations({
+            .currentLevelId = shortcut.from, .inTown = shortcut.town,
+            .exits = exits, .routePlan = &plan}, destinations);
+        Check(count == 1U && destinations[0].kind == shortcut.kind,
+            "QoL shortcut lost its adapted destination or line family");
+        auto policy = AcquireNavigationLinePolicySnapshot();
+        for (auto& family : policy.families) family.enabled = false;
+        policy.families[NavigationLineKindIndex(shortcut.kind)] = {
+            true, NavigationLineMode::GpsWalk};
+        (void)PublishNavigationLinePolicy(policy.families);
+        Check(AcquireNavigationLinePolicySnapshot().families == policy.families,
+            "QoL GPS Walk policy failed");
+        Check(PublishNavigationDestinations(41U, shortcut.from,
+            destinations.data(), count, plan.allowTownShortcut), "QoL destination publication failed");
+        Prerequisites = {};
+        Prerequisites.geometryLevel = shortcut.from;
+        NavigationNativePoint client{};
+        Check(ConvertNavigationSubtileToClientCoordinates(10, 10, client), "QoL player conversion failed");
+        NavigationAutomapPass pass{
+            .currentLevelId = shortcut.from, .inTown = shortcut.town,
+            .playerClientX = client.x, .playerClientY = client.y,
+            .hasPlayerSubtile = true, .playerSubtile = {10, 10},
+            .nativeWidth = 4000, .nativeHeight = 4000,
+            .clipLeft = -2000, .clipTop = -2000, .clipWidth = 4000, .clipHeight = 4000,
+            .projectClient = &Project, .borrowedAutomapContext = &client};
+        (void)ObserveNavigationAutomapPass(pass);
+        Pump(shortcut.from, shortcut.town, NativeAutomapObservationPhase::AfterObservation, nullptr);
+        Check(Requests.size() == 1U
+            && Requests[0].identity.artifact.mode == GpsRouteMode::Walk
+            && Requests[0].identity.artifact.levelId == shortcut.from
+            && Requests[0].identity.artifact.toSubtileX == 40,
+            "QoL GPS request did not retain the observed entrance in the current level");
+        CompleteHelperBatch();
+        // The helper's bounded standable approach can end just before a marker.
+        Completed[0].moves.back().subtileX = 38;
+        auto grid = std::make_shared<GpsRouteWalkGrid>();
+        grid->width = grid->height = 128U;
+        grid->bits.assign(128U * 128U / 8U, 0xffU);
+        Completed[0].walkGrid = grid;
+        Pump(shortcut.from, shortcut.town, NativeAutomapObservationPhase::BeforeProjection, nullptr);
+        (void)ObserveNavigationAutomapPass(pass);
+        std::vector<NavigationGpsRouteSegmentSnapshot> segments;
+        Check(AcquireNavigationGpsRouteSegmentSnapshots(segments) == 1U
+            && segments[0].kind == shortcut.kind
+            && segments[0].mode == NavigationGpsRouteMode::Walk,
+            "QoL GPS walking path did not reach projection with the correct family");
+        pass.playerSubtile = {12, 10};
+        Check(ConvertNavigationSubtileToClientCoordinates(12, 10, client), "QoL moved player conversion failed");
+        pass.playerClientX = client.x;
+        pass.playerClientY = client.y;
+        (void)ObserveNavigationAutomapPass(pass);
+        Check(AcquireNavigationGpsRouteSegmentSnapshots(segments) == 1U,
+            "QoL walking guidance disappeared after moving along the route");
+        ResetNavigationLevel(41U, shortcut.to);
+        Check(AcquireNavigationGpsRouteSegmentSnapshots(segments) == 0U,
+            "QoL walking route survived a transition into its destination area");
+    }
+    std::cout << "QoL GPS Walk/Run: 15 shortcut destination/request/follow/projection cases passed\n";
 }
 } // namespace
 
@@ -500,6 +598,7 @@ int main() {
     RunNativeAutomapObservation(pass, observe, Pump, nullptr);
     Check(AcquireNavigationGpsRouteSegmentSnapshots(segments) == 0U,
         "previous-level completion must never draw in the new level");
+    CheckQolWalkingShortcuts();
     ShutdownGpsRouteCoordinator();
     ShutdownNavigationEngine();
     std::cout << "GPS native-pass publication regression passed\n";

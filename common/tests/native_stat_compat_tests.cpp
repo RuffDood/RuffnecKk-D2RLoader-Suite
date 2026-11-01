@@ -23,6 +23,11 @@ auto Read(void* userData, std::uintptr_t address, std::byte* output, std::size_t
 auto ValidateUnwind(void* userData, std::uintptr_t, std::uint32_t, std::size_t, std::uint32_t, bool) noexcept -> bool { return static_cast<const Images*>(userData)->unwind; }
 auto ValidateExecutable(void*, std::uintptr_t) noexcept -> bool { return true; }
 auto ValidateNotExecutable(void*, std::uintptr_t) noexcept -> bool { return false; }
+auto ValidateRedirect(void* userData, std::uintptr_t mainBase, std::uint32_t nativeRva,
+        std::uintptr_t slot, std::uintptr_t actual, std::uintptr_t expected) noexcept -> bool {
+    return *static_cast<bool*>(userData) && mainBase == 0x1000 && nativeRva == 0x10
+        && slot == 0x1080 && actual == 0xBEEF && expected == 0x4100;
+}
 void Put64(Image& image, std::size_t offset, std::uint64_t value) { std::memcpy(image.bytes.data() + offset, &value, sizeof(value)); }
 struct CanonicalCapture final { std::uintptr_t base{0x80000000}; std::vector<std::byte> bytes{0x340000}; };
 auto ReadCapture(void* userData, std::uintptr_t address, std::byte* output, std::size_t size) noexcept -> bool {
@@ -202,6 +207,32 @@ int main() {
     Adapter alignmentAccepted;
     if (!alignmentAccepted.Bind({&provider, Read, ValidateUnwind}, providerMain, core, ProviderContract, ToMask(Helper::GetUnitAlignment))
         || !alignmentAccepted.IsBound() || alignmentAccepted.IsBound(Helper::GetUnitStat)) return 14;
+    Images redirected = provider;
+    Put64(redirected.main, 0x80, 0xBEEF);
+    bool redirectAllowed = true;
+    const TransformDiagnostics redirectProof{&redirectAllowed, nullptr, ValidateRedirect};
+    Adapter redirectRejected;
+    if (redirectRejected.Bind({&redirected, Read, ValidateUnwind}, providerMain, core,
+            ProviderContract, ToMask(Helper::GetUnitStat))) return 100;
+    Adapter redirectAccepted;
+    if (!redirectAccepted.Bind({&redirected, Read, ValidateUnwind}, providerMain, core,
+            ProviderContract, ToMask(Helper::GetUnitStat), redirectProof)) return 101;
+    redirectAllowed = false;
+    if (redirectRejected.Bind({&redirected, Read, ValidateUnwind}, providerMain, core,
+            ProviderContract, ToMask(Helper::GetUnitStat), redirectProof)) return 102;
+    redirectAllowed = true;
+    // A redirect proof never waives the independent Core code, calls, unwind,
+    // read-only data, import graph or descriptor checks.
+    for (const auto offset : std::array<std::size_t, 6>{0x102,0x120,0x150,0x160,0x188,0x208}) {
+        Images brokenRedirect = redirected;
+        brokenRedirect.core.bytes[offset] ^= std::byte{1};
+        Adapter rejectedRedirect;
+        if (rejectedRedirect.Bind({&brokenRedirect, Read, ValidateUnwind}, providerMain, core,
+                ProviderContract, ToMask(Helper::GetUnitStat), redirectProof)) return 103;
+    }
+    Images badRedirectUnwind = redirected; badRedirectUnwind.unwind = false;
+    if (redirectRejected.Bind({&badRedirectUnwind, Read, ValidateUnwind}, providerMain, core,
+            ProviderContract, ToMask(Helper::GetUnitStat), redirectProof)) return 104;
     auto trackedHelpers = ProviderHelpers;
     trackedHelpers[0].functions = TrackedFunctions;
     const AdmissionContract trackedContract{"synthetic-tracked-provider", trackedHelpers};

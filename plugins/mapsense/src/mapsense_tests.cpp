@@ -686,6 +686,32 @@ void CheckMapSenseDataCatalogContract() {
                 "Frozenstein", "snowyeti1").has_value());
         }
         {
+            ScopedCatalogTestDirectory directory("duplicate-object-classes");
+            const auto excel = directory.Path() / "TestMod.mpq" / "data" / "global" / "excel";
+            WriteCompleteCatalog(excel);
+            WriteCatalogFixture(excel / "objects.txt",
+                "Class\tName\t*ID\tSubClass\tLockable\tOperateFn\tPopulateFn\tInitFn\tClientFn\tShrineFunction\r\n"
+                "StoneAlpha\tStoneAlpha\t17\t0\t0\t0\t0\t0\t0\t0\r\n"
+                "Expansion\t\t\t\t\t\t\t\t\t\r\n"
+                "StoneAlpha\tModStone\t999\t1\t1\t4\t3\t3\t0\t0\r\n"
+                "StoneAlpha\tThirdStone\t999\t2\t0\t0\t0\t0\t0\t0\r\n"
+                "UniqueStone\tUniqueStone\t17\t3\t0\t0\t0\t0\t0\t0\r\n");
+            const auto root = directory.Path().wstring();
+            const auto context = MakeCatalogContext(root.c_str());
+            const auto result = MapSenseDataCatalog::Load(&context);
+            CHECK(result);
+            CHECK(result.catalog->FamilyStatus(DataCatalogFamily::Objects).Available());
+            CHECK(result.catalog->FamilyStatus(DataCatalogFamily::Objects).rowCount == 4U);
+            CHECK(result.catalog->FindObject("StoneAlpha") == nullptr);
+            for (std::uint32_t id = 0; id < 4; ++id) {
+                const auto* object = result.catalog->FindObjectById(id);
+                CHECK(object != nullptr && object->objectId == id);
+                CHECK(object != nullptr && object->subClass == id);
+            }
+            CHECK(result.catalog->FindObject("UniqueStone") == result.catalog->FindObjectById(3));
+            CHECK(result.catalog->FindObjectById(17) == nullptr);
+        }
+        {
             ScopedCatalogTestDirectory directory("active");
             const auto activeExcel = directory.Path()
                 / "TestMod.mpq" / "data" / "global" / "excel";

@@ -1782,10 +1782,11 @@ void RecountCatalogLocalizations(MapSenseDataCatalog::Impl& impl) noexcept {
             return false;
         }
         record.name = localization.Resolve(key);
-        if (!byClass.emplace(record.classId, records.size()).second) {
-            error = "Objects.txt contains duplicate Class " + record.classId;
-            return false;
-        }
+        // Class is descriptive; the runtime identity is the row ordinal.
+        // Retain every record. A textual lookup becomes unavailable when the
+        // name is ambiguous instead of silently selecting the wrong object.
+        const auto [classEntry, inserted] = byClass.emplace(record.classId, records.size());
+        if (!inserted) classEntry->second = std::numeric_limits<std::size_t>::max();
         if (!byId.emplace(record.objectId, records.size()).second) {
             error = "Objects.txt contains duplicate *ID "
                 + std::to_string(record.objectId);
@@ -2243,7 +2244,7 @@ auto MapSenseDataCatalog::FindObject(std::string_view classId) const noexcept
         -> const DataCatalogObject* {
     if (!impl_) return nullptr;
     const auto found = impl_->objectByClass.find(classId);
-    return found == impl_->objectByClass.end()
+    return found == impl_->objectByClass.end() || found->second >= impl_->objects.size()
         ? nullptr : &impl_->objects[found->second];
 }
 

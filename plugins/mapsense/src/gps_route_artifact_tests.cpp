@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cstdlib>
 #include <cstdint>
 #include <filesystem>
@@ -124,6 +125,52 @@ auto FingerprintBytes(std::uint64_t fingerprint, std::string_view bytes) noexcep
 
 int main(int argc, char** argv) {
     using namespace RuffnecKk::MapSense;
+
+    // Integration fixtures provide the independently expected request fields:
+    // artifact seed difficulty level fromX fromY toX toY fingerprint(hex).
+    if (argc == 10) {
+        GpsRouteRequestIdentity expected{};
+        std::uint32_t difficulty{};
+        const auto read = [](const char* argument, auto& value, int base = 10) {
+            const std::string_view text{argument};
+            const auto result = std::from_chars(text.data(), text.data() + text.size(), value, base);
+            return result.ec == std::errc{} && result.ptr == text.data() + text.size();
+        };
+        CHECK(read(argv[2], expected.seed) && read(argv[3], difficulty) && difficulty <= 2U
+            && read(argv[4], expected.levelId)
+            && read(argv[5], expected.fromSubtileX) && read(argv[6], expected.fromSubtileY)
+            && read(argv[7], expected.toSubtileX) && read(argv[8], expected.toSubtileY)
+            && read(argv[9], expected.dataFingerprint, 16));
+        expected.difficulty = static_cast<std::uint8_t>(difficulty);
+        std::error_code error;
+        const std::filesystem::path path{argv[1]};
+        const auto size = std::filesystem::file_size(path, error);
+        CHECK(!error && size <= MaximumGpsRouteArtifactBytes);
+        if (Failures != 0) return EXIT_FAILURE;
+        std::vector<std::uint8_t> bytes(static_cast<std::size_t>(size));
+        std::ifstream input(path, std::ios::binary);
+        input.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+        CHECK(input && input.gcount() == static_cast<std::streamsize>(bytes.size()));
+        GpsRouteArtifact artifact{};
+        CHECK(ParseGpsRouteArtifact(bytes, expected, artifact));
+        CHECK(artifact.walkGrid != nullptr && artifact.moves.size() >= 2U);
+        if (Failures != 0) return EXIT_FAILURE;
+        for (std::size_t index = 1U; index < artifact.moves.size(); ++index) {
+            auto previous = artifact.moves[index - 1U];
+            const auto next = artifact.moves[index];
+            const auto dx = next.subtileX - previous.subtileX;
+            const auto dy = next.subtileY - previous.subtileY;
+            CHECK(dx == 0 || dy == 0 || std::abs(dx) == std::abs(dy));
+            const auto steps = (std::max)(std::abs(dx), std::abs(dy));
+            for (int step = 0; step <= steps; ++step) {
+                CHECK(artifact.walkGrid->Passable(previous.subtileX, previous.subtileY));
+                previous.subtileX += (dx > 0) - (dx < 0);
+                previous.subtileY += (dy > 0) - (dy < 0);
+            }
+        }
+        std::cout << "Helper MSR2 request identity and continuous walking corridor checked\n";
+        return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    }
 
     if (argc == 2) {
         std::error_code artifactError;

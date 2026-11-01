@@ -47,16 +47,47 @@ pub fn route(router: *pf.Router, from: pf.Pos, to: pf.Pos, mode: Mode) !pf.Route
     const nav = try router.navFor(level);
     const pass = try nav.passMapFor(opts.mask, opts.footprint);
     if (!pass.passable(from.x, from.y)) return error.StartBlocked;
-    const goal = pf.grid.nearestPassable(
-        pass,
+    // Reject distant coordinates before the bounded ring search adds offsets.
+    // This also keeps malformed CLI requests away from signed overflow.
+    if (@as(i64, to.x) < -goal_snap_radius or @as(i64, to.y) < -goal_snap_radius or
+        @as(i64, to.x) > @as(i64, level.w) - 1 + goal_snap_radius or
+        @as(i64, to.y) > @as(i64, level.h) - 1 + goal_snap_radius)
+        return error.GoalBlocked;
+    const goal = if (mode == .walk and !pass.passable(to.x, to.y))
+        try nearestWalkingApproach(router.alloc, pass, from, to)
+    else
+        pf.grid.nearestPassable(pass, to.x, to.y, goal_snap_radius);
+    const resolved = goal orelse return error.GoalBlocked;
+    return router.route(
+        from,
+        .{ .level = to.level, .x = resolved.x, .y = resolved.y },
+        opts,
+    );
+}
+
+/// An entrance marker can lie inside a wall or just outside the level's grid.
+/// Choose its nearest player-width approach in the origin's terrain component,
+/// rather than snapping onto a disconnected floor on the other side. A clear
+/// exact goal keeps its identity and is never moved to hide an unreachable path.
+fn nearestWalkingApproach(allocator: std.mem.Allocator, pass: *pf.PassMap, from: pf.Pos, to: pf.Pos) !?pf.Point {
+    const components = try pass.components(allocator);
+    const origin_component = components[pass.index(from.x, from.y)];
+    const Search = struct {
+        pass: *const pf.PassMap,
+        components: []const u32,
+        origin_component: u32,
+
+        fn accepts(self: @This(), x: i32, y: i32) bool {
+            return self.pass.passable(x, y) and
+                self.components[self.pass.index(x, y)] == self.origin_component;
+        }
+    };
+    return pf.world.ringSearch(
+        Search{ .pass = pass, .components = components, .origin_component = origin_component },
         to.x,
         to.y,
         goal_snap_radius,
-    ) orelse return error.GoalBlocked;
-    return router.route(
-        from,
-        .{ .level = to.level, .x = goal.x, .y = goal.y },
-        opts,
+        Search.accepts,
     );
 }
 

@@ -76,7 +76,11 @@ fn writeRouteBinary(
     const selected = level orelse return error.LevelNotGenerated;
     const from = selected.fromWorld(from_world);
     const to = selected.fromWorld(to_world);
-    if (!selected.inBounds(from.x, from.y) or !selected.inBounds(to.x, to.y)) {
+    // Keep the player origin exact. An observed entrance may be outside the
+    // current-level grid; GPS resolves only a bounded standable approach.
+    if (!selected.inBounds(from.x, from.y) or
+        (mode != .walk and !selected.inBounds(to.x, to.y)))
+    {
         return error.RouteEndpointOutsideLevel;
     }
 
