@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(RuffnecKkMapSense VERSION 2.2.2 LANGUAGES C CXX RC)
+    project(RuffnecKkMapSense VERSION 2.2.3 LANGUAGES C CXX RC)
     include(CTest)
     option(RUFFNECKK_SUITE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
@@ -156,7 +156,12 @@ if(BUILD_TESTING)
     set(RUFFNECKK_MAPSENSE_MAPS_TEST_DLL "" CACHE FILEPATH "Offline reference Reimagined Maps DLL")
     if(RUFFNECKK_MAPSENSE_MAPS_TEST_DLL)
         add_test(NAME ruffneckk.mapsense.reimagined-stat-redirect
-            COMMAND ruffneckk_mapsense_reimagined_stat_tests "${RUFFNECKK_MAPSENSE_MAPS_TEST_DLL}")
+            COMMAND ruffneckk_mapsense_reimagined_stat_tests "${RUFFNECKK_MAPSENSE_MAPS_TEST_DLL}" "0.12.1")
+    endif()
+    set(RUFFNECKK_MAPSENSE_MAPS_0124_TEST_DLL "" CACHE FILEPATH "Offline reference Maps 0.12.4 DLL")
+    if(RUFFNECKK_MAPSENSE_MAPS_0124_TEST_DLL)
+        add_test(NAME ruffneckk.mapsense.reimagined-stat-redirect-0124
+            COMMAND ruffneckk_mapsense_reimagined_stat_tests "${RUFFNECKK_MAPSENSE_MAPS_0124_TEST_DLL}" "0.12.4")
     endif()
     add_executable(ruffneckk_mapsense_automap_bridge_tests
         src/automap_hook_bridge.cpp src/automap_hook_bridge_tests.cpp)

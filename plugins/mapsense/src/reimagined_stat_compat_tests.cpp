@@ -1,10 +1,12 @@
 #include "reimagined_stat_compat.hpp"
+#include "reimagined_stat_witness.hpp"
 #include <RuffnecKk/native_stat_compat.hpp>
 #include <Windows.h>
 #include <array>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <cwchar>
 
 using namespace RuffnecKk::MapSense::Detail;
 namespace Stat = RuffnecKk::NativeStatCompat;
@@ -33,7 +35,9 @@ void ChangeCode(void* at, std::uint8_t value) {
 }
 
 int wmain(int argc, wchar_t** argv) {
-    if (argc != 2) return 2;
+    if (argc != 3) return 2;
+    const auto& profile = std::wcscmp(argv[2], L"0.12.1") == 0
+        ? MapsStatProfiles[0] : MapsStatProfiles[1];
     // Reference DLL is mapped without imports, DllMain or plugin initialization.
     const auto module = LoadLibraryExW(argv[1], nullptr, DONT_RESOLVE_DLL_REFERENCES);
     CHECK(module != nullptr); if (!module) return 2;
@@ -47,7 +51,7 @@ int wmain(int argc, wchar_t** argv) {
     const auto coreTarget = reinterpret_cast<std::uintptr_t>(core + 0x100);
     auto* entry = main + NativeUnitStatRva;
     const auto slotAddress = reinterpret_cast<std::uintptr_t>(entry + 6);
-    const auto reader = reinterpret_cast<std::uintptr_t>(image + MapsStatReaderRva);
+    const auto reader = reinterpret_cast<std::uintptr_t>(image + profile.readerRva);
     Jump(entry, reinterpret_cast<void*>(reader)); entry[14] = 0xCC;
     Jump(core + 0x100, reinterpret_cast<void*>(&CoreRead));
     std::array<std::uintptr_t, 3> descriptor{mainBase + NativeUnitStatRva,
@@ -55,20 +59,20 @@ int wmain(int argc, wchar_t** argv) {
     std::memcpy(core + 0x200, descriptor.data(), sizeof(descriptor));
     D2RL::PluginContext context{.contextSize = D2RL::PluginContextSize,
         .apiVersion = D2RL_PLUGIN_API_VERSION, .exeBase = mainBase};
-    constexpr std::array stateOffsets{MapsOriginalStatSlotRva, MapsRedirectSlotAddressRva,
-        MapsRedirectPreviousValueRva, MapsContextSlotRva, MapsNativeStatRvaSlotRva};
-    std::array<std::uintptr_t, stateOffsets.size()> before{};
+    const std::array stateOffsets{profile.originalStatSlotRva, profile.redirectSlotAddressRva,
+        profile.redirectPreviousValueRva, profile.contextSlotRva, profile.nativeStatRvaSlotRva};
+    std::array<std::uintptr_t, 5> before{};
     for (std::size_t i=0;i<stateOffsets.size();++i)
         std::memcpy(&before[i], image + stateOffsets[i], sizeof(std::uintptr_t));
-    const auto oldActive = image[MapsStatHookActiveRva];
+    const auto oldActive = image[profile.statHookActiveRva];
     auto set = [&](std::uintptr_t offset, std::uintptr_t value) {
         std::memcpy(image + offset, &value, sizeof(value));
     };
-    set(MapsOriginalStatSlotRva, coreTarget);
-    set(MapsRedirectSlotAddressRva, slotAddress);
-    set(MapsRedirectPreviousValueRva, coreTarget);
-    set(MapsContextSlotRva, reinterpret_cast<std::uintptr_t>(&context));
-    set(MapsNativeStatRvaSlotRva, NativeUnitStatRva); image[MapsStatHookActiveRva] = 1;
+    set(profile.originalStatSlotRva, coreTarget);
+    set(profile.redirectSlotAddressRva, slotAddress);
+    set(profile.redirectPreviousValueRva, coreTarget);
+    set(profile.contextSlotRva, reinterpret_cast<std::uintptr_t>(&context));
+    set(profile.nativeStatRvaSlotRva, NativeUnitStatRva); image[profile.statHookActiveRva] = 1;
     auto validate = [&] { return ValidateReimaginedStatRedirect(nullptr, mainBase,
         NativeUnitStatRva, slotAddress, reader, coreTarget); };
     CHECK(validate());
@@ -104,21 +108,21 @@ int wmain(int argc, wchar_t** argv) {
     CHECK(!ValidateReimaginedStatRedirect(nullptr, mainBase, NativeUnitStatRva, slotAddress+8, reader, coreTarget));
     CHECK(!ValidateReimaginedStatRedirect(nullptr, mainBase, NativeUnitStatRva, slotAddress, reader+1, coreTarget));
     CHECK(!ValidateReimaginedStatRedirect(nullptr, mainBase, NativeUnitStatRva, slotAddress, reader, coreTarget+1));
-    image[MapsStatHookActiveRva] = 0; CHECK(!validate()); image[MapsStatHookActiveRva] = 1;
-    set(MapsOriginalStatSlotRva, reader); CHECK(!validate()); set(MapsOriginalStatSlotRva, coreTarget);
-    set(MapsRedirectPreviousValueRva, reader); CHECK(!validate()); set(MapsRedirectPreviousValueRva, coreTarget);
-    set(MapsRedirectSlotAddressRva, slotAddress+8); CHECK(!validate()); set(MapsRedirectSlotAddressRva, slotAddress);
-    set(MapsContextSlotRva, 0); CHECK(!validate()); set(MapsContextSlotRva, reinterpret_cast<std::uintptr_t>(&context));
+    image[profile.statHookActiveRva] = 0; CHECK(!validate()); image[profile.statHookActiveRva] = 1;
+    set(profile.originalStatSlotRva, reader); CHECK(!validate()); set(profile.originalStatSlotRva, coreTarget);
+    set(profile.redirectPreviousValueRva, reader); CHECK(!validate()); set(profile.redirectPreviousValueRva, coreTarget);
+    set(profile.redirectSlotAddressRva, slotAddress+8); CHECK(!validate()); set(profile.redirectSlotAddressRva, slotAddress);
+    set(profile.contextSlotRva, 0); CHECK(!validate()); set(profile.contextSlotRva, reinterpret_cast<std::uintptr_t>(&context));
     context.exeBase += 1; CHECK(!validate()); context.exeBase -= 1;
-    set(MapsNativeStatRvaSlotRva, NativeUnitStatRva+1); CHECK(!validate()); set(MapsNativeStatRvaSlotRva, NativeUnitStatRva);
-    const auto lastReaderByte = image[MapsStatReaderRva + 690];
-    ChangeCode(image + MapsStatReaderRva + 690, lastReaderByte ^ 1U); CHECK(!validate());
-    ChangeCode(image + MapsStatReaderRva + 690, lastReaderByte);
-    const auto ownerByte = image[MapsStatOwnerRva];
-    ChangeCode(image + MapsStatOwnerRva, ownerByte ^ 1U); CHECK(!validate());
-    ChangeCode(image + MapsStatOwnerRva, ownerByte); CHECK(validate());
+    set(profile.nativeStatRvaSlotRva, NativeUnitStatRva+1); CHECK(!validate()); set(profile.nativeStatRvaSlotRva, NativeUnitStatRva);
+    const auto lastReaderByte = image[profile.readerRva + 690];
+    ChangeCode(image + profile.readerRva + 690, lastReaderByte ^ 1U); CHECK(!validate());
+    ChangeCode(image + profile.readerRva + 690, lastReaderByte);
+    const auto ownerByte = image[profile.ownerRva];
+    ChangeCode(image + profile.ownerRva, ownerByte ^ 1U); CHECK(!validate());
+    ChangeCode(image + profile.ownerRva, ownerByte); CHECK(validate());
     for (std::size_t i=0;i<stateOffsets.size();++i) set(stateOffsets[i], before[i]);
-    image[MapsStatHookActiveRva] = oldActive;
+    image[profile.statHookActiveRva] = oldActive;
     VirtualFree(main,0,MEM_RELEASE); VirtualFree(core,0,MEM_RELEASE); FreeLibrary(module);
     std::printf("Reimagined stat redirect: %s\n", Failures ? "FAILED" : "PASS");
     return Failures ? EXIT_FAILURE : EXIT_SUCCESS;

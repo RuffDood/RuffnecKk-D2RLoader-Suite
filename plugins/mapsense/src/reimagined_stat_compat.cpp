@@ -38,10 +38,12 @@ auto IsCode(std::uintptr_t at, std::size_t size) noexcept -> bool {
     return protection == PAGE_EXECUTE || protection == PAGE_EXECUTE_READ
         || protection == PAGE_EXECUTE_READWRITE || protection == PAGE_EXECUTE_WRITECOPY;
 }
-template<std::size_t Size>
-auto Match(std::uintptr_t at, const std::array<std::uint8_t, Size>& expected) noexcept -> bool {
-    std::array<std::uint8_t, Size> actual{};
-    return IsCode(at, Size) && Read(at, actual.data(), Size) && actual == expected;
+auto Match(std::uintptr_t at, std::span<const std::uint8_t> expected) noexcept -> bool {
+    // Both admitted profiles have bounded, complete code witnesses.
+    std::array<std::uint8_t, 693> actual{};
+    return !expected.empty() && expected.size() <= actual.size()
+        && IsCode(at, expected.size()) && Read(at, actual.data(), expected.size())
+        && std::equal(expected.begin(), expected.end(), actual.begin());
 }
 }
 
@@ -56,25 +58,34 @@ auto ValidateReimaginedStatRedirect(void*, std::uintptr_t mainImageBase,
             | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
             reinterpret_cast<LPCWSTR>(actualTarget), &module)) return false;
     const auto base = reinterpret_cast<std::uintptr_t>(module);
-    if (actualTarget != base + MapsStatReaderRva
-        || reinterpret_cast<std::uintptr_t>(GetProcAddress(module, "D2RLMapsOwnsStatReaderHook"))
-            != base + MapsStatOwnerRva
-        || !Match(actualTarget, MapsStatReaderWitness)
-        || !Match(base + MapsStatOwnerRva, MapsStatOwnerWitness)) return false;
+    const auto owner = reinterpret_cast<std::uintptr_t>(
+        GetProcAddress(module, "D2RLMapsOwnsStatReaderHook"));
+    const MapsStatProfile* profile{};
+    for (const auto& candidate : MapsStatProfiles) {
+        if (base <= UINTPTR_MAX - candidate.readerRva
+            && base <= UINTPTR_MAX - candidate.ownerRva
+            && actualTarget == base + candidate.readerRva
+            && owner == base + candidate.ownerRva) {
+            profile = &candidate;
+            break;
+        }
+    }
+    if (profile == nullptr || !Match(actualTarget, profile->readerWitness)
+        || !Match(owner, profile->ownerWitness)) return false;
 
     // Validate the published ownership function's complete state without calling
     // third-party code during admission. Both saved originals must identify the
     // exact Core export independently validated by NativeStatCompat afterward.
     std::uintptr_t original{}, savedOriginal{}, savedSlot{}, ownerContext{}, ownerBase{}, ownerRva{};
     std::uint8_t active{};
-    if (!ReadOwned(base, MapsOriginalStatSlotRva, original)
-        || !ReadOwned(base, MapsRedirectPreviousValueRva, savedOriginal)
-        || !ReadOwned(base, MapsRedirectSlotAddressRva, savedSlot)
-        || !ReadOwned(base, MapsContextSlotRva, ownerContext)
+    if (!ReadOwned(base, profile->originalStatSlotRva, original)
+        || !ReadOwned(base, profile->redirectPreviousValueRva, savedOriginal)
+        || !ReadOwned(base, profile->redirectSlotAddressRva, savedSlot)
+        || !ReadOwned(base, profile->contextSlotRva, ownerContext)
         || ownerContext == 0 || ownerContext > UINTPTR_MAX - 0x18U
         || !ReadValue(ownerContext + 0x18U, ownerBase)
-        || !ReadOwned(base, MapsNativeStatRvaSlotRva, ownerRva)
-        || !ReadOwned(base, MapsStatHookActiveRva, active)) return false;
+        || !ReadOwned(base, profile->nativeStatRvaSlotRva, ownerRva)
+        || !ReadOwned(base, profile->statHookActiveRva, active)) return false;
     return original == expectedCoreTarget && savedOriginal == expectedCoreTarget
         && savedSlot == slotAddress && ownerBase == mainImageBase
         && ownerRva == nativeRva && active == 1U;
