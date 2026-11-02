@@ -39,7 +39,7 @@ auto IsCode(std::uintptr_t at, std::size_t size) noexcept -> bool {
         || protection == PAGE_EXECUTE_READWRITE || protection == PAGE_EXECUTE_WRITECOPY;
 }
 auto Match(std::uintptr_t at, std::span<const std::uint8_t> expected) noexcept -> bool {
-    // Both admitted profiles have bounded, complete code witnesses.
+    // All admitted profiles have bounded, complete code witnesses.
     std::array<std::uint8_t, 693> actual{};
     return !expected.empty() && expected.size() <= actual.size()
         && IsCode(at, expected.size()) && Read(at, actual.data(), expected.size())

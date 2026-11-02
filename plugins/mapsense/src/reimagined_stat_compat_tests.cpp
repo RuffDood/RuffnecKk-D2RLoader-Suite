@@ -36,8 +36,11 @@ void ChangeCode(void* at, std::uint8_t value) {
 
 int wmain(int argc, wchar_t** argv) {
     if (argc != 3) return 2;
+    if (std::wcscmp(argv[2], L"0.12.1") != 0 && std::wcscmp(argv[2], L"0.12.4") != 0
+        && std::wcscmp(argv[2], L"0.12.5") != 0) return 2;
     const auto& profile = std::wcscmp(argv[2], L"0.12.1") == 0
-        ? MapsStatProfiles[0] : MapsStatProfiles[1];
+        ? MapsStatProfiles[0] : (std::wcscmp(argv[2], L"0.12.4") == 0
+            ? MapsStatProfiles[1] : Maps0125StatProfile);
     // Reference DLL is mapped without imports, DllMain or plugin initialization.
     const auto module = LoadLibraryExW(argv[1], nullptr, DONT_RESOLVE_DLL_REFERENCES);
     CHECK(module != nullptr); if (!module) return 2;
@@ -76,6 +79,7 @@ int wmain(int argc, wchar_t** argv) {
     auto validate = [&] { return ValidateReimaginedStatRedirect(nullptr, mainBase,
         NativeUnitStatRva, slotAddress, reader, coreTarget); };
     CHECK(validate());
+    if (Failures) return EXIT_FAILURE;
 
     // Exercise the real adapter -> native slot -> published Maps callback -> Core
     // path. The small fixture contract isolates forwarding; production retains
@@ -115,12 +119,16 @@ int wmain(int argc, wchar_t** argv) {
     set(profile.contextSlotRva, 0); CHECK(!validate()); set(profile.contextSlotRva, reinterpret_cast<std::uintptr_t>(&context));
     context.exeBase += 1; CHECK(!validate()); context.exeBase -= 1;
     set(profile.nativeStatRvaSlotRva, NativeUnitStatRva+1); CHECK(!validate()); set(profile.nativeStatRvaSlotRva, NativeUnitStatRva);
-    const auto lastReaderByte = image[profile.readerRva + 690];
-    ChangeCode(image + profile.readerRva + 690, lastReaderByte ^ 1U); CHECK(!validate());
-    ChangeCode(image + profile.readerRva + 690, lastReaderByte);
+    const auto lastReaderByte = image[profile.readerRva + profile.readerWitness.size() - 1];
+    ChangeCode(image + profile.readerRva + profile.readerWitness.size() - 1, lastReaderByte ^ 1U); CHECK(!validate());
+    ChangeCode(image + profile.readerRva + profile.readerWitness.size() - 1, lastReaderByte);
     const auto ownerByte = image[profile.ownerRva];
     ChangeCode(image + profile.ownerRva, ownerByte ^ 1U); CHECK(!validate());
     ChangeCode(image + profile.ownerRva, ownerByte); CHECK(validate());
+    const auto ownerTail = profile.ownerRva + profile.ownerWitness.size() - 1;
+    const auto ownerTailByte = image[ownerTail];
+    ChangeCode(image + ownerTail, ownerTailByte ^ 1U); CHECK(!validate());
+    ChangeCode(image + ownerTail, ownerTailByte); CHECK(validate());
     for (std::size_t i=0;i<stateOffsets.size();++i) set(stateOffsets[i], before[i]);
     image[profile.statHookActiveRva] = oldActive;
     VirtualFree(main,0,MEM_RELEASE); VirtualFree(core,0,MEM_RELEASE); FreeLibrary(module);
