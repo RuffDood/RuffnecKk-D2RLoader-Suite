@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(PlayerXScalingTweaks VERSION 1.2.0 LANGUAGES CXX RC ASM_MASM)
+    project(PlayerXScalingTweaks VERSION 1.2.1 LANGUAGES CXX RC ASM_MASM)
     include(CTest)
     option(RUFFNECKK_SUITE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
@@ -49,7 +49,7 @@ target_include_directories(ruffneckk_playerx_scaling_tweaks PRIVATE
 )
 target_link_libraries(ruffneckk_playerx_scaling_tweaks PRIVATE
     D2RLPlugin::D2RLPlugin
-    RuffnecKk::NativeStatCompat
+    RuffnecKk::MapsStatCompat
     tomlplusplus::tomlplusplus
 )
 set_target_properties(ruffneckk_playerx_scaling_tweaks PROPERTIES

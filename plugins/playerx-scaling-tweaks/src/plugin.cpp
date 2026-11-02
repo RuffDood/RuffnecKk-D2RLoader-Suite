@@ -1,3 +1,4 @@
+#include <RuffnecKk/maps_stat_compat.hpp>
 #include <D2RLPlugin/api.h>
 #include <RuffnecKk/native_stat_compat.hpp>
 #include <RuffnecKk/tracked_native_transform_d2rl.hpp>
@@ -83,7 +84,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-playerx-scaling-tweaks",
     .name = "PlayerX Scaling Tweaks",
-    .version = "1.2.0",
+    .version = "1.2.1",
     .author = "RuffnecKk",
     .description = "Tweaks player-count floors and independent scaling caps.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -321,7 +322,7 @@ auto ValidateNativeFingerprint() noexcept -> bool {
             Base,
             RuffnecKk::NativeStatCompat::ToMask(
                 RuffnecKk::NativeStatCompat::Helper::GetUnitStat),
-            RuffnecKk::TrackedNativeTransform::D2RLDiagnosticsContext(Context))) {
+            RuffnecKk::MapsStatCompat::Diagnostics(Context))) {
         char message[256]{};
         std::snprintf(
             message, sizeof(message),
@@ -708,7 +709,7 @@ auto Status(
     const auto writeBaseStatus = [&](const char* suffix) {
         return std::snprintf(
             message, sizeof(message),
-        "PlayerX Scaling Tweaks 1.2.0: active=%s; source=%s; players=%d..%d; start=%d; hotkeys=%zu; life=%s/%d; xp=%s/%d; offense=%s/%d; nodrop=%s; nodrop-min=%d; config=%s%s",
+        "PlayerX Scaling Tweaks 1.2.1: active=%s; source=%s; players=%d..%d; start=%d; hotkeys=%zu; life=%s/%d; xp=%s/%d; offense=%s/%d; nodrop=%s; nodrop-min=%d; config=%s%s",
             Operational.load(std::memory_order_acquire) ? "true" : "false",
             Settings.battleNetSimulationEnabled ? "battle-net-simulation" : "native-command",
             Settings.minimumScalingPlayers, Settings.maximumCommandPlayers,
@@ -806,7 +807,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
     if (!Settings.enabled) {
         context->LogInfo(
-            "PlayerX Scaling Tweaks 1.2.0 by RuffnecKk loaded disabled; no hook was installed.");
+            "PlayerX Scaling Tweaks 1.2.1 by RuffnecKk loaded disabled; no hook was installed.");
         return true;
     }
     if (!AcquireOwnership() || !ValidateNativeFingerprint()) {
@@ -836,7 +837,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     const auto* build = D2RL::GetBuildName(context);
     std::snprintf(
         message, sizeof(message),
-        "PlayerX Scaling Tweaks 1.2.0 by RuffnecKk active; build-name=%s is diagnostic only; source=%s; players=%d..%d; HP cap=%d; XP cap=%d; offense cap=%d; NoDrop=%s; NoDrop minimum=%d; installation=%s; TOML=%s.",
+        "PlayerX Scaling Tweaks 1.2.1 by RuffnecKk active; build-name=%s is diagnostic only; source=%s; players=%d..%d; HP cap=%d; XP cap=%d; offense cap=%d; NoDrop=%s; NoDrop minimum=%d; installation=%s; TOML=%s.",
         build && build[0] != '\0' ? build : "<unavailable>",
         Settings.battleNetSimulationEnabled ? "battle-net-simulation" : "native-command",
         Settings.minimumScalingPlayers, Settings.maximumCommandPlayers,

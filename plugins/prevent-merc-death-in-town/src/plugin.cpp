@@ -1,3 +1,4 @@
+#include <RuffnecKk/maps_stat_compat.hpp>
 #include <D2RLPlugin/api.h>
 #include <RuffnecKk/native_stat_compat.hpp>
 #include <RuffnecKk/tracked_native_transform_d2rl.hpp>
@@ -108,7 +109,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-prevent-merc-death-in-town",
     .name = "Prevent Merc Death in Town",
-    .version = "1.1.2",
+    .version = "1.1.3",
     .author = "RuffnecKk",
     .description = "Prevents mercenaries from dying to lingering damage while in town.",
     .flags = D2RL::PluginFlags::Server | D2RL::PluginFlags::NativeHooks,
@@ -153,7 +154,7 @@ auto ValidateRuntime() noexcept -> bool {
                 RuffnecKk::NativeStatCompat::Helper::GetUnitStat)
                 | RuffnecKk::NativeStatCompat::ToMask(
                     RuffnecKk::NativeStatCompat::Helper::GetUnitBaseStat),
-            RuffnecKk::TrackedNativeTransform::D2RLDiagnosticsContext(Context))) {
+            RuffnecKk::MapsStatCompat::Diagnostics(Context))) {
         char message[192]{};
         std::snprintf(message, sizeof(message),
             "PreventMercDeathInTown: stat compatibility admission failed (%s).",
@@ -251,7 +252,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "Prevent Merc Death in Town 1.1.2: %s; diagnostics=%s; "
+        "Prevent Merc Death in Town 1.1.3: %s; diagnostics=%s; "
         "prevented lethal ticks=%llu.",
         Settings.enabled ? "active" : "disabled",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
@@ -284,7 +285,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-        "Prevent Merc Death in Town 1.1.2 by RuffnecKk loaded disabled; no hook or service registered.");
+        "Prevent Merc Death in Town 1.1.3 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 

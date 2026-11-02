@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(RuffnecKkBurnDamageFix VERSION 1.1.2 LANGUAGES CXX RC ASM_MASM)
+    project(RuffnecKkBurnDamageFix VERSION 1.1.3 LANGUAGES CXX RC ASM_MASM)
     include(CTest)
     option(
         RUFFNECKK_SUITE_WARNINGS_AS_ERRORS
@@ -40,7 +40,7 @@ add_library(ruffneckk_burn_damage_fix SHARED
 target_compile_features(ruffneckk_burn_damage_fix PRIVATE cxx_std_20)
 target_link_libraries(ruffneckk_burn_damage_fix PRIVATE
     RuffnecKk::Common
-    RuffnecKk::NativeStatCompat
+    RuffnecKk::MapsStatCompat
     tomlplusplus::tomlplusplus
 )
 set_target_properties(ruffneckk_burn_damage_fix PROPERTIES

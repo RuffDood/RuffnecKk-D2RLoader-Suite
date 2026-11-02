@@ -13,7 +13,7 @@ add_library(ruffneckk_mass_identify SHARED
 
 target_link_libraries(ruffneckk_mass_identify PRIVATE
     RuffnecKk::CommonV4
-    RuffnecKk::NativeStatCompat
+    RuffnecKk::MapsStatCompat
     user32
 )
 target_compile_features(ruffneckk_mass_identify PRIVATE cxx_std_20)

@@ -1,3 +1,4 @@
+#include <RuffnecKk/maps_stat_compat.hpp>
 #include <D2RLPlugin/api.h>
 #include <D2RLPlugin/diagnostics.h>
 #include <D2RLPlugin/inventory.h>
@@ -300,7 +301,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-mass-identify",
     .name = "MassID",
-    .version = "2.2.1",
+    .version = "2.2.2",
     .author = "RuffnecKk",
     .description = "Identifies selected item containers from an Identify Tome.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -534,7 +535,7 @@ auto ValidateRuntime() noexcept -> bool {
         reinterpret_cast<std::uintptr_t>(Base),
         RuffnecKk::NativeStatCompat::ToMask(
             RuffnecKk::NativeStatCompat::Helper::GetUnitStat),
-        RuffnecKk::TrackedNativeTransform::D2RLDiagnosticsContext(Context));
+        RuffnecKk::MapsStatCompat::Diagnostics(Context));
     if (!nativeStatsValid) {
         char message[192]{};
         std::snprintf(message, sizeof(message),
@@ -1178,7 +1179,7 @@ auto Status(
     std::snprintf(
         message,
         sizeof(message),
-        "MassID 2.2.1: enabled=%s; freeIdentification=%s; includeCube=%s; includePersonalStash=%s; includeSharedStash=%s; diagnostics=%s; sharedTooltip=%s; windowInput=%s; targetingWorker=%s; serverTransaction=%s; gestures=%llu; sent=%llu; accepted=%llu; rejected=%llu; identified=%llu; consumed=%llu.",
+        "MassID 2.2.2: enabled=%s; freeIdentification=%s; includeCube=%s; includePersonalStash=%s; includeSharedStash=%s; diagnostics=%s; sharedTooltip=%s; windowInput=%s; targetingWorker=%s; serverTransaction=%s; gestures=%llu; sent=%llu; accepted=%llu; rejected=%llu; identified=%llu; consumed=%llu.",
         Settings.enabled ? "true" : "false",
         Settings.freeIdentification ? "true" : "false",
         Settings.targets.includeCube ? "true" : "false",
@@ -1335,7 +1336,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "MassID 2.2.1 by RuffnecKk loaded: enabled=%s; inventory=always; cube=%s; personal stash=%s; shared stash=%s; freeIdentification=%s; diagnostics=%s; tooltip=SharedEventService v1; inspection=ItemService/InventoryService v1; native hooks=%s.",
+        "MassID 2.2.2 by RuffnecKk loaded: enabled=%s; inventory=always; cube=%s; personal stash=%s; shared stash=%s; freeIdentification=%s; diagnostics=%s; tooltip=SharedEventService v1; inspection=ItemService/InventoryService v1; native hooks=%s.",
         Settings.enabled ? "true" : "false",
         Settings.targets.includeCube ? "enabled" : "disabled",
         Settings.targets.includePersonalStash ? "enabled" : "disabled",

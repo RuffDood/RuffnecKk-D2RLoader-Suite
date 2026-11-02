@@ -5,7 +5,7 @@ add_library(ruffneckk_prevent_merc_death_in_town SHARED
 
 target_link_libraries(ruffneckk_prevent_merc_death_in_town PRIVATE
     RuffnecKk::Common
-    RuffnecKk::NativeStatCompat
+    RuffnecKk::MapsStatCompat
 )
 target_compile_features(ruffneckk_prevent_merc_death_in_town PRIVATE cxx_std_20)
 set_target_properties(ruffneckk_prevent_merc_death_in_town PROPERTIES

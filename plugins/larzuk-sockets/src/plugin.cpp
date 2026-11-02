@@ -1,3 +1,4 @@
+#include <RuffnecKk/maps_stat_compat.hpp>
 #include <D2RLPlugin/api.h>
 #include <D2RLPlugin/diagnostics.h>
 #include <RuffnecKk/native_stat_compat.hpp>
@@ -71,7 +72,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-larzuk-sockets",
     .name = "Larzuk Sockets",
-    .version = "1.1.2",
+    .version = "1.1.3",
     .author = "RuffnecKk",
     .description =
         "Configures Larzuk socket rewards by difficulty and item quality.",
@@ -273,7 +274,7 @@ auto ValidateNativeContract() noexcept -> bool {
             RuffnecKk::NativeStatCompat::Helper::GetUnitStat)
             | RuffnecKk::NativeStatCompat::ToMask(
                 RuffnecKk::NativeStatCompat::Helper::SetUnitStat),
-        RuffnecKk::TrackedNativeTransform::D2RLDiagnosticsContext(Context))) {
+        RuffnecKk::MapsStatCompat::Diagnostics(Context))) {
         char message[192]{};
         std::snprintf(message, sizeof(message),
             "LarzukSockets: stat compatibility admission failed (%s).",
@@ -374,12 +375,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!Settings.enabled) {
         try {
             const auto message = std::string(
-            "LarzukSockets 1.1.2 by RuffnecKk loaded disabled; no hook installed; config=")
+            "LarzukSockets 1.1.3 by RuffnecKk loaded disabled; no hook installed; config=")
                 + PathForLog(LoadedConfigPath) + ".";
             context->LogInfo(message.c_str());
         } catch (...) {
             context->LogInfo(
-            "LarzukSockets 1.1.2 by RuffnecKk loaded disabled; no hook installed.");
+            "LarzukSockets 1.1.3 by RuffnecKk loaded disabled; no hook installed.");
         }
         return true;
     }
@@ -387,12 +388,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!HasRules(Settings.rules)) {
         try {
             const auto message = std::string(
-            "LarzukSockets 1.1.2 loaded; all rules delegate to vanilla; hook not installed; config=")
+            "LarzukSockets 1.1.3 loaded; all rules delegate to vanilla; hook not installed; config=")
                 + PathForLog(LoadedConfigPath) + ".";
             context->LogInfo(message.c_str());
         } catch (...) {
             context->LogInfo(
-            "LarzukSockets 1.1.2 loaded; all rules delegate to vanilla; hook not installed.");
+            "LarzukSockets 1.1.3 loaded; all rules delegate to vanilla; hook not installed.");
         }
         return true;
     }
@@ -409,12 +410,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
 
     try {
         const auto message = std::string(
-            "LarzukSockets 1.1.2 by RuffnecKk loaded; configured hook active; config=")
+            "LarzukSockets 1.1.3 by RuffnecKk loaded; configured hook active; config=")
             + PathForLog(LoadedConfigPath) + ".";
         context->LogInfo(message.c_str());
     } catch (...) {
         context->LogInfo(
-            "LarzukSockets 1.1.2 by RuffnecKk loaded; configured hook active.");
+            "LarzukSockets 1.1.3 by RuffnecKk loaded; configured hook active.");
     }
     return true;
 }
