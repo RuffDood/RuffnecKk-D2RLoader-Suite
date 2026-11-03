@@ -13,6 +13,8 @@
 #include "resource_ids.h"
 
 #include <Windows.h>
+#include <RuffnecKk/iht/i_hate_tomls_client.h>
+#include "settings_page.hpp"
 #include <RuffnecKk/ui_input_compat_windows.hpp>
 
 #include <array>
@@ -95,7 +97,7 @@ using ruffneckk::remote_stash::WidgetRect;
 
 constexpr std::size_t MaximumConfigBytes = 65'536;
 constexpr std::uint64_t MaximumCustomSpriteBytes = 64ULL * 1024ULL * 1024ULL;
-constexpr char PluginVersion[] = "2.3.6";
+constexpr char PluginVersion[] = "2.4.0";
 
 #define REMOTE_SITE(value) value
 
@@ -473,7 +475,7 @@ D2RL::Resources::RegistrationHandle ButtonSpriteResource{
     D2RL::Resources::InvalidHandle};
 D2RL::Resources::RegistrationHandle ButtonLowendSpriteResource{
     D2RL::Resources::InvalidHandle};
-bool UsesSdkInput{};
+std::atomic_bool UsesSdkInput{};
 
 constexpr D2RL::PluginInfo Info{
     .infoSize = D2RL::PluginInfoSize,
@@ -487,7 +489,14 @@ constexpr D2RL::PluginInfo Info{
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
 };
 
-HotkeyConfig HotkeySettings{};
+struct LiveState { HotkeyConfig settings; };
+HotkeyConfig BootSettings{};
+RuffnecKk::LiveSettings::Snapshot<LiveState> RunningSettings;
+bool CurrentDiagnostics() noexcept { return RunningSettings.Read()->settings.diagnostics; }
+bool CurrentCloseTogether() noexcept { return RunningSettings.Read()->settings.closeRemoteStashAndInventoryTogether; }
+PluginMenu::Connection SettingsMenu;
+std::string SettingsSchema;
+std::uint64_t ButtonResourceRevision{};
 ButtonConfig EffectiveButtonSettings{};
 std::string LoadedConfigPath{"built-in disabled defaults"};
 std::string ButtonSettingsSource{"D2RLoader TOML [button]"};
@@ -590,6 +599,9 @@ void LogDiagnosticOnce(
     std::atomic_bool& reported,
     const char* message
 ) noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     if (!HotkeySettings.diagnostics || !Context || !message
         || reported.exchange(true, std::memory_order_acq_rel)) {
         return;
@@ -731,7 +743,7 @@ bool LoadActiveMpqButtonConfig() noexcept {
                 Context->LogError(message.c_str());
                 return false;
             }
-            HotkeySettings.button = std::move(parsed);
+            BootSettings.button = std::move(parsed);
             ActiveMpqRoot = root;
             ButtonSettingsSource = std::string("active MPQ ") + path.string();
             return true;
@@ -766,7 +778,7 @@ bool LoadConfig() noexcept {
         Context->LogError(message.c_str());
         return false;
     }
-    HotkeySettings = parsed;
+    BootSettings = parsed;
     LoadedConfigPath = "config/ruffneckk-remote-stash.toml";
     return LoadActiveMpqButtonConfig();
 }
@@ -853,6 +865,9 @@ bool ReadSpriteFile(
 }
 
 void ResetEffectiveVisualToDefault() noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     const auto placement = HotkeySettings.button.placement;
     const auto anchor = HotkeySettings.button.anchor;
     const auto offsetX = HotkeySettings.button.offsetX;
@@ -868,6 +883,9 @@ bool LoadButtonSpriteBytes(
     std::vector<std::uint8_t>& sprite,
     std::vector<std::uint8_t>& lowend
 ) noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     EffectiveButtonSettings = HotkeySettings.button;
     ButtonSpriteSource = "embedded RuffnecKk chest";
 
@@ -1022,7 +1040,18 @@ bool RegisterOwnedButton() noexcept {
         Context->LogError("RemoteStash: embedded button translations are missing.");
         return false;
     }
-    const auto layout = BuildButtonLayoutJson(EffectiveButtonSettings);
+    const auto suffix = ButtonResourceRevision ? "-live-" + std::to_string(ButtonResourceRevision) : std::string{};
+    const auto localId = std::string(ButtonChildLocalId) + suffix;
+    const auto layoutPath = ButtonResourceRevision ? std::string("data/global/ui/layouts/ruffneckk-remote-stash/") + localId + ".json" : std::string(ButtonLayoutVirtualPath);
+    const auto spritePath = ButtonResourceRevision ? std::string("data/hd/global/ui/d2rloader/ruffneckk-remote-stash/") + localId + ".sprite" : std::string(ButtonSpriteVirtualPath);
+    const auto lowendPath = ButtonResourceRevision ? std::string("data/hd/global/ui/d2rloader/ruffneckk-remote-stash/") + localId + ".lowend.sprite" : std::string(ButtonLowendSpriteVirtualPath);
+    auto layout = BuildButtonLayoutJson(EffectiveButtonSettings);
+    if (ButtonResourceRevision) {
+        const auto filename = layout.find("\"filename\"");
+        const auto token = layout.find("inventory-button", filename);
+        if (token == std::string::npos) return false;
+        layout.replace(token, std::strlen(ButtonChildLocalId), localId);
+    }
 
     // Register namespaced translations before the layout which references them.
     // The Loader selects the active D2R locale and refreshes language changes.
@@ -1032,17 +1061,17 @@ bool RegisterOwnedButton() noexcept {
             strings.size(),
             ButtonStringsResource)
         || !RegisterResource(
-            ButtonSpriteVirtualPath,
+            spritePath.c_str(),
             sprite.data(),
             sprite.size(),
             ButtonSpriteResource)
         || !RegisterResource(
-            ButtonLowendSpriteVirtualPath,
+            lowendPath.c_str(),
             lowend.data(),
             lowend.size(),
             ButtonLowendSpriteResource)
         || !RegisterResource(
-            ButtonLayoutVirtualPath,
+            layoutPath.c_str(),
             layout.data(),
             layout.size(),
             ButtonLayoutResource)) {
@@ -1058,7 +1087,7 @@ bool RegisterOwnedButton() noexcept {
         .flags = D2RL::Panels::ChildLayoutFlags::KeyboardMouseOnly,
         .stockPanel = D2RL::Panels::StockPanel::PlayerInventory,
         .reserved = 0,
-        .localId = ButtonChildLocalId,
+        .localId = localId.c_str(),
     };
     const auto result = PanelService->registerChildLayout(
         Context, &registration, &ButtonChildLayout);
@@ -1172,6 +1201,9 @@ bool CloseRemoteSession(
     void* player,
     const char* reason
 ) noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     if (!game || !player) return false;
     bool removed{};
     std::size_t remainingSessions{};
@@ -1233,6 +1265,8 @@ void DeactivateRemoteClientSession(
     bool notifyServer,
     const char* reason
 ) noexcept {
+    const bool diagnosticsEnabled = CurrentDiagnostics();
+
     const auto wasActive = RemoteClientSessionActive.exchange(
         false,
         std::memory_order_acq_rel
@@ -1259,7 +1293,7 @@ void DeactivateRemoteClientSession(
         } __except (EXCEPTION_EXECUTE_HANDLER) {
         }
     }
-    if (wasActive && Context && HotkeySettings.diagnostics) {
+    if (wasActive && Context && diagnosticsEnabled) {
         char diagnostic[320]{};
         std::snprintf(
             diagnostic,
@@ -1274,6 +1308,9 @@ void DeactivateRemoteClientSession(
 }
 
 void ClearLifecycleState() noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     DeactivateRemoteClientSession(false, "gameplay lifecycle");
     HotkeyRequestPending.store(false, std::memory_order_release);
     HotkeyCaptured.store(false, std::memory_order_release);
@@ -1313,6 +1350,9 @@ void __cdecl OnGameplayLifecycle(
 }
 
 bool QuerySdkServices() noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     if (Context->QueryService(
             D2RL::ServiceId::Lifecycle,
             D2RL::LifecycleServiceV1Version,
@@ -1323,7 +1363,7 @@ bool QuerySdkServices() noexcept {
             "RemoteStash: D2RLoader Lifecycle service v1 is unavailable.");
         return false;
     }
-    if (HotkeySettings.inventoryButtonEnabled) {
+    {
         if (Context->QueryService(
             D2RL::ServiceId::SharedEvent,
             D2RL::SharedEventServiceV1Version,
@@ -1361,7 +1401,6 @@ bool QuerySdkServices() noexcept {
             return false;
         }
     }
-    if (!HotkeySettings.hotkeyEnabled) return true;
 
     if (Context->QueryService(
             D2RL::ServiceId::Thread,
@@ -1443,6 +1482,9 @@ bool TrySendStashUi(void* player, std::uint8_t action) noexcept {
 }
 
 bool OpenRemoteSession(void* game, void* player) noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     if (!game || !player) return false;
     std::size_t sessionCount{};
     try {
@@ -2183,6 +2225,9 @@ std::int32_t __fastcall HookGoldButtonHandler(
     const std::uint8_t* packet,
     std::int32_t size
 ) noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     // D2R 3.2 routes stash-gold operations through the modern 0x27 handler.
     // Its final dword is a signed gold delta, not the legacy 18/19/20 action
     // value that older implementations assumed. Scope the handler itself; the
@@ -2291,6 +2336,8 @@ std::int32_t __fastcall HookSharedGoldDeposit(
     void* panel,
     std::int32_t amount
 ) noexcept {
+    const bool diagnosticsEnabled = CurrentDiagnostics();
+
     auto resolvedAmount = amount;
     if (panel && RemoteClientSessionActive.load(std::memory_order_acquire)) {
         __try {
@@ -2314,7 +2361,7 @@ std::int32_t __fastcall HookSharedGoldDeposit(
     const auto result = OriginalSharedGoldDeposit
         ? OriginalSharedGoldDeposit(panel, resolvedAmount)
         : 2;
-    if (Context && HotkeySettings.diagnostics) {
+    if (Context && diagnosticsEnabled) {
         char diagnostic[256]{};
         std::snprintf(
             diagnostic,
@@ -2684,6 +2731,8 @@ RemoteToggleExecution TryExecuteRemoteToggle(
     ToggleSource source,
     bool knownInputIsBlocked
 ) noexcept {
+    const bool closeTogether = CurrentCloseTogether();
+
     bool inventoryIsOpen{};
     if (OriginalGetUiState) {
         __try {
@@ -2695,7 +2744,7 @@ RemoteToggleExecution TryExecuteRemoteToggle(
     }
     const auto plan = ResolveRemoteTogglePlan(
         source,
-        HotkeySettings.closeRemoteStashAndInventoryTogether,
+        closeTogether,
         RemoteClientSessionActive.load(std::memory_order_acquire),
         knownInputIsBlocked
     );
@@ -2916,6 +2965,9 @@ void ReportButtonPlacementFailure(const char* reason) noexcept {
 }
 
 void __fastcall HookConfigurePlayerInventory(void* panel) noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     OriginalConfigurePlayerInventory(panel);
     if (!panel) return;
 
@@ -3057,6 +3109,9 @@ bool ModifierDown(int virtualKey) noexcept {
 }
 
 void ReplayRefusedHotkey() noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     std::array<INPUT, 2> input{};
     if (!IsMouseHotkey(HotkeySettings.hotkey)) {
         const auto replayKey = UsesSdkInput
@@ -3126,6 +3181,7 @@ void __cdecl ProcessQueuedHotkeyRequestOnUiThread(
 }
 
 bool QueueHotkeyRequestCore() noexcept {
+    if (!RunningSettings.Read()->settings.hotkeyEnabled) return false;
     bool noRequest{};
     if (!HotkeyRequestPending.compare_exchange_strong(
             noRequest,
@@ -3154,6 +3210,9 @@ bool QueueHotkeyRequestCore() noexcept {
 }
 
 bool QueueHotkeyRequest() noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     if (!CurrentProcessOwnsForegroundWindow()) return false;
     if (!ExactModifiersMatch(
             HotkeySettings.hotkey,
@@ -3194,6 +3253,9 @@ D2RL::Input::ActionResult __cdecl OnSdkInputAction(
 }
 
 bool RegisterSdkInput() noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     const D2RL::Input::ActionRegistration registration{
         .structSize = D2RL::Input::ActionRegistrationSize,
         .flags = 0,
@@ -3230,6 +3292,9 @@ bool RegisterSdkInput() noexcept {
 }
 
 bool HandleInputTransition(bool isDown, bool isUp, bool injected) noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     if (InputStopping.load(std::memory_order_acquire)) return false;
     if (isUp) {
         HotkeyPressed.store(false, std::memory_order_release);
@@ -3262,6 +3327,10 @@ LRESULT CALLBACK KeyboardHook(
     WPARAM message,
     LPARAM parameter
 ) noexcept {
+    if (UsesSdkInput.load(std::memory_order_acquire)) return CallNextHookEx(nullptr, code, message, parameter);
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     if (code != HC_ACTION || !parameter) {
         return CallNextHookEx(nullptr, code, message, parameter);
     }
@@ -3291,6 +3360,10 @@ LRESULT CALLBACK MouseHook(
     WPARAM message,
     LPARAM parameter
 ) noexcept {
+    if (UsesSdkInput.load(std::memory_order_acquire)) return CallNextHookEx(nullptr, code, message, parameter);
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     if (code != HC_ACTION || !parameter || !IsMouseHotkey(HotkeySettings.hotkey)) {
         return CallNextHookEx(nullptr, code, message, parameter);
     }
@@ -3330,28 +3403,26 @@ LRESULT CALLBACK MouseHook(
 }
 
 DWORD WINAPI InputThreadProc(void* parameter) noexcept {
+
     const auto module = static_cast<HMODULE>(parameter);
     MSG message{};
     PeekMessageW(&message, nullptr, WM_USER, WM_USER, PM_NOREMOVE);
-    const auto inputHook = SetWindowsHookExW(
-        IsMouseHotkey(HotkeySettings.hotkey) ? WH_MOUSE_LL : WH_KEYBOARD_LL,
-        IsMouseHotkey(HotkeySettings.hotkey) ? MouseHook : KeyboardHook,
-        module,
-        0
-    );
-    if (!inputHook) {
-        if (inputHook) UnhookWindowsHookEx(inputHook);
+    const auto keyboardHook = SetWindowsHookExW(WH_KEYBOARD_LL, KeyboardHook, module, 0);
+    const auto mouseHook = SetWindowsHookExW(WH_MOUSE_LL, MouseHook, module, 0);
+    if (!keyboardHook || !mouseHook) {
+        if (keyboardHook) UnhookWindowsHookEx(keyboardHook);
+        if (mouseHook) UnhookWindowsHookEx(mouseHook);
         InputThreadFailed.store(true, std::memory_order_release);
         InputThreadReady.store(true, std::memory_order_release);
         FreeLibraryAndExitThread(module, 1);
     }
-
     InputThreadReady.store(true, std::memory_order_release);
     while (GetMessageW(&message, nullptr, 0, 0) > 0) {
         TranslateMessage(&message);
         DispatchMessageW(&message);
     }
-    UnhookWindowsHookEx(inputHook);
+    UnhookWindowsHookEx(keyboardHook);
+    UnhookWindowsHookEx(mouseHook);
     FreeLibraryAndExitThread(module, 0);
 }
 
@@ -3411,9 +3482,7 @@ void CleanupFailedLoadSdkState() noexcept {
     UnregisterSdkButtonListener();
     UnregisterOwnedButton();
     UiDispatchReady.store(false, std::memory_order_release);
-    if (!UsesSdkInput) {
-        (void)StopInput();
-    }
+    (void)StopInput();
     if (InputService && Context
         && InputAction != D2RL::Input::InvalidHandle) {
         (void)InputService->unregisterAction(Context, InputAction);
@@ -3438,6 +3507,7 @@ void CleanupFailedLoadSdkState() noexcept {
 }
 
 bool InstallComposableCallSiteRedirects() noexcept {
+
     // Each witnessed site is one complete five-byte CALL instruction. Keep
     // ownership with the Loader while preserving the original target calls.
     constexpr std::array<void (*)(), 4> townHooks{
@@ -3482,12 +3552,15 @@ bool InstallComposableCallSiteRedirects() noexcept {
         && installGroup(
             SharedGoldDepositCallSites, goldHook,
             &gRemoteStashSharedGoldContinuation)
-        && (!HotkeySettings.hotkeyEnabled || installGroup(
+        && (installGroup(
             StashInterfaceTransitionCallSites, transitionHook,
             &gRemoteStashTransitionContinuation));
 }
 auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void*) noexcept
     -> D2RL::ConsoleCommandResult {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& HotkeySettings = liveSnapshot->settings;
+
     if (!command || !command->plugin) return D2RL::ConsoleCommandResult::Failed;
     char message[2400]{};
     std::snprintf(
@@ -3682,6 +3755,8 @@ extern "C" std::int32_t __fastcall RemoteStashSharedGold(
 
 namespace RuffnecKk::RemoteStash {
 
+#include "settings_runtime.inc"
+
 bool Load(
     const D2RL::PluginContext* context
 ) noexcept {
@@ -3706,7 +3781,7 @@ bool Load(
     RemoteGoldTransactions.store(0, std::memory_order_relaxed);
     RemoteGoldFailures.store(0, std::memory_order_relaxed);
     RemoteQuickMoveUiBypasses.store(0, std::memory_order_relaxed);
-    HotkeySettings = {};
+    BootSettings = {};
     EffectiveButtonSettings = {};
     LoadedConfigPath = "config/ruffneckk-remote-stash.toml";
     ButtonSettingsSource = "D2RLoader TOML [button]";
@@ -3804,11 +3879,13 @@ bool Load(
         return false;
     }
     if (!LoadConfig()) return false;
-    EffectiveButtonSettings = HotkeySettings.button;
-    if (!HotkeySettings.enabled) {
+    RunningSettings.Set(LiveState{BootSettings});
+    EffectiveButtonSettings = BootSettings.button;
+    if (!BootSettings.enabled) {
+        StartSettingsMenu();
         RegisterStatusCommand();
         context->LogInfo(
-            "Remote Stash 2.3.5 by RuffnecKk disabled; no hook, input action, listener, resource, or child layout was registered.");
+            "Remote Stash 2.4.0 by RuffnecKk master disabled; gameplay hooks and input are not installed.");
         return true;
     }
     const auto* runtimeBuild = D2RL::GetBuildName(context);
@@ -3825,11 +3902,11 @@ bool Load(
         return false;
     }
     if (!RegisterLifecycleListeners()) return false;
-    if (HotkeySettings.hotkeyEnabled && UsesSdkInput && !RegisterSdkInput()) {
+    if (BootSettings.hotkeyEnabled && UsesSdkInput && !RegisterSdkInput()) {
         return false;
     }
     UiDispatchReady.store(
-        HotkeySettings.hotkeyEnabled && ThreadService != nullptr,
+        ThreadService != nullptr,
         std::memory_order_release);
 
     OriginalOpenInterfaceState = At<OpenInterfaceStateFn>(OpenInterfaceStateRva);
@@ -3914,8 +3991,7 @@ bool Load(
         context->LogError("RemoteStash: paired interface open hook failed.");
         return false;
     }
-    if (HotkeySettings.hotkeyEnabled
-        && !InstallNamedInlineHook(
+    if (!InstallNamedInlineHook(
             context,
             REMOTE_SITE("misc.remoteStash.resetMouseInputFinalize"),
             ResetMouseInputStateWithFinalizeRva,
@@ -3931,8 +4007,7 @@ bool Load(
         );
         return false;
     }
-    if (HotkeySettings.hotkeyEnabled
-        && !InstallNamedInlineHook(
+    if (!InstallNamedInlineHook(
             context,
             REMOTE_SITE("misc.remoteStash.resetMouseInput"),
             ResetMouseInputStateRva,
@@ -4029,20 +4104,20 @@ bool Load(
         return false;
     }
 
-    if (HotkeySettings.hotkeyEnabled && !UsesSdkInput && !StartInput()) {
+    if (BootSettings.hotkeyEnabled && !UsesSdkInput && !StartInput()) {
         (void)StopInput();
         context->LogError("RemoteStash: bounded hotkey input worker failed.");
         return false;
     }
 
-    if (HotkeySettings.inventoryButtonEnabled && !RegisterOwnedButton()) {
+    if (BootSettings.inventoryButtonEnabled && !RegisterOwnedButton()) {
         context->LogError(
             "RemoteStash: the self-contained Inventory button could not be created."
         );
         CleanupFailedLoadSdkState();
         return false;
     }
-    if (HotkeySettings.inventoryButtonEnabled && !RegisterSdkButtonListener()) {
+    if (!RegisterSdkButtonListener()) {
         context->LogError(
             "RemoteStash: SDK inventory button listener unavailable; plugin refused."
         );
@@ -4063,7 +4138,7 @@ bool Load(
         "input=%s; config=%s.",
         PluginVersion,
         reportedBuild,
-        HotkeySettings.inventoryButtonEnabled
+        BootSettings.inventoryButtonEnabled
             ? "plugin-owned (remote only)" : "disabled",
         ButtonPlacementName(EffectiveButtonSettings.placement),
         ButtonAnchorName(EffectiveButtonSettings.anchor),
@@ -4077,20 +4152,22 @@ bool Load(
         EffectiveButtonSettings.hoveredFrame,
         ButtonSettingsSource.c_str(),
         ButtonSpriteSource.c_str(),
-        HotkeySettings.hotkeyEnabled ? "enabled" : "disabled",
-        HotkeySettings.hotkeyText.c_str(),
-        HotkeySettings.closeRemoteStashAndInventoryTogether
+        BootSettings.hotkeyEnabled ? "enabled" : "disabled",
+        BootSettings.hotkeyText.c_str(),
+        BootSettings.closeRemoteStashAndInventoryTogether
             ? "true" : "false",
-        !HotkeySettings.hotkeyEnabled ? "disabled"
+        !BootSettings.hotkeyEnabled ? "disabled"
             : (UsesSdkInput ? "SDK Input v1" : "native compatibility fallback"),
         LoadedConfigPath.c_str()
     );
     context->LogInfo(message);
+    StartSettingsMenu();
     return true;
 }
 
 void Unload() noexcept {
-    if (Context && HotkeySettings.diagnostics) {
+    SettingsMenu.Stop();
+    if (Context && BootSettings.diagnostics) {
         char message[480]{};
         std::snprintf(
             message,
@@ -4118,7 +4195,7 @@ void Unload() noexcept {
     }
     UnregisterSdkButtonListener();
     UnregisterOwnedButton();
-    if (!UsesSdkInput && !StopInput()) return;
+    if (!StopInput()) return;
     if (InputService && Context
         && InputAction != D2RL::Input::InvalidHandle) {
         (void)InputService->unregisterAction(Context, InputAction);
@@ -4161,7 +4238,7 @@ void Unload() noexcept {
         GoldRangeStub = nullptr;
     }
     GoldRangeTrampoline = nullptr;
-    HotkeySettings = {};
+    BootSettings = {};
     EffectiveButtonSettings = {};
     ButtonSettingsSource = "D2RLoader TOML [button]";
     ButtonSpriteSource = "embedded RuffnecKk chest";

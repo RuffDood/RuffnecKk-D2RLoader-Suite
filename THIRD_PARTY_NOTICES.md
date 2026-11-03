@@ -222,3 +222,15 @@ local governed evidence for every shipped patch feature.
 - No Kodia or other mod font is redistributed by Floating Damage. The plugin
   reads `data/hd/ui/fonts/kodia.ttf` from the installed mod as font index 12
   and otherwise falls back to index 0.
+
+## Optional I Hate TOMLs client
+
+The optional settings-menu client in `common/include/RuffnecKk/iht/` derives
+from wild-healer/D2R-Tools commit
+`8b4e508ea88bcc3c2ab1b1e014a6acd9f3518120`,
+`plugins/i-hate-tomls/include/i_hate_tomls_client.h`. Attribution and the
+SDK-v3 adaptation history remain in the header. No I Hate TOMLs DLL is bundled.
+The permanent plugin-communication contract derives from D2RLoader/PluginSDK
+commit `03a5af9e0feb3f95f95e148e330e01f6635950df`; its MIT notice is retained
+beside the adapted header as `PluginSDK-LICENSE`. The consumer's ABI remains
+PluginSDK API v3, with communication service availability checked at runtime.

@@ -1,4 +1,5 @@
-# Restart D2R after editing this configuration.
+# Use I Hate TOMLs for supported live changes. Manual edits require a restart.
+# The master enabled switch always applies after restart.
 # TOML takes precedence over the legacy BulkSkillPointAllocation.json.
 enabled = true
 skillPointsPerCtrlClick = 5

@@ -106,3 +106,14 @@ if(BUILD_TESTING)
     target_link_libraries(skill_removal_tests PRIVATE RuffnecKk::Common tomlplusplus::tomlplusplus)
     add_test(NAME ruffneckk.bulk-skill-point-allocation.removal COMMAND skill_removal_tests "${CMAKE_CURRENT_SOURCE_DIR}/config/BulkSkillPointAllocation.toml")
 endif()
+
+# Exercise the actual optional settings callbacks exported by both DLLs with
+# an isolated mock provider; no game process or native hooks are involved.
+if(BUILD_TESTING AND TARGET ruffneckk_remote_stash)
+    add_executable(ruffneckk_live_settings_tests ../../common/tests/live_settings_integration_tests.cpp)
+    target_link_libraries(ruffneckk_live_settings_tests PRIVATE RuffnecKk::Common)
+    target_compile_options(ruffneckk_live_settings_tests PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/EHsc>)
+    add_dependencies(ruffneckk_live_settings_tests ruffneckk_remote_stash ruffneckk_bulk_skill_point_allocation)
+    add_test(NAME ruffneckk.live-settings.production-callbacks COMMAND ruffneckk_live_settings_tests
+        $<TARGET_FILE:ruffneckk_remote_stash> $<TARGET_FILE:ruffneckk_bulk_skill_point_allocation>)
+endif()

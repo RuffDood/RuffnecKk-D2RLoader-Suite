@@ -1,6 +1,7 @@
 # Remote Stash
 # Opens the native personal and shared stash outside town.
-# Restart D2R after editing this file.
+# Use I Hate TOMLs for supported live changes. Manual edits require a restart.
+# The master enabled switch always applies after restart.
 
 # Master switch. false disables the complete plugin and installs no hook,
 # input action, or inventory-button listener.
@@ -44,7 +45,7 @@ offset_y = 0
 width = 128
 height = 80
 
-# Empty paths use the self-contained framed chest sprites embedded in the DLL.
+# Empty paths use the self-contained frameless chest sprites embedded in the DLL.
 # A relative path is resolved beside this TOML. Absolute paths are also valid.
 # Use forward slashes, escaped backslashes, or TOML literal strings.
 # Example: sprite_file = "sprites/my-remote-stash.sprite"

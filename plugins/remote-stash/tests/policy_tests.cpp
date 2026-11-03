@@ -619,12 +619,12 @@ int main(int argc, char** argv) {
     runtimeStream << runtimeFile.rdbuf();
     const auto runtime = runtimeStream.str();
     REQUIRE(runtime.find(
-        "if (!HotkeySettings.enabled) {") != std::string::npos);
+        "if (!BootSettings.enabled) {") != std::string::npos);
     REQUIRE(runtime.find(
-        "if (HotkeySettings.inventoryButtonEnabled) {")
+        "RunningSettings.Set(LiveState{BootSettings})")
         != std::string::npos);
     REQUIRE(runtime.find(
-        "if (HotkeySettings.inventoryButtonEnabled && !RegisterSdkButtonListener())")
+        "if (!RegisterSdkButtonListener())")
         != std::string::npos);
     REQUIRE(runtime.find("registerChildLayout") != std::string::npos);
     REQUIRE(runtime.find("registerResource") != std::string::npos);

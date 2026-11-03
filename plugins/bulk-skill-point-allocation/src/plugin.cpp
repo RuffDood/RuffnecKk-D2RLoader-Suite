@@ -8,6 +8,9 @@
 #include <RuffnecKk/native_stat_compat.hpp>
 
 #include <Windows.h>
+#include <RuffnecKk/live_settings_windows.hpp>
+#include <RuffnecKk/iht/i_hate_tomls_client.h>
+#include "settings_page.hpp"
 #include <RuffnecKk/ui_input_compat_windows.hpp>
 
 #include <array>
@@ -47,7 +50,11 @@ constexpr std::size_t LocalizedBufferSize = 4096;
 
 const D2RL::PluginContext* Context{};
 std::uint8_t* Base{};
-Settings ActiveSettings{};
+Settings BootSettings{};
+RuffnecKk::LiveSettings::Snapshot<Removal::Configuration> RunningSettings;
+PluginMenu::Connection SettingsMenu;
+std::string SettingsSchema;
+void StartSettingsMenu() noexcept;
 std::optional<std::filesystem::path> GameplaySource;
 std::optional<std::filesystem::path> StringsSource;
 
@@ -93,7 +100,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-bulk-skill-point-allocation",
     .name = "Bulk Skill Point Allocation",
-    .version = "1.4.1",
+    .version = "1.5.0",
     .author = "RuffnecKk",
     .description =
         "Allocates and refunds skill points with configurable mouse controls.",
@@ -163,6 +170,9 @@ void LogAllocation(
     std::uint16_t skillId,
     std::uint16_t outgoingExtra
 ) noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& ActiveSettings = liveSnapshot->allocation;
+
     if (!ActiveSettings.diagnostics || Context == nullptr) return;
     char message[224]{};
     std::snprintf(
@@ -179,6 +189,9 @@ void BeginBulkAllocation(
     AllocationMode mode,
     std::uint16_t skillId
 ) noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& ActiveSettings = liveSnapshot->allocation;
+
     if (OriginalSendFiveBytePacket == nullptr) return;
     const auto requested = mode == AllocationMode::ShiftAll
         ? 1U
@@ -256,6 +269,9 @@ void LogLocalizationFallbackOnce() noexcept {
 }
 
 void ResolveConfirmationPrompt() noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& ActiveSettings = liveSnapshot->allocation;
+
     if (!ActiveSettings.shiftConfirmationKey.empty()) {
         const auto localized = FetchLocalizedString(
             ActiveSettings.shiftConfirmationKey.c_str(),
@@ -357,6 +373,9 @@ void __fastcall HookSendFiveBytePacket(
     std::uint16_t value,
     std::uint16_t extra
 ) noexcept {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& ActiveSettings = liveSnapshot->allocation;
+
     if (opcode != NativeContract::AllocateSkillOpcode) {
         OriginalSendFiveBytePacket(opcode, value, extra);
         return;
@@ -400,7 +419,6 @@ void __fastcall HookSendFiveBytePacket(
 }
 
 auto ValidateServiceContracts() noexcept -> bool {
-    if (!ActiveSettings.confirmShiftAllocation) return true;
     if (!LocalizationService.Bind(Context)) {
         Context->LogError(
             "BulkSkillPointAllocation: a valid Localization service is required when Shift confirmation is enabled.");
@@ -465,7 +483,6 @@ auto ValidateNativeContract() noexcept -> bool {
             "key-state helper")) {
         return false;
     }
-    if (!ActiveSettings.confirmShiftAllocation) return true;
     return CheckBytes(
             NativeContract::GetLocalizedStringByKeyRva,
             NativeContract::GetLocalizedStringByKeyExpected,
@@ -479,14 +496,10 @@ auto ValidateNativeContract() noexcept -> bool {
 void BindNativeFunctions() noexcept {
     IsVirtualKeyDown = At<IsVirtualKeyDownFn>(
         NativeContract::IsVirtualKeyDownRva);
-    if (ActiveSettings.confirmShiftAllocation) {
-        ShowAssignAllConfirmation = At<ShowAssignAllConfirmationFn>(
-            NativeContract::ShowAssignAllConfirmationRva);
-    }
+    ShowAssignAllConfirmation = At<ShowAssignAllConfirmationFn>(NativeContract::ShowAssignAllConfirmationRva);
 }
 
 auto RegisterUiListener() noexcept -> bool {
-    if (!ActiveSettings.confirmShiftAllocation) return true;
     const D2RL::SharedEvents::UiMessageListener listener{
         .structSize = D2RL::SharedEvents::UiMessageListenerSize,
         .flags = 0,
@@ -522,8 +535,7 @@ void UnregisterUiListener() noexcept {
 
 auto InstallHooks() noexcept -> bool {
     if (!InstallRefundHooks()) return false;
-    if (ActiveSettings.confirmShiftAllocation
-        && !Context->InstallInlineHook(
+    if (!Context->InstallInlineHook(
             NativeContract::GetLocalizedStringByKeyRva,
             NativeContract::GetLocalizedStringByKeyExpected.data(),
             static_cast<std::uint32_t>(
@@ -571,13 +583,13 @@ void ResetState() noexcept {
     SecondaryLocaleProbe.fill('\0');
     GameplaySource.reset();
     StringsSource.reset();
-    ActiveSettings.skillPointsPerCtrlClick =
+    BootSettings.skillPointsPerCtrlClick =
         DefaultSkillPointsPerCtrlClick;
-    ActiveSettings.confirmShiftAllocation = false;
-    ActiveSettings.diagnostics = false;
-    ActiveSettings.shiftConfirmationKey.clear();
-    ActiveSettings.shiftConfirmationFallback.clear();
-    for (auto& confirmation : ActiveSettings.shiftConfirmations) {
+    BootSettings.confirmShiftAllocation = false;
+    BootSettings.diagnostics = false;
+    BootSettings.shiftConfirmationKey.clear();
+    BootSettings.shiftConfirmationFallback.clear();
+    for (auto& confirmation : BootSettings.shiftConfirmations) {
         confirmation.clear();
     }
     LocalizationFallbackLogged.store(false, std::memory_order_relaxed);
@@ -599,6 +611,8 @@ void ResetCounters() noexcept {
     ShiftCancelled.store(0, std::memory_order_relaxed);
     NativeBulkPacketsSent.store(0, std::memory_order_relaxed);
 }
+
+#include "settings_runtime.inc"
 
 } // namespace
 } // namespace RuffnecKk::BulkSkillPointAllocation
@@ -637,8 +651,8 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         if (auto document = LoadFirstDocument(ResolveConfigCandidates(context, StringsConfigFileName)))
             ApplyStringsConfig(document->object, loaded.settings);
         loaded.gameplaySource = std::move(config.source);
-        RefundSettings = config.removal;
-        ActiveSettings = std::move(loaded.settings);
+        BootRefundSettings = config.removal;
+        BootSettings = std::move(loaded.settings);
         GameplaySource = std::move(loaded.gameplaySource);
         StringsSource = std::move(loaded.stringsSource);
     } catch (const std::exception& exception) {
@@ -655,15 +669,17 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
 
-    if (!ActiveSettings.enabled) {
+    RunningSettings.Set(Removal::Configuration{BootSettings, BootRefundSettings, GameplaySource});
+    if (!BootSettings.enabled) {
+        StartSettingsMenu();
         try {
             const auto message = std::string(
-                "BulkSkillPointAllocation 1.4.1 by RuffnecKk loaded disabled; no service or hook registered; gameplayConfig=")
+                "BulkSkillPointAllocation 1.5.0 by RuffnecKk master disabled; gameplay hooks are not installed; gameplayConfig=")
                 + PathForLog(GameplaySource) + ".";
             context->LogInfo(message.c_str());
         } catch (...) {
             context->LogInfo(
-                "BulkSkillPointAllocation 1.4.1 by RuffnecKk loaded disabled; no service or hook registered.");
+                "BulkSkillPointAllocation 1.5.0 by RuffnecKk master disabled; gameplay hooks are not installed.");
         }
         return true;
     }
@@ -686,24 +702,26 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         return false;
     }
 
+    StartSettingsMenu();
     try {
         const auto message = std::string(
-            "BulkSkillPointAllocation 1.4.1 by RuffnecKk loaded; role=Shared; ctrl=")
-            + std::to_string(ActiveSettings.skillPointsPerCtrlClick)
+            "BulkSkillPointAllocation 1.5.0 by RuffnecKk loaded; role=Shared; ctrl=")
+            + std::to_string(BootSettings.skillPointsPerCtrlClick)
             + "; shiftConfirmation="
-            + (ActiveSettings.confirmShiftAllocation ? "enabled" : "disabled")
+            + (BootSettings.confirmShiftAllocation ? "enabled" : "disabled")
             + "; gameplayConfig=" + PathForLog(GameplaySource)
             + "; stringsConfig=" + PathForLog(StringsSource) + ".";
         context->LogInfo(message.c_str());
     } catch (...) {
         context->LogInfo(
-            "BulkSkillPointAllocation 1.4.1 by RuffnecKk loaded.");
+            "BulkSkillPointAllocation 1.5.0 by RuffnecKk loaded.");
     }
     return true;
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     using namespace RuffnecKk::BulkSkillPointAllocation;
+    SettingsMenu.Stop();
     UnregisterUiListener();
     ResetState();
 }

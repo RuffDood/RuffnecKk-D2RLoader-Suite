@@ -1,6 +1,6 @@
 // Included inside the plugin implementation namespace. Native ABI witnesses
 // are recorded in refund_native.hpp and the component development home.
-Removal::Settings RefundSettings;
+Removal::Settings BootRefundSettings;
 RuffnecKk::NativeStatCompat::Adapter RefundStats;
 using ButtonInputFn = void(__fastcall*)(void*, const void*);
 using ServerAllocateFn = int(__fastcall*)(void*, void*, const void*, int);
@@ -21,6 +21,9 @@ template<class T> T ReadRefund(const void* object, std::size_t offset) noexcept 
 
 auto RefundClick(void* widget, const void* message, std::uint16_t& skill,
     std::uint16_t& action) noexcept -> bool {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& RefundSettings = liveSnapshot->removal;
+
     if (!widget || !message || !OriginalSendFiveBytePacket
         || ReadRefund<std::uint64_t>(message, 0) != InputHash("InputMessage")
         || ReadRefund<std::uint64_t>(widget, 0x5E0) != 0x290E587494892995ULL)
@@ -77,6 +80,10 @@ int InvestedRanks(void* player, int id) {
 }
 
 void ApplySkillRefund(void* game, void* player, int id, Removal::Action action) {
+    const auto liveSnapshot = RunningSettings.Read();
+    const auto& ActiveSettings = liveSnapshot->allocation;
+    const auto& RefundSettings = liveSnapshot->removal;
+
     if (!game || !player || ReadRefund<int>(player, 0) != 0) return;
     const int playerClass = ReadRefund<int>(player, 4);
     if (playerClass < 0 || playerClass > 7) return;
