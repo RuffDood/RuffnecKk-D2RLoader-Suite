@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(DollExplosion VERSION 1.0.0 LANGUAGES CXX RC)
+    project(DollExplosion VERSION 1.0.1 LANGUAGES CXX RC)
     include(CTest)
 else()
     enable_language(RC)
@@ -45,6 +45,7 @@ target_compile_definitions(DollExplosion PRIVATE
 target_link_libraries(DollExplosion PRIVATE
     D2RLPlugin::D2RLPlugin
     RuffnecKk::NativeStatCompat
+    RuffnecKk::MapsStatCompat
     tomlplusplus::tomlplusplus
 )
 set_target_properties(DollExplosion PROPERTIES
@@ -72,7 +73,7 @@ if(BUILD_TESTING)
     add_executable(DollExplosionDelayedOwnerTests src/delayed_owner_tests.cpp)
     target_compile_features(DollExplosionDelayedOwnerTests PRIVATE cxx_std_20)
     target_compile_definitions(DollExplosionDelayedOwnerTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
-    target_link_libraries(DollExplosionDelayedOwnerTests PRIVATE D2RLPlugin::D2RLPlugin RuffnecKk::NativeStatCompat tomlplusplus::tomlplusplus)
+    target_link_libraries(DollExplosionDelayedOwnerTests PRIVATE D2RLPlugin::D2RLPlugin RuffnecKk::NativeStatCompat RuffnecKk::MapsStatCompat tomlplusplus::tomlplusplus)
     if(MSVC)
         target_compile_options(DollExplosionDelayedOwnerTests PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
     endif()
@@ -81,6 +82,7 @@ if(BUILD_TESTING)
     target_compile_features(DollExplosionTests PRIVATE cxx_std_20)
     target_link_libraries(DollExplosionTests PRIVATE
         RuffnecKk::NativeStatCompat
+        RuffnecKk::MapsStatCompat
         tomlplusplus::tomlplusplus
     )
     target_compile_definitions(DollExplosionTests PRIVATE
