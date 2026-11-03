@@ -1,6 +1,9 @@
 #include <D2RLPlugin/api.h>
 #include <D2RLPlugin/resources.h>
 #include "companion_layout.hpp"
+#include "move_only_compatibility.hpp"
+#include <vector>
+#include <algorithm>
 #include <Windows.h>
 #include <cstring>
 #include <filesystem>
@@ -32,7 +35,67 @@ D2RL::ServiceQueryResult __cdecl Query(const D2RL::PluginContext*, D2RL::Service
     return D2RL::ServiceQueryResult::Success;
 }
 }
+int TestMoveOnlyCompatibility() {
+    namespace M = MoveOnlyCompatibility;
+    constexpr std::uintptr_t game = 0x10000000, owner = 0x20000000, relay = 0x30000000;
+    constexpr auto entry = game + CompanionNative::AssignStringRva;
+    constexpr auto trampoline = relay + 0x100;
+    std::vector<std::uint8_t> native(114), provider(0x30000), relays(0x200);
+    const auto read = [&](std::uintptr_t address, void* out, std::size_t size) noexcept {
+        for (const auto& region : {std::pair{entry, &native}, std::pair{owner, &provider}, std::pair{relay, &relays}}) {
+            if (address >= region.first && address - region.first <= region.second->size()
+                && size <= region.second->size() - (address - region.first)) {
+                std::memcpy(out, region.second->data() + (address - region.first), size); return true;
+            }
+        }
+        return false;
+    };
+    std::copy(CompanionNative::AssignStringBytes.begin(), CompanionNative::AssignStringBytes.end(), native.begin());
+    CHECK(M::Validate(read, game, 0));
+    const auto vanilla = native;
+    native[0] = 0xE9;
+    const auto displacement = static_cast<std::int32_t>(relay - (entry + 5));
+    std::memcpy(native.data() + 1, &displacement, 4);
+    CHECK(!M::Validate(read, game, 0));
+    const std::array<std::uint8_t, 6> jump{0xFF, 0x25, 0, 0, 0, 0};
+    std::copy(jump.begin(), jump.end(), relays.begin());
+    const auto hook = owner + M::HookRva;
+    std::memcpy(relays.data() + 6, &hook, 8);
+    std::copy(M::HookBytes.begin(), M::HookBytes.end(), provider.begin() + M::HookRva);
+    std::copy(M::LoadFlagBytes.begin(), M::LoadFlagBytes.end(), provider.begin() + M::LoadFlagRva);
+    std::copy(M::FlagAddressBytes.begin(), M::FlagAddressBytes.end(), provider.begin() + M::FlagAddressRva);
+    std::copy(M::MemoryOrderBytes.begin(), M::MemoryOrderBytes.end(), provider.begin() + M::MemoryOrderRva);
+    std::memcpy(provider.data() + M::GameBaseSlot, &game, 8);
+    std::memcpy(provider.data() + M::OriginalSlot, &trampoline, 8);
+    std::copy_n(vanilla.begin(), 5, relays.begin() + 0x100);
+    std::copy(jump.begin(), jump.end(), relays.begin() + 0x105);
+    const auto continuation = entry + 5;
+    std::memcpy(relays.data() + 0x10B, &continuation, 8);
+    // Regression: old full-body equality rejects this exact valid hook pattern.
+    CHECK(native != vanilla);
+    CHECK(M::Validate(read, game, owner));
+    CHECK(!M::Validate(read, game, owner + 1));
+    for (const auto offset : {M::HookRva, M::HookRva + 0x4D, M::HookRva + 0xAF,
+            M::LoadFlagRva, M::FlagAddressRva, M::MemoryOrderRva, M::GameBaseSlot, M::OriginalSlot}) {
+        provider[offset] ^= 1; CHECK(!M::Validate(read, game, owner)); provider[offset] ^= 1;
+    }
+    for (const std::size_t offset : {0u, 6u, 0x100u, 0x105u, 0x10Bu}) {
+        relays[offset] ^= 1; CHECK(!M::Validate(read, game, owner)); relays[offset] ^= 1;
+    }
+    native[20] ^= 1; CHECK(!M::Validate(read, game, owner)); native[20] ^= 1;
+    auto truncated = [&](std::uintptr_t address, void* out, std::size_t size) noexcept {
+        return address != owner + M::HookRva && read(address, out, size);
+    };
+    CHECK(!M::Validate(truncated, game, owner));
+    CHECK(!M::Validate(read, (std::numeric_limits<std::uintptr_t>::max)(), owner));
+    // Exercise the same companion dispatch used by ValidateRuntime.
+    CHECK(CompanionNative::Validate([&](std::uintptr_t rva, const std::uint8_t*, std::uint32_t) {
+        return rva != CompanionNative::AssignStringRva || M::Validate(read, game, owner);
+    }));
+    return 0;
+}
 int wmain(int argc, wchar_t** argv) {
+    CHECK(TestMoveOnlyCompatibility() == 0);
     CHECK(SameImagePath("PANEL\\Vendors\\VendorShop_BG", NativeBackgrounds[0]));
     CHECK(!SameImagePath("Controller/Panel/Vendor/V2/VendorShop_BG", NativeBackgrounds[0]));
     CHECK(IsDesktopBackground({{0, 0, 1162, 1507}, 1.0F}));

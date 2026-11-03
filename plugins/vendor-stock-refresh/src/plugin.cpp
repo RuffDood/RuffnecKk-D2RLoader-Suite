@@ -5,6 +5,7 @@
 #include "ui_scale_contract.hpp"
 #include "companion_layout.hpp"
 #include "companion_native.hpp"
+#include "move_only_compatibility.hpp"
 #include "companion_hash.hpp"
 #include <D2RLPlugin/resources.h>
 
@@ -154,7 +155,7 @@ thread_local bool LayoutDiagnosticActive{};
 void LayoutDiagnostic(const char* format, ...) noexcept {
     if (!Context || !LayoutDiagnosticActive) return;
     char message[1024]{};
-    const int prefix = std::snprintf(message, sizeof(message), "[VSR-GOLD-216-2] ");
+    const int prefix = std::snprintf(message, sizeof(message), "[VSR-MOVE-217-1] ");
     va_list args;
     va_start(args, format);
     std::vsnprintf(message + prefix, sizeof(message) - static_cast<std::size_t>(prefix), format, args);
@@ -200,7 +201,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-vendor-stock-refresh",
     .name = "Vendor Stock Refresh",
-    .version = "2.1.6",
+    .version = "2.1.7",
     .author = "RuffnecKk",
     .description = "Refreshes a vendor's stock with one click.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -664,6 +665,20 @@ bool ValidateRuntime() noexcept {
     ActivePacketRoute = PacketRoute::Invalid;
     const auto companionSurfacesMatch = CompanionNative::Validate(
         [](std::uintptr_t rva, const std::uint8_t* bytes, std::uint32_t size) {
+            if (rva == CompanionNative::AssignStringRva) {
+                const auto owner = GetModuleHandleW(L"d2rl-move-only.dll");
+                const auto game = reinterpret_cast<std::uintptr_t>(Base);
+                const auto read = [](std::uintptr_t address, void* out, std::size_t length) noexcept {
+                    if (!IsReadableRange(reinterpret_cast<const void*>(address), length)) return false;
+                    __try { std::memcpy(out, reinterpret_cast<const void*>(address), length); return true; }
+                    __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+                };
+                const bool admitted = MoveOnlyCompatibility::Validate(read, game, reinterpret_cast<std::uintptr_t>(owner));
+                Context->LogInfo(admitted
+                    ? "[VSR-MOVE-217-1] String helper validated: native or exact Move Only forwarding chain."
+                    : "[VSR-MOVE-217-1] String helper refused: unrecognized body, owner or forwarding chain.");
+                return admitted;
+            }
             return Context->CheckExpectedBytes(rva, bytes, size);
         });
     const auto fixedSurfacesMatch = companionSurfacesMatch && Context->CheckExpectedBytes(
@@ -1248,7 +1263,7 @@ auto Status(D2R::Game::Client*, const D2RL::ConsoleCommandContext* command, void
     std::snprintf(
         message,
         sizeof(message),
-        "Vendor Stock Refresh 2.1.6: %s; diagnostics=%s; placed=%llu; "
+        "Vendor Stock Refresh 2.1.7: %s; diagnostics=%s; placed=%llu; "
         "placementFailures=%llu; sent=%llu; received=%llu; armed=%llu; rejected=%llu.",
         Settings.enabled ? "active" : "disabled",
         Settings.diagnosticsEnabled ? "enabled" : "disabled",
@@ -1280,7 +1295,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
 #if defined(VENDOR_LAYOUT_DIAGNOSTIC)
     LayoutDiagnosticEvents.store(0, std::memory_order_relaxed);
     LayoutDiagnosticActive = false;
-    context->LogInfo("[VSR-GOLD-216-2] Diagnostic build; automatic first-12 vendor captures; native-size placement with measured fit. Companion validation follows configuration; disabled plugins skip it.");
+    context->LogInfo("[VSR-MOVE-217-1] Compatibility candidate; automatic first-12 vendor captures; native-size placement with measured fit. Companion validation follows configuration; disabled plugins skip it.");
 #endif
     Base = nullptr;
     Settings = {};
@@ -1299,14 +1314,14 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ReadConfiguration()) return false;
     if (!Settings.enabled) {
         context->LogInfo(
-            "VendorStockRefresh 2.1.6 by RuffnecKk loaded disabled; no hook or service registered.");
+            "VendorStockRefresh 2.1.7 by RuffnecKk loaded disabled; no hook or service registered.");
         return true;
     }
 
     const bool companionValid = ValidateCompanion();
 #if defined(VENDOR_LAYOUT_DIAGNOSTIC)
-    context->LogInfo(companionValid ? "[VSR-GOLD-216-2] Companion hash and resource-service validation PASS."
-        : "[VSR-GOLD-216-2] Companion hash/resource-service validation FAIL; see error below.");
+    context->LogInfo(companionValid ? "[VSR-MOVE-217-1] Companion hash and resource-service validation PASS."
+        : "[VSR-MOVE-217-1] Companion hash/resource-service validation FAIL; see error below.");
 #endif
     if (!companionValid) {
         context->LogError("VendorStockRefresh: missing/mismatched companion MPQ or unavailable resource service; install the matching DLL and MPQ together.");
@@ -1398,7 +1413,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
 
     context->LogInfo(
-        "VendorStockRefresh 2.1.6 by RuffnecKk active; native button follows the panel slot or runtime gold anchor.");
+        "VendorStockRefresh 2.1.7 by RuffnecKk active; native button follows the panel slot or runtime gold anchor.");
     return true;
 }
 
