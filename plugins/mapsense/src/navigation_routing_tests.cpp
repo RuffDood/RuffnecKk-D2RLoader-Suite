@@ -71,6 +71,44 @@ void TestRoutingPublication() {
     Check(published && consistent.load(), "concurrent refresh reads only coherent published snapshots");
 }
 
+void TestLargeRoutingConfig() {
+    for (const int count : {128, 129, 199, 512}) {
+        std::string document = "schema_version=21\n[navigation.routing]\noverrides=[\n";
+        for (int index = 0; index < count; ++index) {
+            document += "{from_level_id=" + std::to_string(1000 + index)
+                + ",to_level_id=" + std::to_string(1001 + index)
+                + ",kind='progression'},\n";
+        }
+        document += "]\n";
+        try {
+            const auto config = ParseConfig(document);
+            const auto saved = SerializeMenuSettingsForSave(
+                SerializeConfig(ParseConfig("schema_version=21")), document);
+            const auto restored = ParseConfig(saved);
+            Check(config.navigation.routing.overrides.size() == static_cast<std::size_t>(count)
+                && restored.navigation.routing.overrides.size() == static_cast<std::size_t>(count),
+                "large route lists parse and survive menu saves");
+            const auto plan = BuildAdaptiveNavigationRoutePlan(999 + count,
+                std::array{1000 + count}, restored.navigation.routing, false);
+            Check(plan.progressionCount == 1 && plan.progression[0] == 1000 + count,
+                "last override in a large list reaches routing policy");
+        } catch (const std::exception&) {
+            Check(false, "valid large route list is accepted");
+        }
+    }
+    std::string oversized = "schema_version=21\n[navigation.routing]\noverrides=[\n";
+    for (int index = 0; index < 513; ++index) {
+        oversized += "{from_level_id=" + std::to_string(1000 + index)
+            + ",to_level_id=" + std::to_string(1001 + index)
+            + ",kind='progression'},\n";
+    }
+    oversized += "]\n";
+    bool rejected{};
+    try { (void)ParseConfig(oversized); }
+    catch (const std::exception&) { rejected = true; }
+    Check(rejected, "routing lists above 512 entries are rejected");
+}
+
 void TestConfig() {
     const auto legacy = ParseConfig("schema_version = 20");
     Check(legacy.navigation.routing.adaptToModConnections && !legacy.navigation.routing.townShortcuts,
@@ -92,6 +130,7 @@ overrides = [{ from_level_id = 75, to_level_id = 83, kind = "progression" },
         "menu save preserves a manually cleared route list");
     for (const auto invalid : {
             "overrides = 1", "overrides = [{}]",
+            "overrides = [{from_level_id=167,to_level_id=168,kind='custom'}]",
             "overrides = [{from_level_id=75,to_level_id=75,kind='progression'}]",
             "overrides = [{from_level_id=75,to_level_id=83,kind='waypoint'}]",
             "overrides = [{from_level_id=75,to_level_id=83,kind='progression',typo=true}]",
@@ -202,6 +241,7 @@ int main() {
         "missing dynamic portal does not create endless retries");
     TestRoutingPublication();
     TestConfig();
+    TestLargeRoutingConfig();
     TestTownProjection();
     std::cout << checks << " checks; ";
     std::cout << "Adaptive routing: " << (failures ? "FAIL" : "PASS") << '\n';

@@ -184,6 +184,7 @@ targets = [
 adapt_to_mod_connections = true
 # Show supported town shortcuts, such as green Docks -> Travincal or red Lut Gholein -> Sewers 3.
 town_shortcuts = false
+# Maximum 512 overrides; kind must be "progression" or "quest".
 # Optional explicit routes for ambiguous or new connections. The destination
 # must be directly connected. Save and restart D2R after editing this list.
 # { from_level_id = 129, to_level_id = 131, kind = "progression" }

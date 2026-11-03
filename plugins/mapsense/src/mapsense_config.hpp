@@ -52,6 +52,7 @@ inline constexpr float MaximumNavigationLineThickness = 8.0F;
 inline constexpr std::int32_t MinimumCustomLevelId = 1;
 inline constexpr std::int32_t MaximumCustomLevelId = 65'535;
 inline constexpr std::size_t MaximumCustomLevelTargets = 128U;
+inline constexpr std::size_t MaximumNavigationRoutingOverrides = 512U;
 inline constexpr std::size_t MaximumCustomLevelNameLength = 128U;
 
 struct RgbaColor {
@@ -1149,8 +1150,9 @@ inline auto ReadNavigationRouting(const toml::table& navigation) -> NavigationRo
     const auto* node = routing->get("overrides");
     if (node == nullptr) return result;
     const auto* routes = node->as_array();
-    if (routes == nullptr || routes->size() > MaximumCustomLevelTargets)
-        throw std::runtime_error("MapSense routing overrides must be an array of at most 128 entries");
+    if (routes == nullptr || routes->size() > MaximumNavigationRoutingOverrides)
+        throw std::runtime_error("MapSense routing overrides must be an array of at most "
+            + std::to_string(MaximumNavigationRoutingOverrides) + " entries");
     for (const auto& entry : *routes) {
         const auto* route = entry.as_table();
         if (route == nullptr) throw std::runtime_error("MapSense routing override must be a table");
@@ -1964,6 +1966,7 @@ inline auto SerializeConfig(const Config& config) -> std::string {
         << "adapt_to_mod_connections = " << config.navigation.routing.adaptToModConnections << "\n"
         << "town_shortcuts = " << config.navigation.routing.townShortcuts << "\n"
         << "# Use overrides only when automatic shortcut detection cannot choose your route.\n"
+        << "# Maximum " << MaximumNavigationRoutingOverrides << " entries; kind must be progression or quest.\n"
         << "# The destination must be directly connected; save and restart D2R after editing this list.\n"
         << "# { from_level_id = 129, to_level_id = 131, kind = \"progression\" }\n"
         << "overrides = [\n";
