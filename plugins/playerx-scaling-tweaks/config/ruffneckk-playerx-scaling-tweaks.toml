@@ -363,3 +363,19 @@ match = true
 #   - /players is unavailable and Offline Difficulty is forced to p1.
 #   - Minimum p1 and unlimited channel caps preserve vanilla scaling curves.
 #   - NoDrop uses real nearby party members, never command simulation.
+
+
+# =============================================================================
+# PLAYER COUNT HUD
+# =============================================================================
+# Click the diamond, drag to preview, then release to apply through PlayerX.
+# The HUD offers up to p24, respecting the command maximum and scaling minimum.
+# Values selected through other controls above p24 remain unchanged and are shown.
+# Omitted in older TOMLs: enabled=true, x=1571, y=1708.
+[hud-player-slider]
+# Can be changed live through I Hate TOMLs. Battle.net simulation disables edits.
+enabled = true
+# Button position on a 3200 x 1801 design canvas. The slider moves with it.
+# Position changes take effect after restarting the game.
+x = 1571
+y = 1708

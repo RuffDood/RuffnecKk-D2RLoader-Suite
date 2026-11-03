@@ -8,6 +8,11 @@
 #include "player_scaling_policy.hpp"
 #include "players_command.hpp"
 #include "player_controls.hpp"
+#include "settings_menu.hpp"
+#include "settings_file.hpp"
+#include "i_hate_tomls_client.h"
+#include "hud/player_hud_slider.hpp"
+#include "hud/slider_policy.hpp"
 
 #include <Windows.h>
 
@@ -58,7 +63,10 @@ using CommitPlayersCommandFn = bool(__fastcall*)(std::int32_t) noexcept;
 
 const D2RL::PluginContext* Context{};
 std::uintptr_t Base{};
-Config Settings{};
+Config Settings{}; // Startup-only, also referenced by PlayerControls.
+menu::State LiveSettings;
+PluginMenu::Connection SettingsMenu;
+std::filesystem::path SelectedConfigPath;
 std::string LoadedConfigPath{"embedded defaults"};
 HANDLE OwnershipMutex{};
 PlayersAtoiFn RealPlayersAtoi{};
@@ -71,6 +79,9 @@ GetPlayerCountFn RealGetPlayerCount{};
 GetCommandModeFn RealGetCommandMode{};
 CommitPlayersCommandFn RealCommitPlayersCommand{};
 PlayerControls Controls{};
+players_hud_slider::PlayerHudSlider HudSlider;
+const D2RL::ThreadServiceV1* HudThreads{};
+std::atomic_int32_t PendingHudPlayers{1};
 std::atomic_bool Operational{};
 std::atomic<std::uint64_t> CommandClamps{};
 std::atomic<std::uint64_t> BonusAdjustments{};
@@ -84,7 +95,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-playerx-scaling-tweaks",
     .name = "PlayerX Scaling Tweaks",
-    .version = "1.2.1",
+    .version = "1.3.0",
     .author = "RuffnecKk",
     .description = "Tweaks player-count floors and independent scaling caps.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -233,6 +244,7 @@ auto MaterializeDefaultConfig(
             return false;
         }
         LoadedConfigPath = path.string();
+        SelectedConfigPath = path;
         return true;
     } catch (...) {
         return false;
@@ -242,6 +254,7 @@ auto MaterializeDefaultConfig(
 auto LoadConfig() noexcept -> bool {
     Settings = {};
     LoadedConfigPath = "embedded defaults";
+    SelectedConfigPath.clear();
     const auto candidates = ConfigCandidates();
     for (const auto& path : candidates) {
         std::error_code statusError;
@@ -261,6 +274,7 @@ auto LoadConfig() noexcept -> bool {
             }
             Settings = parsed;
             LoadedConfigPath = path.string();
+            SelectedConfigPath = path;
             return true;
         } catch (const std::exception& exception) {
             const auto message = std::string("PlayerX Scaling Tweaks: invalid ")
@@ -318,6 +332,12 @@ auto NativeStatFailureLabel() noexcept -> const char* {
 }
 
 auto ValidateNativeFingerprint() noexcept -> bool {
+    if (!Matches(native::GetPlayerCountArtificialCapRva, native::GetPlayerCountArtificialCap)
+        || !Matches(native::GetPlayerCountArtificialCapTailRva, native::GetPlayerCountArtificialCapTail)) {
+        Context->LogError("PlayerX: HUD player-count read witness mismatch; nothing was patched.");
+        return false;
+    }
+
     if (!NativeStats.BindCurrentProcess(
             Base,
             RuffnecKk::NativeStatCompat::ToMask(
@@ -470,6 +490,8 @@ void __fastcall HookGetPlayerCountBonus(
         std::int32_t* output,
         void* room,
         void* monster) noexcept {
+    const auto snapshot = LiveSettings.Read();
+    const auto& settings = *snapshot;
     RealGetPlayerCountBonus(game, output, room, monster);
     if (!Operational.load(std::memory_order_acquire) || !output) return;
 
@@ -483,12 +505,12 @@ void __fastcall HookGetPlayerCountBonus(
 
     const auto observed = NormalizePlayerCount(output[4]);
     const auto baseline = (std::max)(
-        observed, Settings.minimumScalingPlayers);
+        observed, settings.minimumScalingPlayers);
     const auto lifeCount = ResolveScalingCount(
-        observed, Settings.minimumScalingPlayers, Settings.monsterLife);
+        observed, settings.minimumScalingPlayers, settings.monsterLife);
     const auto experienceCount = ResolveScalingCount(
-        observed, Settings.minimumScalingPlayers,
-        Settings.monsterExperience);
+        observed, settings.minimumScalingPlayers,
+        settings.monsterExperience);
     const auto newLife = MonsterLifeBonusPercent(lifeCount);
     const auto newExperience = MonsterExperienceBonusPercent(experienceCount);
     if (output[0] != newLife || output[1] != newExperience
@@ -504,11 +526,13 @@ auto __fastcall HookMonsterOffensePlayerCount(
         void* monster,
         std::int32_t statId,
         std::int32_t layer) noexcept -> std::int32_t {
+    const auto snapshot = LiveSettings.Read();
+    const auto& settings = *snapshot;
     const auto observed = NativeStats.GetUnitStat(
         monster, statId, static_cast<std::uint16_t>(layer));
     if (!Operational.load(std::memory_order_acquire)) return observed;
     const auto adjusted = ResolveScalingCount(
-        observed, Settings.minimumScalingPlayers, Settings.monsterOffense);
+        observed, settings.minimumScalingPlayers, settings.monsterOffense);
     if (adjusted != observed) {
         OffenseAdjustments.fetch_add(1, std::memory_order_relaxed);
     }
@@ -518,15 +542,17 @@ auto __fastcall HookMonsterOffensePlayerCount(
 __declspec(noinline) auto __fastcall HookNoDropPlayerCount(
         void* game, std::int32_t* nearbyPartySlot) noexcept
         -> std::int32_t {
+    const auto snapshot = LiveSettings.Read();
+    const auto& settings = *snapshot;
     const auto observedPlayers = RealGetPlayerCount(game);
     if (!Operational.load(std::memory_order_acquire)
-            || !IsNoDropAdjustmentEnabled(Settings)) {
+            || !IsNoDropAdjustmentEnabled(settings)) {
         return observedPlayers;
     }
 
     const auto observedNearby = *nearbyPartySlot;
     const auto adjusted = ResolveNoDropCounts(
-        observedPlayers, observedNearby, EffectiveNoDropConfig(Settings));
+        observedPlayers, observedNearby, EffectiveNoDropConfig(settings));
     if (adjusted.playersCommand != observedPlayers
             || adjusted.nearbyPartyMembers != observedNearby) {
         NoDropAdjustments.fetch_add(1, std::memory_order_relaxed);
@@ -540,17 +566,19 @@ __declspec(noinline) auto __fastcall HookNoDropMonsterCap(
         std::int32_t statId,
         std::int32_t layer,
         const std::int32_t* effectiveNoDropSlot) noexcept -> std::int32_t {
+    const auto snapshot = LiveSettings.Read();
+    const auto& settings = *snapshot;
     const auto observed = NativeStats.GetUnitStat(
         monster, statId, static_cast<std::uint16_t>(layer));
     if (!Operational.load(std::memory_order_acquire)
-            || !IsNoDropAdjustmentEnabled(Settings)) {
+            || !IsNoDropAdjustmentEnabled(settings)) {
         return observed;
     }
 
     const auto effectiveNoDrop = NormalizePlayerCount(*effectiveNoDropSlot);
     const auto adjusted = ResolveNoDropMonsterCap(
         observed, effectiveNoDrop,
-        IsNoDropPartySimulationEnabled(Settings), Settings.noDrop.minimumEffectivePlayers);
+        IsNoDropPartySimulationEnabled(settings), settings.noDrop.minimumEffectivePlayers);
     if (adjusted != observed) {
         NoDropAdjustments.fetch_add(1, std::memory_order_relaxed);
     }
@@ -685,6 +713,8 @@ auto ApplyPlayerControl(std::int32_t players) noexcept -> bool {
     return true;
 }
 
+#include "hud_bridge.inc"
+
 auto ResetOfflineDifficultyToP1() noexcept -> bool {
     if (!Settings.battleNetSimulationEnabled) return true;
     auto* const setting = RealGetOfflineDifficultySetting();
@@ -702,6 +732,8 @@ auto Status(
         D2R::Game::Client*,
         const D2RL::ConsoleCommandContext* command,
         void*) noexcept -> D2RL::ConsoleCommandResult {
+    const auto snapshot = LiveSettings.Read();
+    const auto& settings = *snapshot;
     if (!command || !command->plugin) {
         return D2RL::ConsoleCommandResult::Failed;
     }
@@ -709,24 +741,24 @@ auto Status(
     const auto writeBaseStatus = [&](const char* suffix) {
         return std::snprintf(
             message, sizeof(message),
-        "PlayerX Scaling Tweaks 1.2.1: active=%s; source=%s; players=%d..%d; start=%d; hotkeys=%zu; life=%s/%d; xp=%s/%d; offense=%s/%d; nodrop=%s; nodrop-min=%d; config=%s%s",
+        "PlayerX Scaling Tweaks 1.3.0: active=%s; source=%s; players=%d..%d; start=%d; hotkeys=%zu; life=%s/%d; xp=%s/%d; offense=%s/%d; nodrop=%s; nodrop-min=%d; config=%s%s",
             Operational.load(std::memory_order_acquire) ? "true" : "false",
-            Settings.battleNetSimulationEnabled ? "battle-net-simulation" : "native-command",
-            Settings.minimumScalingPlayers, Settings.maximumCommandPlayers,
-            Settings.startGamePlayers, Settings.hotkeys.size(),
-            Settings.monsterLife.enabled ? "scale" : "baseline",
-            Settings.monsterLife.maximumPlayers,
-            Settings.monsterExperience.enabled ? "scale" : "baseline",
-            Settings.monsterExperience.maximumPlayers,
-            Settings.monsterOffense.enabled ? "scale" : "baseline",
-            Settings.monsterOffense.maximumPlayers,
-            IsNoDropPartySimulationEnabled(Settings)
+            settings.battleNetSimulationEnabled ? "battle-net-simulation" : "native-command",
+            settings.minimumScalingPlayers, settings.maximumCommandPlayers,
+            settings.startGamePlayers, settings.hotkeys.size(),
+            settings.monsterLife.enabled ? "scale" : "baseline",
+            settings.monsterLife.maximumPlayers,
+            settings.monsterExperience.enabled ? "scale" : "baseline",
+            settings.monsterExperience.maximumPlayers,
+            settings.monsterOffense.enabled ? "scale" : "baseline",
+            settings.monsterOffense.maximumPlayers,
+            IsNoDropPartySimulationEnabled(settings)
                 ? "nearby-party-simulation" : "native",
-            Settings.noDrop.minimumEffectivePlayers, LoadedConfigPath.c_str(), suffix);
+            settings.noDrop.minimumEffectivePlayers, LoadedConfigPath.c_str(), suffix);
     };
     const auto length = writeBaseStatus(
-        Settings.showUsageCounters ? "; counters=" : ".");
-    if (Settings.showUsageCounters && length > 0
+        settings.showUsageCounters ? "; counters=" : ".");
+    if (settings.showUsageCounters && length > 0
             && static_cast<std::size_t>(length) < sizeof(message)) {
         std::snprintf(
             message + length, sizeof(message) - static_cast<std::size_t>(length),
@@ -743,6 +775,14 @@ auto Status(
     command->plugin->WriteConsoleMessage(message);
     return D2RL::ConsoleCommandResult::Handled;
 }
+
+bool ReadSettingsDocument(std::string& document) {
+    return menu::ReadFileDocument(SelectedConfigPath, document);
+}
+bool WriteSettingsDocument(const std::string& expected, const std::string& updated) {
+    return menu::SaveFileDocument(SelectedConfigPath, expected, updated);
+}
+#include "settings_menu_callbacks.inc"
 
 void ResetState() noexcept {
     Operational.store(false, std::memory_order_release);
@@ -798,6 +838,8 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     Base = context->exeBase;
     ResetState();
     if (!Base || !LoadConfig()) return false;
+    try { LiveSettings.Initialize(Settings); }
+    catch (...) { context->LogError("PlayerX: configuration snapshot allocation failed."); return false; }
 
     if (!context->RegisterConsoleCommand(
             "playerx-scaling-tweaks", Status,
@@ -806,8 +848,9 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "PlayerX Scaling Tweaks: optional status command was not registered.");
     }
     if (!Settings.enabled) {
+        StartSettingsMenu();
         context->LogInfo(
-            "PlayerX Scaling Tweaks 1.2.1 by RuffnecKk loaded disabled; no hook was installed.");
+            "PlayerX Scaling Tweaks 1.3.0 by RuffnecKk loaded disabled; no hook was installed.");
         return true;
     }
     if (!AcquireOwnership() || !ValidateNativeFingerprint()) {
@@ -833,11 +876,13 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     }
 
     Operational.store(true, std::memory_order_release);
+    StartSettingsMenu();
+    StartHud();
     char message[768]{};
     const auto* build = D2RL::GetBuildName(context);
     std::snprintf(
         message, sizeof(message),
-        "PlayerX Scaling Tweaks 1.2.1 by RuffnecKk active; build-name=%s is diagnostic only; source=%s; players=%d..%d; HP cap=%d; XP cap=%d; offense cap=%d; NoDrop=%s; NoDrop minimum=%d; installation=%s; TOML=%s.",
+        "PlayerX Scaling Tweaks 1.3.0 by RuffnecKk active; build-name=%s is diagnostic only; source=%s; players=%d..%d; HP cap=%d; XP cap=%d; offense cap=%d; NoDrop=%s; NoDrop minimum=%d; installation=%s; TOML=%s.",
         build && build[0] != '\0' ? build : "<unavailable>",
         Settings.battleNetSimulationEnabled ? "battle-net-simulation" : "native-command",
         Settings.minimumScalingPlayers, Settings.maximumCommandPlayers,
@@ -854,6 +899,10 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
+    Operational.store(false, std::memory_order_release);
+    HudSlider.Stop();
+    HudThreads = nullptr;
+    SettingsMenu.Stop();
     Operational.store(false, std::memory_order_release);
     Controls.Stop();
     RealGetCommandMode = nullptr;

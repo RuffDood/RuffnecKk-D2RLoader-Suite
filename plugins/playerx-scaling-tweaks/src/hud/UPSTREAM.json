@@ -1,0 +1,62 @@
+{
+  "repository": "https://github.com/MadMike616/players-hud-slider",
+  "commit": "9383558545ca9edefe7a4a9c809331ab20b61954",
+  "license": "MIT, copyright 2026 MadMike616",
+  "files": [
+    {
+      "path": "LICENSE",
+      "gitBlobSha": "8a179a9733128ad306b2117fef3a0e949e4b8929",
+      "size": 1067
+    },
+    {
+      "path": "assets/native/native-button.sprite",
+      "gitBlobSha": "46c85eea35244b3832e781cc090dc5325f3e3aa1",
+      "size": 87656
+    },
+    {
+      "path": "assets/native/native-marker.sprite",
+      "gitBlobSha": "74b82d41e857814168584c9b2488ccd5eaa58dfb",
+      "size": 25432
+    },
+    {
+      "path": "assets/native/native-tooltip.sprite",
+      "gitBlobSha": "a0a215182410ecf3554ebb2c73842499e45f609d",
+      "size": 36884
+    },
+    {
+      "path": "assets/native/native-track.sprite",
+      "gitBlobSha": "bf69671cb19e58b3f8cbd78be5c12991820d2db4",
+      "size": 281776
+    },
+    {
+      "path": "src/hud_player_slider_config.hpp",
+      "gitBlobSha": "f785f5a1b07f8576071004bf393f8d2afffb9c38",
+      "size": 1037
+    },
+    {
+      "path": "src/native_slider_panel.cpp",
+      "gitBlobSha": "d68796a887b0471e6af600188a200fbb8b976090",
+      "size": 33156
+    },
+    {
+      "path": "src/native_slider_panel.hpp",
+      "gitBlobSha": "62304e5c5c751a3abe97c4764d19e20eae74c68f",
+      "size": 4726
+    },
+    {
+      "path": "src/player_hud_slider.cpp",
+      "gitBlobSha": "d72a47c276e51c0db3bdaee768df3e93b4d1a3da",
+      "size": 22657
+    },
+    {
+      "path": "src/player_hud_slider.hpp",
+      "gitBlobSha": "9ccd82091e5982eaa43e8a07dd1dc421922cbd0f",
+      "size": 2825
+    },
+    {
+      "path": "src/resource_ids.h",
+      "gitBlobSha": "28dc8c765d29b4e49667acbb7ebe104775885c99",
+      "size": 393
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+#include "hud/resource_ids.h"
+PLAYERS_HUD_NATIVE_TRACK_RESOURCE_ID RCDATA "../assets/native/native-track.sprite"
+PLAYERS_HUD_NATIVE_MARKER_RESOURCE_ID RCDATA "../assets/native/native-marker.sprite"
+PLAYERS_HUD_NATIVE_TOOLTIP_RESOURCE_ID RCDATA "../assets/native/native-tooltip.sprite"
+PLAYERS_HUD_NATIVE_BUTTON_RESOURCE_ID RCDATA "../assets/native/native-button.sprite"
+1210 RCDATA "hud/LICENSE"

@@ -41,6 +41,9 @@ struct Config {
     ScalingChannel monsterOffense{true, 0};
     NoDropConfig noDrop{};
     bool showUsageCounters{};
+    bool hudEnabled{true};
+    std::int32_t hudX{1571};
+    std::int32_t hudY{1708};
 };
 
 // Real-player scaling takes precedence over the optional /players NoDrop
@@ -334,11 +337,21 @@ inline auto ParseToml(
                  "player-count",
                  "monster-life-scaling", "monster-experience-scaling",
                  "monster-offense-scaling", "no-drop", "troubleshooting",
-                 "d2rl"}, error)) {
+                 "d2rl", "hud-player-slider"}, error)) {
             return false;
         }
 
         Config parsed{};
+        if (const auto* node = root.get("hud-player-slider")) {
+            const auto* hud = node->as_table();
+            if (!hud || !ValidateKeys(*hud, "hud-player-slider.", {"enabled", "x", "y"}, error)) {
+                if (error.empty()) error = "hud-player-slider must be a table";
+                return false;
+            }
+            if ((hud->contains("enabled") && !ReadBool(*hud, "enabled", "hud-player-slider.enabled", parsed.hudEnabled, error))
+                || (hud->contains("x") && !ReadInt(*hud, "x", "hud-player-slider.x", 0, 3200, parsed.hudX, error))
+                || (hud->contains("y") && !ReadInt(*hud, "y", "hud-player-slider.y", 0, 1801, parsed.hudY, error))) return false;
+        }
         std::int32_t schema{};
         if (!ReadInt(root, "config-version", "config-version", 1, 1,
                 schema, error)

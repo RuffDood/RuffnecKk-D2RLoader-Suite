@@ -1,9 +1,10 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(PlayerXScalingTweaks VERSION 1.2.1 LANGUAGES CXX RC ASM_MASM)
+    project(PlayerXScalingTweaks VERSION 1.3.0 LANGUAGES CXX RC ASM_MASM)
     include(CTest)
     option(RUFFNECKK_SUITE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
+    add_subdirectory(../../third_party/PluginSDK-v4 "${CMAKE_BINARY_DIR}/_deps/PluginSDK-v4")
     add_subdirectory(../../common "${CMAKE_BINARY_DIR}/_deps/common")
 else()
     enable_language(RC)
@@ -36,6 +37,9 @@ add_library(ruffneckk_playerx_scaling_tweaks SHARED
     src/callsite_hooks.asm
     src/plugin.cpp
     src/plugin.rc
+    src/hud_resources.rc
+    src/hud/player_hud_slider.cpp
+    src/hud/native_slider_panel.cpp
 )
 target_compile_features(ruffneckk_playerx_scaling_tweaks PRIVATE cxx_std_20)
 target_compile_definitions(ruffneckk_playerx_scaling_tweaks PRIVATE
@@ -46,11 +50,13 @@ target_compile_definitions(ruffneckk_playerx_scaling_tweaks PRIVATE
 )
 target_include_directories(ruffneckk_playerx_scaling_tweaks PRIVATE
     "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/iht"
 )
 target_link_libraries(ruffneckk_playerx_scaling_tweaks PRIVATE
     D2RLPlugin::D2RLPlugin
     RuffnecKk::MapsStatCompat
     tomlplusplus::tomlplusplus
+    user32
 )
 set_target_properties(ruffneckk_playerx_scaling_tweaks PROPERTIES
     OUTPUT_NAME "d2rl-ruffneckk-playerx-scaling-tweaks"
@@ -116,4 +122,20 @@ if(BUILD_TESTING)
         NAME ruffneckk.playerx-scaling-tweaks.policy
         COMMAND ruffneckk_playerx_scaling_tweaks_tests
     )
+endif()
+
+if(BUILD_TESTING)
+    foreach(test settings_callbacks optional_provider hud_bridge_tests)
+        add_executable(ruffneckk_playerx_${test}_tests tests/${test}.cpp)
+        target_include_directories(ruffneckk_playerx_${test}_tests PRIVATE src src/iht "${CMAKE_CURRENT_BINARY_DIR}/generated")
+        target_link_libraries(ruffneckk_playerx_${test}_tests PRIVATE RuffnecKk::Common tomlplusplus::tomlplusplus)
+        target_compile_options(ruffneckk_playerx_${test}_tests PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8;/EHsc;/W4;/WX>)
+        add_test(NAME ruffneckk.playerx.${test} COMMAND ruffneckk_playerx_${test}_tests)
+    endforeach()
+    add_executable(ruffneckk_playerx_hud_panel_tests tests/hud_panel_tests.cpp tests/direct_click_contract.cpp src/hud/native_slider_panel.cpp src/hud_resources.rc)
+    target_include_directories(ruffneckk_playerx_hud_panel_tests PRIVATE src)
+    target_link_libraries(ruffneckk_playerx_hud_panel_tests PRIVATE RuffnecKk::Common user32)
+    target_compile_options(ruffneckk_playerx_hud_panel_tests PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/utf-8;/EHsc;/W4;/WX>)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME ruffneckk.playerx.hud-layout-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate_hud_layouts.py" $<TARGET_FILE:ruffneckk_playerx_hud_panel_tests>)
 endif()
