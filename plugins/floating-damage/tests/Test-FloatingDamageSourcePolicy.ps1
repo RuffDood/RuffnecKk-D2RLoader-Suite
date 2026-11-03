@@ -163,10 +163,10 @@ Assert-Policy (-not $plugin.Contains('only D2R builds')) `
     'compatibility refusal must be based on the native fingerprint, not named builds'
 Assert-Policy ($plugin -match 'validating the complete native fingerprint') `
     'the observed build name must remain diagnostic while the full fingerprint is checked'
-Assert-Policy ($plugin -match '\.version\s*=\s*"1\.5\.3"') `
-    'the plugin metadata must identify the Exocet default update as 1.5.3'
-Assert-Policy ($resource -match 'FILEVERSION\s+1,5,3,0') `
-    'the Windows file version must identify the Exocet default update as 1.5.3'
+Assert-Policy ($plugin -match '\.version\s*=\s*"1\.5\.4"') `
+    'the plugin metadata must identify the Maps compatibility update as 1.5.4'
+Assert-Policy ($resource -match 'FILEVERSION\s+1,5,4,0') `
+    'the Windows file version must identify the Maps compatibility update as 1.5.4'
 Assert-Policy ($plugin -match 'GetModuleHandleW\(\s*L"d2rl-ruffneckk-mapsense\.dll"\)') `
     'the renderer handoff must resolve the canonical public MapSense module name'
 Assert-Policy ($plugin -match 'GetModuleHandleW\(L"RuffnecKkMapSense\.dll"\)') `
@@ -202,4 +202,8 @@ foreach ($staleLabel in @(
         "stale player-facing label remains: $staleLabel"
 }
 
+Assert-Policy ($plugin.Contains('RuffnecKk::MapsStatCompat::Diagnostics(Context)')) `
+    'native stat binding must validate the Maps redirect without bypassing Maps'
+Assert-Policy ((Get-Content -Raw -LiteralPath (Join-Path $PluginDirectory 'CMakeLists.txt')).Contains('RuffnecKk::MapsStatCompat')) `
+    'the DLL must link its Maps redirect validator'
 Write-Host 'Floating Damage source policy: PASS'

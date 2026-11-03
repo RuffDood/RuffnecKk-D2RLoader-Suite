@@ -1,5 +1,15 @@
 # Changelog
 
+## Floating Damage 1.5.4 - 2026-11-02
+
+- Fix startup refusal when Reimagined Maps redirects the stat reader.
+- Validate the witnessed Maps 0.12.1, 0.12.4, and 0.12.5 reader and ownership state while retaining Core and independent setter checks.
+- Preserve Maps' reader and stat modifiers; configuration and MapSense overlay sharing remain unchanged.
+
+Release x64 and offline compatibility checks passed for the preceding private
+candidate. Final artifact checks are recorded with the individual Hub package.
+Startup, visible gameplay, persistence, and multiplayer remain unqualified.
+
 ## [1.4.2] - 2026-09-20
 
 This is strictly a MapSense update. All other Suite components remain unchanged
