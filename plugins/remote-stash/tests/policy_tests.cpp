@@ -513,7 +513,7 @@ int main(int argc, char** argv) {
     REQUIRE(lowendMetadata.frameWidth == 64);
     REQUIRE(lowendMetadata.height == 40);
 
-    // The portable surround must leave the inventory visible around every state.
+    // A frameless sprite must leave the inventory visible around every state.
     // Check real embedded artwork, including the low-end asset, not a fixture.
     for (const auto* asset : {&sprite, &lowend}) {
         SpriteMetadata metadata{};
@@ -528,21 +528,10 @@ int main(int argc, char** argv) {
                     if (x == 0 || y == 0 || x == metadata.frameWidth - 1
                         || y == metadata.height - 1) REQUIRE(alpha == 0);
                     if (alpha > 16) ++visible;
-                    // The carved surround must not jump or change between states.
-                    // Animated chest pixels are confined to the central 54% x 62%.
-                    if (frame != 0 && (x < metadata.frameWidth / 5
-                        || x >= metadata.frameWidth * 4 / 5
-                        || y < metadata.height / 8
-                        || y >= metadata.height * 7 / 8)) {
-                        const auto first = 40 + (y * metadata.atlasWidth + x) * 4;
-                        const auto current = first + frame * metadata.frameWidth * 4;
-                        for (int channel = 0; channel < 4; ++channel)
-                            REQUIRE((*asset)[first + channel] == (*asset)[current + channel]);
-                    }
                 }
             }
             const auto area = static_cast<std::size_t>(metadata.frameWidth * metadata.height);
-            REQUIRE(visible > area / 4 && visible < area * 19 / 20);
+            REQUIRE(visible > area / 4 && visible < area * 3 / 4);
         }
     }
 

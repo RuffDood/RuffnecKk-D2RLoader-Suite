@@ -7,7 +7,6 @@ const sharp = require('sharp');
 async function main() {
   const root = path.resolve(__dirname, '..');
   const source = path.join(root, 'assets/artwork/chest-states.png');
-  const surround = path.join(root, 'assets/artwork/button-surround.png');
   const output = path.join(root, 'assets/mod-data/data/hd/global/ui/panel/inventory');
   const { data, info } = await sharp(source).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   if (info.width % 4 !== 0 || info.channels !== 4) throw new Error('Expected four equal RGBA cells.');
@@ -34,16 +33,9 @@ async function main() {
   // Encoding and size conversion only; state artwork is already in the PNG.
   for (const [width, height, suffix] of [[128, 80, ''], [64, 40, '.lowend']]) {
     const layers = [];
-    const rim = await sharp(surround).trim({ threshold: 4 }).resize({
-      width: width - 4, height: height - 4, fit: 'inside', kernel: 'lanczos3',
-    }).png().toBuffer({ resolveWithObject: true });
     for (let frame = 0; frame < frames.length; frame++) {
-      // One shared surround prevents the panel trim from moving on hover/click.
-      layers.push({ input: rim.data,
-        left: frame * width + Math.floor((width - rim.info.width) / 2),
-        top: Math.floor((height - rim.info.height) / 2) });
       const pixels = await sharp(frames[frame]).resize({
-        width: Math.round(width * 0.54), height: Math.round(height * 0.62),
+        width: Math.round(width * 0.75), height: Math.round(height * 0.85),
         fit: 'inside', kernel: 'lanczos3',
       }).toBuffer({ resolveWithObject: true });
       layers.push({ input: pixels.data,

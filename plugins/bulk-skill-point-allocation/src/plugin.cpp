@@ -8,6 +8,7 @@
 #include <RuffnecKk/native_stat_compat.hpp>
 
 #include <Windows.h>
+#include <RuffnecKk/ui_input_compat_windows.hpp>
 
 #include <array>
 #include <atomic>
@@ -92,7 +93,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-bulk-skill-point-allocation",
     .name = "Bulk Skill Point Allocation",
-    .version = "1.4.0",
+    .version = "1.4.1",
     .author = "RuffnecKk",
     .description =
         "Allocates and refunds skill points with configurable mouse controls.",
@@ -426,6 +427,12 @@ auto CheckBytes(
     const auto& expected,
     const char* label
 ) noexcept -> bool {
+    if (rva == RefundNative::ConsumeInputRva) {
+        if (RuffnecKk::UiInputCompat::ValidateCurrentProcess(
+                reinterpret_cast<std::uintptr_t>(Base))) return true;
+        Context->LogError("BulkSkillPointAllocation: UI input helper ownership or code mismatch.");
+        return false;
+    }
     if (Context->CheckExpectedBytes(
             rva,
             expected.data(),

@@ -13,6 +13,7 @@
 #include "resource_ids.h"
 
 #include <Windows.h>
+#include <RuffnecKk/ui_input_compat_windows.hpp>
 
 #include <array>
 #include <atomic>
@@ -94,7 +95,7 @@ using ruffneckk::remote_stash::WidgetRect;
 
 constexpr std::size_t MaximumConfigBytes = 65'536;
 constexpr std::uint64_t MaximumCustomSpriteBytes = 64ULL * 1024ULL * 1024ULL;
-constexpr char PluginVersion[] = "2.3.5";
+constexpr char PluginVersion[] = "2.3.6";
 
 #define REMOTE_SITE(value) value
 
@@ -302,11 +303,6 @@ constexpr std::array<std::uint8_t, 32> ResetMouseInputStateWithFinalizeExpected{
     0x89, 0x05, 0x06, 0x5F, 0x99, 0x02, 0x89, 0x05,
     0x24, 0x5F, 0x99, 0x02, 0x88, 0x05, 0x90, 0x61,
     0x99, 0x02, 0x89, 0x05, 0x20, 0x5F, 0x99, 0x02,
-};
-constexpr std::array<std::uint8_t, 20> MarkUiDirtyExpected{
-    0x48, 0x8B, 0x05, 0xA9, 0xC1, 0xBF, 0x02, 0x48,
-    0x85, 0xC0, 0x74, 0x07, 0xC6, 0x80, 0xB8, 0x00,
-    0x00, 0x00, 0x01, 0xC3,
 };
 constexpr std::array<std::uint8_t, 22> FindTopLevelPanelExpected{
     0x48, 0x8B, 0xD1, 0x48, 0x8B, 0x0D, 0xF6, 0x9F,
@@ -1124,7 +1120,8 @@ bool ValidateRuntime() noexcept {
             ResetMouseInputStateWithFinalizeRva,
             ResetMouseInputStateWithFinalizeExpected
         )
-        && Matches(MarkUiDirtyRva, MarkUiDirtyExpected)
+        && RuffnecKk::UiInputCompat::ValidateCurrentProcess(
+            reinterpret_cast<std::uintptr_t>(Base))
         && Matches(
             GeneralUiTeardownCloseStashCallRva,
             GeneralUiTeardownCloseStashCallExpected
