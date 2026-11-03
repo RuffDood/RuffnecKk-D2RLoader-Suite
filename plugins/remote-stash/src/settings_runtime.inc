@@ -17,7 +17,7 @@ bool __cdecl GetLiveSetting(const char* key, char* out, std::uint32_t size, void
         if (!key || !out || !size || !ruffneckk::remote_stash::LivePage::Known(key)) return false;
         const auto state = RunningSettings.Read();
         const auto saved = ParseLiveDocument(LiveDocument());
-        const auto value = ruffneckk::remote_stash::LivePage::Value(std::string_view(key) == "enabled" ? saved : state->settings, key);
+        const auto value = ruffneckk::remote_stash::LivePage::Value(ruffneckk::remote_stash::LivePage::RestartRequired(key) ? saved : state->settings, key);
         if (value.size() >= size) return false;
         std::memcpy(out, value.c_str(), value.size()+1); return true;
     } catch (...) { return false; }
@@ -58,12 +58,12 @@ bool __cdecl SetLiveSetting(const char* key, const char* value, char* error,
         const auto edited = RuffnecKk::LiveSettings::Edit(base, name, value);
         const auto saved = ParseLiveDocument(edited);
         auto config = previous->settings;
-        Page::Copy(config, saved, name);
+        if (!Page::RestartRequired(name)) Page::Copy(config, saved, name);
         const bool visual = name.starts_with("button.") || name == "inventory_button_enabled";
         if (name.starts_with("button.") && !ActiveMpqRoot.empty())
             throw std::invalid_argument("This mod owns button appearance; edit its button.toml override instead.");
         if (!ActiveMpqRoot.empty()) config.button = previous->settings.button;
-        if (visual && !ValidateLiveSprite(config)) throw std::invalid_argument("Sprite file or frame indexes are invalid.");
+        if (name.starts_with("button.") && !ValidateLiveSprite(saved)) throw std::invalid_argument("Sprite file or frame indexes are invalid.");
         const bool input = name == "hotkey" || name == "hotkey_enabled";
         // Prepare the established fallback input worker without replacing any
         // native hook. It stays inactive while the SDK route owns input.
@@ -93,23 +93,14 @@ bool __cdecl SetLiveSetting(const char* key, const char* value, char* error,
                 HotkeyCaptured.store(false, std::memory_order_release);
                 HotkeyRequestPending.store(false, std::memory_order_release);
             }
-            if (visual) {
-                ++ButtonResourceRevision;
-                UnregisterOwnedButton();
+            // The Panel service accepts child layouts only during plugin load.
+            // Keep that registration alive. The existing Inventory configure
+            // hook reads visibility and geometry on each open; cached sprite
+            // paths and frames remain a clearly marked restart preference.
+            if (visual && !Page::RestartRequired(name))
                 EffectiveButtonSettings = next->settings.button;
-                if (next->settings.inventoryButtonEnabled && !RegisterOwnedButton()) {
-                    RunningSettings.Publish(previous);
-                    const bool savedRestored = Context->WriteConfig(document.c_str());
-                    EffectiveButtonSettings = previous->settings.button;
-                    ++ButtonResourceRevision;
-                    if (previous->settings.inventoryButtonEnabled && !RegisterOwnedButton())
-                        Context->LogError("RemoteStash: old button resources could not be restored after a rejected live edit.");
-                    if (!savedRestored) throw std::runtime_error("Button registration failed. Running settings restored, but TOML rollback failed; check the saved file.");
-                    throw std::runtime_error("Button registration failed; previous settings restored.");
-                }
-            }
         }
-        Context->LogInfo("RemoteStash: I Hate TOMLs setting saved; master switch requires restart, other controls apply live.");
+        Context->LogInfo("RemoteStash: I Hate TOMLs setting saved; starred controls require restart; other controls apply live.");
         // The provider refreshes after this callback. Do not call ValueChanged.
         return true;
     } catch (const std::exception& e) {

@@ -496,7 +496,6 @@ bool CurrentDiagnostics() noexcept { return RunningSettings.Read()->settings.dia
 bool CurrentCloseTogether() noexcept { return RunningSettings.Read()->settings.closeRemoteStashAndInventoryTogether; }
 PluginMenu::Connection SettingsMenu;
 std::string SettingsSchema;
-std::uint64_t ButtonResourceRevision{};
 ButtonConfig EffectiveButtonSettings{};
 std::string LoadedConfigPath{"built-in disabled defaults"};
 std::string ButtonSettingsSource{"D2RLoader TOML [button]"};
@@ -1040,18 +1039,7 @@ bool RegisterOwnedButton() noexcept {
         Context->LogError("RemoteStash: embedded button translations are missing.");
         return false;
     }
-    const auto suffix = ButtonResourceRevision ? "-live-" + std::to_string(ButtonResourceRevision) : std::string{};
-    const auto localId = std::string(ButtonChildLocalId) + suffix;
-    const auto layoutPath = ButtonResourceRevision ? std::string("data/global/ui/layouts/ruffneckk-remote-stash/") + localId + ".json" : std::string(ButtonLayoutVirtualPath);
-    const auto spritePath = ButtonResourceRevision ? std::string("data/hd/global/ui/d2rloader/ruffneckk-remote-stash/") + localId + ".sprite" : std::string(ButtonSpriteVirtualPath);
-    const auto lowendPath = ButtonResourceRevision ? std::string("data/hd/global/ui/d2rloader/ruffneckk-remote-stash/") + localId + ".lowend.sprite" : std::string(ButtonLowendSpriteVirtualPath);
-    auto layout = BuildButtonLayoutJson(EffectiveButtonSettings);
-    if (ButtonResourceRevision) {
-        const auto filename = layout.find("\"filename\"");
-        const auto token = layout.find("inventory-button", filename);
-        if (token == std::string::npos) return false;
-        layout.replace(token, std::strlen(ButtonChildLocalId), localId);
-    }
+    const auto layout = BuildButtonLayoutJson(EffectiveButtonSettings);
 
     // Register namespaced translations before the layout which references them.
     // The Loader selects the active D2R locale and refreshes language changes.
@@ -1061,17 +1049,17 @@ bool RegisterOwnedButton() noexcept {
             strings.size(),
             ButtonStringsResource)
         || !RegisterResource(
-            spritePath.c_str(),
+            ButtonSpriteVirtualPath,
             sprite.data(),
             sprite.size(),
             ButtonSpriteResource)
         || !RegisterResource(
-            lowendPath.c_str(),
+            ButtonLowendSpriteVirtualPath,
             lowend.data(),
             lowend.size(),
             ButtonLowendSpriteResource)
         || !RegisterResource(
-            layoutPath.c_str(),
+            ButtonLayoutVirtualPath,
             layout.data(),
             layout.size(),
             ButtonLayoutResource)) {
@@ -1087,7 +1075,7 @@ bool RegisterOwnedButton() noexcept {
         .flags = D2RL::Panels::ChildLayoutFlags::KeyboardMouseOnly,
         .stockPanel = D2RL::Panels::StockPanel::PlayerInventory,
         .reserved = 0,
-        .localId = localId.c_str(),
+        .localId = ButtonChildLocalId,
     };
     const auto result = PanelService->registerChildLayout(
         Context, &registration, &ButtonChildLayout);
@@ -2972,8 +2960,6 @@ void __fastcall HookConfigurePlayerInventory(void* panel) noexcept {
     if (!panel) return;
 
     NeutralizeLegacyButtons(panel);
-    if (!HotkeySettings.inventoryButtonEnabled) return;
-
     auto* button = FindNamedWidget(panel, ButtonWidgetName);
     if (!button) {
         // Expected for controller layouts because the child registration is
@@ -2981,6 +2967,7 @@ void __fastcall HookConfigurePlayerInventory(void* panel) noexcept {
         return;
     }
     SetWidgetState(button, false);
+    if (!HotkeySettings.inventoryButtonEnabled) return;
 
     WidgetRect panelRect{};
     WidgetRect gridRect{};
@@ -4110,7 +4097,7 @@ bool Load(
         return false;
     }
 
-    if (BootSettings.inventoryButtonEnabled && !RegisterOwnedButton()) {
+    if (!RegisterOwnedButton()) {
         context->LogError(
             "RemoteStash: the self-contained Inventory button could not be created."
         );

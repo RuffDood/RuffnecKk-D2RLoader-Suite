@@ -5,6 +5,11 @@
 #include <sstream>
 #include "policy.hpp"
 namespace ruffneckk::remote_stash::LivePage {
+inline bool RestartRequired(std::string_view key) {
+ return key=="enabled" || key=="button.sprite_file" || key=="button.lowend_sprite_file"
+     || key=="button.normal_frame" || key=="button.pressed_frame"
+     || key=="button.disabled_frame" || key=="button.hovered_frame";
+}
 inline bool Known(std::string_view key){
  return key=="enabled" || key=="inventory_button_enabled" || key=="hotkey_enabled" || key=="hotkey" || key=="close_remote_stash_and_inventory_together" || key=="button.placement" || key=="button.anchor" || key=="button.offset_x" || key=="button.offset_y" || key=="button.width" || key=="button.height" || key=="button.sprite_file" || key=="button.lowend_sprite_file" || key=="button.normal_frame" || key=="button.pressed_frame" || key=="button.disabled_frame" || key=="button.hovered_frame" || key=="diagnostics.enabled";
 }
@@ -52,7 +57,8 @@ inline void Copy(HotkeyConfig& to, const HotkeyConfig& from, std::string_view ke
 }
 inline std::string Schema(bool overridden=false){
  std::string out="title = \"Remote Stash\"\n";
- out += "[[setting]]\ntype = \"text\"\nlabel = \"Changes save immediately. The master switch applies after restart.\"\n";
+ out += "[[setting]]\ntype = \"text\"\nlabel = \"Changes save immediately. Starred settings apply after restart.\"\n";
+ out += "[[setting]]\ntype = \"text\"\nlabel = \"Button geometry updates when Inventory opens; sprites are cached until restart.\"\n";
  if(overridden) out += "[[setting]]\ntype = \"text\"\nlabel = \"This mod owns button appearance. Button fields are read-only here.\"\n";
  out += "[[setting]]\nkey = \"enabled\"\ntype = \"bool\"\nlabel = \"Enable at next start\"\nrestart = true\n";
  out += "[[setting]]\nkey = \"inventory_button_enabled\"\ntype = \"bool\"\nlabel = \"Inventory button\"\n";
@@ -65,12 +71,12 @@ inline std::string Schema(bool overridden=false){
  out += "[[setting]]\nkey = \"button.offset_y\"\ntype = \"int\"\nlabel = \"Vertical offset\"\nmin = -4096\nmax = 4096\nstep = 1\n";
  out += "[[setting]]\nkey = \"button.width\"\ntype = \"int\"\nlabel = \"Button width\"\nmin = 1\nmax = 4096\nstep = 1\n";
  out += "[[setting]]\nkey = \"button.height\"\ntype = \"int\"\nlabel = \"Button height\"\nmin = 1\nmax = 4096\nstep = 1\n";
- out += "[[setting]]\nkey = \"button.sprite_file\"\ntype = \"string\"\nlabel = \"Custom sprite path\"\n";
- out += "[[setting]]\nkey = \"button.lowend_sprite_file\"\ntype = \"string\"\nlabel = \"Low-end sprite path\"\n";
- out += "[[setting]]\nkey = \"button.normal_frame\"\ntype = \"int\"\nlabel = \"Normal frame\"\nmin = 0\nmax = 4096\nstep = 1\n";
- out += "[[setting]]\nkey = \"button.pressed_frame\"\ntype = \"int\"\nlabel = \"Pressed frame\"\nmin = 0\nmax = 4096\nstep = 1\n";
- out += "[[setting]]\nkey = \"button.disabled_frame\"\ntype = \"int\"\nlabel = \"Disabled frame\"\nmin = 0\nmax = 4096\nstep = 1\n";
- out += "[[setting]]\nkey = \"button.hovered_frame\"\ntype = \"int\"\nlabel = \"Hovered frame\"\nmin = 0\nmax = 4096\nstep = 1\n";
+ out += "[[setting]]\nkey = \"button.sprite_file\"\nrestart = true\ntype = \"string\"\nlabel = \"Custom sprite path\"\n";
+ out += "[[setting]]\nkey = \"button.lowend_sprite_file\"\nrestart = true\ntype = \"string\"\nlabel = \"Low-end sprite path\"\n";
+ out += "[[setting]]\nkey = \"button.normal_frame\"\nrestart = true\ntype = \"int\"\nlabel = \"Normal frame\"\nmin = 0\nmax = 4096\nstep = 1\n";
+ out += "[[setting]]\nkey = \"button.pressed_frame\"\nrestart = true\ntype = \"int\"\nlabel = \"Pressed frame\"\nmin = 0\nmax = 4096\nstep = 1\n";
+ out += "[[setting]]\nkey = \"button.disabled_frame\"\nrestart = true\ntype = \"int\"\nlabel = \"Disabled frame\"\nmin = 0\nmax = 4096\nstep = 1\n";
+ out += "[[setting]]\nkey = \"button.hovered_frame\"\nrestart = true\ntype = \"int\"\nlabel = \"Hovered frame\"\nmin = 0\nmax = 4096\nstep = 1\n";
  out += "[[setting]]\nkey = \"diagnostics.enabled\"\ntype = \"bool\"\nlabel = \"Diagnostics\"\n";
  return out;
 }

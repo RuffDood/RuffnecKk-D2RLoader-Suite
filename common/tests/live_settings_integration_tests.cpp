@@ -73,6 +73,11 @@ void Run(const wchar_t* dllPath, bool remote) {
     Check(!client.set && afterLoad.callback, "late provider not deferred"); deferred = false;
     afterLoad.callback(&context,nullptr,afterLoad.userData); Check(client.set && client.get, "deferred page not registered");
     Check(schema.find("restart = true") != schema.npos, "master restart notice missing");
+    if (remote) {
+        for (const auto* key : {"button.sprite_file", "button.lowend_sprite_file", "button.normal_frame", "button.pressed_frame", "button.disabled_frame", "button.hovered_frame"})
+            Check(schema.find(std::string("key = \"")+key+"\"\nrestart = true")!=schema.npos,"cached sprite preference lacks restart flag");
+        Check(schema.find("geometry updates when Inventory opens")!=schema.npos,"geometry lifecycle notice missing");
+    }
     const auto countBefore = notifications;
     const char* batch = remote ? "button.width" : "skillPointsPerCtrlClick";
     Check(Set(batch,remote ? "160" : "7"),"live scalar edit refused");

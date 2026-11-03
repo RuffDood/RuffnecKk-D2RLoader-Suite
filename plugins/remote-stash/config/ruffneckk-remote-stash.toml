@@ -1,7 +1,8 @@
 # Remote Stash
 # Opens the native personal and shared stash outside town.
 # Use I Hate TOMLs for supported live changes. Manual edits require a restart.
-# The master enabled switch always applies after restart.
+# The master switch, sprite paths and sprite frames apply after restart.
+# Button visibility and geometry update when Inventory next opens.
 
 # Master switch. false disables the complete plugin and installs no hook,
 # input action, or inventory-button listener.
