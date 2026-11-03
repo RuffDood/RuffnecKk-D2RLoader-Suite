@@ -658,12 +658,12 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     if (!ActiveSettings.enabled) {
         try {
             const auto message = std::string(
-                "BulkSkillPointAllocation 1.4.0 by RuffnecKk loaded disabled; no service or hook registered; gameplayConfig=")
+                "BulkSkillPointAllocation 1.4.1 by RuffnecKk loaded disabled; no service or hook registered; gameplayConfig=")
                 + PathForLog(GameplaySource) + ".";
             context->LogInfo(message.c_str());
         } catch (...) {
             context->LogInfo(
-                "BulkSkillPointAllocation 1.4.0 by RuffnecKk loaded disabled; no service or hook registered.");
+                "BulkSkillPointAllocation 1.4.1 by RuffnecKk loaded disabled; no service or hook registered.");
         }
         return true;
     }
@@ -688,7 +688,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
 
     try {
         const auto message = std::string(
-            "BulkSkillPointAllocation 1.4.0 by RuffnecKk loaded; role=Shared; ctrl=")
+            "BulkSkillPointAllocation 1.4.1 by RuffnecKk loaded; role=Shared; ctrl=")
             + std::to_string(ActiveSettings.skillPointsPerCtrlClick)
             + "; shiftConfirmation="
             + (ActiveSettings.confirmShiftAllocation ? "enabled" : "disabled")
@@ -697,7 +697,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         context->LogInfo(message.c_str());
     } catch (...) {
         context->LogInfo(
-            "BulkSkillPointAllocation 1.4.0 by RuffnecKk loaded.");
+            "BulkSkillPointAllocation 1.4.1 by RuffnecKk loaded.");
     }
     return true;
 }
