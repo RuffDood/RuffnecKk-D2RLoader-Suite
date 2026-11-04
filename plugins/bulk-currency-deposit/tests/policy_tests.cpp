@@ -210,6 +210,18 @@ tooltip = 'Deposit "Currency" \ Now'
     REQUIRE(ParseToml(packagedConfig, packaged, error));
     REQUIRE(packaged.enabled);
     REQUIRE(!packaged.inventoryButtonEnabled);
+    REQUIRE(!packaged.includeCubeMaterials);
+    Config cubeConfig;
+    REQUIRE(ParseToml("[deposit]\ninclude_cube_materials = true\n", cubeConfig, error));
+    REQUIRE(cubeConfig.includeCubeMaterials);
+    REQUIRE(IsDepositSourcePage(cubeConfig, MainInventoryPage, false));
+    REQUIRE(IsDepositSourcePage(cubeConfig, CubeInventoryPage, true));
+    REQUIRE(!IsDepositSourcePage(cubeConfig, CubeInventoryPage, false));
+    REQUIRE(!IsDepositSourcePage(packaged, CubeInventoryPage, true));
+    for (const auto page : {1, 2, 4, 5, 255})
+        REQUIRE(!IsDepositSourcePage(cubeConfig, static_cast<std::uint8_t>(page), true));
+    for (const auto* value : {"1", "\"true\"", "[]", "1.0"})
+        REQUIRE(!ParseToml(std::string("[deposit]\ninclude_cube_materials = ") + value, cubeConfig, error));
     REQUIRE(packagedConfig.find("item_delay_ms =") == std::string::npos);
     REQUIRE(packaged.button.tooltip == DefaultButtonTooltip);
 
@@ -394,7 +406,7 @@ tooltip = 'Deposit "Currency" \ Now'
         != std::string::npos);
     REQUIRE(source.find(".displayName = \"Automatic Materials Deposit\"")
         != std::string::npos);
-    REQUIRE(source.find(".version = \"1.2.0\"") != std::string::npos);
+    REQUIRE(source.find(".version = \"1.3.0\"") != std::string::npos);
     REQUIRE(source.find(".category = \"RuffnecKk Suite\"")
         != std::string::npos);
     REQUIRE(source.find("D2RL::Input::Key::D") != std::string::npos);

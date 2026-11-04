@@ -9,6 +9,10 @@ enabled = true
 # when the active mod provides its own button in another layout, such as the stash.
 inventory_button_enabled = false
 
+# Also deposit supported materials from the Horadric Cube when the cube itself
+# is in your main inventory. Applies on the next deposit; editable live in I Hate TOMLs.
+include_cube_materials = false
+
 # Deposits run together without an artificial pause between items.
 # The retired item_delay_ms setting is accepted in old files but ignored.
 

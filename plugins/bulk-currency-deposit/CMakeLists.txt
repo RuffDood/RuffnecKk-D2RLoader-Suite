@@ -101,4 +101,13 @@ if(BUILD_TESTING)
         NAME ruffneckk.bulk-currency-deposit.policy
         COMMAND ruffneckk_bulk_currency_deposit_tests
     )
+    if(MSVC)
+        add_executable(ruffneckk_bulk_currency_deposit_runtime_tests tests/runtime_tests.cpp)
+        target_compile_features(ruffneckk_bulk_currency_deposit_runtime_tests PRIVATE cxx_std_20)
+        target_link_libraries(ruffneckk_bulk_currency_deposit_runtime_tests PRIVATE
+            RuffnecKk::Common tomlplusplus::tomlplusplus)
+        target_compile_options(ruffneckk_bulk_currency_deposit_runtime_tests PRIVATE /EHsc /utf-8)
+        add_test(NAME ruffneckk.bulk-currency-deposit.cube-live-settings
+            COMMAND ruffneckk_bulk_currency_deposit_runtime_tests)
+    endif()
 endif()

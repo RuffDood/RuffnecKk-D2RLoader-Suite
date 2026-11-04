@@ -19,6 +19,8 @@
 namespace ruffneckk::bulk_currency_deposit {
 
 inline constexpr std::uint8_t MainInventoryPage = 0;
+inline constexpr std::uint8_t CubeInventoryPage = 3;
+inline constexpr std::uint32_t HoradricCubeItemCode = 0x20786F62; // "box "
 inline constexpr std::uint8_t AdvancedStashPage = 4;
 inline constexpr std::uint8_t InvalidInventoryPage = 0xFF;
 inline constexpr std::size_t ItemDataInventoryPageOffset = 0x55;
@@ -174,10 +176,18 @@ struct ButtonConfig {
 struct Config {
     bool enabled{true};
     bool inventoryButtonEnabled{false};
+    bool includeCubeMaterials{false};
     std::vector<std::uint32_t> includeItemCodes;
     std::vector<std::uint32_t> excludeItemCodes;
     ButtonConfig button{};
 };
+
+constexpr bool IsDepositSourcePage(
+        const Config& config, std::uint8_t page, bool cubeInInventory) noexcept {
+    return page == MainInventoryPage
+        || (page == CubeInventoryPage
+            && config.includeCubeMaterials && cubeInInventory);
+}
 
 inline constexpr std::string_view DepositUiTarget{"PanelManager"};
 inline constexpr std::string_view DepositUiCommand{"OpenPanel"};
@@ -342,6 +352,7 @@ inline bool ParseToml(
         constexpr std::string_view allowedKeys[]{
             "enabled",
             "inventory_button_enabled",
+            "include_cube_materials",
             "item_delay_ms",
             "include_item_codes",
             "exclude_item_codes",
@@ -362,7 +373,7 @@ inline bool ParseToml(
             const auto* node = deposit->get(key);
             if (!node) return true;
             const auto value = node->value<bool>();
-            if (!value) {
+            if (!node->is_boolean() || !value) {
                 error = std::string("deposit.") + key
                     + " must be true or false";
                 return false;
@@ -373,7 +384,8 @@ inline bool ParseToml(
         if (!readBool("enabled", parsed.enabled)
                 || !readBool(
                     "inventory_button_enabled",
-                    parsed.inventoryButtonEnabled)) {
+                    parsed.inventoryButtonEnabled)
+                || !readBool("include_cube_materials", parsed.includeCubeMaterials)) {
             return false;
         }
 
@@ -451,7 +463,7 @@ inline bool ParseToml(
                 const auto* node = button->get(key);
                 if (!node) return true;
                 const auto value = node->value<std::int64_t>();
-                if (!value
+                if (!node->is_integer() || !value
                         || *value < MinimumButtonCoordinate
                         || *value > MaximumButtonCoordinate) {
                     error = std::string("button.") + key

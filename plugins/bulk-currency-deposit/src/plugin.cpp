@@ -10,7 +10,11 @@
 #include <D2RLPlugin/threads.h>
 
 #include "bulk_currency_deposit_policy.hpp"
+#include "settings_page.hpp"
 #include "resource_ids.h"
+
+#include <RuffnecKk/live_settings_windows.hpp>
+#include <RuffnecKk/iht/i_hate_tomls_client.h>
 
 #include <Windows.h>
 
@@ -63,6 +67,10 @@ enabled = true
 # Injects the plugin-owned button into the Inventory panel. Keep this false
 # when the active mod provides its own button in another layout, such as the stash.
 inventory_button_enabled = false
+
+# Also deposit supported materials from the Horadric Cube when the cube itself
+# is in your main inventory. Applies on the next deposit; editable live in I Hate TOMLs.
+include_cube_materials = false
 
 # Deposits run together without an artificial pause between items.
 # The retired item_delay_ms setting is accepted in old files but ignored.
@@ -235,6 +243,8 @@ using FindTopLevelPanelFn = void*(__fastcall*)(const char*) noexcept;
 const D2RL::PluginContext* Context{};
 std::uint8_t* Base{};
 Config Settings{};
+RuffnecKk::LiveSettings::Snapshot<Config> RunningSettings;
+PluginMenu::Connection SettingsMenu;
 std::string LoadedConfigPath{"embedded defaults"};
 
 GetLocalDataContextFn GetLocalDataContext{};
@@ -292,9 +302,11 @@ std::atomic<std::uint64_t> RequestedAt{};
 struct Candidate {
     std::uint32_t guid{};
     std::uint32_t itemCode{};
+    std::uint8_t sourcePage{InvalidInventoryPage};
 };
 
 std::deque<Candidate> PendingItems;
+std::shared_ptr<const Config> BatchSettings;
 std::atomic<std::uint64_t> PendingItemCount{};
 std::atomic_bool BatchActive{};
 std::atomic_bool CancelRequested{};
@@ -341,7 +353,7 @@ constexpr D2RL::PluginInfo Info{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "bulk-currency-deposit",
     .name = "Automatic Materials Deposit",
-    .version = "1.2.0",
+    .version = "1.3.0",
     .author = "RuffnecKk",
     .description = "Deposits all supported materials into their assigned stash slots in one action.",
     .flags = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -1038,22 +1050,44 @@ bool KnownInputIsBlocked() noexcept {
     return false;
 }
 
+// Cube contents share the player's inventory list, distinguished by page 3.
+// Locate the actual carried cube independently of material include/exclude filters.
+bool HasCubeInMainInventory(void* inventory) noexcept {
+    if (!inventory) return false;
+    __try {
+        auto* item = GetFirstItem(inventory);
+        std::size_t traversed{};
+        while (item && traversed++ < MaximumInventoryTraversal) {
+            if (GetUnitType(item) == static_cast<std::int32_t>(ItemUnitType)
+                    && GetParentInventory(item) == inventory
+                    && ReadInventoryPageFromItemData(GetItemData(item)) == MainInventoryPage
+                    && GetItemCode(item) == HoradricCubeItemCode
+                    && IsItemInteractionBlocked(item) == 0) return true;
+            item = GetNextItem(item);
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    return false;
+}
+
 bool TryReadCandidate(
         void* item,
         void* inventory,
         Candidate& candidate,
+        const Config& config,
+        bool cubeInInventory,
         bool requireNativeEligibility) noexcept {
     if (!item || !inventory) return false;
     __try {
         if (GetUnitType(item) != static_cast<std::int32_t>(ItemUnitType)
                 || IsItemInteractionBlocked(item) != 0
-                || GetParentInventory(item) != inventory
-                || ReadInventoryPageFromItemData(GetItemData(item))
-                    != MainInventoryPage) {
+                || GetParentInventory(item) != inventory) {
             return false;
         }
+        const auto sourcePage = ReadInventoryPageFromItemData(GetItemData(item));
+        if (!IsDepositSourcePage(config, sourcePage, cubeInInventory)) return false;
         const auto itemCode = GetItemCode(item);
-        if (!MatchesItemCodeFilter(Settings, itemCode)
+        if (itemCode == HoradricCubeItemCode
+                || !MatchesItemCodeFilter(config, itemCode)
                 || (requireNativeEligibility
                     && !CanDepositToAdvancedStash(item))) {
             return false;
@@ -1062,6 +1096,7 @@ bool TryReadCandidate(
         if (guid < 0) return false;
         candidate.guid = static_cast<std::uint32_t>(guid);
         candidate.itemCode = itemCode;
+        candidate.sourcePage = sourcePage;
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
@@ -1071,15 +1106,18 @@ bool TryReadCandidate(
 void* FindCurrentItem(
         void* inventory,
         const Candidate& expected) noexcept {
-    if (!inventory) return nullptr;
+    if (!inventory || !BatchSettings) return nullptr;
+    const auto cubeInInventory = expected.sourcePage == CubeInventoryPage
+        && HasCubeInMainInventory(inventory);
     __try {
         auto* item = GetFirstItem(inventory);
         std::size_t traversed{};
         while (item && traversed++ < MaximumInventoryTraversal) {
             Candidate current{};
-            if (TryReadCandidate(item, inventory, current, true)
+            if (TryReadCandidate(item, inventory, current, *BatchSettings, cubeInInventory, true)
                     && current.guid == expected.guid
-                    && current.itemCode == expected.itemCode) {
+                    && current.itemCode == expected.itemCode
+                    && current.sourcePage == expected.sourcePage) {
                 return item;
             }
             item = GetNextItem(item);
@@ -1093,13 +1131,15 @@ void* FindCurrentItem(
 bool BuildBatch(void* inventory) noexcept {
     PendingItems.clear();
     PendingItemCount.store(0, std::memory_order_release);
-    if (!inventory) return false;
+    if (!inventory || !BatchSettings) return false;
+    const auto cubeInInventory = BatchSettings->includeCubeMaterials
+        && HasCubeInMainInventory(inventory);
     __try {
         auto* item = GetFirstItem(inventory);
         std::size_t traversed{};
         while (item && traversed++ < MaximumInventoryTraversal) {
             Candidate candidate{};
-            if (TryReadCandidate(item, inventory, candidate, true)) {
+            if (TryReadCandidate(item, inventory, candidate, *BatchSettings, cubeInInventory, true)) {
                 PendingItems.push_back(candidate);
                 PendingItemCount.fetch_add(1, std::memory_order_relaxed);
             }
@@ -1125,6 +1165,7 @@ bool BuildBatch(void* inventory) noexcept {
 bool TryNativeTransfer(
         void* item,
         void* destination,
+        std::uint8_t sourcePage,
         bool& transferred) noexcept {
     std::array<std::uint8_t, 16> placement{};
     __try {
@@ -1132,7 +1173,7 @@ bool TryNativeTransfer(
             item,
             destination,
             AdvancedStashPage,
-            MainInventoryPage,
+            sourcePage,
             true,
             placement.data());
         FinishInventoryInteraction(3, nullptr, 0, 0, false);
@@ -1145,6 +1186,7 @@ bool TryNativeTransfer(
 
 void ResetBatchState() noexcept {
     PendingItems.clear();
+    BatchSettings.reset();
     PendingItemCount.store(0, std::memory_order_release);
     CancelRequested.store(false, std::memory_order_release);
     BatchActive.store(false, std::memory_order_release);
@@ -1218,7 +1260,7 @@ bool ProcessBatchItem(const Candidate& candidate) noexcept {
     }
 
     bool transferred{};
-    const auto callCompleted = TryNativeTransfer(item, destination, transferred);
+    const auto callCompleted = TryNativeTransfer(item, destination, candidate.sourcePage, transferred);
     if (callCompleted && transferred) {
         ++BatchTransferred;
         ItemsTransferred.fetch_add(1, std::memory_order_relaxed);
@@ -1257,15 +1299,19 @@ void ProcessDepositRequest(std::uint64_t requestedAt) noexcept {
 
     auto* player = GetLocalPlayer(GetLocalDataContext());
     auto* inventory = player ? GetUnitInventory(player) : nullptr;
+    // Keep one immutable policy for this immediate batch; edits affect the next press.
+    BatchSettings = RunningSettings.Read();
     if (!player || !inventory || !BuildBatch(inventory)) {
+        ResetBatchState();
         RefusedRequests.fetch_add(1, std::memory_order_relaxed);
         return;
     }
     if (PendingItems.empty()) {
+        ResetBatchState();
         NoCandidateRequests.fetch_add(1, std::memory_order_relaxed);
         if (Context) {
             Context->LogInfo(
-                "AutomaticMaterialsDeposit: no natively eligible inventory item was found.");
+                "AutomaticMaterialsDeposit: no natively eligible material was found in the selected inventory sources.");
         }
         return;
     }
@@ -1618,6 +1664,8 @@ bool WaitForCallbackRundown() noexcept {
     return true;
 }
 
+#include "settings_runtime.inc"
+
 auto Status(
         D2R::Game::Client*,
         const D2RL::ConsoleCommandContext* command,
@@ -1629,11 +1677,12 @@ auto Status(
     if (!command || !command->plugin) {
         return D2RL::ConsoleCommandResult::Failed;
     }
-    char message[1024]{};
+    const auto running = RunningSettings.Read();
+    char message[1280]{};
     std::snprintf(
         message,
         sizeof(message),
-        "Automatic Materials Deposit 1.2.0: enabled=%s; Controls=%s; defaultBinding=SHIFT+D; UI=%s; buttonResources=%s; inventoryButton=%s; buttonPosition=%d,%d; transferMode=immediate; include=%llu; exclude=%llu; batch=%s; pending=%llu; requests=%llu; buttonRequests=%llu; coalesced=%llu; refused=%llu; stale=%llu; empty=%llu; started=%llu; completed=%llu; cancelled=%llu; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; dispatchFailures=%llu; TOML=%s.",
+        "Automatic Materials Deposit 1.3.0: enabled=%s; Controls=%s; defaultBinding=SHIFT+D; UI=%s; buttonResources=%s; inventoryButton=%s; buttonPosition=%d,%d; transferMode=immediate; includeCubeMaterials=%s; include=%llu; exclude=%llu; liveSettings=%s; batch=%s; pending=%llu; requests=%llu; buttonRequests=%llu; coalesced=%llu; refused=%llu; stale=%llu; empty=%llu; started=%llu; completed=%llu; cancelled=%llu; queued=%llu; transferred=%llu; failed=%llu; skipped=%llu; dispatchFailures=%llu; TOML=%s.",
         Settings.enabled ? "true" : "false",
         DepositAction.load(std::memory_order_acquire)
                 != D2RL::Input::InvalidHandle
@@ -1650,8 +1699,10 @@ auto Status(
         Settings.inventoryButtonEnabled ? "injected" : "external-ready",
         Settings.button.x,
         Settings.button.y,
-        static_cast<unsigned long long>(Settings.includeItemCodes.size()),
-        static_cast<unsigned long long>(Settings.excludeItemCodes.size()),
+        running->includeCubeMaterials ? "true" : "false",
+        static_cast<unsigned long long>(running->includeItemCodes.size()),
+        static_cast<unsigned long long>(running->excludeItemCodes.size()),
+        SettingsMenu.Registered() ? "registered" : "unavailable-or-deferred",
         BatchActive.load(std::memory_order_acquire) ? "active" : "idle",
         static_cast<unsigned long long>(PendingItemCount.load()),
         static_cast<unsigned long long>(InputRequests.load()),
@@ -1694,6 +1745,11 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     LogRuntimeIdentity();
 
     if (!LoadConfig()) return false;
+    try { RunningSettings.Set(Settings); }
+    catch (...) {
+        context->LogError("AutomaticMaterialsDeposit: could not initialize settings.");
+        return false;
+    }
     if (!Settings.enabled) {
         if (!context->RegisterConsoleCommand(
                 "bulk-currency-deposit",
@@ -1703,7 +1759,8 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
                 "AutomaticMaterialsDeposit: optional status command was not registered.");
         }
         context->LogInfo(
-            "Automatic Materials Deposit 1.2.0 by RuffnecKk loaded disabled; no Controls action, SDK listeners or resources installed.");
+            "Automatic Materials Deposit 1.3.0 by RuffnecKk loaded disabled; no Controls action or deposit resources installed.");
+        StartSettingsMenu();
         return true;
     }
 
@@ -1779,18 +1836,20 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
     std::snprintf(
         message,
         sizeof(message),
-        "Automatic Materials Deposit 1.2.0 by RuffnecKk active; native fingerprint accepted; Controls action=Automatic Materials Deposit (default SHIFT+D); buttonResources=ready; inventoryButton=%s at %d,%d; transferMode=immediate; routing=native Advanced Stash registry; installation=%s; TOML=%s.",
+        "Automatic Materials Deposit 1.3.0 by RuffnecKk active; native fingerprint accepted; Controls action=Automatic Materials Deposit (default SHIFT+D); buttonResources=ready; inventoryButton=%s at %d,%d; transferMode=immediate; routing=native Advanced Stash registry; installation=%s; TOML=%s.",
         Settings.inventoryButtonEnabled ? "injected" : "external-ready",
         Settings.button.x,
         Settings.button.y,
         context->loadScope == D2RL::LoadScope::Mod ? "mod-local" : "global",
         LoadedConfigPath.c_str());
     context->LogInfo(message);
+    StartSettingsMenu();
     return true;
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
     const auto teardownModule = AcquireTeardownModuleReference();
+    SettingsMenu.Stop();
     InputStopping.store(true, std::memory_order_release);
     CallbackRundown.Stop();
     CancelRequested.store(true, std::memory_order_release);
