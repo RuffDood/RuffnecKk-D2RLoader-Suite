@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(RuffnecKkMapSense VERSION 2.2.7 LANGUAGES C CXX RC)
+    project(RuffnecKkMapSense VERSION 2.2.8 LANGUAGES C CXX RC)
     include(CTest)
     option(RUFFNECKK_SUITE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
@@ -440,4 +440,14 @@ if(BUILD_TESTING)
     if(RUFFNECKK_MAPSENSE_MAX_LIFE_TEST_DLL)
         add_test(NAME ruffneckk.mapsense.max-life-102 COMMAND mapsense_max_life_102_tests "${RUFFNECKK_MAPSENSE_MAX_LIFE_TEST_DLL}")
     endif()
+endif()
+
+if(BUILD_TESTING AND RUFFNECKK_MAPS_REFERENCE_DIRECTORY)
+    add_test(NAME mapsense.maps-r16 COMMAND ruffneckk_mapsense_reimagined_stat_tests
+        "${RUFFNECKK_MAPS_REFERENCE_DIRECTORY}/d2rl-maps-0.12.5-r16.dll" 0.12.5-r16)
+endif()
+
+set(RUFFNECKK_MAPSENSE_PYRE_R5_TEST_DLL "" CACHE FILEPATH "Exact Pyre Loot Filter revision 5 reference")
+if(BUILD_TESTING AND RUFFNECKK_MAPSENSE_PYRE_R5_TEST_DLL)
+    add_test(NAME mapsense.pyre-r5 COMMAND ruffneckk_mapsense_automap_bridge_tests "${RUFFNECKK_MAPSENSE_PYRE_R5_TEST_DLL}" r5)
 endif()

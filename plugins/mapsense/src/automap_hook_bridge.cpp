@@ -1,5 +1,6 @@
 #include "automap_hook_bridge.hpp"
 #include "pyre_automap_witness.hpp"
+#include "pyre_r5_automap_witness.hpp"
 #include "celestial_automap_witness.hpp"
 #include <atomic>
 
@@ -129,9 +130,9 @@ auto QualifyAutomapHookRoute(const D2RL::PluginContext* context,
     const bool celestial = std::memcmp(status.ownerPluginId,
         "celestialrayone.loot-filter\0", sizeof("celestialrayone.loot-filter")) == 0;
     if (!pyre && !celestial) return reject("MapSense: automap owner is not supported.");
-    const auto callbackRva = pyre ? PyreAutomapCallbackRva : CelestialAutomapCallbackRva;
-    const auto slotRva = pyre ? PyreAutomapOriginalSlotRva : CelestialAutomapOriginalSlotRva;
-    const std::span<const std::uint8_t> witness = pyre
+    auto callbackRva = pyre ? PyreAutomapCallbackRva : CelestialAutomapCallbackRva;
+    auto slotRva = pyre ? PyreAutomapOriginalSlotRva : CelestialAutomapOriginalSlotRva;
+    std::span<const std::uint8_t> witness = pyre
         ? std::span<const std::uint8_t>(PyreCallbackWitness)
         : std::span<const std::uint8_t>(CelestialCallbackWitness);
     std::uintptr_t target{};
@@ -143,10 +144,17 @@ auto QualifyAutomapHookRoute(const D2RL::PluginContext* context,
             reinterpret_cast<LPCWSTR>(target), &module) != FALSE;
     };
     if (!resolveModule()
-        || target != reinterpret_cast<std::uintptr_t>(module) + callbackRva) {
+        || (target != reinterpret_cast<std::uintptr_t>(module) + callbackRva
+            && !(pyre && target == reinterpret_cast<std::uintptr_t>(module) + 0x84C0))) {
         if (!JumpDestination(target, target) || !resolveModule()) return reject("MapSense ESRDIAG1: automap-route stage=relay-or-module-unresolved.");
     }
     const auto base = reinterpret_cast<std::uintptr_t>(module);
+    // The revision 5 profile is exclusive to the admitted Pyre owner.
+    if (pyre && target == base + 0x84C0) {
+        callbackRva = 0x84C0;
+        slotRva = 0x19F900;
+        witness = PyreR5CallbackWitness;
+    }
     if (target != base + callbackRva
         || !Region(target, witness.size(), true)
         || !Matches(target, witness)) return reject("MapSense ESRDIAG1: automap-route stage=callback-bytes-or-location-not-admitted.");

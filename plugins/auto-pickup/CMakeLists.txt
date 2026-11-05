@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(d2rl-ruffneckk-auto-pickup VERSION 3.0.1 LANGUAGES CXX RC)
+    project(d2rl-ruffneckk-auto-pickup VERSION 3.0.2 LANGUAGES CXX RC)
     include(CTest)
 else()
     enable_language(RC)
@@ -198,4 +198,9 @@ endif()
 if(BUILD_TESTING AND RUFFNECKK_MAPS_REFERENCE_DIRECTORY)
     add_test(NAME auto-pickup.maps-r15 COMMAND reimagined_stat_compat_tests
         "${RUFFNECKK_MAPS_REFERENCE_DIRECTORY}/d2rl-maps-0.12.5-r15.dll" 0.12.5-r15)
+endif()
+
+if(BUILD_TESTING AND RUFFNECKK_MAPS_REFERENCE_DIRECTORY)
+    add_test(NAME auto-pickup.maps-r16 COMMAND reimagined_stat_compat_tests
+        "${RUFFNECKK_MAPS_REFERENCE_DIRECTORY}/d2rl-maps-0.12.5-r16.dll" 0.12.5-r16)
 endif()

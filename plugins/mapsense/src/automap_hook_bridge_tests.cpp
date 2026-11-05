@@ -60,7 +60,12 @@ void Write(void* address, const void* bytes, std::size_t size) {
 }
 
 int wmain(int argc, wchar_t** argv) {
-    if (argc != 2) return 2;
+    if (argc != 2 && argc != 3) return 2;
+    const bool revision5 = argc == 3;
+    const std::uintptr_t fixtureCallbackRva = revision5 ? 0x84C0 : 0x4BA0;
+    const std::uintptr_t fixtureOriginalSlotRva = revision5 ? 0x19F900 : 0x1755A8;
+    const std::uintptr_t dispatchSlotRva = revision5 ? 0xC43A8 : 0x9D398;
+    const std::uintptr_t callbackTail = revision5 ? 604 : 572;
     // No DllMain, imports, game process or plugin initialization is run.
     // Only the isolated automap callback is executed, with its ready flag false.
     const auto module = LoadLibraryExW(argv[1], nullptr, DONT_RESOLVE_DLL_REFERENCES);
@@ -71,7 +76,7 @@ int wmain(int argc, wchar_t** argv) {
     CHECK(fixture != nullptr); if (!fixture) return 2;
     auto* entry = fixture + AutomapEntryRva;
     auto* trampoline = fixture + 0x1000;
-    auto** slot = reinterpret_cast<void**>(image + PyreAutomapOriginalSlotRva);
+    auto** slot = reinterpret_cast<void**>(image + fixtureOriginalSlotRva);
     const auto savedSlot = *slot;
     D2RL::PluginApi api{.apiSize = D2RL::PluginApiSize,
         .logInfo = Log, .installInlineHook = Install, .queryService = Service};
@@ -93,7 +98,7 @@ int wmain(int argc, wchar_t** argv) {
         0x48,0x8B,0x6C,0x24,0x58,0x48,0x83,0xC4,0x40,0x5F,0xC3};
     std::memcpy(entry + 33, epilogue.data(), epilogue.size());
     AbsoluteJump(entry + 0x210, reinterpret_cast<void*>(&Native));
-    AbsoluteJump(entry, image + PyreAutomapCallbackRva);
+    AbsoluteJump(entry, image + fixtureCallbackRva);
     std::memset(entry + 14, 0x90, 4);
     *slot = trampoline;
     CHECK(QualifyAutomapHookRoute(&context, Expected, route));
@@ -105,10 +110,10 @@ int wmain(int argc, wchar_t** argv) {
     // Supply only the CFG dispatch stub needed by this isolated callback.
     fixture[0] = 0xFF; fixture[1] = 0xE0; // JMP RAX
     void* savedDispatch{};
-    std::memcpy(&savedDispatch, image + 0x9D398, sizeof(savedDispatch));
+    std::memcpy(&savedDispatch, image + dispatchSlotRva, sizeof(savedDispatch));
     void* dispatch = fixture;
-    Write(image + 0x9D398, &dispatch, sizeof(dispatch));
-    auto callback = reinterpret_cast<AutomapPass>(image + PyreAutomapCallbackRva);
+    Write(image + dispatchSlotRva, &dispatch, sizeof(dispatch));
+    auto callback = reinterpret_cast<AutomapPass>(image + fixtureCallbackRva);
     callback(reinterpret_cast<void*>(0x1230), reinterpret_cast<void*>(0x4560));
     CHECK(NativeCalls == 1 && ObserverCalls == 1);
     CHECK(SeenUnit == reinterpret_cast<void*>(0x1230) && SeenContext == reinterpret_cast<void*>(0x4560));
@@ -123,7 +128,7 @@ int wmain(int argc, wchar_t** argv) {
     entry[0] = 0xE9;
     const auto relative = static_cast<std::int32_t>((fixture + 0x800) - (entry + 5));
     std::memcpy(entry + 1, &relative, sizeof(relative));
-    AbsoluteJump(fixture + 0x800, image + PyreAutomapCallbackRva);
+    AbsoluteJump(fixture + 0x800, image + fixtureCallbackRva);
     std::memcpy(trampoline, Expected.data(), 5);
     AbsoluteJump(trampoline + 5, entry + 5);
     CHECK(QualifyAutomapHookRoute(&context, Expected, route));
@@ -147,11 +152,11 @@ int wmain(int argc, wchar_t** argv) {
     CHECK(!QualifyAutomapHookRoute(&context, Expected, route)); DiagnosticsAvailable = true;
     entry[25] ^= 1; CHECK(!QualifyAutomapHookRoute(&context, Expected, route)); entry[25] ^= 1;
     trampoline[0] ^= 1; CHECK(!QualifyAutomapHookRoute(&context, Expected, route)); trampoline[0] ^= 1;
-    const auto savedCallbackByte = image[PyreAutomapCallbackRva + 570];
+    const auto savedCallbackByte = image[fixtureCallbackRva + callbackTail];
     const auto badCallbackByte = static_cast<std::uint8_t>(savedCallbackByte ^ 1);
-    Write(image + PyreAutomapCallbackRva + 570, &badCallbackByte, 1);
+    Write(image + fixtureCallbackRva + callbackTail, &badCallbackByte, 1);
     CHECK(!QualifyAutomapHookRoute(&context, Expected, route));
-    Write(image + PyreAutomapCallbackRva + 570, &savedCallbackByte, 1);
+    Write(image + fixtureCallbackRva + callbackTail, &savedCallbackByte, 1);
     CHECK(QualifyAutomapHookRoute(&context, Expected, route));
     *slot = reinterpret_cast<void*>(&Native);
     CHECK(!InstallAutomapHookRoute(&context, Expected, route, Observe, Original));
@@ -163,7 +168,7 @@ int wmain(int argc, wchar_t** argv) {
     CHECK(*slot == reinterpret_cast<void*>(&Native)); // no clobber on restoration race
     CHECK(!ExchangeAutomapSlot(nullptr, nullptr, nullptr));
     *slot = savedSlot;
-    Write(image + 0x9D398, &savedDispatch, sizeof(savedDispatch));
+    Write(image + dispatchSlotRva, &savedDispatch, sizeof(savedDispatch));
     VirtualFree(fixture, 0, MEM_RELEASE); FreeLibrary(module);
     std::printf("automap bridge: %s\n", Failures ? "FAILED" : "PASS");
     return Failures ? EXIT_FAILURE : EXIT_SUCCESS;

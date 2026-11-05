@@ -5,8 +5,8 @@ D2RL_PLUGIN_MANIFEST_RESOURCE_ID RCDATA { D2RL_PLUGIN_RESOURCE_DWORD(D2RL_PLUGIN
 D2R_PICKUP_COEXIST RCDATA { 0x5049434BL, 1L, 1L }
 
 1 VERSIONINFO
-FILEVERSION 3,0,1,0
-PRODUCTVERSION 3,0,1,0
+FILEVERSION 3,0,2,0
+PRODUCTVERSION 3,0,2,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -14,11 +14,11 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "RuffnecKk"
       VALUE "FileDescription", "Walking and post-cast item and gold pickup."
-      VALUE "FileVersion", "3.0.1"
+      VALUE "FileVersion", "3.0.2"
       VALUE "InternalName", "ruffneckk-auto-pickup"
       VALUE "OriginalFilename", "d2rl-ruffneckk-auto-pickup.dll"
       VALUE "ProductName", "Auto Pickup"
-      VALUE "ProductVersion", "3.0.1"
+      VALUE "ProductVersion", "3.0.2"
     END
   END
   BLOCK "VarFileInfo"

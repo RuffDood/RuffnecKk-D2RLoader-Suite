@@ -21,3 +21,7 @@ Update the helper executable together with the DLL and preserve existing setting
 ESR tester confirmation covers navigation, monster markers and the reveal fix.
 Offline fixtures cover both loot filters separately and damaged-hook rejection;
 loading both filters together, persistence and multiplayer are not qualified.
+
+## Reimagined Bundle 16 compatibility
+
+Version 2.2.8 admits the exact Reimagined 3.1.1 Bundle 16 Maps provider while retaining all earlier supported profiles and fail-closed checks. Also supports Pyre Loot Filter revision 5 without replacing the native hook; retains the ESR and Act V fixes from 2.2.7. Private merged-installation startup evidence does not qualify these newly versioned Hub artifacts for gameplay, persistence or multiplayer.

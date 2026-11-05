@@ -1,3 +1,4 @@
+#include "maps0125_r16_reference.hpp"
 #include "maps0125_r15_reference.hpp"
 #include <algorithm>
 #include "maps0125_revision2_reference.hpp"
@@ -43,8 +44,9 @@ int wmain(int argc, wchar_t** argv) {
     if (std::wcscmp(argv[2], L"0.12.1") != 0 && std::wcscmp(argv[2], L"0.12.4") != 0
         && std::wcscmp(argv[2], L"0.12.5") != 0
         && std::wcscmp(argv[2], L"0.12.5-revision2") != 0
-        && std::wcscmp(argv[2], L"0.12.5-r15") != 0) return 2;
-    const auto& profile = std::wcscmp(argv[2], L"0.12.5-r15") == 0 ? Maps0125R15Profile : std::wcscmp(argv[2], L"0.12.5-revision2") == 0 ? Maps0125Revision2Profile : std::wcscmp(argv[2], L"0.12.5") == 0 ? Maps0125Profile
+        && std::wcscmp(argv[2], L"0.12.5-r15") != 0
+        && std::wcscmp(argv[2], L"0.12.5-r16") != 0) return 2;
+    const auto& profile = std::wcscmp(argv[2], L"0.12.5-r16") == 0 ? Maps0125R16Profile : std::wcscmp(argv[2], L"0.12.5-r15") == 0 ? Maps0125R15Profile : std::wcscmp(argv[2], L"0.12.5-revision2") == 0 ? Maps0125Revision2Profile : std::wcscmp(argv[2], L"0.12.5") == 0 ? Maps0125Profile
         : (std::wcscmp(argv[2], L"0.12.1") == 0 ? MapsStatProfiles[0] : MapsStatProfiles[1]);
     // Reference DLL is mapped without imports, DllMain or plugin initialization.
     const auto module = LoadLibraryExW(argv[1], nullptr, DONT_RESOLVE_DLL_REFERENCES);
