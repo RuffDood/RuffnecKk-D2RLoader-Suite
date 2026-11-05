@@ -9,7 +9,6 @@ qualification or a portable copy of the laboratory tools.
 - [Argument contracts](d2r/argument-contracts.md) and [generated catalogue](d2r/argument-contracts.generated.md).
 - [Skill-cost reconstruction](d2r/modules/README.md).
 - [Imported RVA reference and provenance](d2r/references/rva-93847-intake.md).
-- [SDK contribution research](d2r/sdk-contribution/README.md).
 - [Player-sequence data](d2r/player-sequences/d2r-3.3.93847-player-sequences.manifest.json).
 - [Loader audit](d2rloader-1.3-public-audit.md) and [historical baseline registry](d2rloader-baselines.json).
 - [Source paths and SHA-256 hashes](source-snapshot.json).
