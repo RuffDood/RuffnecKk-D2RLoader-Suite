@@ -1,6 +1,8 @@
 #include "native_automap_marker.hpp"
+#include "esr_startup_diagnostic.hpp"
 #include "automap_hook_bridge.hpp"
 #include "reimagined_stat_compat.hpp"
+#include "max_life_102_compat.hpp"
 #include "tracked_native_transform_compat.hpp"
 
 #include "navigation_engine.hpp"
@@ -1336,15 +1338,7 @@ void RefreshTrackedMonsters(const MonsterScanContext& scan) noexcept {
     }
 }
 
-__declspec(noinline) void __fastcall HookRenderAutomapUnit(
-        void* unit,
-        void* automapContext) noexcept {
-    const auto original = OriginalRenderAutomapUnit;
-    if (original == nullptr) return;
-
-    // Preserve D2R behavior first and exactly once. Marker observation is a
-    // fail-closed side effect that cannot suppress the native automap pass.
-    original(unit, automapContext);
+void __fastcall ObserveAutomapUnitAfterNative(void* unit, void* automapContext) noexcept {
     if (!Active.load(std::memory_order_acquire)) {
         return;
     }
@@ -1409,6 +1403,13 @@ __declspec(noinline) void __fastcall HookRenderAutomapUnit(
         DiscoverClientMonsterTable(scan);
     }
     RefreshTrackedMonsters(scan);
+}
+
+__declspec(noinline) void __fastcall HookRenderAutomapUnit(void* unit, void* automapContext) noexcept {
+    const auto original = OriginalRenderAutomapUnit;
+    if (original == nullptr) return;
+    original(unit, automapContext);
+    ObserveAutomapUnitAfterNative(unit, automapContext);
 }
 
 auto ValidateRuntime(const D2RL::PluginContext* context,
@@ -1563,58 +1564,44 @@ auto ValidateRuntime(const D2RL::PluginContext* context,
         0x8B, 0x88, 0x58, 0x01, 0x00, 0x00, 0x48, 0x8B,
         0xC1, 0x48, 0x85, 0xC9, 0xEB, 0xE4, 0x33, 0xC0,
         0xC3};
-    const auto check = [context](
-            std::uintptr_t rva,
-            const auto& expected) noexcept {
-        const auto matches = context->CheckExpectedBytes(
-            rva,
-            expected.data(),
-            static_cast<std::uint32_t>(expected.size()));
-        if (!matches) {
-            char message[160]{};
-            std::snprintf(message, sizeof(message),
-                "MapSense: marker witness mismatch at RVA 0x%llX (%zu bytes).",
-                static_cast<unsigned long long>(rva), expected.size());
-            context->LogWarn(message);
-        }
-        return matches;
-    };
-    return check(GetLocalDataContextRva, localContextExpected)
-        && check(GetLocalPlayerRva, localPlayerExpected)
-        && check(GetNativeHeightRva, nativeHeightExpected)
-        && check(GetNativeWidthRva, nativeWidthExpected)
-        && check(ProjectClientToAutomapRva, projectExpected)
-        && check(GetUnitIdRva, getUnitIdExpected)
-        && check(
-            NativeUnitIdentityLayoutWitnessRva,
-            NativeUnitIdentityLayoutWitness)
-        && check(GetUnitDataContextRva, getUnitDataContextExpected)
-        && check(GetUnitModeRva, getUnitModeExpected)
-        && check(GetDynamicPathRva, getDynamicPathExpected)
-        && check(GetUnitClientXRva, getXExpected)
-        && check(GetUnitClientYRva, getYExpected)
-        && check(PathGetXRva, pathGetXExpected)
-        && check(PathGetYRva, pathGetYExpected)
-        && check(
-            GetDataTablesForContextRva,
-            getDataTablesForContextExpected)
-        && check(GetMonStatsRecordRva, getMonStatsRecordExpected)
-        && check(GetSuperUniqueIndexRva, getSuperUniqueIndexExpected)
-        && check(MonsterRankWitnessRva, monsterRankWitnessExpected)
-        && check(GetUnitRoomRva, getUnitRoomExpected)
-        && check(UnitRoomLayoutWitnessRva, unitRoomLayoutWitnessExpected)
-        && check(
-            ActiveRoomGetDrlgRoomRva,
-            activeRoomGetDrlgRoomExpected)
-        && check(PathGetRoomRva, pathGetRoomExpected)
-        && check(IsRoomInTownRva, isRoomInTownExpected)
-        && check(GetDrlgRoomLevelIdRva, drlgRoomLevelIdExpected)
-        && check(
-            ClientUnitHashTableWitnessRva,
-            clientUnitHashTableExpected)
-        && Detail::ValidateClientUnitHashLookup(
-            context, clientUnitHashLookupExpected, true)
-        && Detail::QualifyAutomapHookRoute(context, renderUnitExpected, hookRoute);
+    context->LogInfo("MapSense ESRDIAG1: startup native validation begins; diagnostics never authorize a hook.");
+    bool witnessesMatch = true;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetLocalDataContextRva", GetLocalDataContextRva, localContextExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetLocalPlayerRva", GetLocalPlayerRva, localPlayerExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetNativeHeightRva", GetNativeHeightRva, nativeHeightExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetNativeWidthRva", GetNativeWidthRva, nativeWidthExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "ProjectClientToAutomapRva", ProjectClientToAutomapRva, projectExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetUnitIdRva", GetUnitIdRva, getUnitIdExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "NativeUnitIdentityLayoutWitnessRva", NativeUnitIdentityLayoutWitnessRva, NativeUnitIdentityLayoutWitness) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetUnitDataContextRva", GetUnitDataContextRva, getUnitDataContextExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetUnitModeRva", GetUnitModeRva, getUnitModeExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetDynamicPathRva", GetDynamicPathRva, getDynamicPathExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetUnitClientXRva", GetUnitClientXRva, getXExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetUnitClientYRva", GetUnitClientYRva, getYExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "PathGetXRva", PathGetXRva, pathGetXExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "PathGetYRva", PathGetYRva, pathGetYExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetDataTablesForContextRva", GetDataTablesForContextRva, getDataTablesForContextExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetMonStatsRecordRva", GetMonStatsRecordRva, getMonStatsRecordExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetSuperUniqueIndexRva", GetSuperUniqueIndexRva, getSuperUniqueIndexExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "MonsterRankWitnessRva", MonsterRankWitnessRva, monsterRankWitnessExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetUnitRoomRva", GetUnitRoomRva, getUnitRoomExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "UnitRoomLayoutWitnessRva", UnitRoomLayoutWitnessRva, unitRoomLayoutWitnessExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "ActiveRoomGetDrlgRoomRva", ActiveRoomGetDrlgRoomRva, activeRoomGetDrlgRoomExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "PathGetRoomRva", PathGetRoomRva, pathGetRoomExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "IsRoomInTownRva", IsRoomInTownRva, isRoomInTownExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "GetDrlgRoomLevelIdRva", GetDrlgRoomLevelIdRva, drlgRoomLevelIdExpected) && witnessesMatch;
+    witnessesMatch = Detail::DiagnosticWitness(context, "ClientUnitHashTableWitnessRva", ClientUnitHashTableWitnessRva, clientUnitHashTableExpected) && witnessesMatch;
+    const bool lookupMatch = Detail::ValidateClientUnitHashLookup(
+        context, clientUnitHashLookupExpected, witnessesMatch);
+    Detail::DiagnosticReport(context, "ClientUnitHashLookupAdmission",
+        ClientUnitHashLookupWitnessRva, clientUnitHashLookupExpected, lookupMatch);
+    const bool routeMatch = Detail::QualifyAutomapHookRoute(context, renderUnitExpected, hookRoute);
+    Detail::DiagnosticReport(context, "AutomapHookRouteAdmission",
+        RenderAutomapUnitRva, renderUnitExpected, routeMatch);
+    context->LogInfo(witnessesMatch && lookupMatch && routeMatch
+        ? "MapSense ESRDIAG1: startup native validation PASS."
+        : "MapSense ESRDIAG1: startup native validation FAIL; marker hook remains refused.");
+    return witnessesMatch && lookupMatch && routeMatch;
 }
 
 } // namespace
@@ -1642,6 +1629,7 @@ auto InitializeNativeAutomapMarker(
             RuffnecKk::NativeStatCompat::Helper::GetUnitAlignment);
     auto statDiagnostics = RuffnecKk::TrackedNativeTransform::D2RLDiagnosticsContext(context);
     statDiagnostics.validateProviderRedirect = Detail::ValidateReimaginedStatRedirect;
+    statDiagnostics.validateProviderHook = Detail::ValidateMaxLife102Hook;
     if (!candidateUnitStatAdapter.BindCurrentProcess(
             context->exeBase,
             requiredStatHelpers,
@@ -1738,7 +1726,7 @@ auto InitializeNativeAutomapMarker(
         0x24, 0x68, 0x48, 0x8D, 0x54, 0x24, 0x60, 0x48,
         0x8B, 0xE9, 0xE8, 0xF1, 0x01, 0x00, 0x00, 0x84};
     if (!Detail::InstallAutomapHookRoute(context, renderUnitExpected,
-            hookRoute, HookRenderAutomapUnit, OriginalRenderAutomapUnit)) {
+            hookRoute, HookRenderAutomapUnit, OriginalRenderAutomapUnit, ObserveAutomapUnitAfterNative)) {
         ShutdownNativeAutomapMissile();
         Base = nullptr;
         GetLocalDataContext = nullptr;

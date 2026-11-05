@@ -8,15 +8,19 @@
 
 namespace RuffnecKk::MapSense::Detail {
 
+enum class AutomapOwner { Native, Pyre, Celestial };
+using ReturningAutomapPass = std::uint64_t(__fastcall*)(void*, void*) noexcept;
+
 using AutomapPass = void(__fastcall*)(void*, void*) noexcept;
 
-// A bridge changes Pyre's original-call slot, never its code or the game hook.
+// A bridge changes a validated provider original-call slot, never its code or the game hook.
 // The byte-witnessed Pyre callback forwards both arguments through this slot
 // once, before its own item-marker work. The slot is restored with compare/exchange.
 struct AutomapHookRoute {
     void** slot{};
     void* original{};
     HMODULE ownerModule{};
+    AutomapOwner owner{AutomapOwner::Native};
 };
 
 inline constexpr std::uintptr_t AutomapEntryRva = 0xD76E0;
@@ -27,7 +31,8 @@ auto QualifyAutomapHookRoute(const D2RL::PluginContext* context,
     std::span<const std::uint8_t> expected, AutomapHookRoute& route) noexcept -> bool;
 auto InstallAutomapHookRoute(const D2RL::PluginContext* context,
     std::span<const std::uint8_t> expected, const AutomapHookRoute& route,
-    AutomapPass callback, AutomapPass& original) noexcept -> bool;
+    AutomapPass callback, AutomapPass& original,
+    AutomapPass observationOnly = nullptr) noexcept -> bool;
 void RestoreAutomapHookRoute() noexcept;
 
 // Shared by the runtime and executable regression fixture. Failed ownership

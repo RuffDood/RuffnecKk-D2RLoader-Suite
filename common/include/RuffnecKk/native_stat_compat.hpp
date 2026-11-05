@@ -39,10 +39,17 @@ using ObserveTrackedTransformFn = bool(*)(void* userData, std::uintptr_t mainIma
 using ValidateProviderRedirectFn = bool(*)(void* userData, std::uintptr_t mainImageBase,
     std::uint32_t nativeRva, std::uintptr_t slotAddress,
     std::uintptr_t actualTarget, std::uintptr_t expectedCoreTarget) noexcept;
+// A consumer may prove an exact external hook independently of Loader tracking.
+// Return the validated displaced prefix length; zero refuses the hook. The
+// adapter still checks unwind, untouched tail, dependencies, imports and data.
+using ValidateProviderHookFn = std::size_t(*)(void* userData,
+    std::uint32_t nativeRva, std::uintptr_t coreBase, std::uint32_t functionRva,
+    std::span<const std::byte> expected) noexcept;
 struct TransformDiagnostics final {
     void* userData{};
     ObserveTrackedTransformFn observe{};
     ValidateProviderRedirectFn validateProviderRedirect{};
+    ValidateProviderHookFn validateProviderHook{};
 };
 
 struct DirectCallWitness final { std::uint32_t siteRva; std::uint32_t targetRva; };

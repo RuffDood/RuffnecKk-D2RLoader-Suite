@@ -190,11 +190,22 @@ template <typename Value>
         std::uintptr_t functionAddress{};
         if (!At(core.base, function.rva, functionAddress)) return false;
         const bool pristine = MatchesHex(reader, core, functionAddress, function.expectedHex);
+        std::size_t witnessedPrefix{};
+        if (!pristine && function.rva == helper.exportRva
+            && diagnostics.validateProviderHook != nullptr) {
+            const auto size = HexSize(function.expectedHex);
+            std::array<std::byte, 4096> expected{};
+            if (size != 0 && size <= expected.size()
+                && DecodeHex(function.expectedHex, {expected.data(), size})) {
+                witnessedPrefix = diagnostics.validateProviderHook(diagnostics.userData,
+                    helper.nativeRva, core.base, function.rva, {expected.data(), size});
+            }
+        }
         const bool structureMatches = MatchesFunctionStructure(
             reader,
             core,
             function,
-            pristine ? 0U : function.trackedPrefixBytes);
+            pristine ? 0U : (witnessedPrefix != 0 ? witnessedPrefix : function.trackedPrefixBytes));
         if (function.rva != helper.exportRva) {
             if (!pristine || !structureMatches) return false;
             continue;
@@ -203,6 +214,10 @@ template <typename Value>
         const bool targetExecutable = pristine
             || (reader.validateExecutable != nullptr
                 && reader.validateExecutable(reader.userData, functionAddress));
+        if (witnessedPrefix != 0) {
+            if (!targetExecutable || !structureMatches) return false;
+            continue;
+        }
         TrackedNativeTransform::Observation observation{
             .state = TrackedNativeTransform::State::Unchanged,
             .kind = TrackedNativeTransform::Kind::Unknown,

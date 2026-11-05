@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(RuffnecKkMapSense VERSION 2.2.6 LANGUAGES C CXX RC)
+    project(RuffnecKkMapSense VERSION 2.2.7 LANGUAGES C CXX RC)
     include(CTest)
     option(RUFFNECKK_SUITE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
@@ -84,6 +84,7 @@ add_library(ruffneckk_mapsense SHARED
     src/native_automap_marker.cpp
     src/automap_hook_bridge.cpp
     src/reimagined_stat_compat.cpp
+    src/max_life_102_compat.cpp
     src/native_automap_missile.cpp
     src/native_automap_poi.cpp
     src/native_ui_state.cpp
@@ -148,7 +149,7 @@ if(BUILD_TESTING)
     target_compile_options(ruffneckk_mapsense_helper_failure_tests PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
     add_test(NAME ruffneckk.mapsense.helper-failure-diagnostics COMMAND ruffneckk_mapsense_helper_failure_tests)
     add_executable(ruffneckk_mapsense_reimagined_stat_tests
-        src/reimagined_stat_compat.cpp src/reimagined_stat_compat_tests.cpp)
+        src/reimagined_stat_compat.cpp src/max_life_102_compat.cpp src/reimagined_stat_compat_tests.cpp)
     target_link_libraries(ruffneckk_mapsense_reimagined_stat_tests PRIVATE
         RuffnecKk::Common RuffnecKk::NativeStatCompat)
     target_compile_definitions(ruffneckk_mapsense_reimagined_stat_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
@@ -412,4 +413,31 @@ endif()
 if(BUILD_TESTING AND RUFFNECKK_MAPS_REFERENCE_DIRECTORY)
     add_test(NAME mapsense.maps-r15 COMMAND ruffneckk_mapsense_reimagined_stat_tests
         "${RUFFNECKK_MAPS_REFERENCE_DIRECTORY}/d2rl-maps-0.12.5-r15.dll" 0.12.5-r15)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(mapsense_esr_diagnostic_tests src/esr_startup_diagnostic_tests.cpp)
+    target_link_libraries(mapsense_esr_diagnostic_tests PRIVATE RuffnecKk::Common)
+    target_compile_options(mapsense_esr_diagnostic_tests PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
+    add_test(NAME ruffneckk.mapsense.esr-startup-diagnostic COMMAND mapsense_esr_diagnostic_tests)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(mapsense_celestial_bridge_tests src/automap_hook_bridge.cpp src/celestial_automap_bridge_tests.cpp)
+    target_link_libraries(mapsense_celestial_bridge_tests PRIVATE RuffnecKk::Common)
+    target_compile_options(mapsense_celestial_bridge_tests PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
+    set(RUFFNECKK_MAPSENSE_CELESTIAL_TEST_DLL "" CACHE FILEPATH "Offline CelestialRayOne Loot Filter 1.5.3 reference DLL")
+    if(RUFFNECKK_MAPSENSE_CELESTIAL_TEST_DLL)
+        add_test(NAME ruffneckk.mapsense.celestial-153-bridge COMMAND mapsense_celestial_bridge_tests "${RUFFNECKK_MAPSENSE_CELESTIAL_TEST_DLL}")
+    endif()
+endif()
+
+if(BUILD_TESTING)
+    add_executable(mapsense_max_life_102_tests src/max_life_102_compat.cpp src/max_life_102_compat_tests.cpp)
+    target_link_libraries(mapsense_max_life_102_tests PRIVATE RuffnecKk::Common RuffnecKk::NativeStatCompat)
+    target_compile_options(mapsense_max_life_102_tests PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
+    set(RUFFNECKK_MAPSENSE_MAX_LIFE_TEST_DLL "" CACHE FILEPATH "Offline Max Life One 1.0.2 reference DLL")
+    if(RUFFNECKK_MAPSENSE_MAX_LIFE_TEST_DLL)
+        add_test(NAME ruffneckk.mapsense.max-life-102 COMMAND mapsense_max_life_102_tests "${RUFFNECKK_MAPSENSE_MAX_LIFE_TEST_DLL}")
+    endif()
 endif()

@@ -1,4 +1,5 @@
 #include "reimagined_stat_compat.hpp"
+#include "max_life_102_compat.hpp"
 #include "reimagined_stat_witness.hpp"
 #include <RuffnecKk/native_stat_compat.hpp>
 #include <RuffnecKk/tracked_native_transform_d2rl.hpp>
@@ -102,6 +103,7 @@ void LogStatAdmissionFailure(const D2RL::PluginContext* context) noexcept {
         RuffnecKk::NativeStatCompat::Adapter adapter{};
         auto diagnostics = RuffnecKk::TrackedNativeTransform::D2RLDiagnosticsContext(context);
         diagnostics.validateProviderRedirect = ValidateReimaginedStatRedirect;
+    diagnostics.validateProviderHook = ValidateMaxLife102Hook;
         const auto passed = adapter.BindCurrentProcess(context->exeBase,
             RuffnecKk::NativeStatCompat::ToMask(helper), diagnostics);
         std::array<std::uint8_t, 6> entry{};

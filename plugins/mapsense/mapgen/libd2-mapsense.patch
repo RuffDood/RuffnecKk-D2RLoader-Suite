@@ -2465,3 +2465,17 @@ index 9983c50..6af6634 100644
      defer alloc.free(rules);
 
      // Only the Null level refuses teleport outright, and only Duriel's Lair gates the
+diff --git a/packages/drlg/src/drlg/drlg.zig b/packages/drlg/src/drlg/drlg.zig
+--- a/packages/drlg/src/drlg/drlg.zig
++++ b/packages/drlg/src/drlg/drlg.zig
+@@ -251,6 +251,10 @@
+ fn initializeRoomEx(pLevel: [*c]s.D2DrlgLevelStrc) void {
+     const pData: *D2DrlgLevelDataPresetArea = @ptrCast(@alignCast(pLevel.*.pDrlgLevelData.?));
+     const pLvlPrest = tables.lvlPrestFindLineByLevelId(pLevel.*.eD2LevelId);
++    // Mods can retain a preset-type level without a corresponding LvlPrest
++    // definition (ESR level 137). Leave it without rooms rather than inventing
++    // geometry or crashing generation of every other level in the act.
++    if (pLvlPrest == null) return;
+     const pDrlgMap = preset.allocDrlgMap(
+         pLevel,
+         pLvlPrest.*.Def,
