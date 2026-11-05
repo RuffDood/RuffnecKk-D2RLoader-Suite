@@ -1,19 +1,19 @@
+diff --git a/packages/drlg/src/drlg/drlg.zig b/packages/drlg/src/drlg/drlg.zig
+index 8d2737d..3fbee0b 100644
+--- a/packages/drlg/src/drlg/drlg.zig
++++ b/packages/drlg/src/drlg/drlg.zig
+@@ -253,0 +254,4 @@ fn initializeRoomEx(pLevel: [*c]s.D2DrlgLevelStrc) void {
++    // Mods can retain a preset-type level without a corresponding LvlPrest
++    // definition (ESR level 137). Leave it without rooms rather than inventing
++    // geometry or crashing generation of every other level in the act.
++    if (pLvlPrest == null) return;
 diff --git a/packages/drlg/src/drlg/materialize.zig b/packages/drlg/src/drlg/materialize.zig
 index cc0c456..ab1c07a 100644
 --- a/packages/drlg/src/drlg/materialize.zig
 +++ b/packages/drlg/src/drlg/materialize.zig
-@@ -1213,7 +1213,6 @@ pub fn materializeDs1(a: std.mem.Allocator, d: *const ds1.Ds1, dts: []const dt1.
-         }
-     }
-
+@@ -1216 +1215,0 @@ pub fn materializeDs1(a: std.mem.Allocator, d: *const ds1.Ds1, dts: []const dt1.
 -
-     // No-floor subtiles are void/unwalkable: a subtile whose tile has no floor tile
-     // is a dungeon gap (the runtime CollMap has no walkable void, so "no floor =
-     // unwalkable" is faithful). Mark the truly-empty ones with Colbit.blank
-@@ -1602,6 +1601,16 @@ fn applySubTileFloor(
- // group, then either tries random positions (Trials >= 0) or shuffles all positions
- // exhaustively (Trials == -1), placing the group when overlap-free. Runs Max[nSubTypeIndex]
- // times. Faithful to the C reconstruction (same seed consumption order, same shuffle).
+@@ -1604,0 +1604,10 @@ fn applySubTileFloor(
 +pub const SubTilePlacement = struct {
 +    base_x: i32,
 +    base_y: i32,
@@ -24,30 +24,12 @@ index cc0c456..ab1c07a 100644
 +    file: *s.D2DrlgFileStrc,
 +};
 +
- fn doNotCheckAll(
-     pRoom: *s.D2RoomExStrc,
-     fg: *s.D2DrlgGridStrc,
-@@ -1609,6 +1618,7 @@ fn doNotCheckAll(
-     og: *s.D2DrlgGridStrc,
-     pSubTxt: *dtables.D2LvlSubTxt,
-     nSubTypeIndex: i32,
+@@ -1611,0 +1621 @@ fn doNotCheckAll(
 +    placement_out: ?*?SubTilePlacement,
- ) void {
-     const pFile = pSubTxt.pDrlgFile orelse return;
-     if (pFile.nSubstGroups == 0) return;
-@@ -1639,7 +1649,7 @@ fn doNotCheckAll(
-                     var coordBuf: [514]i32 = undefined;
-                     var nPosX: u32 = 0;
-                     while (nPosX < nTotalPositions) : (nPosX += 1) {
+@@ -1642 +1652 @@ fn doNotCheckAll(
 -                        coordBuf[nPosX * 2] = @intCast(nPosX % nMaxX);     // x
 +                        coordBuf[nPosX * 2] = @intCast(nPosX % nMaxX); // x
-                         coordBuf[nPosX * 2 + 1] = @intCast(nPosX / nMaxX); // y
-                     }
-                     // Shuffle: nTotalPositions random swaps (each uses two randomNumberSelector
-@@ -1663,6 +1673,18 @@ fn doNotCheckAll(
-                         const bx: i32 = coordBuf[i * 2] + 1;
-                         const by: i32 = coordBuf[i * 2 + 1] + 1;
-                         if (checkSubTileOverlap(bx, by, fg, wg, pSubstGroup, pSubTxt)) {
+@@ -1665,0 +1676,12 @@ fn doNotCheckAll(
 +                            if (placement_out) |out| {
 +                                out.* = .{
 +                                    .base_x = bx,
@@ -60,13 +42,7 @@ index cc0c456..ab1c07a 100644
 +                                };
 +                                return;
 +                            }
-                             applySubTileFloor(pRoom, fg, wg, og, bx, by, pSubstGroup, pSubTxt);
-                             break;
-                         }
-@@ -1675,6 +1697,18 @@ fn doNotCheckAll(
-                     const bx: i32 = @intCast(drlg_rng.randomNumberSelector(&pRoom.sSeed, nMaxX) + 1);
-                     const by: i32 = @intCast(drlg_rng.randomNumberSelector(&pRoom.sSeed, nMaxY) + 1);
-                     if (checkSubTileOverlap(bx, by, fg, wg, pSubstGroup, pSubTxt)) {
+@@ -1677,0 +1700,12 @@ fn doNotCheckAll(
 +                        if (placement_out) |out| {
 +                            out.* = .{
 +                                .base_x = bx,
@@ -79,20 +55,10 @@ index cc0c456..ab1c07a 100644
 +                            };
 +                            return;
 +                        }
-                         applySubTileFloor(pRoom, fg, wg, og, bx, by, pSubstGroup, pSubTxt);
-                         break;
-                     }
-@@ -1714,12 +1748,81 @@ fn applySubThemeTerrain(
-         const pFile = pRec.pDrlgFile orelse continue;
-         if (pFile.nSubstGroups == 0) continue;
-         if (pRec.CheckAll == 0) {
+@@ -1717 +1751 @@ fn applySubThemeTerrain(
 -            doNotCheckAll(pRoom, fg, wg, og, pRec, nSubTypeIndex);
 +            doNotCheckAll(pRoom, fg, wg, og, pRec, nSubTypeIndex, null);
-         }
-         // CheckAll (nAct 1 or 2 path) not needed for outdoor terrain subs (all CheckAll=0).
-     }
- }
-
+@@ -1722,0 +1757,69 @@ fn applySubThemeTerrain(
 +/// Replays only the first outdoor waypoint-substitution placement for one
 +/// generated room. It creates the small pre-placement floor/wall grids needed
 +/// by CheckSubTileOverlap, but deliberately stops before tile materialization,
@@ -162,13 +128,7 @@ index cc0c456..ab1c07a 100644
 +    return null;
 +}
 +
- /// Materialize one outdoor FLOOR room (an 8x8 CreateOutdoorRoomEx shell) into a
- /// room-local floor collision grid. Faithful transform of InitGridCells
- /// (0067d2d0), including the ACT_I wall-orientation overlay (step 3) when
-@@ -1938,6 +2041,161 @@ pub const PlacedTile = struct {
-     pass: u8,
- };
-
+@@ -1940,0 +2044,155 @@ pub const PlacedTile = struct {
 +/// Faithful outdoor automap materialization. This follows the exact
 +/// InitGridCells -> LvlSub waypoint/shrine/terrain -> border ownership ->
 +/// InitRoomTiles sequence used by materializeOutdoorFloorRoom, but stops before
@@ -324,53 +284,29 @@ index cc0c456..ab1c07a 100644
 +    return out.toOwnedSlice(a);
 +}
 +
- /// Materialize a wilderness FLOOR room and return its placed FLOOR + WALL tiles
- /// (identities + room-local positions) so a pixel renderer can draw grass/cliff
- /// tiles for outdoor rooms that carry NO preset DS1. Same InitGridCells +
-@@ -2161,7 +2419,10 @@ fn unresolvedMask(d: *const ds1.Ds1, dtlib: *const collision.DtLibrary, mask: []
-             const main = @as(i32, @intCast((c.raw >> 20) & 0x3f));
-             const sub = @as(i32, @intCast((c.raw >> 8) & 0xff));
-             if (dtlib.find(0, main, sub) == null or dtlib.isAmbiguous(0, main, sub)) {
+@@ -2164 +2422,4 @@ fn unresolvedMask(d: *const ds1.Ds1, dtlib: *const collision.DtLibrary, mask: []
 -                if (i < mask.len and !mask[i]) { mask[i] = true; n += 1; }
 +                if (i < mask.len and !mask[i]) {
 +                    mask[i] = true;
 +                    n += 1;
 +                }
-             }
-         }
-     }
-@@ -2175,7 +2436,10 @@ fn unresolvedMask(d: *const ds1.Ds1, dtlib: *const collision.DtLibrary, mask: []
-             const sub = @as(i32, @intCast((wc.raw >> 8) & 0xff));
-             const orient = wl.orient[i].prop1;
-             if (dtlib.find(orient, main, sub) == null or dtlib.isAmbiguous(orient, main, sub)) {
+@@ -2178 +2439,4 @@ fn unresolvedMask(d: *const ds1.Ds1, dtlib: *const collision.DtLibrary, mask: []
 -                if (i < mask.len and !mask[i]) { mask[i] = true; n += 1; }
 +                if (i < mask.len and !mask[i]) {
 +                    mask[i] = true;
 +                    n += 1;
 +                }
-             }
-         }
-     }
-@@ -2259,7 +2523,10 @@ test "materialize: InitRoomTiles reproduces collision.zig for several maze/prese
-             if (pmap.pTxtLevelPrest == null or pmap.nSizeX <= 0 or pmap.nSizeY <= 0) continue;
-             const key = @intFromPtr(pmap);
-             var dup = false;
+@@ -2262 +2526,4 @@ test "materialize: InitRoomTiles reproduces collision.zig for several maze/prese
 -            for (seen.items) |sk| if (sk == key) { dup = true; break; };
 +            for (seen.items) |sk| if (sk == key) {
 +                dup = true;
 +                break;
 +            };
-             if (dup) continue;
-             seen.append(a, key) catch {};
-
 diff --git a/packages/drlg/src/drlg/preset.zig b/packages/drlg/src/drlg/preset.zig
 index 64e7e1d..674f442 100644
 --- a/packages/drlg/src/drlg/preset.zig
 +++ b/packages/drlg/src/drlg/preset.zig
-@@ -319,9 +319,89 @@ fn ParsePresetsOfDrlgFile(pDrlgFile: *s.D2DrlgFileStrc, pMemory: ?*s.D2PoolManag
- var g_blobIndex: ?ds1blob.Index = null;
- var g_blobRaw: ?[]u8 = null;
- var g_blobState = std.atomic.Value(u8).init(0); // 0 uninit, 1 building, 2 ready
+@@ -321,0 +322,79 @@ var g_blobState = std.atomic.Value(u8).init(0); // 0 uninit, 1 building, 2 ready
 +
 +const MAX_DS1_OVERLAY_ROOTS: usize = 4;
 +const MAX_DS1_OVERLAY_PATH: usize = 32 * 1024;
@@ -450,35 +386,21 @@ index 64e7e1d..674f442 100644
 +    return null;
 +}
 +
- /// Unpack a DS1 by asset-relative path from the baked blob (for the collision
- /// rasterizer). Uses the process-lifetime blob index; caller owns the Ds1.
- pub fn unpackDs1(a: std.mem.Allocator, rel: []const u8) ?ds1mod.Ds1 {
+@@ -324,0 +404 @@ pub fn unpackDs1(a: std.mem.Allocator, rel: []const u8) ?ds1mod.Ds1 {
 +    if (unpackOverlayDs1(a, rel)) |d| return d;
-     const rec = ds1BlobIndex().get(rel) orelse return null;
-     return ds1blob.unpack(a, rec) catch null;
- }
-@@ -364,9 +444,11 @@ pub fn cachedDs1(rel: []const u8) ?*const ds1mod.Ds1 {
-     }
-     ds1CacheUnlock();
-
+@@ -367 +446,0 @@ pub fn cachedDs1(rel: []const u8) ?*const ds1mod.Ds1 {
 -    const rec = ds1BlobIndex().get(rel) orelse return null;
-     const a = pool.default_allocator;
+@@ -369 +448,4 @@ pub fn cachedDs1(rel: []const u8) ?*const ds1mod.Ds1 {
 -    const parsed = ds1blob.unpack(a, rec) catch return null;
 +    const parsed = unpackOverlayDs1(a, rel) orelse blk: {
 +        const rec = ds1BlobIndex().get(rel) orelse return null;
 +        break :blk ds1blob.unpack(a, rec) catch return null;
 +    };
-     const boxed = a.create(ds1mod.Ds1) catch return null;
-     boxed.* = parsed;
-
 diff --git a/packages/drlg/src/drlg/tables.zig b/packages/drlg/src/drlg/tables.zig
 index ecb5842..b0d1f62 100644
 --- a/packages/drlg/src/drlg/tables.zig
 +++ b/packages/drlg/src/drlg/tables.zig
-@@ -169,7 +169,14 @@ pub const LvlTables = struct {
-     level_defs: []D2LevelDefsTxt,
-
-     pub fn load(gpa: std.mem.Allocator) !LvlTables {
+@@ -172 +172,8 @@ pub const LvlTables = struct {
 -        var src = try srctables.Tables.load(gpa);
 +        return loadFrom(gpa, .{});
 +    }
@@ -488,35 +410,19 @@ index ecb5842..b0d1f62 100644
 +        sources: srctables.Sources,
 +    ) !LvlTables {
 +        var src = try srctables.Tables.loadFrom(gpa, sources);
-         errdefer src.deinit();
-
-         const lvl_prest = try buildPrest(gpa, &src.lvl_prest);
 diff --git a/packages/drlg/src/enums.zig b/packages/drlg/src/enums.zig
 index 6f1239e..0d7b6ea 100644
 --- a/packages/drlg/src/enums.zig
 +++ b/packages/drlg/src/enums.zig
-@@ -148,6 +148,7 @@ pub const eD2LevelId = enum(c_int) {
-     ForgottenSands = 134,
-     FurnaceofPain = 135,
-     UberTristram = 136,
+@@ -150,0 +151 @@ pub const eD2LevelId = enum(c_int) {
 +    _,
-
-     pub fn isTown(self: eD2LevelId) bool {
-         return switch (self) {
-@@ -1265,4 +1266,5 @@ pub const eD2PresetId = enum(c_int) {
-     Act5TempleEntrance = 1088,
-     Act5BaalEntrance = 1089,
-     Act5PandemoniumFinale = 1090,
+@@ -1267,0 +1269 @@ pub const eD2PresetId = enum(c_int) {
 +    _,
- };
 diff --git a/packages/drlg/src/lib.zig b/packages/drlg/src/lib.zig
 index 605ca75..4c99885 100644
 --- a/packages/drlg/src/lib.zig
 +++ b/packages/drlg/src/lib.zig
-@@ -95,22 +95,51 @@ pub const Difficulty = enum(u8) { normal = 0, nightmare = 1, hell = 2 };
- /// (e.g. from a golden capture, or the level's Levels.txt size at the origin).
- pub const Placement = struct { x: i32, y: i32, w: i32, h: i32 };
-
+@@ -97,0 +98,14 @@ pub const Placement = struct { x: i32, y: i32, w: i32, h: i32 };
 +/// Runtime inputs accepted by `Ctx.initFromBuffers`. Every null table uses the
 +/// embedded vanilla bytes. Override slices and DS1 root strings must outlive the
 +/// Ctx; the parsers deliberately retain read-only views into those buffers.
@@ -531,23 +437,19 @@ index 605ca75..4c99885 100644
 +    ds1_roots: []const []const u8 = &.{},
 +};
 +
- /// Loaded, read-only game data. Long-lived; shared across generate() calls.
+@@ -99,4 +112,0 @@ pub const Placement = struct { x: i32, y: i32, w: i32, h: i32 };
 -///
 -/// SEAM: `init` currently loads via the file-based table loaders. The
 -/// distributable path is buffers-only (a `initFromBuffers(TableSet)`); swap this
 -/// when the FFI/wasm layer lands. Never bundle Blizzard assets in the public lib.
- pub const Ctx = struct {
-     gpa: std.mem.Allocator,
-     lvl: dtables.LvlTables,
-     act: tables.Tables,
+@@ -106,0 +117 @@ pub const Ctx = struct {
 +    objects_txt: []const u8,
-
-     pub fn init(gpa: std.mem.Allocator) !Ctx {
+@@ -108,0 +120,4 @@ pub const Ctx = struct {
 +        return initFromBuffers(gpa, .{});
 +    }
 +
 +    pub fn initFromBuffers(gpa: std.mem.Allocator, input: TableSet) !Ctx {
-         _ = presettables.ensureLoaded();
+@@ -109,0 +125,13 @@ pub const Ctx = struct {
 +        if (!preset.configureDs1OverlayRoots(input.ds1_roots)) {
 +            return error.InvalidDs1OverlayRoots;
 +        }
@@ -561,20 +463,13 @@ index 605ca75..4c99885 100644
 +        };
 +        var lvl = try dtables.LvlTables.loadFrom(gpa, sources);
 +        errdefer lvl.deinit();
-         return .{
-             .gpa = gpa,
+@@ -112,2 +140,3 @@ pub const Ctx = struct {
 -            .lvl = try dtables.LvlTables.load(gpa),
 -            .act = try tables.Tables.load(gpa),
 +            .lvl = lvl,
 +            .act = try tables.Tables.loadFrom(gpa, sources),
 +            .objects_txt = input.objects orelse d2data.file("Objects"),
-         };
-     }
-
-@@ -187,7 +216,17 @@ pub fn generate(
- /// `picked_file` = the room's DS1 selector (D2DrlgPresetRoomStrc.nPickedFile for a
- /// preset room, D2DrlgRoomExDataMazeStrc.nSubThemePicked for an outdoor/maze room,
- /// -1 if the room carries neither). x/y are WORLD TILES, w/h TILES.
+@@ -190 +219,11 @@ pub fn generate(
 -pub const RoomRect = struct { x: i32, y: i32, w: i32, h: i32, n_type: i32, n_preset_type: i32, picked_file: i32 };
 +pub const RoomRect = struct {
 +    x: i32,
@@ -587,13 +482,7 @@ index 605ca75..4c99885 100644
 +    map_prest_id: i32 = -1,
 +    flags: u32 = 0,
 +};
-
- /// One level's id + its generated rooms (owned by the ActResult's allocator).
- /// `placed` = the level was positioned by the act placement graph (part of the
-@@ -242,6 +281,272 @@ pub const ActResult = struct {
-     }
- };
-
+@@ -244,0 +284,266 @@ pub const ActResult = struct {
 +/// MapSense spike payload: only immutable label anchors. It deliberately omits
 +/// collision, walk grids, object population, monsters and routing state.
 +pub const LabelWaypoint = struct {
@@ -860,22 +749,10 @@ index 605ca75..4c99885 100644
 +    return .{ .levels = try out.toOwnedSlice(out_alloc) };
 +}
 +
- /// Generate an ENTIRE act with faithful inter-level placement, mirroring the
- /// verify.zig `tallyLevelsRecon` flow except the coords come from `act.coords`
- /// (standalone) instead of a golden capture. One fog pool + one D2DrlgStrc for
-@@ -317,6 +622,8 @@ pub fn generateAct(
-                 .n_type = p.nType,
-                 .n_preset_type = p.nPresetType,
-                 .picked_file = roomPickedFile(p),
+@@ -319,0 +625,2 @@ pub fn generateAct(
 +                .map_prest_id = if (roomPMap(p)) |m| m.nNumber else -1,
 +                .flags = p.eRoomExFlags.raw(),
-             });
-         }
-         const placed = act.positions.get(lid) != null;
-@@ -354,9 +661,22 @@ pub fn generateAct(
- /// level's `meta.rooms`.
- pub const RoomLink = struct { from_room: u32, to_level: i32, to_room: u32 };
-
+@@ -356,0 +664,12 @@ pub const RoomLink = struct { from_room: u32, to_level: i32, to_room: u32 };
 +/// One generated DT1 tile whose style/sequence can create a preset unit through
 +/// DRLGROOMTILE_AddTilePresetUnits. Coordinates are level-local SUBTILES at the
 +/// tile origin; consumers apply the small, documented unit offset for the
@@ -888,25 +765,11 @@ index 605ca75..4c99885 100644
 +    sub: i32,
 +};
 +
- pub const LevelFull = struct {
-     meta: LevelRooms,
-     presets: []PresetUnit,
+@@ -359,0 +679 @@ pub const LevelFull = struct {
 +    special_tiles: []SpecialTileAnchor,
-     adjacents: []LevelAdjacent,
-     /// Cross-level near-room links; empty unless `ActFullOptions.room_links` asked for them.
-     room_links: []RoomLink = &.{},
-@@ -387,6 +707,7 @@ pub const ActFullResult = struct {
-         for (self.levels) |l| {
-             alloc.free(l.meta.rooms);
-             alloc.free(l.presets);
+@@ -389,0 +710 @@ pub const ActFullResult = struct {
 +            alloc.free(l.special_tiles);
-             alloc.free(l.adjacents);
-             if (l.room_links.len != 0) alloc.free(l.room_links);
-             if (l.coll_deflated.len != 0) alloc.free(l.coll_deflated);
-@@ -468,11 +789,24 @@ fn deflateLevelColl(
-     lid: i32,
-     deflate_fn: ?DeflateFn,
-     want_walk: bool,
+@@ -471 +792,8 @@ fn deflateLevelColl(
 -) !struct { w: i32, h: i32, deflated: []u8, walk_deflated: []u8, raw: []const u8 = &.{} } {
 +) !struct {
 +    w: i32,
@@ -916,89 +779,35 @@ index 605ca75..4c99885 100644
 +    raw: []const u8 = &.{},
 +    special_tiles: []SpecialTileAnchor = &.{},
 +} {
-     const t_mat = prof.begin();
-     const maybe_lc = try materializeLevelColl(sa, ctx, idx, pLevel, lid);
-     prof.end(.materialize, t_mat);
-     if (maybe_lc) |lc| {
+@@ -475,0 +804,6 @@ fn deflateLevelColl(
 +        const kept_special_tiles = try out_alloc.dupe(
 +            SpecialTileAnchor,
 +            lc.special_tiles,
 +        );
 +        var keep_special_tiles = false;
 +        defer if (!keep_special_tiles) out_alloc.free(kept_special_tiles);
-         const t_comp = prof.begin();
-         const maybe_rc = try compositeLevelRaw(sa, lc, true);
-         prof.end(.composite, t_comp);
-@@ -502,12 +836,14 @@ fn deflateLevelColl(
-                 // Deferred: the raw grid lives in `sa`, which is reset before the batch
-                 // flushes, so it moves to the batch allocator now.
-                 const kept = try ra.dupe(u8, src);
+@@ -505 +839,2 @@ fn deflateLevelColl(
 -                return .{ .w = @intCast(rc.w), .h = @intCast(rc.h), .deflated = &.{}, .walk_deflated = walk_deflated, .raw = kept };
 +                keep_special_tiles = true;
 +                return .{ .w = @intCast(rc.w), .h = @intCast(rc.h), .deflated = &.{}, .walk_deflated = walk_deflated, .raw = kept, .special_tiles = kept_special_tiles };
-             }
-             const t_def = prof.begin();
-             const deflated = if (deflate_fn) |df| try df(out_alloc, src) else try deflateZlib(out_alloc, src);
-             prof.end(.deflate, t_def);
+@@ -510 +845,2 @@ fn deflateLevelColl(
 -            return .{ .w = @intCast(rc.w), .h = @intCast(rc.h), .deflated = deflated, .walk_deflated = walk_deflated };
 +            keep_special_tiles = true;
 +            return .{ .w = @intCast(rc.w), .h = @intCast(rc.h), .deflated = deflated, .walk_deflated = walk_deflated, .special_tiles = kept_special_tiles };
-         }
-     }
-     return .{ .w = 0, .h = 0, .deflated = &.{}, .walk_deflated = &.{} };
-@@ -544,6 +880,8 @@ fn collectLevelFull(
-             .n_type = p.nType,
-             .n_preset_type = p.nPresetType,
-             .picked_file = roomPickedFile(p),
+@@ -546,0 +883,2 @@ fn collectLevelFull(
 +            .map_prest_id = if (roomPMap(p)) |m| m.nNumber else -1,
 +            .flags = p.eRoomExFlags.raw(),
-         });
-     }
-     const placed = act.positions.get(lid) != null;
-@@ -560,6 +898,7 @@ fn collectLevelFull(
-     const coll = try deflateLevelColl(out_alloc, sa, raw_alloc, ctx, idx, pLevel, lid, deflate_fn, want_walk);
-     errdefer if (coll.deflated.len != 0) out_alloc.free(coll.deflated);
-     errdefer if (coll.walk_deflated.len != 0) out_alloc.free(coll.walk_deflated);
+@@ -562,0 +901 @@ fn collectLevelFull(
 +    errdefer if (coll.special_tiles.len != 0) out_alloc.free(coll.special_tiles);
-
-     return .{
-         .meta = .{
-@@ -573,6 +912,7 @@ fn collectLevelFull(
-             .rooms = try rooms.toOwnedSlice(out_alloc),
-         },
-         .presets = presets,
+@@ -575,0 +915 @@ fn collectLevelFull(
 +        .special_tiles = coll.special_tiles,
-         .adjacents = adjacents,
-         .coll_w = coll.w,
-         .coll_h = coll.h,
-@@ -585,6 +925,7 @@ fn collectLevelFull(
- pub fn freeLevelFull(alloc: std.mem.Allocator, l: LevelFull) void {
-     alloc.free(l.meta.rooms);
-     alloc.free(l.presets);
+@@ -587,0 +928 @@ pub fn freeLevelFull(alloc: std.mem.Allocator, l: LevelFull) void {
 +    alloc.free(l.special_tiles);
-     alloc.free(l.adjacents);
-     if (l.room_links.len != 0) alloc.free(l.room_links);
-     if (l.coll_deflated.len != 0) alloc.free(l.coll_deflated);
-@@ -1277,6 +1618,7 @@ pub const LevelColl = struct {
-     unresolved: usize,
-     grids: []CollGrid,
-     objects: []ObjColl = &.{},
+@@ -1279,0 +1621 @@ pub const LevelColl = struct {
 +    special_tiles: []SpecialTileAnchor = &.{},
-     /// Level world TILE origin (lvlPos). Grid x/y are local subtiles relative to
-     /// this; world subtile = origin*SUBTILES_PER_TILE + grid-local. Lets the
-     /// frontend lay every level of an act in one shared world-coord space.
-@@ -1297,6 +1639,7 @@ pub const ActCollResult = struct {
-             for (l.grids) |g| alloc.free(g.cells);
-             alloc.free(l.grids);
-             alloc.free(l.objects);
+@@ -1299,0 +1642 @@ pub const ActCollResult = struct {
 +            alloc.free(l.special_tiles);
-         }
-         alloc.free(self.levels);
-     }
-@@ -1652,8 +1995,21 @@ fn materializeLevelColl(
-         for (rooms.items) |r| out_alloc.free(r.cells);
-         rooms.deinit(out_alloc);
-     }
+@@ -1655,2 +1998,15 @@ fn materializeLevelColl(
 -    try buildLevelRoomColl(out_alloc, ctx, idx, pLevel, level_id, &rooms);
 -    if (rooms.items.len == 0) return null;
 +    var special_tiles: std.ArrayListUnmanaged(SpecialTileAnchor) = .empty;
@@ -1016,43 +825,16 @@ index 605ca75..4c99885 100644
 +        special_tiles.deinit(out_alloc);
 +        return null;
 +    }
-
-     const grids = try out_alloc.alloc(CollGrid, rooms.items.len);
-     for (rooms.items, 0..) |*r, i| {
-@@ -1670,6 +2026,7 @@ fn materializeLevelColl(
-         .level_id = level_id,
-         .unresolved = tilegen.g_lookup_null + tilegen.g_lookup_fallback,
-         .grids = grids,
+@@ -1672,0 +2029 @@ fn materializeLevelColl(
 +        .special_tiles = try special_tiles.toOwnedSlice(out_alloc),
-         .origin_x = lvlPos.x,
-         .origin_y = lvlPos.y,
-         .width = pLevel.sCoordinatesAndSize.WorldSize.x,
-@@ -1742,7 +2099,7 @@ pub fn generateActCollisionAll(
-         }
-         out.deinit(out_alloc);
-     }
+@@ -1745 +2102 @@ pub fn generateActCollisionAll(
 -    var objtbl = try objects_mod.load(ctx.gpa);
 +    var objtbl = try objects_mod.loadFrom(ctx.gpa, ctx.objects_txt);
-     defer objtbl.deinit();
-     for (ids.items) |lid| {
-         const pLevel = drlg.GetLevelAndAlloc(&pDrlg, @enumFromInt(lid));
-@@ -1796,10 +2153,12 @@ fn buildLevelRoomColl(
-     pLevel: *abi.D2DrlgLevelStrc,
-     lid: i32,
-     rooms: *std.ArrayListUnmanaged(RoomColl),
+@@ -1798,0 +2156 @@ fn buildLevelRoomColl(
 +    special_tiles: ?*std.ArrayListUnmanaged(SpecialTileAnchor),
- ) !void {
-     const tilegen = @import("drlg/tilegen.zig");
-     linkLevelWarpNodes(pLevel);
-     const tlv = ctx.act.level(lid) orelse return;
+@@ -1802,0 +2161 @@ fn buildLevelRoomColl(
 +    const level_pos = pLevel.sCoordinatesAndSize.WorldPosition;
-     const nLevelType: i32 = @intFromEnum(pLevel.nLevelType);
-     tilegen.probe_cur_level = lid;
-
-@@ -1906,6 +2265,42 @@ fn buildLevelRoomColl(
-             .room = p,
-         });
-     }
+@@ -1908,0 +2268,36 @@ fn buildLevelRoomColl(
 +    if (special_tiles) |anchors| {
 +        const level_w = pLevel.sCoordinatesAndSize.WorldSize.x * SUB;
 +        const level_h = pLevel.sCoordinatesAndSize.WorldSize.y * SUB;
@@ -1089,13 +871,7 @@ index 605ca75..4c99885 100644
 +            }
 +        }
 +    }
-     prof.end(.mat_rooms, t_rooms);
-     const t_foreign = prof.begin();
-         // Cross-LEVEL contributors. A room's near list (DRLGROOMEX_LinkNearRoomsByVis)
-@@ -2224,7 +2619,15 @@ pub fn generateActRoomCollision(
-         const pLevel = drlg.GetLevelAndAlloc(&pDrlg, @enumFromInt(lid));
-         // On-demand like the engine (see generateActCollisionAll note).
-         if (pLevel.pRoomExFirst == null) drlg.InitLevel(pLevel);
+@@ -2227 +2622,9 @@ pub fn generateActRoomCollision(
 -        try buildLevelRoomColl(out_alloc, ctx, idx, pLevel, lid, &rooms);
 +        try buildLevelRoomColl(
 +            out_alloc,
@@ -1106,48 +882,24 @@ index 605ca75..4c99885 100644
 +            &rooms,
 +            null,
 +        );
-     }
-
-     return .{
-@@ -2745,7 +3148,7 @@ const SHRINE_VARIANTS = [4]struct { groups: u32, box: i32, classes: [2]i32 }{
- /// subtiles. NOTE: DRLGOUTDOOR_CheckSubTileOverlap (0066fcf0) rejection is not modeled
- /// — the first shuffled position is taken; verified byte-exact (position+type) vs the
- /// d2mapapi oracle for all 30 objects across Act-1 wilderness levels 2-7.
+@@ -2748 +3151 @@ const SHRINE_VARIANTS = [4]struct { groups: u32, box: i32, classes: [2]i32 }{
 -fn appendOutdoorShrines(pLevel: *abi.D2DrlgLevelStrc, out: *std.ArrayListUnmanaged(OutdoorShrine), a: std.mem.Allocator) !void {
 +pub fn appendOutdoorShrines(pLevel: *abi.D2DrlgLevelStrc, out: *std.ArrayListUnmanaged(OutdoorShrine), a: std.mem.Allocator) !void {
-     if (pLevel.eDrlgType != .wilderness) return;
-     var pr: ?*abi.D2RoomExStrc = pLevel.pRoomExFirst;
-     while (pr) |p| : (pr = p.pRoomExNext) {
 diff --git a/packages/drlg/src/objects.zig b/packages/drlg/src/objects.zig
 index 85527f0..623a9b8 100644
 --- a/packages/drlg/src/objects.zig
 +++ b/packages/drlg/src/objects.zig
-@@ -46,6 +46,12 @@ pub const Table = struct {
-     /// (@0x584420) calls on interact. Data-observed families: 1 casket/sarcophagus,
-     /// 2 shrine, 3 urn/basket, 4 chest, 8 door, 14 corpse, 22 well.
-     operate: []i32,
+@@ -48,0 +49,6 @@ pub const Table = struct {
 +    /// init[objectRowIndex] = InitFn. InitFn 12 is D2's permanent red-portal
 +    /// initializer; unlike dynamic town/cow portals these preset objects are
 +    /// seed-static and safe to expose in an immutable label atlas.
 +    init: []i32,
 +    /// Objects.txt SubClass bit 0x40, the native waypoint predicate.
 +    waypoint: []bool,
-     allocator: std.mem.Allocator,
-
-     pub fn deinit(self: *Table) void {
-@@ -53,6 +59,8 @@ pub const Table = struct {
-         self.allocator.free(self.coll);
-         self.allocator.free(self.light);
-         self.allocator.free(self.operate);
+@@ -55,0 +62,2 @@ pub const Table = struct {
 +        self.allocator.free(self.init);
 +        self.allocator.free(self.waypoint);
-     }
-
-     /// OperateFn for an objects.txt row (0 = not operable / id out of range).
-@@ -61,6 +69,26 @@ pub const Table = struct {
-         return self.operate[@intCast(id)];
-     }
-
+@@ -63,0 +72,20 @@ pub const Table = struct {
 +    pub fn isPermanentPortal(self: *const Table, id: i32) bool {
 +        return id >= 0 and id < self.init.len
 +            and self.init[@intCast(id)] == 12;
@@ -1168,20 +920,14 @@ index 85527f0..623a9b8 100644
 +            and self.waypoint[@intCast(id)];
 +    }
 +
-     /// Dynamic-light emitter for an objects.txt row, or null if the row emits
-     /// no light (all Lit modes zero) or the id is out of range.
-     pub fn emitter(self: *const Table, id: i32) ?Light {
-@@ -88,9 +116,31 @@ pub const Table = struct {
- };
-
- pub fn load(gpa: std.mem.Allocator) !Table {
+@@ -91 +119,5 @@ pub fn load(gpa: std.mem.Allocator) !Table {
 -    var t = try txt.Table.parse(gpa, d2data.file("Objects"));
 +    return loadFrom(gpa, d2data.file("Objects"));
 +}
 +
 +pub fn loadFrom(gpa: std.mem.Allocator, source: []const u8) !Table {
 +    var t = try txt.Table.parse(gpa, source);
-     defer t.deinit();
+@@ -93 +125,19 @@ pub fn load(gpa: std.mem.Allocator) !Table {
 -    const n = t.rowCount();
 +    // D2R names the runtime ordinal column "*ID" while the legacy libd2
 +    // extract names it "Id". They carry the same numeric contract; accepting
@@ -1202,13 +948,7 @@ index 85527f0..623a9b8 100644
 +        if (id >= 0) max_id = @max(max_id, @as(usize, @intCast(id)));
 +    }
 +    const n = max_id + 1;
-     const cel = try gpa.alloc(i32, n);
-     errdefer gpa.free(cel);
-     const coll = try gpa.alloc(Coll, n);
-@@ -99,10 +149,27 @@ pub fn load(gpa: std.mem.Allocator) !Table {
-     errdefer gpa.free(light);
-     const operate = try gpa.alloc(i32, n);
-     errdefer gpa.free(operate);
+@@ -101,0 +152,14 @@ pub fn load(gpa: std.mem.Allocator) !Table {
 +    const init = try gpa.alloc(i32, n);
 +    errdefer gpa.free(init);
 +    const waypoint = try gpa.alloc(bool, n);
@@ -1223,7 +963,7 @@ index 85527f0..623a9b8 100644
 +    @memset(operate, 0);
 +    @memset(init, 0);
 +    @memset(waypoint, false);
-     var i: usize = 0;
+@@ -103,3 +167,6 @@ pub fn load(gpa: std.mem.Allocator) !Table {
 -    while (i < n) : (i += 1) {
 -        cel[i] = @intCast(t.int(i, "AutoMap"));
 -        coll[i] = .{
@@ -1233,32 +973,15 @@ index 85527f0..623a9b8 100644
 +        const id: usize = @intCast(raw_id);
 +        cel[id] = @intCast(t.int(i, "AutoMap"));
 +        coll[id] = .{
-             .has = t.int(i, "HasCollision0") != 0,
-             .sx = @intCast(t.int(i, "SizeX")),
-             .sy = @intCast(t.int(i, "SizeY")),
-@@ -111,7 +178,9 @@ pub fn load(gpa: std.mem.Allocator) !Table {
-             .block_missile = t.int(i, "BlockMissile") != 0,
-             .is_corpse = t.int(i, "SubClass") & 4 != 0,
-         };
+@@ -114 +181,3 @@ pub fn load(gpa: std.mem.Allocator) !Table {
 -        operate[i] = @intCast(t.int(i, "OperateFn"));
 +        operate[id] = @intCast(t.int(i, "OperateFn"));
 +        init[id] = @intCast(t.int(i, "InitFn"));
 +        waypoint[id] = t.int(i, "SubClass") & 0x40 != 0;
-         // Brightest lit mode -> emit diameter; engine radius = (Lit>>1) clamped
-         // to 18 subtiles. Color is Red/Green/Blue verbatim.
-         var max_lit: i64 = 0;
-@@ -120,14 +189,22 @@ pub fn load(gpa: std.mem.Allocator) !Table {
-             if (v > max_lit) max_lit = v;
-         }
-         const radius: i32 = @intCast(@min(@divTrunc(max_lit, 2), 18));
+@@ -123 +192 @@ pub fn load(gpa: std.mem.Allocator) !Table {
 -        light[i] = .{
 +        light[id] = .{
-             .r = @intCast(std.math.clamp(t.int(i, "Red"), 0, 255)),
-             .g = @intCast(std.math.clamp(t.int(i, "Green"), 0, 255)),
-             .b = @intCast(std.math.clamp(t.int(i, "Blue"), 0, 255)),
-             .radius = radius,
-         };
-     }
+@@ -130 +199,9 @@ pub fn load(gpa: std.mem.Allocator) !Table {
 -    return .{ .cel = cel, .coll = coll, .light = light, .operate = operate, .allocator = gpa };
 +    return .{
 +        .cel = cel,
@@ -1269,27 +992,15 @@ index 85527f0..623a9b8 100644
 +        .waypoint = waypoint,
 +        .allocator = gpa,
 +    };
- }
-
- const testing = std.testing;
-@@ -139,6 +216,9 @@ test "objects table maps shrine/stone ids to automap cels" {
-     try testing.expectEqual(@as(i32, 310), tbl.lookup(2));
-     try testing.expectEqual(@as(i32, 314), tbl.lookup(17));
-     try testing.expectEqual(@as(i32, 313), tbl.lookup(30));
+@@ -141,0 +219,3 @@ test "objects table maps shrine/stone ids to automap cels" {
 +    try testing.expect(tbl.isPermanentPortal(60));
 +    try testing.expectEqual(@as(?i32, 60), tbl.permanentPortalClassId());
 +    try testing.expect(!tbl.isPermanentPortal(17));
-     // A non-marker object (id 0 = well/none) -> -1.
-     try testing.expectEqual(@as(i32, -1), tbl.lookup(0));
-     // Count objects that carry a marker — should be the 64 we saw in objects.txt.
 diff --git a/packages/drlg/src/tables.zig b/packages/drlg/src/tables.zig
 index a18d62f..52d0217 100644
 --- a/packages/drlg/src/tables.zig
 +++ b/packages/drlg/src/tables.zig
-@@ -13,6 +13,19 @@ pub const DrlgType = enum(u8) {
-     _,
- };
-
+@@ -15,0 +16,13 @@ pub const DrlgType = enum(u8) {
 +/// Optional runtime table overrides. A null entry keeps libd2's embedded
 +/// vanilla table, so callers can provide only the files exposed by an active
 +/// mod. The byte slices must outlive the returned Tables because txt.Table
@@ -1303,18 +1014,12 @@ index a18d62f..52d0217 100644
 +    lvl_warp: ?[]const u8 = null,
 +};
 +
- pub const Tables = struct {
-     levels: txt.Table,
-     lvl_prest: txt.Table,
-@@ -22,13 +35,23 @@ pub const Tables = struct {
-     lvl_warp: txt.Table,
-
-     pub fn load(gpa: std.mem.Allocator) !Tables {
+@@ -24,0 +38,4 @@ pub const Tables = struct {
 +        return loadFrom(gpa, .{});
 +    }
 +
 +    pub fn loadFrom(gpa: std.mem.Allocator, sources: Sources) !Tables {
-         return .{
+@@ -26,6 +43,12 @@ pub const Tables = struct {
 -            .levels = try txt.Table.parse(gpa, d2data.file("Levels")),
 -            .lvl_prest = try txt.Table.parse(gpa, d2data.file("LvlPrest")),
 -            .lvl_types = try txt.Table.parse(gpa, d2data.file("LvlTypes")),
@@ -1333,38 +1038,123 @@ index a18d62f..52d0217 100644
 +                gpa, sources.lvl_sub orelse d2data.file("LvlSub")),
 +            .lvl_warp = try txt.Table.parse(
 +                gpa, sources.lvl_warp orelse d2data.file("LvlWarp")),
-         };
-     }
-
-@@ -56,6 +79,8 @@ pub const Tables = struct {
-         offset_x: i64,
-         offset_y: i64,
-         depend: i64, // level this one is positioned relative to
+@@ -58,0 +82,2 @@ pub const Tables = struct {
 +        /// Waypoint destination index (0..38); 255 means this level has none.
 +        waypoint: i64,
-         /// Area monster level per difficulty [normal, nightmare, hell] — the EXPANSION
-         /// columns MonLvl1Ex/2Ex/3Ex (TXT_Levels_GetMonLvlForDifficulty reads these for
-         /// LoD; classic uses MonLvl1/2/3). Drives mlvl-scaled rolls (chest-tier bucket).
-@@ -95,6 +120,7 @@ pub const Tables = struct {
-             .offset_x = t.int(row, "OffsetX"),
-             .offset_y = t.int(row, "OffsetY"),
-             .depend = t.int(row, "Depend"),
+@@ -97,0 +123 @@ pub const Tables = struct {
 +            .waypoint = t.int(row, "Waypoint"),
-             .monlvl = .{ t.int(row, "MonLvl1Ex"), t.int(row, "MonLvl2Ex"), t.int(row, "MonLvl3Ex") },
-         };
-     }
+diff --git a/packages/pathfinding/src/nav.zig b/packages/pathfinding/src/nav.zig
+index b56352a..9b7c168 100644
+--- a/packages/pathfinding/src/nav.zig
++++ b/packages/pathfinding/src/nav.zig
+@@ -87 +87 @@ pub const Nav = struct {
+-    fn maskIndex(self: *Nav, mask: u16) ?usize {
++    fn maskIndex(self: *Nav, mask: u16, footprint: grid.Footprint) ?usize {
+@@ -89 +89 @@ pub const Nav = struct {
+-            if (m.mask == mask and m.footprint == .point) return i;
++            if (m.mask == mask and m.footprint == footprint) return i;
+@@ -98,2 +98,7 @@ pub const Nav = struct {
+-        const pm = try self.passMap(mask);
+-        const idx = self.maskIndex(mask).?;
++        return self.tileRepsFor(mask, .point);
++    }
++
++    /// Landing caches must use the same footprint as the route's passability map.
++    pub fn tileRepsFor(self: *Nav, mask: u16, footprint: grid.Footprint) ![]const i32 {
++        const pm = try self.passMapFor(mask, footprint);
++        const idx = self.maskIndex(mask, footprint).?;
+diff --git a/packages/pathfinding/src/router.zig b/packages/pathfinding/src/router.zig
+index 3d47154..2555e2f 100644
+--- a/packages/pathfinding/src/router.zig
++++ b/packages/pathfinding/src/router.zig
+@@ -102,0 +103,6 @@ pub const Options = struct {
++    /// Explicit caller footprint; legacy callers retain their point model.
++    footprint: grid.Footprint = .point,
++    /// Apply the D2R Levels.Teleport=2 coordinate trace within a level.
++    teleport_gated_trace: bool = false,
++    /// Consumers may decline unqualified object-pad transitions.
++    allow_pads: bool = true,
+@@ -148 +153,0 @@ pub const Error = error{
+-
+@@ -348,0 +354,2 @@ pub const Router = struct {
++        // A flat level cannot prove a trace across two independently loaded grids.
++        if (opts.teleport_gated_trace and from.teleport == .gated) return null;
+@@ -355,2 +362,2 @@ pub const Router = struct {
+-        const from_pm = try (try self.navFor(from)).passMap(opts.mask);
+-        const to_pm = try (try self.navFor(to)).passMap(from.teleport.destinationMask(opts.mask));
++        const from_pm = try (try self.navFor(from)).passMapFor(opts.mask, opts.footprint);
++        const to_pm = try (try self.navFor(to)).passMapFor(from.teleport.destinationMask(opts.mask), opts.footprint);
+@@ -413 +420 @@ pub const Router = struct {
+-        const pm = try (try self.navFor(lv)).passMap(opts.mask);
++        const pm = try (try self.navFor(lv)).passMapFor(opts.mask, opts.footprint);
+@@ -462 +469 @@ pub const Router = struct {
+-        const pm = try (try self.navFor(nlv)).passMap(opts.mask);
++        const pm = try (try self.navFor(nlv)).passMapFor(opts.mask, opts.footprint);
+@@ -496,0 +504,2 @@ pub const Router = struct {
++                .footprint = opts.footprint,
++                .gated_trace = opts.teleport_gated_trace,
+@@ -643,2 +652,2 @@ pub const Router = struct {
+-        const pm = try (try self.navFor(lv)).passMap(opts.mask);
+-        if (lv.pads.len != 0) {
++        const pm = try (try self.navFor(lv)).passMapFor(opts.mask, opts.footprint);
++        if (opts.allow_pads and lv.pads.len != 0) {
+diff --git a/packages/pathfinding/src/teleport.zig b/packages/pathfinding/src/teleport.zig
+index d80873e..78d4ca0 100644
+--- a/packages/pathfinding/src/teleport.zig
++++ b/packages/pathfinding/src/teleport.zig
+@@ -116,2 +116,2 @@ pub const Options = struct {
+-    /// Landing-cell collision mask. `SUNIT_RelocateUnit` snaps with COLMASK_PLAYER_PATH; a
+-    /// `.gated` level ORs in `COLMASK_PLAYER_FLYING` (0x804) on top (see `TeleportRule`).
++    /// Landing-cell collision mask. Legacy callers add the gated mask here;
++    /// gated_trace instead checks 0x804 on the adjusted source-to-target segment.
+@@ -118,0 +119,4 @@ pub const Options = struct {
++    footprint: grid.Footprint = .point,
++    /// D2R's gated rule traces source to target after size-two endpoint adjustment.
++    /// It is independent of the landing footprint and disabled for legacy callers.
++    gated_trace: bool = false,
+@@ -167 +171 @@ pub fn find(
+-    const mask = level.teleport.destinationMask(opts.landing_mask);
++    const mask = if (opts.gated_trace) opts.landing_mask else level.teleport.destinationMask(opts.landing_mask);
+@@ -169 +173 @@ pub fn find(
+-    const pm = try nv.passMap(mask);
++    const pm = try nv.passMapFor(mask, opts.footprint);
+@@ -181 +185 @@ pub fn find(
+-    if (canHop(level, start, goal, start_room, goal_room, opts.max_cast, opts.metric)) {
++    if (canHop(level, start, goal, start_room, goal_room, opts.max_cast, opts.metric, opts.gated_trace)) {
+@@ -191,0 +196,2 @@ pub fn find(
++    // The unbounded room-only search has no edge trace. Do not bypass the gate.
++    if (opts.gated_trace and level.teleport == .gated) return error.Unreachable;
+@@ -197 +203 @@ pub fn find(
+-fn canHop(level: *const Level, from: Point, to: Point, from_room: u16, to_room: u16, max_cast: ?i32, metric: Metric) bool {
++fn canHop(level: *const Level, from: Point, to: Point, from_room: u16, to_room: u16, max_cast: ?i32, metric: Metric, gated_trace: bool) bool {
+@@ -201 +207,4 @@ fn canHop(level: *const Level, from: Point, to: Point, from_room: u16, to_room:
+-    return level.rooms.canTeleportBetween(from_room, to_room);
++    if (!level.rooms.canTeleportBetween(from_room, to_room)) return false;
++    if (gated_trace and level.teleport == .gated)
++        return @import("cast.zig").unitsCanReach(level, collision.Colmask.player_flying, from, 2, to, 2);
++    return true;
+@@ -220 +229 @@ fn findBounded(
+-    const reps = try nv.tileReps(pm.mask);
++    const reps = try nv.tileRepsFor(pm.mask, pm.footprint);
+@@ -278 +287 @@ fn findBounded(
+-        if (!canHop(level, start, land, start_room, land_room, max_cast, opts.metric)) continue;
++        if (!canHop(level, start, land, start_room, land_room, max_cast, opts.metric, opts.gated_trace)) continue;
+@@ -295 +304 @@ fn findBounded(
+-        if (canHop(level, cur_pt, goal, cur_room, goal_room, max_cast, opts.metric)) {
++        if (canHop(level, cur_pt, goal, cur_room, goal_room, max_cast, opts.metric, opts.gated_trace)) {
+@@ -314 +323 @@ fn findBounded(
+-            if (!canHop(level, cur_pt, land, cur_room, land_room, max_cast, opts.metric)) continue;
++            if (!canHop(level, cur_pt, land, cur_room, land_room, max_cast, opts.metric, opts.gated_trace)) continue;
+@@ -326,0 +336,2 @@ fn repPoint(pm: *const grid.PassMap, reps: []const i32, tile: usize) ?Point {
++    // Representatives cache terrain only. Recheck occupancy on every query.
++    if (!pm.passableAt(c)) return null;
 diff --git a/packages/render/src/lib.zig b/packages/render/src/lib.zig
 index 0672610..72392f5 100644
 --- a/packages/render/src/lib.zig
 +++ b/packages/render/src/lib.zig
-@@ -13,9 +13,140 @@
-
- const std = @import("std");
- const d2drlg = @import("d2-drlg");
+@@ -15,0 +16 @@ const d2drlg = @import("d2-drlg");
 +const d2formats = @import("d2-formats");
-
- // The moved sprite-lookup + blob accessor files (local to this package).
- const automap_mod = @import("automap.zig");
+@@ -18,0 +20,130 @@ const automap_mod = @import("automap.zig");
 +const automap_blob = @import("automap_blob.zig");
 +const automap_data = @import("automap_data.zig");
 +
@@ -1495,13 +1285,7 @@ index 0672610..72392f5 100644
 +    }
 +    return .{ .frames = frames, .allocator = alloc };
 +}
-
- // Public generation API consumed here.
- const Ctx = d2drlg.Ctx;
-@@ -48,10 +179,16 @@ const OutdoorShrine = d2drlg.OutdoorShrine;
-
- // ── Automap (faithful sprite-based render data) ────────────────────────────────
-
+@@ -51,4 +182,10 @@ const OutdoorShrine = d2drlg.OutdoorShrine;
 -/// One automap cell: a DC6 frame to blit at a world TILE position. `wall` tiles
 -/// get the engine's +extra vertical offset. The web/native renderer projects
 -/// (tx,ty) isometrically and blits `frame` from the act's automap DC6 layer.
@@ -1516,13 +1300,7 @@ index 0672610..72392f5 100644
 +    wall_tree: bool,
 +    raised: bool,
 +};
-
- pub const LevelAutomap = struct {
-     level_id: i32,
-@@ -141,7 +278,13 @@ fn appendTownReveal(
-             const sum = py / 4.0;
-             const tx: i32 = @intFromFloat(@round((sum + diff) / 2.0));
-             const ty: i32 = @intFromFloat(@round((sum - diff) / 2.0));
+@@ -144 +281,7 @@ fn appendTownReveal(
 -            try out.append(alloc, .{ .frame = @intCast(cell), .tx = tx, .ty = ty, .wall = false });
 +            try out.append(alloc, .{
 +                .frame = @intCast(cell),
@@ -1531,21 +1309,9 @@ index 0672610..72392f5 100644
 +                .wall_tree = false,
 +                .raised = false,
 +            });
-         }
-     }
- }
-@@ -151,7 +294,6 @@ fn actAutomapLayer(act_no: i32) u8 {
-     return 0;
- }
-
+@@ -154 +296,0 @@ fn actAutomapLayer(act_no: i32) u8 {
 -
- /// Generate an act and emit the faithful automap cells for every level: per placed
- /// floor/wall tile, look up automap.txt on (LevelType, DT1 orientation, index,
- /// subindex) → a DC6 frame, positioned at the tile's world coords. Mirrors the
-@@ -163,13 +305,40 @@ pub fn generateActAutomap(
-     act_no: i32,
-     seed: u32,
-     diff: Difficulty,
+@@ -165,0 +308,26 @@ pub fn generateActAutomap(
 +) !ActAutomapResult {
 +    return generateActAutomapImpl(ctx, out_alloc, act_no, seed, diff, true);
 +}
@@ -1572,35 +1338,19 @@ index 0672610..72392f5 100644
 +    seed: u32,
 +    diff: Difficulty,
 +    comptime include_objects: bool,
- ) !ActAutomapResult {
-     // Seeded object population (self-contained: own pool/act build). Its populate-fn
-     // spawns (preset==false) are the real shrines/wells that the automap must show;
-     // preset==true entries (DS1 presets + outdoor LvlSub shrines) are already handled
-     // below, so we skip them here to avoid double-emitting.
+@@ -171,2 +339,3 @@ pub fn generateActAutomap(
 -    var objres = try generateActObjects(ctx, out_alloc, act_no, seed, diff);
 -    defer objres.deinit(out_alloc);
 +    var objres: ?d2drlg.ActObjectsResult = null;
 +    if (include_objects) objres = try generateActObjects(ctx, out_alloc, act_no, seed, diff);
 +    defer if (objres) |*result| result.deinit(out_alloc);
-
-     var pool = fog.PoolManager.init(ctx.gpa);
-     defer pool.deinit();
-@@ -212,8 +381,9 @@ pub fn generateActAutomap(
-
-     var amt = try automap_mod.AutomapTable.load(ctx.gpa);
-     defer amt.deinit();
+@@ -215,2 +384,3 @@ pub fn generateActAutomap(
 -    var objtbl = try objects_mod.load(ctx.gpa);
 -    defer objtbl.deinit();
 +    var objtbl: ?objects_mod.Table = null;
 +    if (include_objects) objtbl = try objects_mod.load(ctx.gpa);
 +    defer if (objtbl) |*table| table.deinit();
-     const layer = actAutomapLayer(act_no);
-
-     var out: std.ArrayListUnmanaged(LevelAutomap) = .empty;
-@@ -246,9 +416,129 @@ pub fn generateActAutomap(
-             continue;
-         }
-
+@@ -248,0 +419,49 @@ pub fn generateActAutomap(
 +        // Geometry-only outdoor rooms do not carry a DS1 preset map. Recover
 +        // their seeded floor/wall identities from the level's DT1 set without
 +        // building collision grids or populating gameplay units.
@@ -1650,8 +1400,7 @@ index 0672610..72392f5 100644
 +        var outdoor_blank_cells: std.ArrayListUnmanaged(OutdoorBlankCell) = .empty;
 +        defer outdoor_blank_cells.deinit(out_alloc);
 +
-         var pr: ?*abi.D2RoomExStrc = pLevel.pRoomExFirst;
-         while (pr) |p| : (pr = p.pRoomExNext) {
+@@ -251 +470,72 @@ pub fn generateActAutomap(
 -            const pmap = roomPMap(p) orelse continue; // DS1 rooms (preset/maze/border)
 +            const pmap = roomPMap(p) orelse {
 +                if (!include_objects and p.eRoomExFlags.noLos and outdoor_dts.items.len != 0) {
@@ -1725,13 +1474,7 @@ index 0672610..72392f5 100644
 +                }
 +                continue;
 +            }; // DS1 rooms (preset/maze/border)
-             var d = preset.unpackDs1(out_alloc, preset.presetDs1Path(pmap) orelse continue) orelse continue;
-             defer d.deinit();
-             const win = roomWindow(p, pmap);
-@@ -276,7 +566,13 @@ pub fn generateActAutomap(
-                         const main: i32 = @intCast((raw >> 20) & 0x3f);
-                         const sub: i32 = @intCast((raw >> 8) & 0xff);
-                         const frame = amt.lookup(level_type, 0, main, sub, 0);
+@@ -279 +569,7 @@ pub fn generateActAutomap(
 -                        if (frame >= 0) try cells.append(out_alloc, .{ .frame = frame, .tx = tx, .ty = ty, .wall = false });
 +                        if (frame >= 0) try cells.append(out_alloc, .{
 +                            .frame = frame,
@@ -1740,13 +1483,7 @@ index 0672610..72392f5 100644
 +                            .wall_tree = false,
 +                            .raised = false,
 +                        });
-                     }
-                     // Wall tiles: orientation from the paired orient cell's prop1.
-                     for (d.wall_layers) |wl| {
-@@ -287,79 +583,158 @@ pub fn generateActAutomap(
-                         const main: i32 = @intCast((raw >> 20) & 0x3f);
-                         const sub: i32 = @intCast((raw >> 8) & 0xff);
-                         const frame = amt.lookup(level_type, orient, main, sub, 0);
+@@ -290 +586,42 @@ pub fn generateActAutomap(
 -                        if (frame >= 0) try cells.append(out_alloc, .{ .frame = frame, .tx = tx, .ty = ty, .wall = orient > 0xf });
 +                        if (frame >= 0) try cells.append(out_alloc, .{
 +                            .frame = frame,
@@ -1790,7 +1527,7 @@ index 0672610..72392f5 100644
 +                    if (mtx >= 0 and mty >= 0) {
 +                        const okey = (@as(u64, @intCast(mtx & 0xffffff)) << 40) | (@as(u64, @intCast(mty & 0xffffff)) << 16) | @as(u64, @intCast(cel & 0xffff));
 +                        if ((try obj_seen.getOrPut(out_alloc, okey)).found_existing) continue;
-                     }
+@@ -291,0 +629,7 @@ pub fn generateActAutomap(
 +                    try cells.append(out_alloc, .{
 +                        .frame = cel,
 +                        .tx = mtx,
@@ -1798,8 +1535,7 @@ index 0672610..72392f5 100644
 +                        .wall_tree = false,
 +                        .raised = false,
 +                    });
-                 }
-             }
+@@ -294,14 +638,10 @@ pub fn generateActAutomap(
 -            // Object/shrine markers (Charon MapReveal DrawPresets): DS1 preset objects
 -            // (kind==2) carry an objects.txt row id -> AutoMap cel (Shrine 310, waypoint
 -            // stones 314, ...). The DS1 is the shared LEVEL file windowed per room, so
@@ -1824,7 +1560,7 @@ index 0672610..72392f5 100644
 +            try appendOutdoorShrines(pLevel, &shrines, out_alloc);
 +            for (shrines.items) |sh| {
 +                const cel = objtbl.?.lookup(sh.class_id);
-                 if (cel < 0) continue;
+@@ -309,16 +649,36 @@ pub fn generateActAutomap(
 -                // Skip the "décor flood" cels: 310 is shared by 93 shrine/dummy/caged
 -                // object classes and 309 by 14 well classes — these are decorative
 -                // preset objects (e.g. Baal-chamber crystals) that the VANILLA automap
@@ -1877,10 +1613,9 @@ index 0672610..72392f5 100644
 +                        .wall_tree = false,
 +                        .raised = false,
 +                    });
-                 }
+@@ -326 +685,0 @@ pub fn generateActAutomap(
 -                try cells.append(out_alloc, .{ .frame = cel, .tx = mtx, .ty = mty, .wall = false });
-             }
-         }
+@@ -329,10 +688,24 @@ pub fn generateActAutomap(
 -        // Seeded outdoor shrines/wells (SpawnAct12Shrines -> LvlSub Type-5 substitution).
 -        // These are REAL spawned objects, not DS1-preset décor, so emit their automap
 -        // cel unconditionally (the 310/309 skip above only suppresses preset-décor flood).
@@ -1915,7 +1650,7 @@ index 0672610..72392f5 100644
 +                cells.items[candidate.cell_index].raised =
 +                    tile.orientation > 0xf;
 +            }
-         }
+@@ -340,22 +713,22 @@ pub fn generateActAutomap(
 -        // Seeded populate-fn spawns (OBJECT_PopulateRoomObjects → Fn3/Fn6/Fn7 chest &
 -        // quest scatter, …). preset==true entries (DS1 presets + outdoor LvlSub shrines)
 -        // are already emitted above. placeholder_pos==true spawns (Fn2 shrine, Fn8 well:
@@ -1960,16 +1695,10 @@ index 0672610..72392f5 100644
 +                };
 +                if ((try seen.getOrPut(out_alloc, key)).found_existing) continue;
 +                try unique.append(out_alloc, cell);
-             }
+@@ -362,0 +736,2 @@ pub fn generateActAutomap(
 +            cells.deinit(out_alloc);
 +            cells = unique;
-         }
-         try out.append(out_alloc, .{ .level_id = lid, .layer = layer, .cells = try cells.toOwnedSlice(out_alloc) });
-     }
-@@ -500,6 +875,30 @@ fn dt1Bytes(a: std.mem.Allocator, fpath: []const u8) ?[]const u8 {
-     return dt1pixIndex(a).get(fpath);
- }
-
+@@ -502,0 +878,24 @@ fn dt1Bytes(a: std.mem.Allocator, fpath: []const u8) ?[]const u8 {
 +const AutomapGlobalDt1Paths = [_][]const u8{
 +    "act1/outdoors/blank.dt1",
 +    "act1/barracks/inviswal.dt1",
@@ -1994,248 +1723,14 @@ index 0672610..72392f5 100644
 +    return buffer[0..count];
 +}
 +
- /// The unique DT1 file rel paths every level of `act_no` references (LvlTypes File
- /// columns; seed-independent). The browser fetches these, registers them via
- /// dt1RegisterFile, then calls generateActTilesAll. Caller owns the outer slice
-diff --git a/packages/pathfinding/src/nav.zig b/packages/pathfinding/src/nav.zig
-index b56352a..9b7c168 100644
---- a/packages/pathfinding/src/nav.zig
-+++ b/packages/pathfinding/src/nav.zig
-@@ -84,9 +84,9 @@ pub const Nav = struct {
-         return pm;
-     }
-
--    fn maskIndex(self: *Nav, mask: u16) ?usize {
-+    fn maskIndex(self: *Nav, mask: u16, footprint: grid.Footprint) ?usize {
-         for (self.maps.items, 0..) |m, i| {
--            if (m.mask == mask and m.footprint == .point) return i;
-+            if (m.mask == mask and m.footprint == footprint) return i;
-         }
-         return null;
-     }
-@@ -95,8 +95,13 @@ pub const Nav = struct {
-     /// centre, or -1. This is what makes the teleport search cheap — it searches 25x fewer nodes
-     /// than the subtile grid, and every node already knows a legal place to land.
-     pub fn tileReps(self: *Nav, mask: u16) ![]const i32 {
--        const pm = try self.passMap(mask);
--        const idx = self.maskIndex(mask).?;
-+        return self.tileRepsFor(mask, .point);
-+    }
-+
-+    /// Landing caches must use the same footprint as the route's passability map.
-+    pub fn tileRepsFor(self: *Nav, mask: u16, footprint: grid.Footprint) ![]const i32 {
-+        const pm = try self.passMapFor(mask, footprint);
-+        const idx = self.maskIndex(mask, footprint).?;
-         if (self.tile_reps.items[idx].len != 0) return self.tile_reps.items[idx];
-
-         const tw = self.lv.tileW();
-diff --git a/packages/pathfinding/src/router.zig b/packages/pathfinding/src/router.zig
-index 3d47154..2555e2f 100644
---- a/packages/pathfinding/src/router.zig
-+++ b/packages/pathfinding/src/router.zig
-@@ -100,6 +100,12 @@ pub const Options = struct {
-     /// Movement collision model. The default is what a walking player uses; hand it
-     /// `Colmask.monster_path` for a monster or `Colmask.missile_flight` to trace a projectile.
-     mask: u16 = collision.Colmask.player_path,
-+    /// Explicit caller footprint; legacy callers retain their point model.
-+    footprint: grid.Footprint = .point,
-+    /// Apply the D2R Levels.Teleport=2 coordinate trace within a level.
-+    teleport_gated_trace: bool = false,
-+    /// Consumers may decline unqualified object-pad transitions.
-+    allow_pads: bool = true,
-     /// Teleport instead of walking wherever the level permits it. Levels that forbid teleport
-     /// (Levels.txt Teleport = 0) fall back to walking automatically.
-     teleport: bool = false,
-@@ -145,7 +151,6 @@ pub const Error = error{
-     NoLevelRoute,
- } || astar.Error || teleport.Error;
-
--
- /// Routing over a world, plus the caches that make it fast. Borrows the world; does not own it,
- /// because a running game owns its world and merely asks this for directions.
- pub const Router = struct {
-@@ -346,14 +351,16 @@ pub const Router = struct {
-     /// Picks the pair with the shortest cast among all candidate links.
-     pub fn crossLevelCast(self: *Router, from: *Level, to: *Level, opts: Options) !?LevelCast {
-         const max_cast = opts.teleport_max_cast orelse return null;
-+        // A flat level cannot prove a trace across two independently loaded grids.
-+        if (opts.teleport_gated_trace and from.teleport == .gated) return null;
-         // The Levels.txt rule that applies is the CASTER'S — `Skills_SrvDoFunc_027_Teleport` reads
-         // it from `GetRoom(pUnit)`, the room you are standing in — so `from` decides both whether
-         // the cast happens at all and what extra mask the DESTINATION is tested with. The
-         // destination level's own rule is irrelevant to this cast.
-         if (from.teleport == .forbidden) return null;
-
--        const from_pm = try (try self.navFor(from)).passMap(opts.mask);
--        const to_pm = try (try self.navFor(to)).passMap(from.teleport.destinationMask(opts.mask));
-+        const from_pm = try (try self.navFor(from)).passMapFor(opts.mask, opts.footprint);
-+        const to_pm = try (try self.navFor(to)).passMapFor(from.teleport.destinationMask(opts.mask), opts.footprint);
-
-         var best: ?LevelCast = null;
-         var best_cost: i32 = std.math.maxInt(i32);
-@@ -410,7 +417,7 @@ pub const Router = struct {
-     /// on the far side of a wall is no use), then the closest. Warps still win over seams — a
-     /// staircase is a specific doorway, a seam is a wide border.
-     fn chooseExit(self: *Router, lv: *Level, dest: i32, from: Point, opts: Options) !?Crossing {
--        const pm = try (try self.navFor(lv)).passMap(opts.mask);
-+        const pm = try (try self.navFor(lv)).passMapFor(opts.mask, opts.footprint);
-         const comp = try pm.components(self.alloc);
-         const from_comp: u32 = if (pm.passable(from.x, from.y)) comp[pm.index(from.x, from.y)] else 0;
-
-@@ -459,7 +466,7 @@ pub const Router = struct {
-         opts: Options,
-     ) Error!Point {
-         const nlv = self.level(next) orelse return error.UnknownLevel;
--        const pm = try (try self.navFor(nlv)).passMap(opts.mask);
-+        const pm = try (try self.navFor(nlv)).passMapFor(opts.mask, opts.footprint);
-
-         const translated = nlv.fromWorld(from_lv.toWorld(leaving_at));
-         if (via != null and via.?.kind == .seam and nlv.inBounds(translated.x, translated.y)) {
-@@ -494,6 +501,8 @@ pub const Router = struct {
-                 .max_cast = opts.teleport_max_cast,
-                 .metric = opts.teleport_metric,
-                 .landing_mask = opts.mask,
-+                .footprint = opts.footprint,
-+                .gated_trace = opts.teleport_gated_trace,
-                 .snap_radius = snap_from,
-                 .goal_snap_radius = snap_to,
-             }, &hops) catch |err| switch (err) {
-@@ -640,8 +649,8 @@ pub const Router = struct {
-         snap_to: i32,
-         out: *std.ArrayListUnmanaged(Move),
-     ) Error!void {
--        const pm = try (try self.navFor(lv)).passMap(opts.mask);
--        if (lv.pads.len != 0) {
-+        const pm = try (try self.navFor(lv)).passMapFor(opts.mask, opts.footprint);
-+        if (opts.allow_pads and lv.pads.len != 0) {
-             const mark = out.items.len;
-             if (self.padRoute(lv, pm, from, to, opts, snap_from, snap_to, out)) |used| {
-                 if (used) return;
-diff --git a/packages/pathfinding/src/teleport.zig b/packages/pathfinding/src/teleport.zig
-index d80873e..78d4ca0 100644
---- a/packages/pathfinding/src/teleport.zig
-+++ b/packages/pathfinding/src/teleport.zig
-@@ -113,9 +113,13 @@ pub const Options = struct {
-     max_cast: ?i32 = ENGINE_MAX_CAST,
-     /// Which shape `max_cast` describes. Defaults to the engine's per-axis test.
-     metric: Metric = .chebyshev,
--    /// Landing-cell collision mask. `SUNIT_RelocateUnit` snaps with COLMASK_PLAYER_PATH; a
--    /// `.gated` level ORs in `COLMASK_PLAYER_FLYING` (0x804) on top (see `TeleportRule`).
-+    /// Landing-cell collision mask. Legacy callers add the gated mask here;
-+    /// gated_trace instead checks 0x804 on the adjusted source-to-target segment.
-     landing_mask: u16 = collision.Colmask.player_path,
-+    footprint: grid.Footprint = .point,
-+    /// D2R's gated rule traces source to target after size-two endpoint adjustment.
-+    /// It is independent of the landing footprint and disabled for legacy callers.
-+    gated_trace: bool = false,
-     /// Accept a passable cell this far from a blocked start, as the engine's
-     /// `GetFreeCoordinates_WithNeighboorRooms` snap does.
-     snap_radius: i32 = 8,
-@@ -164,9 +168,9 @@ pub fn find(
- ) Error!void {
-     const level = nv.lv;
-     if (level.teleport == .forbidden) return error.Forbidden;
--    const mask = level.teleport.destinationMask(opts.landing_mask);
-+    const mask = if (opts.gated_trace) opts.landing_mask else level.teleport.destinationMask(opts.landing_mask);
-
--    const pm = try nv.passMap(mask);
-+    const pm = try nv.passMapFor(mask, opts.footprint);
-     const start = grid.nearestPassable(pm, sx, sy, opts.snap_radius) orelse return error.StartBlocked;
-     const goal = grid.nearestPassable(pm, gx, gy, opts.goal_snap_radius orelse opts.snap_radius) orelse
-         return error.GoalBlocked;
-@@ -178,7 +182,7 @@ pub fn find(
-     if (start.x == goal.x and start.y == goal.y) return;
-
-     // One cast is enough whenever the goal clears both gates.
--    if (canHop(level, start, goal, start_room, goal_room, opts.max_cast, opts.metric)) {
-+    if (canHop(level, start, goal, start_room, goal_room, opts.max_cast, opts.metric, opts.gated_trace)) {
-         try out.append(alloc, goal);
-         return;
-     }
-@@ -189,16 +193,21 @@ pub fn find(
-         if (max_cast <= 0) return error.Unreachable;
-         return findBounded(alloc, nv, pm, start, goal, start_room, goal_room, max_cast, opts, out);
-     }
-+    // The unbounded room-only search has no edge trace. Do not bypass the gate.
-+    if (opts.gated_trace and level.teleport == .gated) return error.Unreachable;
-     return findByRoom(alloc, level, pm, goal, start_room, goal_room, out);
- }
-
- /// Is a single cast from `from` to `to` legal? Both gates: the packet handler's per-axis distance
- /// limit, and the room topology `SUNIT_RelocateUnit` enforces.
--fn canHop(level: *const Level, from: Point, to: Point, from_room: u16, to_room: u16, max_cast: ?i32, metric: Metric) bool {
-+fn canHop(level: *const Level, from: Point, to: Point, from_room: u16, to_room: u16, max_cast: ?i32, metric: Metric, gated_trace: bool) bool {
-     if (max_cast) |m| {
-         if (!metric.within(from.x, from.y, to.x, to.y, m)) return false;
-     }
--    return level.rooms.canTeleportBetween(from_room, to_room);
-+    if (!level.rooms.canTeleportBetween(from_room, to_room)) return false;
-+    if (gated_trace and level.teleport == .gated)
-+        return @import("cast.zig").unitsCanReach(level, collision.Colmask.player_flying, from, 2, to, 2);
-+    return true;
- }
-
- /// A* over tiles, one unit of cost per cast.
-@@ -217,7 +226,7 @@ fn findBounded(
-     // Both ends have to be in the same walk-or-teleport region for any chain to exist. Teleport
-     // crosses walls, so it is the ROOM graph that has to connect, not the collision components.
-     const level = nv.lv;
--    const reps = try nv.tileReps(pm.mask);
-+    const reps = try nv.tileRepsFor(pm.mask, pm.footprint);
-     const tw = level.tileW();
-     const th = level.tileH();
-     const node_count: usize = @intCast(@max(tw * th, 0));
-@@ -275,7 +284,7 @@ fn findBounded(
-         const ti: usize = @intCast(ty * tw + tx);
-         const land = repPoint(pm, reps, ti) orelse continue;
-         const land_room = level.rooms.atSubtile(land.x, land.y) orelse continue;
--        if (!canHop(level, start, land, start_room, land_room, max_cast, opts.metric)) continue;
-+        if (!canHop(level, start, land, start_room, land_room, max_cast, opts.metric, opts.gated_trace)) continue;
-         if (g[ti] <= 1) continue;
-         g[ti] = 1;
-         came[ti] = -1; // parent is the start cell
-@@ -292,7 +301,7 @@ fn findBounded(
-
-         const cur_pt = repPoint(pm, reps, cur).?;
-         const cur_room = level.rooms.atSubtile(cur_pt.x, cur_pt.y).?;
--        if (canHop(level, cur_pt, goal, cur_room, goal_room, max_cast, opts.metric)) {
-+        if (canHop(level, cur_pt, goal, cur_room, goal_room, max_cast, opts.metric, opts.gated_trace)) {
-             try emit(alloc, pm, reps, came, cur, out);
-             try out.append(alloc, goal);
-             return;
-@@ -311,7 +320,7 @@ fn findBounded(
-             if (g[ni] <= cur_g + 1) continue;
-             const land = repPoint(pm, reps, ni) orelse continue;
-             const land_room = level.rooms.atSubtile(land.x, land.y) orelse continue;
--            if (!canHop(level, cur_pt, land, cur_room, land_room, max_cast, opts.metric)) continue;
-+            if (!canHop(level, cur_pt, land, cur_room, land_room, max_cast, opts.metric, opts.gated_trace)) continue;
-             g[ni] = cur_g + 1;
-             came[ni] = @intCast(cur);
-             try push(alloc, &heap, cur_g + 1 + castsTo(land, goal, max_cast, metric), @intCast(ni));
-@@ -324,6 +333,8 @@ fn repPoint(pm: *const grid.PassMap, reps: []const i32, tile: usize) ?Point {
-     const cell = reps[tile];
-     if (cell < 0) return null;
-     const c: usize = @intCast(cell);
-+    // Representatives cache terrain only. Recheck occupancy on every query.
-+    if (!pm.passableAt(c)) return null;
-     return .{
-         .x = @intCast(c % @as(usize, @intCast(pm.w))),
-         .y = @intCast(c / @as(usize, @intCast(pm.w))),
 diff --git a/packages/world/src/world.zig b/packages/world/src/world.zig
 index 9983c50..6af6634 100644
 --- a/packages/world/src/world.zig
 +++ b/packages/world/src/world.zig
-@@ -46,11 +46,35 @@ pub const World = struct {
-     door_fn: []i16 = &.{},
-     /// Objects.txt ids whose `OperateFn` is 27 — the teleport pads. Indexed by class id.
-     pad_class: []bool = &.{},
+@@ -48,0 +49,2 @@ pub const World = struct {
 +    navigation_tables_loaded: bool = false,
 +    strict_navigation_tables: bool = false,
-
-     pub fn init(alloc: std.mem.Allocator, seed: u32, difficulty: drlg.Difficulty) World {
-         return .{ .alloc = alloc, .seed = seed, .difficulty = difficulty };
-     }
-
+@@ -53,0 +56,22 @@ pub const World = struct {
 +    /// Use the SAME TableSet passed to Ctx.initFromBuffers. Metadata is copied;
 +    /// generation retains the context's borrowed buffers as before.
 +    pub fn initFromBuffers(alloc: std.mem.Allocator, seed: u32, difficulty: drlg.Difficulty, input: drlg.TableSet) !World {
@@ -2258,56 +1753,25 @@ index 9983c50..6af6634 100644
 +        self.navigation_tables_loaded = true;
 +    }
 +
-     pub fn deinit(self: *World) void {
-         for (self.levels.items) |l| {
-             l.deinit();
-@@ -70,9 +94,7 @@ pub const World = struct {
-     }
-
-     pub fn loadAct(self: *World, ctx: *drlg.Ctx, act_no: i32) !void {
+@@ -73,3 +97 @@ pub const World = struct {
 -        if (self.teleport_rule.len == 0) self.teleport_rule = try parseTeleportColumn(self.alloc);
 -        if (self.door_fn.len == 0) self.door_fn = try parseDoorClasses(self.alloc);
 -        if (self.pad_class.len == 0) self.pad_class = try parsePadClasses(self.alloc);
 +        if (!self.navigation_tables_loaded) try self.loadNavigationTables(.{}, false);
-
-         var full = try drlg.generateActFull(ctx, self.alloc, act_no, self.seed, self.difficulty, .{
-             .room_links = true,
-@@ -166,7 +188,8 @@ pub const World = struct {
-     }
-
-     fn teleportRuleFor(self: *const World, id: i32) level_mod.TeleportRule {
+@@ -169 +191,2 @@ pub const World = struct {
 -        if (id < 0 or @as(usize, @intCast(id)) >= self.teleport_rule.len) return .allowed;
 +        if (id < 0 or @as(usize, @intCast(id)) >= self.teleport_rule.len)
 +            return if (self.strict_navigation_tables) .forbidden else .allowed;
-         return self.teleport_rule[@intCast(id)];
-     }
-
-@@ -294,11 +317,9 @@ pub const World = struct {
-         }
-         return out.toOwnedSlice(self.alloc);
-     }
+@@ -297 +319,0 @@ pub const World = struct {
 -
- };
-
+@@ -300,2 +322 @@ pub const World = struct {
 -fn parseTeleportColumn(alloc: std.mem.Allocator) ![]level_mod.TeleportRule {
 -    const text = d2data.file("Levels");
 +fn parseTeleportColumn(alloc: std.mem.Allocator, text: []const u8, strict: bool) ![]level_mod.TeleportRule {
-     var lines = std.mem.splitScalar(u8, text, '\n');
-     const header = lines.next() orelse return error.InvalidTable;
-
-@@ -318,6 +339,8 @@ fn parseTeleportColumn(alloc: std.mem.Allocator) ![]level_mod.TeleportRule {
-
-     var rows: std.ArrayListUnmanaged(level_mod.TeleportRule) = .empty;
-     errdefer rows.deinit(alloc);
+@@ -320,0 +342,2 @@ fn parseTeleportColumn(alloc: std.mem.Allocator) ![]level_mod.TeleportRule {
 +    var seen: std.AutoHashMapUnmanaged(i32, void) = .empty;
 +    defer seen.deinit(alloc);
-     while (lines.next()) |line| {
-         if (std.mem.trim(u8, line, "\r \t").len == 0) continue;
-         var cols = std.mem.splitScalar(u8, line, '\t');
-@@ -326,13 +349,26 @@ fn parseTeleportColumn(alloc: std.mem.Allocator) ![]level_mod.TeleportRule {
-         var tele: u8 = 1;
-         while (cols.next()) |c| : (i += 1) {
-             const v = std.mem.trim(u8, c, "\r ");
+@@ -329,2 +352,8 @@ fn parseTeleportColumn(alloc: std.mem.Allocator) ![]level_mod.TeleportRule {
 -            if (i == idc) id = std.fmt.parseInt(i32, v, 10) catch null;
 -            if (i == tc) tele = std.fmt.parseInt(u8, v, 10) catch 1;
 +            if (i == idc and v.len != 0) id = std.fmt.parseInt(i32, v, 10) catch {
@@ -2318,8 +1782,7 @@ index 9983c50..6af6634 100644
 +                if (strict) return error.InvalidNavigationTable;
 +                continue;
 +            };
-         }
-         const lid = id orelse continue;
+@@ -333 +362,8 @@ fn parseTeleportColumn(alloc: std.mem.Allocator) ![]level_mod.TeleportRule {
 -        if (lid < 0) continue;
 +        if (strict and i <= tc) return error.InvalidNavigationTable;
 +        if (lid < 0) {
@@ -2329,16 +1792,10 @@ index 9983c50..6af6634 100644
 +        if (strict and try seen.fetchPut(alloc, lid, {}) != null) return error.DuplicateNavigationId;
 +        // Resource ceiling for dense metadata, not an engine LevelId limit.
 +        if (lid > 1_000_000) return error.NavigationTableTooSparse;
-         const want: usize = @intCast(lid + 1);
+@@ -335 +371 @@ fn parseTeleportColumn(alloc: std.mem.Allocator) ![]level_mod.TeleportRule {
 -        if (rows.items.len < want) try rows.appendNTimes(alloc, .allowed, want - rows.items.len);
 +        if (rows.items.len < want) try rows.appendNTimes(alloc, if (strict) .forbidden else .allowed, want - rows.items.len);
-         rows.items[@intCast(lid)] = switch (tele) {
-             0 => .forbidden,
-             2 => .gated,
-@@ -348,11 +384,9 @@ fn parseTeleportColumn(alloc: std.mem.Allocator) ![]level_mod.TeleportRule {
- /// but secret doors (18), the Act 3 slime doors (29) and Tyrael's door (0) are doors too, and a
- /// route should mention them. "TrappDoor" is excluded by the exact-name match — it is a level
- /// transition, not something you open.
+@@ -351,5 +387,3 @@ fn parseTeleportColumn(alloc: std.mem.Allocator) ![]level_mod.TeleportRule {
 -/// Objects.txt ids with `OperateFn` 27, indexed by class id. Exactly four rows have it and all
 -/// four are teleport pads (192, 304, 305, 306), so the column IS the selector — no name matching
 -/// needed and no false positives to filter.
@@ -2347,21 +1804,9 @@ index 9983c50..6af6634 100644
 +/// Objects.txt ids with `OperateFn` 27, indexed by the generator's class-id contract.
 +/// Embedded data selects four pads; active tables may add or replace these rows.
 +fn parsePadClasses(alloc: std.mem.Allocator, text: []const u8, strict: bool) ![]bool {
-     var lines = std.mem.splitScalar(u8, text, '\n');
-     const header = lines.next() orelse return error.InvalidTable;
-
-@@ -364,6 +398,7 @@ fn parsePadClasses(alloc: std.mem.Allocator) ![]bool {
-         while (cols.next()) |c| : (i += 1) {
-             const name = std.mem.trim(u8, c, "\r");
-             if (std.mem.eql(u8, name, "Id")) id_col = i;
+@@ -366,0 +401 @@ fn parsePadClasses(alloc: std.mem.Allocator) ![]bool {
 +            if (id_col == null and std.mem.eql(u8, name, "*ID")) id_col = i;
-             if (std.mem.eql(u8, name, "OperateFn")) fn_col = i;
-         }
-     }
-@@ -380,39 +415,53 @@ fn parsePadClasses(alloc: std.mem.Allocator) ![]bool {
-         var ofn: i16 = -1;
-         while (cols.next()) |c| : (i += 1) {
-             const v = std.mem.trim(u8, c, "\r ");
+@@ -383,2 +418,8 @@ fn parsePadClasses(alloc: std.mem.Allocator) ![]bool {
 -            if (i == idc) id = std.fmt.parseInt(i32, v, 10) catch null;
 -            if (i == fc) ofn = std.fmt.parseInt(i16, v, 10) catch -1;
 +            if (i == idc and v.len != 0) id = std.fmt.parseInt(i32, v, 10) catch {
@@ -2372,8 +1817,7 @@ index 9983c50..6af6634 100644
 +                if (strict) return error.InvalidNavigationTable;
 +                continue;
 +            };
-         }
-         const cid = id orelse continue;
+@@ -387 +428,6 @@ fn parsePadClasses(alloc: std.mem.Allocator) ![]bool {
 -        if (cid < 0) continue;
 +        if (strict and i <= fc) return error.InvalidNavigationTable;
 +        if (cid < 0) {
@@ -2381,48 +1825,24 @@ index 9983c50..6af6634 100644
 +            continue;
 +        }
 +        if (cid > 1_000_000) return error.NavigationTableTooSparse;
-         const want: usize = @intCast(cid + 1);
-         if (out.items.len < want) try out.appendNTimes(alloc, false, want - out.items.len);
+@@ -390 +436,2 @@ fn parsePadClasses(alloc: std.mem.Allocator) ![]bool {
 -        if (ofn == 27) out.items[@intCast(cid)] = true;
 +        // Match the generator: later Expansion entries replace legacy IDs.
 +        out.items[@intCast(cid)] = ofn == 27;
-     }
-     return out.toOwnedSlice(alloc);
- }
-
+@@ -395,2 +442 @@ fn parsePadClasses(alloc: std.mem.Allocator) ![]bool {
 -fn parseDoorClasses(alloc: std.mem.Allocator) ![]i16 {
 -    const text = d2data.file("Objects");
 +fn parseDoorClasses(alloc: std.mem.Allocator, text: []const u8, strict: bool) ![]i16 {
-     var lines = std.mem.splitScalar(u8, text, '\n');
-     const header = lines.next() orelse return error.InvalidTable;
-
-     var id_col: ?usize = null;
-     var fn_col: ?usize = null;
-     var name_col: ?usize = null;
+@@ -402,0 +449 @@ fn parseDoorClasses(alloc: std.mem.Allocator) ![]i16 {
 +    var is_door_col: ?usize = null;
-     {
-         var cols = std.mem.splitScalar(u8, header, '\t');
-         var i: usize = 0;
-         while (cols.next()) |c| : (i += 1) {
-             const name = std.mem.trim(u8, c, "\r");
-             if (std.mem.eql(u8, name, "Id")) id_col = i;
+@@ -408,0 +456 @@ fn parseDoorClasses(alloc: std.mem.Allocator) ![]i16 {
 +            if (id_col == null and std.mem.eql(u8, name, "*ID")) id_col = i;
-             if (std.mem.eql(u8, name, "OperateFn")) fn_col = i;
-             if (name_col == null and std.mem.eql(u8, name, "Name")) name_col = i;
+@@ -410,0 +459 @@ fn parseDoorClasses(alloc: std.mem.Allocator) ![]i16 {
 +            if (strict and std.mem.eql(u8, name, "IsDoor")) is_door_col = i;
-         }
-     }
-     const idc = id_col orelse return error.InvalidTable;
-     const fc = fn_col orelse return error.InvalidTable;
+@@ -415 +464 @@ fn parseDoorClasses(alloc: std.mem.Allocator) ![]i16 {
 -    const nc = name_col orelse return error.InvalidTable;
 +    if (name_col == null and is_door_col == null) return error.InvalidTable;
-
-     var out: std.ArrayListUnmanaged(i16) = .empty;
-     errdefer out.deinit(alloc);
-@@ -425,15 +474,31 @@ fn parseDoorClasses(alloc: std.mem.Allocator) ![]i16 {
-         var ofn: i16 = 0;
-         while (cols.next()) |c| : (i += 1) {
-             const v = std.mem.trim(u8, c, "\r ");
+@@ -428,3 +477,14 @@ fn parseDoorClasses(alloc: std.mem.Allocator) ![]i16 {
 -            if (i == idc) id = std.fmt.parseInt(i32, v, 10) catch null;
 -            if (i == nc) is_door = std.ascii.eqlIgnoreCase(v, "door");
 -            if (i == fc) ofn = std.fmt.parseInt(i16, v, 10) catch 0;
@@ -2440,8 +1860,7 @@ index 9983c50..6af6634 100644
 +                if (strict) return error.InvalidNavigationTable;
 +                continue;
 +            };
-         }
-         const cid = id orelse continue;
+@@ -433 +493,6 @@ fn parseDoorClasses(alloc: std.mem.Allocator) ![]i16 {
 -        if (cid < 0) continue;
 +        if (strict and i <= @max(fc, is_door_col orelse name_col.?)) return error.InvalidNavigationTable;
 +        if (cid < 0) {
@@ -2449,33 +1868,9 @@ index 9983c50..6af6634 100644
 +            continue;
 +        }
 +        if (cid > 1_000_000) return error.NavigationTableTooSparse;
-         const want: usize = @intCast(cid + 1);
-         if (out.items.len < want) try out.appendNTimes(alloc, -1, want - out.items.len);
+@@ -436 +501 @@ fn parseDoorClasses(alloc: std.mem.Allocator) ![]i16 {
 -        if (is_door) out.items[@intCast(cid)] = ofn;
 +        out.items[@intCast(cid)] = if (is_door) ofn else -1;
-     }
-     return out.toOwnedSlice(alloc);
- }
-@@ -442,7 +507,7 @@ const testing = std.testing;
-
- test "Levels.txt Teleport parses to the rule the engine applies" {
-     const alloc = testing.allocator;
+@@ -445 +510 @@ test "Levels.txt Teleport parses to the rule the engine applies" {
 -    const rules = try parseTeleportColumn(alloc);
 +    const rules = try parseTeleportColumn(alloc, d2data.file("Levels"), false);
-     defer alloc.free(rules);
-
-     // Only the Null level refuses teleport outright, and only Duriel's Lair gates the
-diff --git a/packages/drlg/src/drlg/drlg.zig b/packages/drlg/src/drlg/drlg.zig
---- a/packages/drlg/src/drlg/drlg.zig
-+++ b/packages/drlg/src/drlg/drlg.zig
-@@ -251,6 +251,10 @@
- fn initializeRoomEx(pLevel: [*c]s.D2DrlgLevelStrc) void {
-     const pData: *D2DrlgLevelDataPresetArea = @ptrCast(@alignCast(pLevel.*.pDrlgLevelData.?));
-     const pLvlPrest = tables.lvlPrestFindLineByLevelId(pLevel.*.eD2LevelId);
-+    // Mods can retain a preset-type level without a corresponding LvlPrest
-+    // definition (ESR level 137). Leave it without rooms rather than inventing
-+    // geometry or crashing generation of every other level in the act.
-+    if (pLvlPrest == null) return;
-     const pDrlgMap = preset.allocDrlgMap(
-         pLevel,
-         pLvlPrest.*.Def,

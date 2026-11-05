@@ -5,7 +5,7 @@
     .fingerprint = 0xf18085daa732040c,
     .dependencies = .{
         // https://github.com/jaenster/libd2 at ac4d735e57fcab6a3c356f810bb256da95a93716
-        // Populate vendor/libd2 from that commit, then apply libd2-mapsense.patch
+        // Populate vendor/libd2 from that commit, then apply libd2-mapsense.patch with git apply --unidiff-zero
         // from the dependency root. Build with Zig 0.16.0, ReleaseSafe, --seed 0.
         .libd2 = .{ .path = "vendor/libd2" },
     },
