@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(RuffnecKkMapSense VERSION 2.2.5 LANGUAGES C CXX RC)
+    project(RuffnecKkMapSense VERSION 2.2.6 LANGUAGES C CXX RC)
     include(CTest)
     option(RUFFNECKK_SUITE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
@@ -401,4 +401,15 @@ if(BUILD_TESTING)
         target_compile_options(ruffneckk_mapsense_routing_tests PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
     endif()
     add_test(NAME ruffneckk.mapsense.adaptive-routing COMMAND ruffneckk_mapsense_routing_tests)
+endif()
+
+if(BUILD_TESTING AND RUFFNECKK_MAPS_REFERENCE_DIRECTORY)
+    add_test(NAME ruffneckk.mapsense.reimagined-stat-redirect-revision2
+        COMMAND ruffneckk_mapsense_reimagined_stat_tests
+            "${RUFFNECKK_MAPS_REFERENCE_DIRECTORY}/d2rl-maps-0.12.5-revision2.dll" "0.12.5-revision2")
+endif()
+
+if(BUILD_TESTING AND RUFFNECKK_MAPS_REFERENCE_DIRECTORY)
+    add_test(NAME mapsense.maps-r15 COMMAND ruffneckk_mapsense_reimagined_stat_tests
+        "${RUFFNECKK_MAPS_REFERENCE_DIRECTORY}/d2rl-maps-0.12.5-r15.dll" 0.12.5-r15)
 endif()

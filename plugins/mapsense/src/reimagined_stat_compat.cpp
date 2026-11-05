@@ -65,13 +65,16 @@ auto ValidateReimaginedStatRedirect(void*, std::uintptr_t mainImageBase,
         if (base <= UINTPTR_MAX - candidate.readerRva
             && base <= UINTPTR_MAX - candidate.ownerRva
             && actualTarget == base + candidate.readerRva
-            && owner == base + candidate.ownerRva) {
+            && owner == base + candidate.ownerRva
+            && Match(actualTarget, candidate.readerWitness)
+            && Match(owner, candidate.ownerWitness)) {
+            // Rebuilds can retain entry RVAs while relocating internal state.
+            // Select by both complete witnesses and refuse ambiguous evidence.
+            if (profile != nullptr) return false;
             profile = &candidate;
-            break;
         }
     }
-    if (profile == nullptr || !Match(actualTarget, profile->readerWitness)
-        || !Match(owner, profile->ownerWitness)) return false;
+    if (profile == nullptr) return false;
 
     // Validate the published ownership function's complete state without calling
     // third-party code during admission. Both saved originals must identify the

@@ -1,0 +1,22 @@
+# Auto Interact 0.3.0 - atsay714
+# Restart after manual edits. Opens nearby objects while idle; never auto-walks.
+enabled = true
+validate_only = false
+# Ordinary loot containers: chests, hidden stashes, hollow logs, baskets,
+# jars/urns, crates, normal barrels, cocoons and jungle stashes.
+chests = true
+corpses = true
+rocks = true
+weapon_racks = true
+armor_racks = true
+# Opt in to spending normal keys. Missing keys skip locked chests.
+locked_chests = false
+# Separate from Pickit. 0 = native reach; 1..20 = opening distance without walking.
+# Collision still applies. Normal barrels retain native kick reach.
+interact_range = 0
+interval_ms = 100
+retry_ms = 1000
+diagnostics_enabled = true
+
+[d2rl]
+match = ["enabled", "validate_only", "chests", "corpses", "rocks", "weapon_racks", "armor_racks", "locked_chests", "interact_range", "interval_ms", "retry_ms"]

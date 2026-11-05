@@ -1,3 +1,5 @@
+#include "maps0125_r15_reference.hpp"
+#include "maps0125_revision2_reference.hpp"
 #pragma once
 #include <RuffnecKk/maps_stat_compat.hpp>
 #include "maps0125_reference.hpp"
@@ -145,13 +147,15 @@ inline constexpr std::array<std::uint8_t, 80> Maps0124StatOwnerWitness{
     0x00,0x00,0xEB,0x07,0xC7,0x04,0x24,0x00,0x00,0x00,0x00,0x0F,
     0xB6,0x04,0x24,0x48,0x83,0xC4,0x18,0xC3,
 };
-inline constexpr std::array<MapsStatProfile, 3> MapsStatProfiles{{
+inline constexpr std::array<MapsStatProfile, 5> MapsStatProfiles{{
     {"0.12.1", MapsStatReaderRva, MapsStatOwnerRva, MapsOriginalStatSlotRva,
         MapsRedirectSlotAddressRva, MapsRedirectPreviousValueRva, MapsContextSlotRva,
         MapsStatHookActiveRva, MapsNativeStatRvaSlotRva,
         MapsStatReaderWitness, MapsStatOwnerWitness},
     {"0.12.4", 0x16EF0, 0xE900, 0x101BD0, 0x1041C0, 0x1041C8, 0x114338,
         0x101DF1, 0x101DF8, Maps0124StatReaderWitness, Maps0124StatOwnerWitness},
-    Maps0125Profile
+    Maps0125Profile,
+    Maps0125Revision2Profile,
+    Maps0125R15Profile
 }};
 }

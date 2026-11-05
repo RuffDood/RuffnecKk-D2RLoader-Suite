@@ -1,43 +1,81 @@
-# Auto Pickup
-# Potion codes and generic codes are exact values from the relevant item table.
-# List order is pickup priority. Changes take effect after restarting the game.
-
-enabled = true
-# Maximum native grid-distance cost from the player, inclusive. Range: 1..4.
-pickup_range = 4
-# Eligible potion families are checked from left to right.
-pickup_family_order = ["rejuvenation", "health", "mana"]
-
-[health_potions]
-enabled = true
-potion_codes = ["hp5", "hp4", "hp3", "hp2"]
-belt_columns = [1, 2]
-inventory_fallback_potion_codes = ["hp5"]
-
-[mana_potions]
-enabled = true
-potion_codes = ["mp5", "mp4", "mp3"]
-belt_columns = [3]
-inventory_fallback_potion_codes = ["mp5"]
-
-[rejuvenation_potions]
-enabled = true
-potion_codes = ["rvl", "rvs"]
-belt_columns = [4]
-inventory_fallback_potion_codes = ["rvl", "rvs"]
-
-[inventory_items]
-# These codes use the native pickup destination without a forced belt route.
-# They are considered only when no configured potion has a dedicated route.
-codes = ["tsc", "isc"]
-
-[advanced]
-# Scan once per this many supported player actions. Range: 1..25.
-scan_every_player_actions = 1
-
-[diagnostics]
+# Auto Pickup 3.0.0 (config/ID: ruffneckk-auto-pickup)
+# Nothing is selected or automated by default. Choose your settings before enabling.
+# Ctrl+P opens the optional item picker. Apply & Save updates pickup settings live.
+# Restart after manual file edits or changing validate_only. Master off retains your preferences.
 enabled = false
-log_scans = false
+# Optional troubleshooting mode; compatibility checks always run.
+validate_only = false
 
+[walking]
+enabled = false
+# Native distance units, not yards (1..20; default 4).
+pickup_range = 4
+
+[teleport]
+# Also covers other cast actions. Pickit owns this with cooperative Teleport 0.3.5+.
+# Older Teleport keeps control through teleport-auto-pickup.toml; no update required.
+enabled = false
+gold = false
+items = false
+pickup_range = 4
+interval_ms = 100
+window_ms = 2000
+diagnostics_enabled = false
+[vanilla]
+gems = false
+runes = false
+keys = false
+health_potions = false
+mana_potions = false
+rejuvenation_potions = false
+
+[reimagined]
+# Reimagined gems have a different item code
+gems = false
+gem_stacks = false
+rune_stacks = false
+[item_codes]
+# Exact item codes, not numeric item IDs. Both lists are optional.
+# Include adds to the groups above; exclude always wins. Gold stays native.
+# Common extras: "jew" = jewels; "cm1" = small charms;
+# "cm2" = large charms; "cm3" = grand charms; "rvl" = full rejuvenation potions.
+# Codes select every quality, so charm/jewel codes do not filter for uniques.
+# Example: include = ["jew", "cm1", "cm3", "rvl"]
+include = []
+# Example: exclude = ["r01"] leaves El runes even when runes = true.
+exclude = []
+
+# Built-in object opening. Independent of the item-pickup master above.
+[auto_interact]
+enabled = false
+validate_only = false
+# Ordinary loot containers: chests, hidden stashes, hollow logs, baskets,
+# jars/urns, crates, normal barrels, cocoons and jungle stashes.
+chests = false
+corpses = false
+rocks = false
+weapon_racks = false
+armor_racks = false
+# Opt in to spending normal keys. Missing keys skip locked chests.
+locked_chests = false
+# Separate from Pickit. 0 = native reach; 1..20 = opening distance without walking.
+# Collision still applies. Normal barrels retain native kick reach.
+interact_range = 0
+interval_ms = 100
+retry_ms = 1000
+diagnostics_enabled = false
+# Potion selection remains in [vanilla] and the Item picker above.
+# Columns 1..4 run left to right. List order is preference order.
+# An empty list with inventory_fallback=true sends selected potions to inventory.
+# An empty list with inventory_fallback=false leaves them on the ground.
+[potion_routing.health]
+belt_columns = []
+inventory_fallback = false
+[potion_routing.mana]
+belt_columns = []
+inventory_fallback = false
+[potion_routing.rejuvenation]
+belt_columns = []
+inventory_fallback = false
 [d2rl]
-match = true
+match = ["enabled", "validate_only", "vanilla.gems", "vanilla.runes", "vanilla.keys", "vanilla.health_potions", "vanilla.mana_potions", "vanilla.rejuvenation_potions", "reimagined.gems", "reimagined.gem_stacks", "reimagined.rune_stacks", "item_codes.include", "item_codes.exclude", "walking.enabled", "walking.pickup_range", "teleport.enabled", "teleport.gold", "teleport.items", "teleport.pickup_range", "teleport.interval_ms", "teleport.window_ms", "auto_interact.enabled", "auto_interact.validate_only", "auto_interact.chests", "auto_interact.corpses", "auto_interact.rocks", "auto_interact.weapon_racks", "auto_interact.armor_racks", "auto_interact.locked_chests", "auto_interact.interact_range", "auto_interact.interval_ms", "auto_interact.retry_ms", "potion_routing.health.belt_columns", "potion_routing.health.inventory_fallback", "potion_routing.mana.belt_columns", "potion_routing.mana.inventory_fallback", "potion_routing.rejuvenation.belt_columns", "potion_routing.rejuvenation.inventory_fallback"]

@@ -1,3 +1,6 @@
+#include "maps0125_r15_reference.hpp"
+#include <algorithm>
+#include "maps0125_revision2_reference.hpp"
 #include "maps0125_reference.hpp"
 #include <RuffnecKk/maps_stat_compat.hpp>
 #include <RuffnecKk/maps_stat_compat.hpp>
@@ -51,6 +54,8 @@ int wmain(int argc, wchar_t** argv) {
     }
     // The fixture knows the new exact reference before production admits it.
     if (std::wcscmp(argv[2], L"0.12.5") == 0) selected = &Maps0125Profile;
+    if (std::wcscmp(argv[2], L"0.12.5-revision2") == 0) selected = &Maps0125Revision2Profile;
+    if (std::wcscmp(argv[2], L"0.12.5-r15") == 0) selected = &Maps0125R15Profile;
     if (!selected) return 2;
     const auto& profile = *selected;
     // Reference DLL is mapped without imports, DllMain or plugin initialization.
@@ -91,6 +96,7 @@ int wmain(int argc, wchar_t** argv) {
     auto validate = [&] { return ValidateReimaginedStatRedirect(nullptr, mainBase,
         NativeUnitStatRva, slotAddress, reader, coreTarget); };
     CHECK(validate());
+    if (Failures) return EXIT_FAILURE;
 
     // Exercise the real adapter -> native slot -> published Maps callback -> Core
     // path. The small fixture contract isolates forwarding; production retains
@@ -185,6 +191,36 @@ int wmain(int argc, wchar_t** argv) {
     const auto ownerByte = image[profile.ownerRva];
     ChangeCode(image + profile.ownerRva, ownerByte ^ 1U); CHECK(!validate());
     ChangeCode(image + profile.ownerRva, ownerByte); CHECK(validate());
+    // Same-address revisions must never mix reader and owner witnesses.
+    for (const auto& other : MapsStatProfiles) {
+        if (&other == &profile || other.readerRva != profile.readerRva
+            || other.ownerRva != profile.ownerRva
+            || std::equal(other.ownerWitness.begin(), other.ownerWitness.end(), profile.ownerWitness.begin())) continue;
+        for (std::size_t i = 0; i < other.ownerWitness.size(); ++i)
+            ChangeCode(image + profile.ownerRva + i, other.ownerWitness[i]);
+        CHECK(!validate());
+        for (std::size_t i = 0; i < profile.ownerWitness.size(); ++i)
+            ChangeCode(image + profile.ownerRva + i, profile.ownerWitness[i]);
+        CHECK(validate());
+        for (std::size_t i = 0; i < other.readerWitness.size(); ++i)
+            ChangeCode(image + profile.readerRva + i, other.readerWitness[i]);
+        CHECK(!validate());
+        for (std::size_t i = 0; i < profile.readerWitness.size(); ++i)
+            ChangeCode(image + profile.readerRva + i, profile.readerWitness[i]);
+        CHECK(validate());
+    }
+    if (profile.readerRva == 0x17E50) {
+        const auto callByteRva = profile.readerRva + 0xEB;
+        const auto originalCallByte = profile.readerWitness[0xEB];
+        ChangeCode(image + callByteRva, originalCallByte ^ 0x01U); CHECK(!validate());
+        ChangeCode(image + callByteRva, originalCallByte); CHECK(validate());
+    }
+    const auto readerTailRva = profile.readerRva + profile.readerWitness.size() - 1;
+    ChangeCode(image + readerTailRva, profile.readerWitness.back() ^ 1U); CHECK(!validate());
+    ChangeCode(image + readerTailRva, profile.readerWitness.back());
+    const auto ownerTailRva = profile.ownerRva + profile.ownerWitness.size() - 1;
+    ChangeCode(image + ownerTailRva, profile.ownerWitness.back() ^ 1U); CHECK(!validate());
+    ChangeCode(image + ownerTailRva, profile.ownerWitness.back()); CHECK(validate());
     Jump(entry, reinterpret_cast<void*>(coreTarget));
     Stat::Adapter coreOnly{};
     CHECK(coreOnly.Bind(memory, mainRange, coreRange, contract, mask, diagnostics));

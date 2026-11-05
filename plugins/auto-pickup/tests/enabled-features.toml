@@ -1,0 +1,86 @@
+# Auto Pickup 3.0.0 (stable config/ID: auto-pickup-anything)
+# Ctrl+P opens the optional item picker. Apply & Save updates pickup settings live.
+# Restart after manual file edits or changing validate_only. Master off retains your preferences.
+enabled = true
+# Optional troubleshooting mode; compatibility checks always run.
+validate_only = false
+
+[walking]
+enabled = true
+# Native distance units, not yards (1..20; default 4).
+pickup_range = 4
+
+[teleport]
+# Also covers other cast actions. Pickit owns this with cooperative Teleport 0.3.5+.
+# Older Teleport keeps control through teleport-auto-pickup.toml; no update required.
+enabled = true
+gold = true
+items = true
+pickup_range = 4
+interval_ms = 100
+window_ms = 2000
+diagnostics_enabled = true
+
+[vanilla]
+gems = true
+runes = true
+keys = false
+health_potions = false
+mana_potions = false
+rejuvenation_potions = false
+
+[reimagined]
+# Reimagined gems have a different item code
+gems = true
+gem_stacks = true
+rune_stacks = true
+
+[item_codes]
+# Exact item codes, not numeric item IDs. Both lists are optional.
+# Include adds to the groups above; exclude always wins. Gold stays native.
+# Common extras: "jew" = jewels; "cm1" = small charms;
+# "cm2" = large charms; "cm3" = grand charms; "rvl" = full rejuvenation potions.
+# Codes select every quality, so charm/jewel codes do not filter for uniques.
+# Example: include = ["jew", "cm1", "cm3", "rvl"]
+include = []
+# Example: exclude = ["r01"] leaves El runes even when runes = true.
+exclude = []
+
+# Built-in object opening. Independent of the item-pickup master above.
+[auto_interact]
+enabled = true
+validate_only = false
+# Ordinary loot containers: chests, hidden stashes, hollow logs, baskets,
+# jars/urns, crates, normal barrels, cocoons and jungle stashes.
+chests = true
+corpses = true
+rocks = true
+weapon_racks = true
+armor_racks = true
+# Opt in to spending normal keys. Missing keys skip locked chests.
+locked_chests = false
+# Separate from Pickit. 0 = native reach; 1..20 = opening distance without walking.
+# Collision still applies. Normal barrels retain native kick reach.
+interact_range = 0
+interval_ms = 100
+retry_ms = 1000
+diagnostics_enabled = true
+
+# Potion selection remains in [vanilla] and the Item picker above.
+# Columns 1..4 run left to right. List order is preference order.
+# An empty list with inventory_fallback=true sends selected potions to inventory.
+# An empty list with inventory_fallback=false leaves them on the ground.
+[potion_routing.health]
+belt_columns = [1, 2]
+inventory_fallback = true
+
+[potion_routing.mana]
+belt_columns = [3]
+inventory_fallback = true
+
+[potion_routing.rejuvenation]
+belt_columns = [4]
+inventory_fallback = true
+
+[d2rl]
+match = ["enabled", "validate_only", "vanilla.gems", "vanilla.runes", "vanilla.keys", "vanilla.health_potions", "vanilla.mana_potions", "vanilla.rejuvenation_potions", "reimagined.gems", "reimagined.gem_stacks", "reimagined.rune_stacks", "item_codes.include", "item_codes.exclude", "walking.enabled", "walking.pickup_range", "teleport.enabled", "teleport.gold", "teleport.items", "teleport.pickup_range", "teleport.interval_ms", "teleport.window_ms", "auto_interact.enabled", "auto_interact.validate_only", "auto_interact.chests", "auto_interact.corpses", "auto_interact.rocks", "auto_interact.weapon_racks", "auto_interact.armor_racks", "auto_interact.locked_chests", "auto_interact.interact_range", "auto_interact.interval_ms", "auto_interact.retry_ms", "potion_routing.health.belt_columns", "potion_routing.health.inventory_fallback", "potion_routing.mana.belt_columns", "potion_routing.mana.inventory_fallback", "potion_routing.rejuvenation.belt_columns", "potion_routing.rejuvenation.inventory_fallback"]

@@ -1,0 +1,23 @@
+{
+  "repository": "https://github.com/RuffDood/RuffnecKk-D2RLoader-Suite",
+  "commit": "4d070a0ec7f3ea0d83bfdebc332f071cb0d21e2b",
+  "sha256": {
+    "include/RuffnecKk/native_stat_compat.hpp": "b939eb7bc447c706d90343b9bea3f92a4300fc1cfd46888a8336ae9f2c27db2b",
+    "include/RuffnecKk/tracked_native_transform.hpp": "dd2acc062dc4445a9ae7f129b7a1d78b93c7c35d72bee324755be4b57a832785",
+    "src/native_stat_compat.cpp": "fb3f76cec812f205da8823d366a0a996d4b33a42daad3bee13c5642cfcd6d1c8",
+    "src/native_stat_compat_contract.inc": "5b0a214faf9214ceccfe6670041d067247700251f4398b31e1a940ca718c0246",
+    "src/native_stat_compat_contract_131.inc": "c5fe71f8b6bc868ffea9f4062e70a7756a55c701b4caa6233e09ebf09d181743",
+    "tests/native_stat_compat_tests.cpp": "d4737d93c62a8311be14a452a0310c3966b7a961aaa4eb98d94ae93dcf94e804",
+    "LICENSE": "e9472fe982609a6d6d79f01dd17d895649303445506a8843f1c79969a939321f"
+  },
+  "line_endings": "LF",
+  "local_modifications": {
+    "reason": "Consumer-owned exact Reimagined Maps redirect proof; underlying Core/native witnesses unchanged.",
+    "reference": "Diablo plugin-dev/compatibility-check/builds/mapsense-maps0124-20261101/source/common",
+    "sha256": {
+      "include/RuffnecKk/native_stat_compat.hpp": "d80f3029c3f81f30be68617811dfea592a1d9d6f79a58f575074e8afe4868ebf",
+      "src/native_stat_compat.cpp": "187dc3b755647a5bbc76ed0d7b3a90a80d8108e9985fe44e7a3050099f0bbc26",
+      "tests/native_stat_compat_tests.cpp": "cee2d3f6b80809bc35f212de5ccb3889522a9b04f3112e22ce56051560de2eca"
+    }
+  }
+}

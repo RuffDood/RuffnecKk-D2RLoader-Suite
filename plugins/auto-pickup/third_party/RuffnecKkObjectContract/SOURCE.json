@@ -1,0 +1,15 @@
+{
+  "repository": "https://github.com/RuffDood/RuffnecKk-D2RLoader-Suite",
+  "commit": "4d070a0ec7f3ea0d83bfdebc332f071cb0d21e2b",
+  "source_paths": {
+    "native_object_interact_contract.hpp": "plugins/mapsense/src/native_object_interact_contract.hpp",
+    "native_object_interact_contract_tests.cpp": "plugins/mapsense/src/native_object_interact_contract_tests.cpp",
+    "LICENSE": "LICENSE"
+  },
+  "sha256": {
+    "native_object_interact_contract.hpp": "7722daf456033023c47daaa9290cf6e428403d2f015902a9a9919d4de8c3d8e0",
+    "native_object_interact_contract_tests.cpp": "646c56c547ec9901212447da2db25e51f7ae69cc930206e3bd84bf5307bdd7a8",
+    "LICENSE": "56ef60dda5f5da267fbf7be6754a820054a3090dc77dae22f27ddb58a2d4ad39"
+  },
+  "line_endings": "LF"
+}

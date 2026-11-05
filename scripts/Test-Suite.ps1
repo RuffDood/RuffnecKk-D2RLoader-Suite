@@ -231,6 +231,9 @@ else {
         [pscustomobject]@{ componentId = [string]$_.id }
     })
     $pluginIds = @($pluginEntries | ForEach-Object { [string]$_.componentId })
+    # Public source-only checks use the same governed SDK exceptions as the
+    # native ownership catalog; release checks retain their explicit allowlist.
+    $expectedSdkV4Components = @($sourcePolicyDocument.target.pluginSdkOverrides.PSObject.Properties.Name)
     if ($pluginIds.Count -eq 0 -or @($pluginIds | Sort-Object -Unique).Count -ne $pluginIds.Count) {
         throw 'The public source-policy catalog is empty or contains duplicate plugin IDs.'
     }
@@ -315,7 +318,7 @@ foreach ($entry in $pluginEntries) {
         Where-Object {
             $_.Name -notmatch '(?i)test' -and
             $_.FullName -notmatch '(?i)[\\/]tests[\\/]' -and
-            $_.FullName -notmatch '(?i)[\\/]build[^\\/]*[\\/]'
+            $_.FullName.Substring($pluginDirectory.Length) -notmatch '(?i)[\\/]build[^\\/]*[\\/]'
         })
     if ($sourceFiles.Count -eq 0) {
         $errors.Add("$slug has no native source files.")
@@ -327,7 +330,7 @@ foreach ($entry in $pluginEntries) {
         Where-Object {
             $_.Name -notmatch '(?i)test' -and
             $_.FullName -notmatch '(?i)[\\/]tests[\\/]' -and
-            $_.FullName -notmatch '(?i)[\\/]build[^\\/]*[\\/]'
+            $_.FullName.Substring($pluginDirectory.Length) -notmatch '(?i)[\\/]build[^\\/]*[\\/]'
         })
     $runtimeSourceText = ($runtimeSourceFiles | ForEach-Object {
         Get-Content -LiteralPath $_.FullName -Raw
@@ -439,10 +442,18 @@ foreach ($entry in $pluginEntries) {
         $approvedRouteAdvisorLookup =
             $sourceText -match 'GetModuleHandleExW\(\s*0,\s*L"d2rl-ruffneckk-stack-manager\.dll",\s*&module\s*\)' -and
             $sourceText -match 'GetProcAddress\(module,\s*AutoPickupRoute::ExportName\)'
-        if ($getProcAddressMatches.Count -ne 1 -or
-            -not $approvedRouteAdvisorLookup) {
+        $approvedMapsOwnerLookup =
+            $sourceText -match 'GetProcAddress\(module,\s*"D2RLMapsOwnsStatReaderHook"\)' -and
+            $sourceText -match 'Match\(actualTarget,\s*candidate.readerWitness\)' -and
+            $sourceText -match 'Match\(owner,\s*candidate.ownerWitness\)' -and
+            $sourceText -match 'original == expectedCoreTarget && savedOriginal == expectedCoreTarget' -and
+            $sourceText -match 'savedSlot == slotAddress && ownerBase == mainImageBase' -and
+            $sourceText -match 'ownerRva == nativeRva && active == 1U'
+        $legacyRouteOnly = $getProcAddressMatches.Count -eq 1 -and $approvedRouteAdvisorLookup
+        $witnessedMapsRoute = $getProcAddressMatches.Count -eq 2 -and $approvedRouteAdvisorLookup -and $approvedMapsOwnerLookup
+        if (-not $legacyRouteOnly -and -not $witnessedMapsRoute) {
             $errors.Add(
-                'auto-pickup may resolve only the optional versioned Stack Manager route-advisor API.')
+                'auto-pickup may resolve only its optional versioned Stack Manager route advisor and fully witnessed Maps ownership export.')
         }
     }
     elseif ($getProcAddressMatches.Count -ne 0) {

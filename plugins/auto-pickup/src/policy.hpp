@@ -1,276 +1,100 @@
 #pragma once
-
+#include "catalog.hpp"
+#include "potion_routing/policy.hpp"
+#include "auto_interact/policy.hpp"
+#include <algorithm>
 #include <array>
 #include <charconv>
-#include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace RuffnecKk::AutoPickup {
-
-inline constexpr std::size_t MaximumInventoryCodes = 16;
-
-enum class Family : std::uint8_t { Health, Mana, Rejuvenation, Unknown };
-
-struct Item {
-    std::string_view code;
-    Family family;
-    std::uint8_t tier;
-};
-
-inline constexpr std::array Items{
-    Item{"hp1", Family::Health, 1}, Item{"hp2", Family::Health, 2},
-    Item{"hp3", Family::Health, 3}, Item{"hp4", Family::Health, 4},
-    Item{"hp5", Family::Health, 5}, Item{"mp1", Family::Mana, 1},
-    Item{"mp2", Family::Mana, 2}, Item{"mp3", Family::Mana, 3},
-    Item{"mp4", Family::Mana, 4}, Item{"mp5", Family::Mana, 5},
-    Item{"rvs", Family::Rejuvenation, 1}, Item{"rvl", Family::Rejuvenation, 2},
-};
-
 constexpr auto PackItemCode(std::string_view code) noexcept -> std::uint32_t {
-    std::uint32_t packed = 0x20202020U;
-    for (std::size_t index = 0; index < 4 && index < code.size(); ++index) {
-        packed |= static_cast<std::uint32_t>(static_cast<std::uint8_t>(code[index]))
-            << static_cast<std::uint32_t>(index * 8U);
+    std::uint32_t packed = 0x20202020;
+    for (std::size_t i = 0; i < code.size() && i < 4; ++i) {
+        const auto shift = static_cast<std::uint32_t>(i * 8);
+        packed = (packed & ~(0xffU << shift)) | (static_cast<std::uint32_t>(static_cast<unsigned char>(code[i])) << shift);
     }
     return packed;
 }
-
-constexpr auto Classify(std::string_view code) noexcept -> Item {
-    for (const auto& item : Items) if (item.code == code) return item;
-    return {code, Family::Unknown, 0};
-}
-
-struct Policy {
-    bool enabled{};
-    std::array<bool, 6> tiers{};
-    std::array<bool, 6> inventoryFallback{};
-    std::array<std::uint8_t, 4> columns{};
-    std::uint8_t columnCount{};
-
-    constexpr auto Accepts(Item item) const noexcept -> bool {
-        return enabled && item.family != Family::Unknown
-            && item.tier < tiers.size() && tiers[item.tier];
-    }
-    constexpr auto AllowsInventory(Item item) const noexcept -> bool {
-        return Accepts(item) && item.tier < inventoryFallback.size()
-            && inventoryFallback[item.tier];
-    }
-};
-
-struct BeltSlot { bool occupied{}; Family family{Family::Unknown}; };
-
-struct RoutingToken {
-    static constexpr std::uint32_t InvalidGuid = std::numeric_limits<std::uint32_t>::max();
-    std::uint32_t itemGuid{InvalidGuid};
-    constexpr auto Matches(std::uint32_t actual) const noexcept -> bool {
-        return itemGuid != InvalidGuid && itemGuid == actual;
-    }
-    constexpr void Reset() noexcept { itemGuid = InvalidGuid; }
-};
-
-constexpr auto ChooseBeltSlot(const Policy& policy, Item item,
-    const std::array<BeltSlot, 16>& slots, std::uint8_t capacity) noexcept -> std::int8_t {
-    if (!policy.Accepts(item) || capacity < 4 || capacity > slots.size() || capacity % 4 != 0) return -1;
-    const auto rows = static_cast<std::uint8_t>(capacity / 4);
-    for (std::uint8_t index = 0; index < policy.columnCount; ++index) {
-        const auto column = policy.columns[index];
-        if (column < 1 || column > 4) continue;
-        const auto bottom = static_cast<std::uint8_t>(column - 1);
-        if (!slots[bottom].occupied || slots[bottom].family != item.family) continue;
-        for (std::uint8_t row = 1; row < rows; ++row) {
-            const auto slot = static_cast<std::uint8_t>(bottom + row * 4);
-            if (!slots[slot].occupied) return static_cast<std::int8_t>(slot);
-        }
-    }
-    for (std::uint8_t index = 0; index < policy.columnCount; ++index) {
-        const auto column = policy.columns[index];
-        if (column >= 1 && column <= 4 && !slots[column - 1].occupied) {
-            return static_cast<std::int8_t>(column - 1);
-        }
-    }
-    return -1;
-}
-
-struct FamilyConfig {
-    Policy policy{};
-    std::array<std::uint8_t, 5> priority{};
-    std::uint8_t priorityCount{};
-};
-
 struct Config {
-    bool enabled{true};
-    std::uint32_t distance{4};
-    std::uint32_t interval{1};
-    FamilyConfig health{}, mana{}, rejuvenation{};
-    std::array<Family, 3> familyPriority{Family::Rejuvenation, Family::Health, Family::Mana};
-    std::uint8_t familyPriorityCount{3};
-    std::array<std::uint32_t, MaximumInventoryCodes> inventoryCodes{};
-    std::uint8_t inventoryCodeCount{};
+    bool enabled{}, validateOnly{};
+    PotionRouting::Config potionRouting;
+    AutoInteract::Config interact;
+    bool interactConfigured{};
+    bool walkingEnabled{}, teleportEnabled{}, teleportGold{}, teleportItems{};
     bool diagnosticsEnabled{};
-    bool logScans{};
-
-    constexpr auto InventoryRank(std::uint32_t code) const noexcept -> std::uint8_t {
-        for (std::uint8_t index = 0; index < inventoryCodeCount; ++index) {
-            if (inventoryCodes[index] == code) return index;
-        }
-        return UINT8_MAX;
+    std::uint32_t walkingRange{4}, teleportRange{4}, intervalMs{100}, windowMs{2000};
+    std::array<bool, VanillaGroups.size()> vanilla{};
+    std::array<bool, ReimaginedGroups.size()> reimagined{};
+    // Sorted and deduplicated once when the config is parsed.
+    std::vector<std::uint32_t> includeCodes, excludeCodes;
+    auto Selects(std::uint32_t code) const noexcept -> bool {
+        if (code == PackItemCode("gld")) return false;
+        if (std::binary_search(excludeCodes.begin(), excludeCodes.end(), code)) return false;
+        if (std::binary_search(includeCodes.begin(), includeCodes.end(), code)) return true;
+        for (const auto& row : Catalog) if (PackItemCode(row.code) == code)
+            return row.reimagined ? reimagined[row.group] : vanilla[row.group];
+        return false;
     }
 };
-
-inline auto Trim(std::string_view value) noexcept -> std::string_view {
-    while (!value.empty() && (value.front() == ' ' || value.front() == '\t' || value.front() == '\r')) value.remove_prefix(1);
-    while (!value.empty() && (value.back() == ' ' || value.back() == '\t' || value.back() == '\r')) value.remove_suffix(1);
-    return value;
+inline auto Trim(std::string_view s) noexcept -> std::string_view {
+    while (!s.empty() && (s.front() == ' ' || s.front() == '\t' || s.front() == '\r')) s.remove_prefix(1);
+    while (!s.empty() && (s.back() == ' ' || s.back() == '\t' || s.back() == '\r')) s.remove_suffix(1);
+    return s;
 }
-inline auto WithoutComment(std::string_view value) noexcept -> std::string_view {
-    bool quoted{};
-    for (std::size_t index = 0; index < value.size(); ++index) {
-        if (value[index] == '"') quoted = !quoted;
-        if (value[index] == '#' && !quoted) return value.substr(0, index);
+inline auto WithoutComment(std::string_view s) noexcept -> std::string_view {
+    char quote{};
+    for (std::size_t i = 0; i < s.size(); ++i) {
+        if (quote == '"' && s[i] == '\\' && i + 1 < s.size()) { ++i; continue; }
+        if (quote && s[i] == quote) quote = 0;
+        else if (!quote && (s[i] == '"' || s[i] == '\'')) quote = s[i];
+        else if (s[i] == '#' && !quote) return s.substr(0, i);
     }
-    return value;
+    return s;
 }
-inline auto SetError(std::string& error, std::size_t line, std::string_view message) -> bool {
-    error = "line " + std::to_string(line) + ": " + std::string(message);
+inline auto ParseBool(std::string_view s, bool& result) noexcept -> bool {
+    if (s == "true") { result = true; return true; }
+    if (s == "false") { result = false; return true; }
     return false;
 }
-inline auto ParseBoolean(std::string_view value, bool& output) noexcept -> bool {
-    if (value == "true") { output = true; return true; }
-    if (value == "false") { output = false; return true; }
-    return false;
-}
-inline auto ParseUnsigned(std::string_view value, std::uint32_t& output) noexcept -> bool {
-    if (value.empty()) return false;
-    const auto result = std::from_chars(value.data(), value.data() + value.size(), output);
-    return result.ec == std::errc{} && result.ptr == value.data() + value.size();
-}
-inline auto ParseStringArray(std::string_view value, std::vector<std::string>& output) -> bool {
-    value = Trim(value);
+inline auto ParseItemCodes(std::string_view value, std::vector<std::uint32_t>& codes) -> bool {
     if (value.size() < 2 || value.front() != '[' || value.back() != ']') return false;
-    output.clear();
-    for (std::size_t position = 1, last = value.size() - 1; position < last;) {
-        while (position < last && (value[position] == ' ' || value[position] == '\t')) ++position;
-        if (position == last) break;
-        if (value[position] != '"') return false;
-        const auto close = value.find('"', position + 1);
-        if (close == std::string_view::npos || close >= last) return false;
-        output.emplace_back(value.substr(position + 1, close - position - 1));
-        position = close + 1;
-        while (position < last && (value[position] == ' ' || value[position] == '\t')) ++position;
-        if (position == last) break;
-        if (value[position] != ',') return false;
-        ++position;
+    value = Trim(value.substr(1, value.size() - 2));
+    while (!value.empty()) {
+        const auto quote = value.front();
+        if (quote != '"' && quote != '\'') return false;
+        const auto end = value.find(quote, 1);
+        if (end == std::string_view::npos) return false;
+        const auto code = value.substr(1, end - 1);
+        if (code.empty() || code.size() > 4) return false;
+        for (const auto ch : code) if (!((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9'))) return false;
+        codes.push_back(PackItemCode(code));
+        value = Trim(value.substr(end + 1));
+        if (value.empty()) break;
+        if (value.front() != ',') return false;
+        value = Trim(value.substr(1));
     }
+    std::sort(codes.begin(), codes.end());
+    codes.erase(std::unique(codes.begin(), codes.end()), codes.end());
     return true;
 }
-inline auto ParseIntegerArray(std::string_view value, std::vector<std::uint32_t>& output) -> bool {
-    value = Trim(value);
-    if (value.size() < 2 || value.front() != '[' || value.back() != ']') return false;
-    output.clear();
-    for (std::size_t position = 1, last = value.size() - 1; position < last;) {
-        while (position < last && (value[position] == ' ' || value[position] == '\t')) ++position;
-        if (position == last) break;
-        const auto comma = value.find(',', position);
-        const auto end = comma == std::string_view::npos || comma > last ? last : comma;
-        std::uint32_t parsed{};
-        if (!ParseUnsigned(Trim(value.substr(position, end - position)), parsed)) return false;
-        output.push_back(parsed);
-        position = end;
-        if (position == last) break;
-        ++position;
-        if (position == last) return false;
-    }
-    return true;
-}
-inline auto FindItem(std::string_view code, Family family) noexcept -> const Item* {
-    for (const auto& item : Items) if (item.code == code && item.family == family) return &item;
-    return nullptr;
-}
-inline auto ParsePotionCodes(std::string_view value, Family family, FamilyConfig& output) -> bool {
-    std::vector<std::string> values;
-    if (!ParseStringArray(value, values) || values.size() > output.priority.size()) return false;
-    output.policy.tiers.fill(false); output.priority.fill(0); output.priorityCount = 0;
-    for (const auto& code : values) {
-        const auto* item = FindItem(code, family);
-        if (!item || output.policy.tiers[item->tier]) return false;
-        output.policy.tiers[item->tier] = true;
-        output.priority[output.priorityCount++] = item->tier;
-    }
-    return true;
-}
-inline auto ParseTierSet(std::string_view value, Family family, std::array<bool, 6>& output) -> bool {
-    std::vector<std::string> values;
-    if (!ParseStringArray(value, values)) return false;
-    output.fill(false);
-    for (const auto& code : values) {
-        const auto* item = FindItem(code, family);
-        if (!item || output[item->tier]) return false;
-        output[item->tier] = true;
-    }
-    return true;
-}
-inline auto ParseColumns(std::string_view value, FamilyConfig& output) -> bool {
-    std::vector<std::uint32_t> values;
-    if (!ParseIntegerArray(value, values) || values.size() > 4) return false;
-    output.policy.columns.fill(0); output.policy.columnCount = 0;
-    std::array<bool, 4> seen{};
-    for (const auto column : values) {
-        if (column < 1 || column > 4 || seen[column - 1]) return false;
-        seen[column - 1] = true;
-        output.policy.columns[output.policy.columnCount++] = static_cast<std::uint8_t>(column);
-    }
-    return true;
-}
-inline auto ParseFamilyOrder(std::string_view value, Config& output) -> bool {
-    std::vector<std::string> values;
-    if (!ParseStringArray(value, values) || values.size() > output.familyPriority.size()) return false;
-    output.familyPriority.fill(Family::Unknown); output.familyPriorityCount = 0;
-    std::array<bool, 3> seen{};
-    for (const auto& name : values) {
-        Family family{Family::Unknown}; std::size_t index{};
-        if (name == "health") family = Family::Health;
-        else if (name == "mana") { family = Family::Mana; index = 1; }
-        else if (name == "rejuvenation") { family = Family::Rejuvenation; index = 2; }
-        else return false;
-        if (seen[index]) return false;
-        seen[index] = true; output.familyPriority[output.familyPriorityCount++] = family;
-    }
-    return true;
-}
-inline auto IsExactCode(std::string_view code) noexcept -> bool {
-    if (code.empty() || code.size() > 4) return false;
-    for (const char character : code) {
-        if (!((character >= 'a' && character <= 'z') || (character >= '0' && character <= '9'))) return false;
-    }
-    return true;
-}
-inline auto ParseInventoryCodes(std::string_view value, Config& output) -> bool {
-    std::vector<std::string> values;
-    if (!ParseStringArray(value, values) || values.size() > MaximumInventoryCodes) return false;
-    output.inventoryCodes.fill(0); output.inventoryCodeCount = 0;
-    for (const auto& code : values) {
-        if (!IsExactCode(code) || Classify(code).family != Family::Unknown) return false;
-        const auto packed = PackItemCode(code);
-        for (std::uint8_t index = 0; index < output.inventoryCodeCount; ++index) {
-            if (output.inventoryCodes[index] == packed) return false;
-        }
-        output.inventoryCodes[output.inventoryCodeCount++] = packed;
-    }
-    return true;
-}
-inline auto FamilyIndex(Family family) noexcept -> std::size_t { return static_cast<std::size_t>(family); }
-
 inline auto ParseConfig(std::string_view input, Config& output, std::string& error) -> bool {
-    Config parsed{};
-    enum class Section : std::uint8_t { Root, Health, Mana, Rejuvenation, Inventory, Advanced, Diagnostics, D2rl } section{Section::Root};
-    bool rootEnabled{}, rootRange{}, rootOrder{}, inventorySection{}, inventoryCodes{}, advancedSection{}, interval{}, diagnosticsSection{}, diagnosticsEnabled{}, diagnosticsScans{}, d2rlSection{};
-    struct FamilySeen { bool section{}, enabled{}, codes{}, columns{}, fallback{}; constexpr auto Complete() const noexcept -> bool { return section && enabled && codes && columns && fallback; } };
-    std::array<FamilySeen, 3> seen{};
+    Config parsed;
+    enum class Section { Root, Vanilla, Reimagined, ItemCodes, D2rl, Walking, Teleport, Interact, PotionHealth, PotionMana, PotionRejuvenation } section{Section::Root};
+    std::array<bool, 11> sections{};
+    std::array<std::array<bool,2>,3> potionSeen{};
+    std::string interactText;
+    std::array<bool, VanillaGroups.size()> vanillaSeen{};
+    std::array<bool, ReimaginedGroups.size()> reimaginedSeen{};
+    bool enabledSeen{}, validationSeen{}, includeSeen{}, excludeSeen{};
+    std::array<bool, 2> walkingSeen{};
+    std::array<bool, 7> teleportSeen{};
     std::size_t lineNumber{};
+    auto fail = [&](std::string_view message) { error = "line " + std::to_string(lineNumber) + ": " + std::string(message); return false; };
     for (std::size_t start = 0; start <= input.size();) {
         ++lineNumber;
         const auto end = input.find('\n', start);
@@ -278,62 +102,95 @@ inline auto ParseConfig(std::string_view input, Config& output, std::string& err
         start = end == std::string_view::npos ? input.size() + 1 : end + 1;
         if (line.empty()) continue;
         if (line.front() == '[') {
-            if (line.size() < 3 || line.back() != ']') return SetError(error, lineNumber, "invalid section header");
-            const auto name = Trim(line.substr(1, line.size() - 2));
-            if (name == "health_potions") section = Section::Health;
-            else if (name == "mana_potions") section = Section::Mana;
-            else if (name == "rejuvenation_potions") section = Section::Rejuvenation;
-            else if (name == "inventory_items") { if (inventorySection) return SetError(error, lineNumber, "duplicate section"); inventorySection = true; section = Section::Inventory; continue; }
-            else if (name == "advanced") { if (advancedSection) return SetError(error, lineNumber, "duplicate section"); advancedSection = true; section = Section::Advanced; continue; }
-            else if (name == "diagnostics") { if (diagnosticsSection) return SetError(error, lineNumber, "duplicate section"); diagnosticsSection = true; section = Section::Diagnostics; continue; }
-            else if (name == "d2rl") { if (d2rlSection) return SetError(error, lineNumber, "duplicate section"); d2rlSection = true; section = Section::D2rl; continue; }
-            else return SetError(error, lineNumber, "unknown section");
-            const auto family = section == Section::Health ? Family::Health : section == Section::Mana ? Family::Mana : Family::Rejuvenation;
-            auto& familySeen = seen[FamilyIndex(family)];
-            if (familySeen.section) return SetError(error, lineNumber, "duplicate section");
-            familySeen.section = true; continue;
+            if (line == "[vanilla]") section = Section::Vanilla;
+            else if (line == "[reimagined]") section = Section::Reimagined;
+            else if (line == "[item_codes]") section = Section::ItemCodes;
+            else if (line == "[d2rl]") section = Section::D2rl;
+            else if (line == "[walking]") section = Section::Walking;
+            else if (line == "[teleport]") section = Section::Teleport;
+            else if (line == "[auto_interact]") { section = Section::Interact; parsed.interactConfigured = true; }
+            else if (line == "[potion_routing.health]") section = Section::PotionHealth;
+            else if (line == "[potion_routing.mana]") section = Section::PotionMana;
+            else if (line == "[potion_routing.rejuvenation]") section = Section::PotionRejuvenation;
+            else return fail("unknown section; use the current plugin config");
+            auto& seen = sections[static_cast<std::size_t>(section)];
+            if (seen) return fail("duplicate section");
+            seen = true; continue;
         }
         if (section == Section::D2rl) continue;
-        const auto equal = line.find('=');
-        if (equal == std::string_view::npos || line.find('=', equal + 1) != std::string_view::npos) return SetError(error, lineNumber, "expected one key/value assignment");
-        const auto key = Trim(line.substr(0, equal)); const auto value = Trim(line.substr(equal + 1));
-        if (key.empty() || value.empty()) return SetError(error, lineNumber, "invalid key/value assignment");
-        bool valid{}; bool* duplicate{};
-        if (section == Section::Root) {
-            if (key == "enabled") { duplicate = &rootEnabled; valid = ParseBoolean(value, parsed.enabled); }
-            else if (key == "pickup_range") { duplicate = &rootRange; valid = ParseUnsigned(value, parsed.distance) && parsed.distance >= 1 && parsed.distance <= 4; }
-            else if (key == "pickup_family_order") { duplicate = &rootOrder; valid = ParseFamilyOrder(value, parsed); }
-            else return SetError(error, lineNumber, "unknown root setting");
-        } else if (section == Section::Inventory) {
-            if (key == "codes") { duplicate = &inventoryCodes; valid = ParseInventoryCodes(value, parsed); }
-            else return SetError(error, lineNumber, "unknown inventory setting");
-        } else if (section == Section::Advanced) {
-            if (key == "scan_every_player_actions") { duplicate = &interval; valid = ParseUnsigned(value, parsed.interval) && parsed.interval >= 1 && parsed.interval <= 25; }
-            else return SetError(error, lineNumber, "unknown advanced setting");
-        } else if (section == Section::Diagnostics) {
-            if (key == "enabled") { duplicate = &diagnosticsEnabled; valid = ParseBoolean(value, parsed.diagnosticsEnabled); }
-            else if (key == "log_scans") { duplicate = &diagnosticsScans; valid = ParseBoolean(value, parsed.logScans); }
-            else return SetError(error, lineNumber, "unknown diagnostics setting");
-        } else {
-            const auto family = section == Section::Health ? Family::Health : section == Section::Mana ? Family::Mana : Family::Rejuvenation;
-            auto& familyConfig = family == Family::Health ? parsed.health : family == Family::Mana ? parsed.mana : parsed.rejuvenation;
-            auto& familySeen = seen[FamilyIndex(family)];
-            if (key == "enabled") { duplicate = &familySeen.enabled; valid = ParseBoolean(value, familyConfig.policy.enabled); }
-            else if (key == "potion_codes") { duplicate = &familySeen.codes; valid = ParsePotionCodes(value, family, familyConfig); }
-            else if (key == "belt_columns") { duplicate = &familySeen.columns; valid = ParseColumns(value, familyConfig); }
-            else if (key == "inventory_fallback_potion_codes") { duplicate = &familySeen.fallback; valid = ParseTierSet(value, family, familyConfig.policy.inventoryFallback); }
-            else return SetError(error, lineNumber, "unknown potion setting");
+        if (section == Section::Interact) { interactText += line; interactText += '\n'; continue; }
+        const auto eq = line.find('=');
+        if (eq == std::string_view::npos) return fail("expected key=value");
+        const auto key = Trim(line.substr(0, eq)), value = Trim(line.substr(eq + 1));
+        if (section >= Section::PotionHealth) {
+            const auto family = static_cast<std::size_t>(section) - static_cast<std::size_t>(Section::PotionHealth);
+            const auto k = key == "belt_columns" ? 0U : key == "inventory_fallback" ? 1U : 2U;
+            if (k == 2 || potionSeen[family][k]) return fail("unknown or duplicate potion routing setting");
+            auto& route = parsed.potionRouting.families[family];
+            if (!(k == 0 ? PotionRouting::ParseColumns(value, route) : ParseBool(value, route.inventoryFallback)))
+                return fail("belt_columns needs unique columns 1..4; inventory_fallback needs true/false");
+            potionSeen[family][k] = true; continue;
         }
-        if (duplicate && *duplicate) return SetError(error, lineNumber, "duplicate setting");
-        if (duplicate) *duplicate = true;
-        if (!valid) return SetError(error, lineNumber, "invalid setting value");
+        if (section == Section::Walking || section == Section::Teleport) {
+            const bool walking = section == Section::Walking;
+            constexpr std::array<std::string_view, 7> keys{"enabled", "pickup_range", "gold", "items", "interval_ms", "window_ms", "diagnostics_enabled"};
+            std::size_t k{};
+            for (; k < keys.size() && keys[k] != key; ++k) {}
+            if (k == keys.size() || (walking && k > 1)) return fail("unknown pickup setting");
+            auto& seen = walking ? walkingSeen[k] : teleportSeen[k];
+            if (seen) return fail("duplicate setting");
+            seen = true;
+            if (k == 0 || k == 2 || k == 3 || k == 6) {
+                auto& target = walking ? parsed.walkingEnabled : k == 0 ? parsed.teleportEnabled
+                    : k == 2 ? parsed.teleportGold : k == 3 ? parsed.teleportItems : parsed.diagnosticsEnabled;
+                if (!ParseBool(value, target)) return fail("expected boolean");
+            } else {
+                std::uint32_t number{};
+                const auto [last, ec] = std::from_chars(value.data(), value.data() + value.size(), number);
+                if (value.empty() || ec != std::errc{} || last != value.data() + value.size()) return fail("expected integer");
+                if (k == 1 && (number < 1 || number > 20)) return fail("pickup_range must be 1..20");
+                if (k == 4 && (number < 50 || number > 1000)) return fail("interval_ms must be 50..1000");
+                if (k == 5 && (number < 500 || number > 5000)) return fail("window_ms must be 500..5000");
+                (walking ? parsed.walkingRange : k == 1 ? parsed.teleportRange : k == 4 ? parsed.intervalMs : parsed.windowMs) = number;
+            }
+            continue;
+        }
+        if (section == Section::ItemCodes) {
+            if (key != "include" && key != "exclude") return fail("unknown item_codes setting; use include or exclude");
+            auto& seen = key == "include" ? includeSeen : excludeSeen;
+            if (seen) return fail("duplicate setting");
+            std::string list(value);
+            // TOML arrays may span lines and contain comments or a trailing comma.
+            if (!value.empty() && value.front() == '[') while (list.find(']') == std::string::npos) {
+                if (start > input.size()) return fail("unterminated item-code list");
+                ++lineNumber;
+                const auto nextEnd = input.find('\n', start);
+                list += ' ';
+                list += Trim(WithoutComment(input.substr(start, nextEnd == std::string_view::npos ? input.size() - start : nextEnd - start)));
+                start = nextEnd == std::string_view::npos ? input.size() + 1 : nextEnd + 1;
+            }
+            if (!ParseItemCodes(Trim(list), key == "include" ? parsed.includeCodes : parsed.excludeCodes))
+                return fail("expected an array of quoted item codes (1-4 lowercase letters/digits)");
+            seen = true; continue;
+        }
+        bool* seen{}; bool valid{};
+        if (section == Section::Root) {
+            if (key == "enabled") { seen = &enabledSeen; valid = ParseBool(value, parsed.enabled); }
+            else if (key == "validate_only") { seen = &validationSeen; valid = ParseBool(value, parsed.validateOnly); }
+            else return fail("unknown setting; this plugin configures item selection only");
+        } else if (section == Section::Vanilla) {
+            for (std::size_t i = 0; i < VanillaGroups.size(); ++i) if (key == VanillaGroups[i]) { seen = &vanillaSeen[i]; valid = ParseBool(value, parsed.vanilla[i]); break; }
+        } else if (section == Section::Reimagined) {
+            for (std::size_t i = 0; i < ReimaginedGroups.size(); ++i) if (key == ReimaginedGroups[i]) { seen = &reimaginedSeen[i]; valid = ParseBool(value, parsed.reimagined[i]); break; }
+        }
+        if (!seen) return fail("unknown item group");
+        if (*seen) return fail("duplicate setting");
+        if (!valid) return fail("invalid value");
+        *seen = true;
     }
-    if (!(rootEnabled && rootRange && rootOrder && inventorySection && inventoryCodes && advancedSection && interval && diagnosticsSection && diagnosticsEnabled && diagnosticsScans && d2rlSection && seen[0].Complete() && seen[1].Complete() && seen[2].Complete())) { error = "one or more required settings are missing"; return false; }
-    const std::array<const FamilyConfig*, 3> families{&parsed.health, &parsed.mana, &parsed.rejuvenation};
-    for (const auto* family : families) for (std::size_t tier = 1; tier < family->policy.inventoryFallback.size(); ++tier) {
-        if (family->policy.inventoryFallback[tier] && !family->policy.tiers[tier]) { error = "inventory fallback codes must also be listed in potion_codes"; return false; }
-    }
-    output = parsed; error.clear(); return true;
+    if (parsed.windowMs < parsed.intervalMs) return fail("window_ms must be at least interval_ms");
+    if (!AutoInteract::ParseConfig(interactText, parsed.interact, error)) return false;
+    if (!parsed.interactConfigured) parsed.interact.enabled = false; // Old Pickit config: no new gameplay until opted in or migrated.
+    output = std::move(parsed); error.clear(); return true;
 }
-
-} // namespace RuffnecKk::AutoPickup
+}

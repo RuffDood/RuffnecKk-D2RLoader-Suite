@@ -234,3 +234,7 @@ The permanent plugin-communication contract derives from D2RLoader/PluginSDK
 commit `03a5af9e0feb3f95f95e148e330e01f6635950df`; its MIT notice is retained
 beside the adapted header as `PluginSDK-LICENSE`. The consumer's ABI remains
 PluginSDK API v3, with communication service availability checked at runtime.
+
+## Auto Pickup 3.0.1
+
+Auto Pickup derives from atsay714/D2R-Pickit 0.10.1, commit be89040f742666b6343c25811fc78b16f29ce468, copyright 2026 Andrew Tsay (atsay714), MIT. RuffnecKk added potion belt-column routing and integration changes. Exact MIT and third-party notices remain in plugins/auto-pickup/LICENSE and THIRD_PARTY_NOTICES.md and are embedded in the release DLL.
