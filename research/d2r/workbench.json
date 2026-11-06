@@ -1,11 +1,46 @@
 {
   "schemaVersion": 1,
   "target": {
-    "product": "Diablo II Resurrected",
+    "product": "D2RLoader-hosted D2R game image",
     "version": "3.2",
     "build": 92777,
     "architecture": "x86-64",
-    "imageBase": "0x140000000"
+    "imageBase": "0x140000000",
+    "labelRole": "version/build are historical installation metadata, not retail native identity"
+  },
+  "provenance": {
+    "kind": "d2rloader-hosted-game-image",
+    "corpusId": "d2rloader-game-image-20260717",
+    "displayName": "captured D2RLoader-hosted D2R game image",
+    "reference": "reverse-engineering/NATIVE-CORPUS.md",
+    "capture": {
+      "date": "2026-07-17",
+      "processName": "D2RLoader.exe",
+      "processId": 40036,
+      "imageBase": "0x140000000",
+      "moduleMemorySize": 65495040,
+      "coreVersion": "1.0.1-beta",
+      "mod": "D2RMM",
+      "externalPlugins": 0,
+      "externalMemoryPatches": 0,
+      "sourceSessionId": "019f72e7-904c-7403-89ee-7b41919fe107",
+      "sourceRecordLines": [
+        1596,
+        1600,
+        1642,
+        1650
+      ]
+    },
+    "retailNativeIdentity": "not-established",
+    "retailCrossBuildEquivalence": "not-established",
+    "compatibilityPolicy": "Verify consumed base-image fingerprints, Loader/Core providers, contracts and hook ownership; installation labels do not select a native profile.",
+    "baseGameTarget": {
+      "version": "3.1.1.4",
+      "status": "documented-upstream-target",
+      "source": "https://wiki.d2rloader.net/en/modders",
+      "verifiedAt": "2026-10-16",
+      "scope": "Loader game target; not a byte identity claim for an untouched retail PE"
+    }
   },
   "canonicalImage": {
     "relativePath": "analysis-cache/images/D2R-3.2.92777-decrypted.exe",
@@ -16,7 +51,7 @@
       ".rdata": "58E947709FE4FED2AD37359D4FF97656183CB66B7BB6C2DD4F7743BEBDAC69CE",
       ".pdata": "3F191DC32210F6785C87446E208B1D0EBB8BC94D5C7FE50F59F9964CF5BBDEE9"
     },
-    "policy": "local-only; reconstructed read-only from a licensed running process; never commit"
+    "policy": "local-only; PE template from installed D2R.exe, selected sections read from D2RLoader.exe PID 40036; never commit"
   },
   "analysisImage": {
     "relativePath": "analysis-cache/images/D2R-3.2.92777-analysis.exe",
@@ -29,7 +64,7 @@
       "_RDATA": "B66F5C4D2B9D53E7D18FED4803668579927965414EFBB895297DDFD7E978A026",
       ".rodata": "EA93EADC01105DD4EDBE5F3A0CA757CB1BB7F7A2209D7CB18CBB61A995A88599"
     },
-    "policy": "canonical code plus plaintext non-code PE metadata from the same installed build; local-only"
+    "policy": "Loader-captured code plus separately sourced on-disk non-code PE metadata; historical filenames do not establish retail identity; local-only"
   },
   "index": {
     "relativePath": "analysis-cache/index/d2r32.sqlite",

@@ -1,4 +1,4 @@
-# Atlas D2R 3.3 des DataTables compilées
+# Captured D2RLoader game-image DataTables atlas
 
 Cet atlas évite de redécouvrir les mêmes pointeurs, comptes, strides et fragments
 de records à chaque chantier de reverse engineering. Il ne prétend pas que les
@@ -6,11 +6,13 @@ headers des fichiers `.txt` correspondent directement à une structure C++ : le
 loader compile les sources TSV, peut fusionner plusieurs tables et peut construire
 des index ou linkers après la compilation.
 
-La cible produit est `D2R.exe 3.3.93847`. Les preuves natives proviennent du
-corpus gouverné commun conservé sous le chemin historique
-`reverse-engineering/d2r-3.2.92777/`; la couverture de `92777` et `93847` est
-déclarée séparément dans le catalogue et doit rester justifiée par des preuves
-byte-exact.
+Native evidence belongs to the [captured D2RLoader game image](../../NATIVE-CORPUS.md).
+Historical `targetRuntime` and `provenanceBuild` values describe installation
+labels retained for compatibility with existing tools. They do not identify a
+retail executable. `corpus.kind`, the corpus ID and artifact hashes identify
+the actual evidence. `coveredBuilds` is empty because no independent retail
+cross-build comparison is established. Table geometry and its image-specific
+evidence remain unchanged.
 
 ## Contenu A0+A1
 
@@ -42,8 +44,8 @@ LUT et index construits après la compilation.
 Le dossier `generated/` est entièrement dérivé de `catalog.json` :
 
 - `d2r33_datatables_atlas.hpp` fournit sept vues de records partiels et
-  `DataTablesKnownPrefixView`; ses 45 `static_assert` ferment les strides,
-  les 21 fields admis et les 15 slots connus;
+  `DataTablesKnownPrefixView`; ses 52 `static_assert` ferment les strides,
+  les 27 fields admis et les 16 slots connus;
 - `d2r33_datatables_ghidra.h` fournit les mêmes vues sous forme de header C
   importable avec **Parse C Source** dans Ghidra, plus les constantes d'offset;
 - `d2r33_datatables_atlas_witness.cpp` force la compilation de toutes les
@@ -55,6 +57,18 @@ Les octets non établis restent des tableaux `unknownXXXX`. Le type
 `DataTablesKnownPrefixView` s'arrête au dernier slot gouverné et ne prétend pas
 décrire la fin réelle du conteneur. Les commentaires `candidate` de
 `Objects.Parm0` et `Shrines.LevelMin` sont conservés dans les deux formats.
+
+## Stack Manager consumer promotion — 2026-09-29
+
+Stack Manager 1.2.7 requires the loaded States name linker and numeric ID, plus
+five ItemStatCost fields that distinguish simple scalar bonus stats from
+parameterized, encoded or shifted values. These fields and the States linker
+are now admitted in `catalog.json`. Compiler descriptors, an independent States
+name consumer and both table-linker destructors establish their provenance and
+lifetime. The plugin retains owned names/resolved IDs bound to the table revision.
+Other States postprocessing remains unclassified. Reproducible byte ranges and
+the read-only consumer boundary are recorded in
+[the component research](../../../plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md#loaded-name-and-live-bonus-checkpoint--2026-09-29).
 
 ## Inventaire candidat A3
 

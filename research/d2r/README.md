@@ -5,7 +5,7 @@ This is a documentation snapshot maintained from my own laboratory.
 
 ## Start here
 
-- [Known RVAs](known-rvas.json): 1,046 registry entries with native addresses, identified roles, confidence levels, provenance and limits. See the [snapshot record](../source-snapshot.json) for source identity and hashes.
+- [Known RVAs](known-rvas.json): 1,252 registry entries with native addresses, identified roles, confidence levels, provenance and limits. See the [snapshot record](../source-snapshot.json) for source identity and hashes.
 - [Findings](findings.md): detailed research conclusions, rejected hypotheses, ABI pitfalls and follow-up questions. The original French notes are preserved.
 - [DataTables atlas](datatables-atlas/README.md): seven documented compiled-table layouts, evidence records and partial C++/Ghidra headers. Read the laboratory-reference notes below before using its commands.
 
@@ -13,7 +13,7 @@ Within the atlas, [catalog.json](datatables-atlas/catalog.json) records admitted
 
 ## Coverage and interpretation
 
-The historical source directory and some document titles use `3.2.92777`. They identify the origin of the native corpus. The governed atlas documents byte-exact coverage of `92777` and Battle.net `3.3.93847`; consult individual claims and their evidence for the scope of that coverage. Steam `3.3.93787` is an admissible candidate, not qualified by this snapshot. No claim of compatibility with a future build is implied.
+The [native corpus identity](../NATIVE-CORPUS.md) describes the captured D2RLoader-hosted game image and its documented upstream game target, 3.1.1.4. The historical source directory and installation labels retain their original identifiers. Consult the atlas corpus ID and artifact hashes when applying its layout claims. Retail cross-build equivalence remains unestablished.
 
 A `high` confidence entry proves the specific statement in its notes. It does not automatically prove a complete function ABI, structure, safe hook location or multiplayer behavior. `candidate`, `medium` and unknown fields retain their stated limits. Before using native addresses, validate the actual bytes, layouts, ABI and ranges your code depends on; a build number alone is not a compatibility check.
 

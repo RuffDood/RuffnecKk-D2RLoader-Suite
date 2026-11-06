@@ -1,5 +1,10 @@
 # Argument contracts
 
+These contracts describe the [captured D2RLoader game image](../NATIVE-CORPUS.md).
+Historical `scope.target` version labels are retained evidence metadata; the
+canonical hash identifies the native image. Loader/Core providers and current
+hook ownership require their own proofs.
+
 The optional `argumentContract` object in `known-rvas.json` records calling
 evidence separately from identification confidence. Existing entries remain
 valid without it: absence means **undocumented**, not verified or unsafe.

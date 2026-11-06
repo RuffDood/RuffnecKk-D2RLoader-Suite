@@ -1,24 +1,23 @@
-# Reverse engineering persistant
+# D2RLoader native reverse engineering
 
-Ce dossier conserve les petits artefacts gouvernes qui evitent de recommencer
-les analyses binaires a chaque session : manifestes de build, index de RVA,
-notes et commandes reproductibles.
+The native reference is the **captured D2RLoader-hosted game image**. Read
+[native corpus identity](NATIVE-CORPUS.md) before attributing an RVA, dump or
+build. The documented base game target is **3.1.1.4**. Code was captured from running
+`D2RLoader.exe`, with D2RCore active;
+installed retail/data version labels do not identify its native ancestry.
 
-Les executables reconstruits depuis la memoire, projets Ghidra, bases SQLite et
-clones de reference restent exclusivement dans `analysis-cache/`. Ce dossier
-est ignore par Git et exclu du cadastre, car il contient des artefacts locaux
-volumineux et potentiellement soumis aux droits du jeu.
+Run `npm run re:d2r33 -- status` to verify the existing
+[workbench](d2r/WORKBENCH.md). Historical paths and command aliases remain
+for continuity. They establish neither independently captured retail 3.2/3.3
+images nor retail byte-equivalence. Reuse the verified base-image corpus and
+check the Loader/Core providers and hook ownership actually consumed.
 
-La cible courante est D2R 3.3.93847. La commande `npm run re:d2r33 -- status`
-vérifie le [corpus commun gouverné](d2r-3.2.92777/README.md), dont le nom conserve
-la provenance historique 92777. L'identité native utile 92777/93847 est établie ;
-ne pas reconstruire un second atelier pour cette image équivalente. Une image
-différente, notamment Steam 93787 sans preuve propre, reste à qualifier.
+Large local images, Ghidra projects, indexes and reference clones stay under
+ignored `analysis-cache/`; only compact provenance, findings and contracts are
+versioned. The [reconstruction modules](d2r/modules/README.md) let you
+query a behavior before starting from an address.
 
-The [reconstruction modules](d2r-3.2.92777/modules/README.md) let you search
-for a behavior before starting from addresses. The first topic is skill payment:
-`npm run re:d2r33 -- topic blood_mana`. Each result links an explanation to
-registry symbols and states its limitations.
+The first topic is skill payment: `npm run re:d2r33 -- topic blood_mana`.
 
 ## Aide-mémoire de test en jeu
 

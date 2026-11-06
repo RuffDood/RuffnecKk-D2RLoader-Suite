@@ -2,32 +2,30 @@
   "schemaVersion": 1,
   "generator": "scripts/reverse-engineering/d2r33-datatables-generate.mjs",
   "catalog": "reverse-engineering/d2r-3.2.92777/datatables-atlas/catalog.json",
-  "catalogSha256": "BD5F711D1558D4F13AB0DC69D8616E878D6E3FCD6FEDA6622EF2279BE2A43191",
-  "targetRuntime": {
+  "catalogSha256": "3219983BB62BCC5751BB74E50DA4A3EF03D2FC7B139679DF7E8D6A827B331264",
+  "nativeImage": {
+    "kind": "d2rloader-hosted-game-image",
+    "corpusId": "d2rloader-game-image-20260717",
+    "canonicalImageSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715",
+    "provenanceReference": "reverse-engineering/NATIVE-CORPUS.md"
+  },
+  "historicalInstallation": {
     "version": "3.3.93847",
+    "labelRole": "historical installation/data metadata, not executing native code identity",
     "build": 93847,
     "architecture": "x86-64"
   },
-  "coveredBuilds": [
-    {
-      "build": 92777,
-      "status": "byte-exact"
-    },
-    {
-      "build": 93847,
-      "status": "byte-exact"
-    }
-  ],
+  "coveredBuilds": [],
   "outputs": [
     {
       "name": "d2r33_datatables_atlas.hpp",
-      "bytes": 10327,
-      "sha256": "CE4FA09F4442DC15B33C8CAFE7DF8BD9EE4B52646A6937EF17D4E9E2B1631BBA"
+      "bytes": 12153,
+      "sha256": "741FC03525388A95979E249A1E3C931753E65BF00EFE272FA16C0B126D3C2CE1"
     },
     {
       "name": "d2r33_datatables_ghidra.h",
-      "bytes": 7733,
-      "sha256": "59934CF1EF755DBDFC47CEEDE2DC93C726DF4515132224DFFFD572B9C7AD885F"
+      "bytes": 8941,
+      "sha256": "FD73A15739E106581092DD7FF239BC0B36DE1389773137076E3670101E7B9D84"
     },
     {
       "name": "d2r33_datatables_atlas_witness.cpp",

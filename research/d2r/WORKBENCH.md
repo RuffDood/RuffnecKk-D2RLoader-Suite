@@ -1,10 +1,14 @@
-# Workbench natif commun D2R 92777 / 93847
+# Captured D2RLoader game-image workbench
 
-Ce workbench conserve le corpus historique 3.2.92777 et les preuves natives
-communes gouvernées pour D2R 3.3.93847. Il évite de redumper, réimporter et
-rescanner le même binaire à chaque conversation. Utiliser `re:d2r33` pour le
-runtime courant ; les commandes historiques `re:d2r32` ci-dessous restent
-disponibles. Une autre image exige ses propres preuves de compatibilité.
+This historical directory stores the native code captured from running
+`D2RLoader.exe`, with D2RCore active. [Native corpus identity](../NATIVE-CORPUS.md)
+is authoritative for provenance and the meaning of version labels.
+
+`92777`, `93847`, the filenames and `re:d2r32` / `re:d2r33` aliases are
+historical installation/tooling labels. This is not proof of independently
+captured retail 3.2/3.3 code or equivalence between those retail executables.
+Reuse this image when its required native surfaces match; inspect current
+Loader/Core implementations and hooks separately.
 
 ## Understand a behavior
 
@@ -105,14 +109,13 @@ le commit, le chemin et la ligne. D2MOO reste une référence sémantique 1.10f 
 toute correspondance avec le build 92777 doit ensuite être prouvée par
 `function`, `xrefs`, `bytes` ou Ghidra.
 
-Deux images locales sont volontairement conservees. L'image `decrypted` garde
-le SHA-256 exact deja cite par la mission de portage. L'image `analysis` en est
-une derivee deterministe : son `.text` canonique est inchange, tandis que
-`.pdata`, `_RDATA` et `.rodata` sont rehydrates depuis le `D2R.exe` installe du
-meme build. Cette derivee fournit 105 850 bornes de fonctions x64 exploitables
-par l'index. Ghidra recoit ensuite uniquement le `.text` brut et ces bornes de
-fonctions, ce qui contourne les imports/TLS volontairement invalides du binaire
-protege et evite une analyse globale couteuse.
+Two local images remain pinned. The canonical reconstructed PE contains
+Loader-process code captured on 2026-07-17. The analysis PE preserves that code
+and supplies `.pdata`, `_RDATA` and `.rodata` from the installed disk PE.
+The latter metadata has separate provenance: its 105,850 x64 function ranges
+are query aids and can split or misbound a logical function. Use exact code
+and control flow when a query stops inside a function. Ghidra reuses the
+captured `.text` and the existing function map.
 
 ## Discipline
 

@@ -3,27 +3,20 @@
   "catalogId": "ruffneckk-d2r33-datatables-atlas-v1",
   "targetRuntime": {
     "version": "3.3.93847",
+    "labelRole": "historical installation/data metadata, not executing native code identity",
     "build": 93847,
     "architecture": "x86-64"
   },
   "corpus": {
     "workbenchPath": "reverse-engineering/d2r-3.2.92777",
     "provenanceBuild": 92777,
+    "kind": "d2rloader-hosted-game-image",
+    "corpusId": "d2rloader-game-image-20260717",
+    "provenanceReference": "reverse-engineering/NATIVE-CORPUS.md",
     "imageBase": "0x140000000",
     "canonicalImageSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715",
     "analysisImageSha256": "673E8C0B2E89563E75525B24D137098EFD07B2DB4ED42ADEC56AA1ADDF0E63AB",
-    "coveredBuilds": [
-      {
-        "build": 92777,
-        "status": "byte-exact",
-        "evidenceIds": ["workbench-manifest"]
-      },
-      {
-        "build": 93847,
-        "status": "byte-exact",
-        "evidenceIds": ["governed-equivalence"]
-      }
-    ]
+    "coveredBuilds": []
   },
   "dataTables": {
     "accessorRva": "0x300A90",
@@ -53,25 +46,13 @@
       "id": "workbench-manifest",
       "kind": "json-pointer",
       "path": "reverse-engineering/d2r-3.2.92777/workbench.json",
-      "pointer": "/target",
+      "pointer": "/provenance",
       "expected": {
-        "build": 92777,
-        "architecture": "x86-64",
-        "imageBase": "0x140000000"
+        "kind": "d2rloader-hosted-game-image",
+        "corpusId": "d2rloader-game-image-20260717"
       },
-      "supports": ["coverage:92777", "corpus:identity"],
-      "claims": {
-        "coverage:92777": true,
-        "corpus:identity": true
-      }
-    },
-    {
-      "id": "governed-equivalence",
-      "kind": "text-witness",
-      "path": "reverse-engineering/d2r-3.2.92777/findings.md",
-      "needle": "La cible produit D2R 3.3.93847 réutilise le corpus natif vérifié provenant du",
-      "supports": ["coverage:93847"],
-      "claims": { "coverage:93847": true }
+      "supports": ["corpus:identity"],
+      "claims": { "corpus:identity": true }
     },
     {
       "id": "get-datatables-for-context",
@@ -123,6 +104,37 @@
       "claims": {
         "states:field:overlay1": { "offset": "0x2", "size": 2, "type": "uint16_t" }
       }
+    },
+    {
+      "id": "states-name-linker",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "STATES_CompilerNameLinkerSlotWitness",
+      "rva": "0x30759A",
+      "supports": ["states:linker", "states:field:state-id", "states:post-processing"],
+      "claims": {
+        "states:linker": "0x2A8",
+        "states:field:state-id": { "offset": "0x0", "size": 2, "type": "uint16_t" },
+        "states:post-processing": true
+      }
+    },
+    {
+      "id": "states-name-consumer",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "STATES_LoadedNameLookupWitness",
+      "rva": "0x320390",
+      "supports": ["states:linker"],
+      "claims": { "states:linker": "0x2A8" }
+    },
+    {
+      "id": "states-name-lifetime",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "STATES_NameLinkerTeardownWitness",
+      "rva": "0x3006B7",
+      "supports": ["states:post-processing"],
+      "claims": { "states:post-processing": true }
     },
     {
       "id": "skills-layout",
@@ -192,6 +204,29 @@
         "item-stat-cost:field:stat-id": { "offset": "0x0", "size": 2, "type": "uint16_t" },
         "item-stat-cost:post-processing": true
       }
+    },
+    {
+      "id": "item-stat-cost-scalar-fields",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "DATATBLS_ItemStatCostScalarMetadataDescriptors",
+      "rva": "0x31E35E",
+      "supports": ["item-stat-cost:field:send-param-bits", "item-stat-cost:field:value-shift", "item-stat-cost:field:save-param-bits", "item-stat-cost:field:encode"],
+      "claims": {
+        "item-stat-cost:field:send-param-bits": { "offset": "0x9", "size": 1, "type": "uint8_t" },
+        "item-stat-cost:field:value-shift": { "offset": "0x14", "size": 1, "type": "uint8_t" },
+        "item-stat-cost:field:save-param-bits": { "offset": "0x20", "size": 4, "type": "uint32_t" },
+        "item-stat-cost:field:encode": { "offset": "0x2C", "size": 1, "type": "uint8_t" }
+      }
+    },
+    {
+      "id": "item-stat-cost-csv-param",
+      "kind": "known-rva",
+      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "name": "DATATBLS_ItemStatCostCsvParamDescriptor",
+      "rva": "0x31E77E",
+      "supports": ["item-stat-cost:field:csv-param-bits"],
+      "claims": { "item-stat-cost:field:csv-param-bits": { "offset": "0xB", "size": 1, "type": "uint8_t" } }
     },
     {
       "id": "item-stat-cost-fields",
@@ -419,6 +454,15 @@
       },
       "recordFields": [
         {
+          "id": "state-id",
+          "name": "StateId",
+          "offset": "0x0",
+          "size": 2,
+          "type": "uint16_t",
+          "status": "proven",
+          "evidenceIds": ["states-name-linker"]
+        },
+        {
           "id": "overlay1",
           "name": "Overlay1",
           "offset": "0x2",
@@ -428,10 +472,15 @@
           "evidenceIds": ["states-overlay1"]
         }
       ],
+      "linker": {
+        "status": "proven",
+        "value": "0x2A8",
+        "evidenceIds": ["states-name-linker", "states-name-consumer"]
+      },
       "postProcessing": {
-        "status": "unknown",
-        "summary": "Post-compilation passes are outside A1 and remain unclassified.",
-        "evidenceIds": []
+        "status": "proven",
+        "summary": "Creates the name-to-index linker, consumed through DataTables+0x2A8 and destroyed during table teardown. Only this linker is promoted; all other post-compilation passes remain unclassified.",
+        "evidenceIds": ["states-name-linker", "states-name-lifetime"]
       }
     },
     {
@@ -530,6 +579,51 @@
           "type": "uint16_t",
           "status": "proven",
           "evidenceIds": ["item-stat-cost-linker"]
+        },
+        {
+          "id": "send-param-bits",
+          "name": "SendParamBits",
+          "offset": "0x9",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["item-stat-cost-scalar-fields"]
+        },
+        {
+          "id": "csv-param-bits",
+          "name": "CsvParamBits",
+          "offset": "0xB",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["item-stat-cost-csv-param"]
+        },
+        {
+          "id": "value-shift",
+          "name": "ValueShift",
+          "offset": "0x14",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["item-stat-cost-scalar-fields"]
+        },
+        {
+          "id": "save-param-bits",
+          "name": "SaveParamBits",
+          "offset": "0x20",
+          "size": 4,
+          "type": "uint32_t",
+          "status": "proven",
+          "evidenceIds": ["item-stat-cost-scalar-fields"]
+        },
+        {
+          "id": "encode",
+          "name": "Encode",
+          "offset": "0x2C",
+          "size": 1,
+          "type": "uint8_t",
+          "status": "proven",
+          "evidenceIds": ["item-stat-cost-scalar-fields"]
         },
         {
           "id": "desc-priority",

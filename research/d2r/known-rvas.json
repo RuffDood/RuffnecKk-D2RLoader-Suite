@@ -1,8 +1,1571 @@
 {
   "schemaVersion": 1,
   "build": 92777,
+  "nativeImageKind": "d2rloader-hosted-game-image",
+  "provenanceReference": "reverse-engineering/NATIVE-CORPUS.md",
+  "buildLabelRole": "historical installation metadata; entry scope labels do not establish retail native identity",
   "imageBase": "0x140000000",
   "entries": [
+    {
+      "rva": "0x4501E0",
+      "name": "SUNITDMG_RollSourceElementalAddition",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/melee-splash/notes/COLLIN-NATIVE-EXTENSIONS.md",
+      "notes": "Captured Loader logical body4501E0..4503BD; Win64 int32(attacker,min,max,minMastery,maxMastery,existingComponent). Source128 Fill calls below preserve their existing accumulator and make one original source roll; observed nonnegative return-minus-accumulator is the source addition. Narrow source-call wrappers leave this entry unmodified. Static-only, no gameplay claim."
+    },
+    {
+      "rva": "0x44CBA3",
+      "name": "SUNITDMG_PreConversionCaptureInstruction",
+      "kind": "patch-site",
+      "confidence": "high",
+      "source": "plugin-dev/melee-splash/notes/COLLIN-NATIVE-EXTENSIONS.md",
+      "notes": "Complete 8-byte MOVZX R10D,byte[RDI+149]:44 0F B6 97 49 01 00 00; valid Fill Event3 bypasses and fallthrough meet here. RSP16-aligned, RDI=damage,RSI=attacker,R12=defender. New call-site relay preserves volatile state/flags and replays MOVZX with frame-pointer unwind metadata; offline eleven-stage unwind checks pass. Capture before inline conversion; preserve earlier Event3 snapshot precedence."
+    },
+    {
+      "rva": "0x44C611",
+      "name": "SUNITDMG_Source128FireRollCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/melee-splash/notes/COLLIN-NATIVE-EXTENSIONS.md",
+      "notes": "Five-byte E8 to4501E0, continuation+5. Exact unique surrounding byte context in COLLIN-NATIVE-EXTENSIONS.md and plugin.cpp. Capture existing native source roll once in matching active Fill/source128 frame. Poison also retains appended owner-source vector tail and independently sampled owner duration; never substitute vector sum for separately rolled scalar. Static captured-host proof; gameplay and active-stack coexistence remain open."
+    },
+    {
+      "rva": "0x44C679",
+      "name": "SUNITDMG_Source128LightningRollCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/melee-splash/notes/COLLIN-NATIVE-EXTENSIONS.md",
+      "notes": "Five-byte E8 to4501E0, continuation+5. Exact unique surrounding byte context in COLLIN-NATIVE-EXTENSIONS.md and plugin.cpp. Capture existing native source roll once in matching active Fill/source128 frame. Poison also retains appended owner-source vector tail and independently sampled owner duration; never substitute vector sum for separately rolled scalar. Static captured-host proof; gameplay and active-stack coexistence remain open."
+    },
+    {
+      "rva": "0x44C6E1",
+      "name": "SUNITDMG_Source128ColdRollCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/melee-splash/notes/COLLIN-NATIVE-EXTENSIONS.md",
+      "notes": "Five-byte E8 to4501E0, continuation+5. Exact unique surrounding byte context in COLLIN-NATIVE-EXTENSIONS.md and plugin.cpp. Capture existing native source roll once in matching active Fill/source128 frame. Poison also retains appended owner-source vector tail and independently sampled owner duration; never substitute vector sum for separately rolled scalar. Static captured-host proof; gameplay and active-stack coexistence remain open."
+    },
+    {
+      "rva": "0x44C749",
+      "name": "SUNITDMG_Source128MagicRollCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/melee-splash/notes/COLLIN-NATIVE-EXTENSIONS.md",
+      "notes": "Five-byte E8 to4501E0, continuation+5. Exact unique surrounding byte context in COLLIN-NATIVE-EXTENSIONS.md and plugin.cpp. Capture existing native source roll once in matching active Fill/source128 frame. Poison also retains appended owner-source vector tail and independently sampled owner duration; never substitute vector sum for separately rolled scalar. Static captured-host proof; gameplay and active-stack coexistence remain open."
+    },
+    {
+      "rva": "0x44CA47",
+      "name": "SUNITDMG_Source128PoisonRollCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/melee-splash/notes/COLLIN-NATIVE-EXTENSIONS.md",
+      "notes": "Five-byte E8 to4501E0, continuation+5. Exact unique surrounding byte context in COLLIN-NATIVE-EXTENSIONS.md and plugin.cpp. Capture existing native source roll once in matching active Fill/source128 frame. Poison also retains appended owner-source vector tail and independently sampled owner duration; never substitute vector sum for separately rolled scalar. Static captured-host proof; gameplay and active-stack coexistence remain open."
+    },
+    {
+      "rva": "0x4B1BA0",
+      "name": "D2GAME_HandleHeldItemToEmptyBelt9Bytes",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/belt-refusal-implementation-20261101.md",
+      "notes": "Captured D2RLoader-hosted corpus; continuous [4B1BA0,4B1E4D),685 bytes,SHA25676F98FCF4BD9C382A91CD548A3289542BC1E05B0520485B751307983D21C9D4B. Nine-byte packet body constructs cursor->mode2 belt state and calls existing-state batch471E90 at4B1C2C,count1,flag0. Success535F60 at4B1E1F uses action0,flags400 and marks dirty once. No additional explicit4000clear in this body; no transitive absence claim. Fields/state/move/publication proven; initialized runtime opcode table registration not newly attested. Static evidence and offline adapter only."
+    },
+    {
+      "rva": "0x4B3780",
+      "name": "D2GAME_HandleHeldItemBeltSwap13Bytes",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/belt-refusal-implementation-20261101.md",
+      "notes": "Captured D2RLoader-hosted corpus; continuous [4B3780,4B3AA2),802 bytes,SHA256C83E52508F8F3B46B8881858D564AF8E9B3CD0BFC6C8D38BBDAF46524CAD605E. Packet sourceGUID+1,targetGUID+5,slot+9. Existing-state471E90 at4B3829,count2,flag0 submits IDs[source,target],old[cursor,belt],new[belt,cursor]. Publishes former belt item to cursor at4B3A29 then source to belt at4B3A74; both action0,flags1000,dirty once. Fields/state/move/publication proven; initialized runtime opcode table registration not newly attested. Static evidence and offline same-owner adapter only."
+    },
+    {
+      "rva": "0x44351A",
+      "name": "ITEMS_EtherealMaximumBaseStatCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/item-durability/notes/ethereal-maximum-20261031.md",
+      "notes": "Captured D2RLoader-hosted image: complete E8 A1 13 EB FF call to STATLIST_GetUnitBaseStat 0x2F48C0 with RCX=item from RDI, EDX=73 and R8D=0. Returns to 0x44351F; signed halving plus one then writes stat73 at 0x443532. Unique 39-byte context 0x443510..0x443537 verified in canonical and analysis PE. Item Durability 1.2.6 candidate uses Loader-owned five-byte call-site interception and NativeStatCompat, leaving shared getter ownership untouched. Offline-only; Shattered runtime ownership/gameplay not yet verified."
+    },
+    {
+      "rva": "0x63F6F0",
+      "name": "NET_IntegratedNotifierGuardOrIdlePredicate",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Complete logical body [63F6F0,63F705),21 bytes, canonical/analysis SHA256 4535775C7EADF1A6CF7EF921451DA73D8AEDAF311B1DF4A7D510A943BD444B35. Win64 receiver in RCX; AL is true iff byte[receiver+2F0]!=0 or DWORD[receiver+14]==0. No calls or field writes. Fresh schema12/13 observations on2026-10-31 bind current notifier vtable+40 to this target and sample its complete body. Known63F820 sets guard+2F0 before tailing63F710, so this predicate leads stable state1 toward reset640260. Not a recovery-send or client-unlock acknowledgement. REA body membership contains only entry byte; exact complete instructions control. See pending-notifier-callbacks-live-20261031.json; no callable ownership or feature activation admitted."
+    },
+    {
+      "rva": "0x376B10",
+      "name": "ITEMS_CalculateGamblingBasePrice",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/compatibility-check/notes/GAMBLING-TABLE-PRICES-NATIVE-PROOF-20261007.md",
+      "notes": "Complete logical body [376B10,376DD6), 710 bytes, canonical/analysis SHA256 22a23edf9a21c653fef2e7c8cfa07e9dc7759ccf070dca219fdcbe6e73b64747. Observed Win64 ABI int32(item RCX, characterLevel EDX). Sole indexed direct caller 36F25E is gated by transaction type 2 in shared cost routine 36F0C0. Resolves normal base code at ItemsTxt+84 or actual code+80, then compares rin/amu and reads DWORD+DC at376DC0; equipment uses level/base/upgrade dynamic formula. Caller applies reduced-prices stat87 after helper return. Unique16-byte entry 4053565741544155415641574883EC30 is a candidate separate hook seam from Repair Costs Cap's36F0C0; no hook installed or runtime behavior qualified. Descriptor+DC and pinned D2RL-Plugins header support gamble-cost identification; descriptor header string is unavailable in corpus, and complete SDK/layout/lifetime admission remains separate."
+    },
+    {
+      "rva": "0x376C1E",
+      "name": "GamblingBasePriceAmuletTableBranch",
+      "kind": "patch-site",
+      "confidence": "high",
+      "source": "plugin-dev/compatibility-check/notes/GAMBLING-TABLE-PRICES-NATIVE-PROOF-20261007.md",
+      "notes": "Exact6-byte JE0F849C010000 follows code amu comparison at376C19 and targets376DC0 table-price return. In-memory candidate E99D01000090 preserves that destination and bypasses formula for every non-ring helper input, including custom misc items and zero-cost rows. Original caller still applies discounts. Candidate rejected for recommended positive-equipment-only policy; no deployable patch or runtime qualification produced."
+    },
+    {
+      "rva": "0xEE360",
+      "name": "SAVE_SendClientUploadCompletionPacket",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md",
+      "notes": "Complete 240-byte canonical body SHA256 A89DFFD0735AA4B166F78B836FBE850E2A0C45CCE0911B9EED7E526FDCF21F93. Caller-compatible ABI void(const void* packet,uint64 length). EDE00 CALL EE235 E826010000, RA EE23A: packet bytes6C0000 at caller stack RBP, length3; this is not a zero-length call. EE360 obtains native provider through63F2F0 and invokes vtable+30 atEE420, the same native path used by EDA80 atEDBCC. Proves local synchronous call ordering only, not delivery, SDK channel ordering, incoming identity or restoration authority."
+    },
+    {
+      "rva": "0xEDE00",
+      "name": "SAVE_ProduceClientCharacterAndSecondaryUpload",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md",
+      "notes": "Complete 1182-byte canonical body SHA256 6531828951E7418CE13176B3C81701F8B9649B9DC6B1D2E2A305F6B2E7678C62. Caller-compatible void() atEDA42. Select9F76B0 atEDF1E/EE0D1, size38CD70 atEDF29/EE0DC, copyA1E110 atEDF4B/EE0FE with offset0. Producer ignores returned copied DWORD: metadata association must independently require copied==capacity==selected QWORD size==owned physical-read size. Primary uploads whole copy atEDF5A. Secondary loop EE19D takes actual full sector length from uint16 header+10 and advances aggregate offset by that length; no added header size. Empty-secondary fallback EE1BA/EE1C6/EE1D2 uses synthetic stack headers and cannot inherit a physical receipt. Every branch precedes genuine completion EE235->EE360. Selected native objects are borrowed; read-incarnation custody does not prove universal object generation."
+    },
+    {
+      "rva": "0x40679E",
+      "name": "SERVER_ClientUpdate_CoreScheduledCallbackCaller",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md",
+      "notes": "Canonical CALL5 E8FD260000 ->408EA0 with RCX=current game from RDI. Two matching passive PID54056 reads resolve actual E84F4EA203 ->native3E2B5F2 FF2570F6FFFF ->cell3E2AC68 ->Core814CE0, complete52 bytes SHA59D10DE638AE300B144733C691E441FA40AFEFBADAD2A559D85D1927A5AE4C98 in actual Core SHA2A868D013D2E0830BD2D9E04B918B19E46A73CF726C833E70D089B948FDEB5A2. Core wrapper calls493800 before originalcell6FD578 ->native408EA0, then2F0D90. Executor493800 publishes scheduledthread7DF084 and brackets SDKcallbacks with TLSgame1C38; queue mutex released before callbacks, so this proves callback placement/context only, not native game/client lifetime. Receipts reload-host-scheduler-original-live.json and reload-host-scheduler-caller-live.json; runtime unchanged, nativeAdmitted=false."
+    },
+    {
+      "rva": "0x531180",
+      "name": "SAVE_AttachModernDecodedPlayerToClient",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md",
+      "notes": "Complete [531180,5311E9),105 bytes,SHA256 C6EE97C0DCB5D284DA9595BD2D2E7B5E36C77A783A981F79CD1894EE1C09433E. ABI(game,player,client); modern parser CALLs 53248B E8F0ECFFFF and 532BBC E8BFE5FFFF precede decoder terminal52EFE1. Calls486190(client,player) at53119B E8F04FF5FF, then4911A0 and other initialization helpers. Proves early cache attachment, not pending-client lifetime or usable join."
+    },
+    {
+      "rva": "0x486190",
+      "name": "SERVER_SetClientCachedPlayer",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md",
+      "notes": "Complete [486190,48620E),126 bytes,SHA256 162EFAD95390FDA4BFA9AB65DCF7460491F21DA22E8BD33BE4128125C1AFBE77. ABI(client,player); nonnull player writes type+26C at4861CB, GUID+270 at4861E0 and player pointer+278 at4861E6 (4889BB78020000); null branch clears cache. Called during modern header parsing before terminal. Installed Core getPeerPlayer worker4578D0 selects authenticated full-ID client and checks its game/cache/type/GUID before issuing an opaque handle at457B97->41B4D0. No handle cast, native lifetime or GUID-table registration authority implied. Five live code windows independently matched in reload-early-peer-provider-live.json."
+    },
+    {
+      "rva": "0x4838A0",
+      "name": "SAVE_ReceiveClientCollection_Payload",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md",
+      "notes": "Complete [4838A0,483B1A),634bytes,SHA2569D4EB9E49C894B11931249C9CEAB94FF193AFF35D5BF8A4BD53F6CBB1529058C. bool/AL(uint32 fullClientID,const void* payload,uint64size,bool newEntry); fullR8 size retained, upperreturnbitsunspecified. ResolvesID by2AAECA0lowbytebucket/fullDWORD+0/next630. Newentry appendszero24-byte descriptor/count; copies into ownedlastrecord via07AB30 and12D3660; append mayreplace/free buffer. Zero-sizeexistingrecord OR8 client+4E0. Nativeopcode6C CALL51A4FF(E89C93F6FF), sizecallerzeroextendedBYTE, newentrynormalizedbool. No physicalFileID/SaveObjectorigin in descriptor."
+    },
+    {
+      "rva": "0x485320",
+      "name": "SERVER_FindClientByFullId",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md; plugin-dev/stack-manager/prototype/src/magic_member_persistence_native.inc.hpp",
+      "notes": "Complete [485320,485346),38bytes,SHA256D6691AE7D914A6A8195A898CF35C5BF1EB8C24EFDA9560860BABEF93774D4847. void*(uint32fullClientID); bucket2AAECA0 indexedlowbyte thencomparesfullDWORDclient+0/follows+630. Returnsclient/null, no mutation or lifetimelease. ExistingFinalExitDispatch::LookupClient addsfaultguardonly."
+    },
+    {
+      "rva": "0x409391",
+      "name": "SERVER_ClientInitialLoad_ReadyGate",
+      "kind": "patch-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md",
+      "notes": "Native[409391,4093AA),25bytes SHA3028272D4CA8F3E397A3249DACC563D34C14F7F1384E3EFFF11624BD69CE032A. State1/noattachedplayer gate testBYTEclient+4E0,8; clear jumps4094C0/nextclient without decode/statechange/collectionrelease. Set path RCXclient,RDXgame CALL4093A5 canonicalE82408A203->unresolved3E29BCE. PassiveBKVincePID54056 actualprefix20matches butCALL E84021A203->3E2B4EA FF25cell3E2AB20->Core822FC0 (actualCoreSHA2A868D013D2E0830BD2D9E04B918B19E46A73CF726C833E70D089B948FDEB5A2). RuntimeCoreforwarding unqualified; canonicalthunknotadmitted. Schedulerbody[408EA0,40950D),1645bytes SHA5D46E49526890FAB2F9EFA2E0E36623674E5CBEB915D452B38C2FA468736FE12. Completionhold/release anddisconnectlifetimestillunqualified."
+    },
+    {
+      "rva": "0x484FE0",
+      "name": "SAVE_ClientCollection_RecordPayload",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md; plugin-dev/stack-manager/prototype/src/native_save_natural_read_native.inc.hpp",
+      "notes": "Complete [484FE0,485069),137 bytes,SHA256ED7233F39A7280735BE682D739B7C24AFEBDD10CB09BDF06B5052A6FF0D2D75F. void*(client,uint64index); compares index with QWORDclient+288count, returns0 outofrange; descriptorsclient+280,24bytestride,payload+0,QWORDlength+8,encodedcapacity/ownership+10. Natural41DF7E(E85D700600) selects index0; modern41E03B forwards actual payload. Descriptor observation is not receive-generation/FileID authority."
+    },
+    {
+      "rva": "0x485070",
+      "name": "SAVE_ClientCollection_RecordLengthLowDword",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md; plugin-dev/stack-manager/prototype/src/native_save_natural_read_native.inc.hpp",
+      "notes": "Complete [485070,4850F9),137bytes,SHA256222EB01C14F2392AA5337208E25A0E743BFD7B076074329C2E193EEBFBCBB76B. uint32(client,uint64index); same collection/index check as484FE0, returns lowDWORD of record+8QWORD length. Natural41DF8B(E8E0700600) selects0, caller sign-extends result into decoder length. Stack observer separately compares full QWORD with positive int32 length before matching input. No native bounds/atomicity/lifetime authority inferred from equality."
+    },
+    {
+      "rva": "0x52E910",
+      "name": "SAVE_DecodeModernCharacter_Record",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md; plugin-dev/stack-manager/prototype/src/native_save_natural_read_native.inc.hpp",
+      "notes": "Complete logical body [52E910,52F08F), 1919 bytes, SHA256 B1CAF4A707D12472D617C3A0584A4B706AA4A87B00B150C002FC20A1F7709325. Natural CALL41E03B E8D0081100, return41E040. int32(game,client,record,int32length,void**playerOutput,uint64opaque6,uint32opaque7,uint32opaque8,uint32saveVersion); natural options6-8 zero. Clears output at entry. Main inventory52EE17->41F0B0; terminal52EFE1->5311F0 precedes normal return and conditionally sends packets. Nonzero9 caller cleanup erases decoded player/clears output. Observation is not physical provenance, complete-format authority, usable-join or restore qualification."
+    },
+    {
+      "rva": "0x41F0B0",
+      "name": "SAVE_ReadInventory_VersionDispatch",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md; plugin-dev/stack-manager/prototype/src/native_save_natural_read_native.inc.hpp",
+      "notes": "Complete body [41F0B0,41F0EB),59 bytes,SHA2567A03DB438CB42CC70FD737EF849756AD073686AD6F433434EC9762155D8EE606. int32(game,player,section,uint32version,int32available,uint32selector,int32*consumed). Version0x47 tail4217B0; unsigned range0x48..0x69 inclusive tail421D20 preserving all args. Natural CALL52EE17 E89402EFFF supplies signed remaining recordEnd-section in arg5, selector0 in arg6. Assertion checks do not prove bounds refusal; observer separately bounds owned input."
+    },
+    {
+      "rva": "0x421D20",
+      "name": "SAVE_ReadMainInventory_ItemTrees",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/README.md; plugin-dev/stack-manager/prototype/src/native_save_natural_read_native.inc.hpp",
+      "notes": "Complete logical body [421D20,4229BA),3226 bytes,SHA2561B2507998D317CE6EEA91861F8B8D1C753540E1884D4FF0721C81D9E569AAFD7. Seven-arg ABI shared with41F0B0. Section WORDmagic4D4A/WORDprimaryCount+2/items+4. Three genuine Load43D900 CALLs primary421FCD(E82EB90100),discardedchild4222AC(E84FB60100),normalchild4224DC(E81FB40100). R9D offered remaining available, independent signed consumed-out advances cursor. Primary ordinal increments per tree; child metadata+14. Success writes whole section consumed at4229AA and returns0; null Load with positive consumption may continue. Selector0 calls41A730 at4223B2/422567; nonzero41F980 at422392/422552, broader meaning unassigned. Erase can invalidate Load returns before selected terminal; not restore authority."
+    },
+    {
+      "rva": "0x2F5810",
+      "name": "STATLIST_GetListFromUnitAndFlag_AdditionalCursesDispatch",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/additional-curses/notes/NATIVE-CONTRACT.md; plugin-dev/additional-curses/notes/native-evidence.json; plugin-dev/additional-curses/notes/core-evidence.json",
+      "notes": "Byte-exact native function [2F5810,2F58B4), ABI void*(unit RCX,int32 flags EDX), flags20h traverses normal root+90h/list+68h. Additional Curses 0.1.1 uses an SDK entry hook and exact caller-return filtering: canonical433FF7 or Core3F1697 (audited public1.3 SHA AE1EA9B7F97AF5B89A550281E6A6C6B6E9C74E73AC8759E6558B40E751428CD0) / Core3E77B9 (audited beta1.3.1 SHA2A868D013D2E0830BD2D9E04B918B19E46A73CF726C833E70D089B948FDEB5A2). Core selector slot67C658 /6FED10 must point here and carry native RVA2F5810; full provider bodies and metadata independently witnessed. RSI is ApplyArgs only for admitted callers; other callers forward through SDK trampoline. Refusal drops getter return then enters proven parent epilogue4341C2 /Core3F1641 /Core3E7762. Real copied Core epilogues executed with matching stack/cookies offline; gameplay unqualified. Core RVAs are provider-relative evidence, never main-image addresses or version allowlists."
+    },
+    {
+      "rva": "0x433FF2",
+      "name": "D2GAME_ApplyCurseStateStatList_SelectCurseCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/additional-curses/notes/NATIVE-CONTRACT.md; plugin-dev/additional-curses/notes/native-evidence.json; plugin-dev/additional-curses/scripts/extract-native.py",
+      "notes": "Unique fully decoded parent [433D20,4341DC). Five-byte E81918ECFF CALL targets2F5810; RCX target,RDX flags20h,RSI ApplyArgs*. Source+0,target+8,skill10,level14,duration18,stat1C,value20,state24,callback28,size30h. Null enters native allocation; selected list enters native refresh/replacement. Refusal must discard the inner CALL return address and branch to parent's null epilogue4341C2,not return null to the selection branch. Static ABI proof plus isolated relay fixture only; real effect lifetime and gameplay remain unqualified."
+    },
+    {
+      "rva": "0xA121F0",
+      "name": "TXT_NameLinkerLookupMode",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/additional-curses/notes/NATIVE-CONTRACT.md; plugin-dev/additional-curses/notes/native-evidence.json",
+      "notes": "Unique fully decoded [A121F0,A123FE). Observed int32(const linker*,const char* name,int32 mode),Win64 RCX,RDX,R8D. Concrete ItemStatCost consumer3B5D87 supplies authoritative DataTables+1270 linker,operand name,and mode0; returns resolved row ID in EAX. Additional Curses borrows loaded linker within synchronous applicator,checks count and ushort row ID,and never caches native pointers. No legacy pointer/ABI transfer."
+    },
+    {
+      "rva": "0x2F2D50",
+      "name": "STATLIST_PostList_NormalChainInsertionWitness",
+      "kind": "branch-site",
+      "confidence": "high",
+      "source": "plugin-dev/additional-curses/notes/NATIVE-CONTRACT.md; plugin-dev/additional-curses/notes/native-evidence.json",
+      "notes": "Unique fully decoded [2F2D50,2F2DBE) insertion block. New normal list becomes extended-root+90h head; list+68h links former head; parent+78h and target+0 are set natively. Flag20h lookup2F5810 selects this normal chain. Chronology here is insertion order,newest first; oldest selection means last eligible list,not the expiry time or highest skill level."
+    },
+    {
+      "rva": "0x3E3F20",
+      "name": "DATATBLS_GetCanonicalCubeRecipeCount",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/scripts/extract-pd2-witnesses.py; plugin-dev/stack-manager/prototype/src/pd2_witnesses.hpp",
+      "notes": "Canonical/analysis-identical bounded [3E3F20,3E3F59),57 bytes,SHA256 EDDD636AA4F889B44505B5C3A2698DEFE32051441170F5CE8DC12D9B84BC29E1. Observed int32(uint8 dataContext CL): calls300A90,reads qword DataTables+1578,diagnoses negative or nonrepresentable int32 count,returns EAX. Following RET at3E3F59 is outside this witness. Row-copy consumer reads the independently bounded vector directly; no getter invocation or Loader/Core0x16C layout admission."
+    },
+    {
+      "rva": "0x3E3F60",
+      "name": "DATATBLS_GetCanonicalCubeRecipeRow",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/scripts/extract-pd2-witnesses.py; plugin-dev/stack-manager/prototype/src/pd2_witnesses.hpp",
+      "notes": "Canonical/analysis-identical bounded [3E3F60,3E3FE5),133 bytes,SHA256 F20CCB4F26E53703244316597C91BEB7982A7D7353A3B85A973764C182086C5D. Observed row*(uint8 dataContext CL,int32 ordinal EDX): resolves300A90,diagnoses ordinal outside qword count+1578,returns vector base DataTables+1570 plus ordinal*158. Diagnostics do not prove a null result on invalid ordinal. Following RET3E3FE5 lies outside witness. Copied-row API must validate bounds independently; no native getter invocation or parsed field/provider layout promotion."
+    },
+    {
+      "rva": "0x3E51D2",
+      "name": "DATATBLS_PublishCanonicalCubeRecipeVector",
+      "kind": "branch-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/scripts/extract-pd2-witnesses.py; plugin-dev/stack-manager/prototype/src/pd2_witnesses.hpp",
+      "notes": "Canonical/analysis-identical bounded compiler publication [3E51D2,3E527E),172 bytes,SHA256 62E656F21702AD2FD95691E78D09C488258692BF03E8EE87E68B721325DAA312. Compile call2FF970 supplies row size158; intermediate vector then moves through3E52C0 into DataTables+1570. Replaced owned storage can be released through allocator virtual+20. Establishes canonical vector/count/stride publication only,not stable record lifetime across reloads,complete compiler ownership,parsed fields or active Loader/Core0x16C provider admission."
+    },
+    {
+      "rva": "0x3E52C0",
+      "name": "DATATBLS_MoveCanonicalCubeRecipeVector",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/scripts/extract-pd2-witnesses.py; plugin-dev/stack-manager/prototype/src/pd2_witnesses.hpp",
+      "notes": "Canonical/analysis-identical bounded [3E52C0,3E531C),92 bytes,SHA256 64A27B0E3950D58B72A48796F8E2D0072E806D76CE549D3BB861393EC6D91530. Observed vector move RCX destination,RDX source. Nonnegative ownership-tag path copies pointer+0,count+8,masked tag/capacity+10 and clears source pointer/count. RET3E531C and negative-tag branch3E531D lie outside witness; not a complete move ABI or invocation admission."
+    },
+    {
+      "rva": "0x529177",
+      "name": "D2GAME_CanonicalCubeSelectedRowBounds",
+      "kind": "branch-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/scripts/extract-pd2-witnesses.py; plugin-dev/stack-manager/prototype/src/pd2_witnesses.hpp",
+      "notes": "Canonical/analysis-identical [529177,529182),11 bytes,SHA256 0B1054C5877CDC1C117D66D0CB066A9FBEF4F04BAAFFABD419EBF95B1C6E13D1. Native selector compares saved count at rsp+34 with ordinal R15D; count<=ordinal branches to no-match529901. Identifies only selected-row bound; no full selector or parsed recipe field promotion."
+    },
+    {
+      "rva": "0x529190",
+      "name": "D2GAME_CanonicalCubeSelectedRowLookup",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/scripts/extract-pd2-witnesses.py; plugin-dev/stack-manager/prototype/src/pd2_witnesses.hpp",
+      "notes": "Canonical/analysis-identical [529190,5291AB),27 bytes,SHA256 8898223752A920FFA637A3002C300DA7C90A0269CAC47D693C2614597F3033B0. Loads context byte from native owner RSI+106 and row ordinal R15D into EDX; CALL52919A targets3E3F60; null result branches529901. Bounded canonical row-consumer witness only."
+    },
+    {
+      "rva": "0x5298DA",
+      "name": "D2GAME_CanonicalCubeSelectedRowResult",
+      "kind": "branch-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/scripts/extract-pd2-witnesses.py; plugin-dev/stack-manager/prototype/src/pd2_witnesses.hpp",
+      "notes": "Canonical/analysis-identical [5298DA,529901),39 bytes,SHA256 26B005FE965584B2A33DE3D7047356C3CB979CEADC411662B4EACC18BFEDEA38. Success sets result found byte+4 to1 and dword ordinal+0 from R15D; next-row loop increments ordinal,checks saved count and returns to529190. No parsed CubeMain fields or active provider admission."
+    },
+    {
+      "rva": "0x2F34F0",
+      "name": "STATLIST_AddUnitStatWithPositiveNotification",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md",
+      "notes": "Complete canonical/analysis-identical [2F34F0,2F358E),158 bytes, SHA256 BF954FE87F271E15433FA69267ED90D7947D2A4AEABB569893B4A8480B602C0E. Calls stat mutation at2F354F; positive delta path calls362360 then notifier2F2A80 at2F357B. Quantity stat70/layer0 is not exempted from notifier dispatch. The separately pinned Core provider reproduces this post-mutation notification. This identifies the synchronous callback boundary, not a callback-free refund or reclaim admission."
+    },
+    {
+      "rva": "0x2F2A80",
+      "name": "STATLIST_DispatchPositiveStatDeltaListeners",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md",
+      "notes": "Complete canonical/analysis-identical [2F2A80,2F2CAE),558 bytes, SHA256 45DA304A9B5A8A05487659667B57FBE2C9444E45583293C483394C6053D0C007. Under global gate3622F0 iterates48-byte listener records; virtual methods at2F2B2E(+10),2F2BCA(+20), payload callback2F2BFF CALL[vtable+8] receives copied unit/stat/delta payload. No stat70/layer0 exclusion precedes dispatch. Listener targets/ownership and particular attachment or lifecycle side effects remain outside the bounded proof."
+    },
+    {
+      "rva": "0x63F820",
+      "name": "TRANSPORT_NotifyIntegratedSend",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete canonical/analysis-identical [63F820,63F855),53 bytes. Win64 RCX integrated object; under state+14==1 writes byte+2F0=1 then tail-jumps through object's vtable+18. The observed notifier slot+10 selects this body, but current slot+18 value/target/lifetime is not yet captured or admitted. Constructor63D8BB/63D8CB proves vtable address1D46B08 only; vtable lies in data virtual tail, not raw-backed canonical bytes. Schema10 capture follows slot18 only after full notifier target/body match, records a bounded prefix and retains providerAdmitted=false. Static notifier role only; no send, callback, delivery or runtime admission."
+    },
+    {
+      "rva": "0x228696",
+      "name": "CLIENTITEMS_BulkBeltPostSendConsumeCall",
+      "kind": "callsite",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/ScrollAndDisplayNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Exact E8 25 B9 61 00 CALL843FC0 inside admitted [228637,22869B) bulk input witness. Positive-count path first sends ordinary packet at228675, then calls1A0780/1614F0; planner-false and count<=0 paths also reach this common call. Return continuation22869B remains native. UI_ConsumeCurrentInput843FC0 is independently registered with void() ABI; its complete20-byte leaf establishes flags by TEST before JE. Proposed post-send callback uses fresh read-only386FF0 planner scan, local copied scroll records and existing route3 requests, avoiding deferred TLS across native send. Relay/producer installation and runtime processing priority remain separate obligations."
+    },
+    {
+      "rva": "0xCD6E0",
+      "name": "UI_TEXT_PrependIndexedPrefix",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [CD6E0,CD7B3),211 bytes, unique canonical/analysis witness. Observed Win64 RCX mutable char buffer, EDX index, RAX original buffer. Empty text skips mutation. Resolves a localized prefix, adds ASCII30 to low index byte, formats prefix into bounded temporary storage, appends original text and copies back. Required-level consumer2BE2C5..2BE2E8 passes status at RSP+60 or mode override index0, with buffer RBP+2DF0, then appends result. Role named conservatively: live localized prefix/format bytes, color-to-RGB mapping, mode interpretation, all tooltip routes and active hooks/coexistence remain unqualified. No native-call or gameplay admission."
+    },
+    {
+      "rva": "0x2F6220",
+      "name": "STATLIST_CheckUnitStateBit",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete canonical/analysis body [2F6220,2F62CC),172 bytes, unique executable witness. Observed Win64 transport RCX unit, EDX signed state ID, EAX masked result. Calls34B870 to resolve statlist, rejects null or nonnegative statlist field1C, explicitly accepts only unsigned IDs<=1FE (510), reads DWORD at statlist+AF0+(id>>5)*4 and ANDs indexed mask selected by id&31. Unsupported inputs return zero after optional diagnostics, so zero cannot prove absent configured state without prior reader-capability validation. Full wrapper3351B0..335298 independently checks unit types0/1/3 and loaded States count before tail jump2F6220; state0 is valid. MaximumRows32768 in the name resolver is not native reader capacity. Statlist getter/mask ownership, live hooks or extended readers, snapshot atomicity, use policy activation, runtime/gameplay/multiplayer remain unqualified. Static role identification only; no new native-call admission."
+    },
+    {
+      "rva": "0x1C7A30",
+      "name": "CLIENTITEMS_UseItemBySelectorKey",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete logical body [1C7A30,1C7D19),745 bytes; canonical/analysis identical. The complete35-byte wrapper12CA00 copies3 input bytes and calls at12CA19 (sole indexed direct caller). Callback rejects uint16 input+1==FFFF, resolves local player, walks inventory comparing AX from36EDD0, requires quantity>0 for type12 and accepts mode2 or mode0/page0. True special selector1C26B0 exits; false sends opcode26 throughED1E0 at1C7C11 (mode0) or1C7CDB (mode2 with planner follow-ups). Both restore/return without a direct1C6AC0 pending marker. Getter36EDD0 checks types12/16 and returns secondary-table fields; selector is not proved an Items row code. Incoming opcode/registration, callee side effects, authority, hook ownership, pending recovery, runtime/gameplay/multiplayer remain unqualified. Static identification only; not a callable plugin contract."
+    },
+    {
+      "rva": "0x316D13",
+      "name": "DATATBLS_ItemsSpellIconFieldDescriptor",
+      "kind": "interior",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md; plugin-dev/stack-manager/notes/native-boundary-live-20261001.json; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Compiler descriptor type6 at stack RBP+978, destination offset144 at+980, zero callback+988. Name pointer at+970 is derived by canonical LEA316B7E from1CFB318; startup-only PID3748 read identifies spellicon. Both descriptor witnesses and complete client selector1C26B0..1C2B0E match canonical/analysis and live. Selector compares the record byte at144 unsigned against10, returns false when >=10 and otherwise invokes14F440 then returns true. Installed misc TXT potion rows author -1; compiled row values, special client target transitive effects/lifetime, use rejection, gameplay and multiplayer remain unqualified. This is a field identification, not native API or hook admission."
+    },
+    {
+      "rva": "0x404F7F",
+      "name": "GAME_InstallDefaultMessageDiagnosticFilter",
+      "kind": "interior",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md; plugin-dev/stack-manager/notes/native-boundary-live-20261001.json; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Instruction-bounded factory/install [404F7F,404FBF),64 bytes, canonical/analysis equal and startup live matched. Allocates8 bytes, LEA404F93 derives vtable1D13988, initializes object header, installs member+1AAA0 at404FA9 and conditionally releases previous object through slot0. Slot50 observed at92A10; complete3-byte xor al,al;ret returns false. Native failure closure4CF840 uses this slot with UUID35483EFB-BFDE-40A2-9A42-14B5456DC3AE to conditionally report Player is not in a good state. Stub bytes are nonunique and are not a standalone signature. Proves default class role only; no actual game instance, replacement-provider ownership/lifetime or item acknowledgement admission."
+    },
+    {
+      "rva": "0x63CF90",
+      "name": "NETWORK_CopySelectedSpanIntoIntegratedCircularBuffer",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md; plugin-dev/stack-manager/notes/native-boundary-live-20261001.json; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete instruction-bounded [63CF90,63D154),452 bytes, canonical/analysis identical and freshly live matched under BKVince startup. RCX circular-buffer object, RDX result iterator storage, R8 iterator anchor, R9 input begin, fifth argument input end. Loop63D0DE..63D105 copies bytes into object+10 indexed circular storage and wraps index at201h. Caller6449F1..644A40 selects min(200h-buffered,available) prefix. Proves this selected-prefix copy only; initial direct parsing, transformed integrated processor, child callback ownership and retained-use denial semantics remain unadmitted. PDATA starts mid preceding function and truncates this entry."
+    },
+    {
+      "rva": "0x10EE430",
+      "name": "NETWORK_ForwardRemotePacketToProvider",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/NativeBoundaryLive-20261001.md; plugin-dev/stack-manager/notes/native-boundary-live-20261001.json; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [10EE430,10EE43E),14 bytes; PDATA includes preceding epilogue/next function. Fresh initialized21:41UTC service interface3AEE380 vtable1FC81F0 slotB8 observed here; captured512-byte prefix matches canonical. RCX=[RCX+10],RAX=[RCX],tail JMP[RAX+B8], preserving RDX connection,R8 payload,R9 length. No copy/ack in thunk. Provider pointer/slot not captured; payload ownership and retained-use denial authority/sequence remain unproved. Host module identity is not provider admission."
+    },
+    {
+      "rva": "0x139DC70",
+      "name": "NETWORK_GetLazyServiceGlobalStorage",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete canonical [139DC70,139DCEB). TLS/epoch guard and lazy constructor1398CA0; return LEA139DC99 derives global storage35E1100. Remote packet wrapper13829F0 adds50D230 and thunk13BB960 adds50 to interface3AEE380. Read-only capture decodes matching code, never invokes this accessor or initializes service. Full live body and service initialization/ownership remain unqualified."
+    },
+    {
+      "rva": "0x141CB10",
+      "name": "NETWORK_ConstructRemoteSendInterface",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete canonical [141CB10,141CB4A). Constructor13BB2D0 passes member+50 here; stores vtable1FC81F0 and secondary vtable, retains incoming provider pointer+10 and invokes its virtual+8. Remote thunk13BB960 dispatches primary virtual+B8; raw-backed slot bytes absent. Runtime slot implementation and payload-copy/lifetime proof remain open. Canonical constructor address evidence only; no provider admission."
+    },
+    {
+      "rva": "0x5DA2A0",
+      "name": "D2GAME_CubeOperationOnePortal",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/CubeTransactionBoundary-20261001.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete canonical [5DA2A0,5DA42F). Game RCX/player RDX; output R8 unused; EAX0/1. Observed slot1 entry52A9D0 tail-jumps here. Level1/game/quest conditions; portal432CE0 destination39/class60; success5181C0(game,4,11). Full forwarded live body not captured; no rollback or runtime admission."
+    },
+    {
+      "rva": "0x5DA590",
+      "name": "D2GAME_CubeOperationTwoRandomPortals",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/CubeTransactionBoundary-20261001.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete canonical [5DA590,5DA7F6). Game RCX/player RDX; output R8 unused; EAX0/1. Observed slot2 entry52A9F0 tail-jumps here. Advances player seed before room/difficulty validation, selects unopened133..135, requires level109/difficulty2, creates class60 portal and sets selected game1A5E0/4/8 flag. Failure can follow RNG mutation. Full forwarded live body not captured; no rollback admission."
+    },
+    {
+      "rva": "0x5DA430",
+      "name": "D2GAME_CubeOperationThreeFinalPortal",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/CubeTransactionBoundary-20261001.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete canonical [5DA430,5DA589). Game RCX/player RDX; output R8 unused; EAX0/1. Observed slot3 entry52A9E0 tail-jumps here. Requires level109/difficulty2/unset game1A5EC, creates destination136/class60 portal, sets interaction byte and flag. Full forwarded live body not captured; static role only."
+    },
+    {
+      "rva": "0x5DA800",
+      "name": "D2GAME_CubeOperationFourCountedPortal",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/CubeTransactionBoundary-20261001.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete canonical [5DA800,5DA973). Observed slot4 wrapper52AA00..52AA1F derives RCX game,RDX player,R8D counter key=descriptor DWORD0,R9D destination=BYTE0C,fifth DWORD count limit=BYTE0B. Requires town; positive-limit check can allocate via5D88B0; creates class60 portal and increments count if object returned. EAX0/1 does not guarantee no mutation. Full forwarded live body not captured."
+    },
+    {
+      "rva": "0x5D88B0",
+      "name": "D2GAME_GetOrInsertCubeOperationCounter",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/CubeTransactionBoundary-20261001.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete canonical [5D88B0,5D8A30). RCX map*,RDX DWORD key*,returns DWORD value*. Initializes buckets, hashes/searches key, allocates16-byte node with key+8/zero value+0C on miss, increments map size and may rehash. Called by5DA800 before portal creation and after success; not a read-only lookup. No map rollback proved."
+    },
+    {
+      "rva": "0x641D20",
+      "name": "SERVER_DispatchPacketSpanToClientTransport",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md; plugin-dev/stack-manager/notes/NativeBoundaryLive-20261001.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [641D20,641E3D), live/canonical match. RCX transport*,EDX client ID,R8 begin/end span*. Initialized23BC4D0 object vtable1D46BD8 slot28 observed here. ID0 conditional integrated644870; nonzero client lookup then13829F0(connection,begin,length),13BB960 virtual slotB8. No delivery acknowledgement; unknown client returns without sending. Final service target/all-route payload ownership unobserved; opcode7C authority/sequence and denial gameplay unproved."
+    },
+    {
+      "rva": "0x12DD20",
+      "name": "CLIENT_HandlePacket7CUnitPendingClear",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PendingRecoveryLive-20261001.md; plugin-dev/stack-manager/notes/pending-recovery-live-20261001.json",
+      "notes": "Complete [12DD20,12DD42), void(packet*), copies6 bytes and calls1C6A10. Initialized 2026-10-01 BKVince registration: opcode7C, length6, null auxiliary, descriptor22BC7E0 derived from matching dispatcher131710. Wrapper and clear-chain bodies match canonical, but downstream9F270 lookup is Loader-patched. Registration is observed, provider admission and denied-use round trip remain open. Earlier opcode42 pairing is disproved;42 dispatches12CA80 instead."
+    },
+    {
+      "rva": "0x12CA80",
+      "name": "CLIENT_HandlePacket42CursorCleanup",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PendingRecoveryLive-20261001.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [12CA80,12CAA2), void(packet*). Copies6 bytes and calls1C3060. Initialized 2026-10-01 BKVince descriptor22BC270 registers opcode42,length6,null auxiliary here. Both wrapper and receiver match live/canonical/analysis bytes. This is cursor cleanup, not retained-item pending-state acknowledgement."
+    },
+    {
+      "rva": "0x1C3060",
+      "name": "CLIENT_ReceiveLocalPlayerCursorCleanup",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PendingRecoveryLive-20261001.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [1C3060,1C311E), void(packet*). Reads type+1/GUID+2, resolves9A5D0 and requires identity equal local player8B2D0/9A480. Obtains inventory34A360 and cursor388A70; if present clears cursor389990, refreshes14F550, removes client item9B290 and notifies10F470. Registered opcode42 wrapper12CA80 calls this. Never use as a retained-item policy-denial unlock."
+    },
+    {
+      "rva": "0x529090",
+      "name": "D2GAME_SelectCubeRecipe",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/CubeRecipeImplementation.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Code [529090,52992A), embedded switch table through529964. ABI result*(result*,game*,player*,matchedInputs*); both exits retain result pointer inRAX, cookie helper12D1150 preservesRAX. Output DWORD recipeIndex+0 and BYTE found+4. Native caller4F2711 reads found at4F2716 before producer4F27BD; no-match writes only found0 at529906. Physical item count compared to recipe+0C at529227 before seven ingredient matcher calls5298CA->529D50. Optional StackManager block_stacks read-only guard owns first25 instruction-aligned bytes only; loaded row layout/output consumer and atomic consume_required transaction are not established by this guard. Static/offline evidence, gameplay not qualified."
+    },
+    {
+      "rva": "0x4F2490",
+      "name": "D2GAME_ProcessCubeTransmutationRequest",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/CubeRecipeImplementation.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [4F2490,4F2806). RegistersRCX game,RDX player,R8 request,R9B retry; resultEAX. Validates Cube contents and box code then calls529090 at4F2711 with result local,game,player,matchedInputs. found0 reaches result1 refusal4F27C6; retry0 schedules retry path; retry1 calls5269C0 at4F27BD and ignores producerRAX. Entry not hooked by StackManager; context4F2701..4F2728 proves selector ABI and pre-producer refusal. No new packet-size/dispatch/client-pending contract inferred."
+    },
+    {
+      "rva": "0x53D850",
+      "name": "D2GAME_PurchaseVendorItem",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [53D850,53EEE7), int32(game*,player*,vendor*,uint32 itemId,uint32 page,uint32 xy,const State16*,uint32 price,uint8 identify,uint8 repeat,uint8 automatic). Caller argument/result spans4B23F3/5F and4C474F/70; Ghidra void inference is incorrect, EAX returned/compared4. Nineteen-byte entry ends53D863. Stack Manager1.2.23 scopes the new-item purchase four-CALL adapter; no pricing/stock-control rewrite. Placement53E4E9 precedes publication53E691, conditional identification53E6AD, notification53E6EE and payment53E702. Failure restores finite stock or deletes duplicate before native result1/completion; repeat requests require belt mode2, not backpack. Offline native proof only; actual vendor interaction/client completion/persistence remains unqualified."
+    },
+    {
+      "rva": "0x386712",
+      "name": "INVENTORY_BackpackPageToOccupancyGrid",
+      "kind": "instruction-span",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Aligned [386712,386725) in3865B0: page BYTE from stackarg loaded EDX, adds2 then calls38B070 with inventory RCX and descriptor R8. Page0 therefore grid2. Stack Manager1.2.23 guards this mapping independently of the grid layout helper before borrowing existing backpack occupancy. No native allocation or grid write by the local planner. Lifecycle drift refusal covers this span."
+    },
+    {
+      "rva": "0x38B210",
+      "name": "INVENTORY_CheckOccupiedGridRectangle",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [38B210,38B297): grid header width/height bytes+10/+11 and cell pointer array+18; indexes row-major y*width+x. Combined with full38B070..38B206 establishes inventory grid pointer+20, uint64 count+28 and entriesstride20. Stack Manager1.2.23 copies existing grid2 occupancy into its local256-byte x*16+y mask, bounds grid dimensions1..16; native batch stage/final validation rechecks actual placement. This witness is not an arbitrary-grid allocation API."
+    },
+    {
+      "rva": "0x46E360",
+      "name": "INVENTORY_PlannedGridFootprintFits",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [46E360,46E44C), bool(unused plan*,item*,State16*,descriptor*,mask*). Dimensions from371850; descriptor byte0/1, State16 uint16 x/y+8/+A. Rejects zero footprint, out-of-grid or crossing footprint, any nonzero mask cell; no mask writes. Fixed mask index x*16+y, no intrinsic <=16 descriptor guard. Local oracle executes native body; dimension lookup mocked. Not a standalone arbitrary-grid API or live ownership qualification."
+    },
+    {
+      "rva": "0x38C730",
+      "name": "INVENTORY_ReservePlannedGridFootprint",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [38C730,38C7CE), void(item*,State16*,mask*). Gets width/height through371850; writes byte1 to every footprint cell using (x+dx)*16+y+dy. No bounds or occupancy validation. Call only after footprint fit and <=16 grid admission for a256-byte local mask. Real body exercised in local oracle with exact footprint/canary checks; no production hook added."
+    },
+    {
+      "rva": "0x473210",
+      "name": "INVENTORY_BuildOptionalPlacementPlan",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [473210,4734E4), outputPointer(outOptional*,owner*,inventory*,game*,auxiliaryItems*,uint64 count). Value size4888, engaged byte+4888. Initializes through46C690, stages current cursor and linked inventory items through473ED0 with flag1, then validates against itself via46E050 flag0. Failed stage/final validation clears engaged; success copies4888 bytes. This establishes snapshot control flow, not side-effect freedom of its full transitive context traversal. Native471500 uses it before batch staging and commit."
+    },
+    {
+      "rva": "0x46C690",
+      "name": "INVENTORY_InitializePlacementPlan",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [46C690,46CB4E), returns output plan pointer. First six arguments mirror473210 without optional engaged byte. Stores owner/inventory/game+0/+8/+10, traverses character context, builds24-byte descriptors via3C6D80 and clears three256-byte masks at+94/+194/+294. Backpack descriptor+64, Cube+7C, stash+4C. Clears separate pointer/constraint arrays; auxiliary item constraints accumulated by46D750. Research only; context traversal is not yet admitted as a side-effect-free external planner."
+    },
+    {
+      "rva": "0x46D750",
+      "name": "INVENTORY_AccumulatePlannedItemRestrictions",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [46D750,46D83D). Arguments item, uint16 unique-ID list, uint64 unique count pointer, quest code/restriction records, uint64 quest count pointer; scalar return not consumed. Eligible quality7 native unique IDs append as WORDs; loaded Items+13A nonzero appends item code DWORD and restriction byte in8-byte records. No capacity check in this body. Plan+3C00 is not a generic item-pointer list. Called by scratch initializer and successful stage473ED0."
+    },
+    {
+      "rva": "0x46E166",
+      "name": "INVENTORY_FinalPlanBeltLayoutCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "In full final validator [46E050,46E2AB), void3C8400(bank CL,type EDX,variant0 R8D,local output R9) copies0x120 bytes. At46E16B only byte+4 is read for the disallowed occupied-slot loop. Stack Manager1.2.19 redirects this singleCALL through exactownedrelay; scoped previous/proposed plans supply logical and preserved row counts. Existing same-slot upper identities remain, saved restoration includes proposed occupancy, new locked-slot arrivals force logical count so native validator rejects. Supports returning to ordinary rows after larger custom rows. Only localbyte4 changes; native boolean/otherrecordbytes unchanged. NestedTLS restored by __finally. Wholevalidator admitted as prefix/tail plus ownedCALL; fullcopyhelper admitted. Offline proof/tests; automatic selectors, manual shrink/death and runtime qualification remain separate."
+    },
+    {
+      "rva": "0x42290A",
+      "name": "D2GAME_RestoreDeferredSavedPlacementCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "In complete save-item reader [421D20,4229B9), retries retained State16/GUID after loading the item list: bool471500(owner,state,ids,1,0). Deferred result1C checked422741; saved state382D20 at42275C, validity385550 at422774, low16 coordinate>=4 at422781. Failure removes resolved saved unit at422954->48FAA0. Stack Manager1.2.17 uses the same exact owned restoration relay as41A624/41A910; native final validation precedes policy exemption; prior thread-local scope restored in __finally. Caller success/failure sequence unchanged. Offline native proof and regression/lifecycle checks; save/reload gameplay unqualified."
+    },
+    {
+      "rva": "0x42B220",
+      "name": "D2GAME_RecoverCorpseItems",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [42B220,42BCA2),2690 bytes, canonical/analysis-identical SHA256403E1D156C0A4BAE7CBF937AABCB7AD16BC5482084CFEF41BC0B234417D8C987; observed arguments(outResult,game,player,corpse). Output remaining count+0/validity byte+8 consumed by caller4B3330; scalar return not established. Captures cursor/equipment State16/GUIDs, detaches42B4BF->472590, attempts equipment/automatic destination planning via42B746/42B9B6->46DED0. Stages originals under player cursor via42B782/42B9E6->471500, then final six-argument bool471E90(owner,previousState,destinationState,GUIDs,count,flags) at42B7AB/42BA0F,count1/flags0. Partial singleton prefix must return false with surviving original cursor remainder:42B7DB/42BA3F->472590 detaches it;42BB73->471500 restores original corpse State16 with remaining live quantity. Complete final move adds original GUID once to native success list;42BC44->535F60 publishes its actual state. Final-move source adapter work does not prove belt-first selection or partial-result client publication; no reclaim installer or restoration exemption activated."
+    },
+    {
+      "rva": "0x42C110",
+      "name": "D2GAME_CreateCorpseAndDisplaceBelt",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Complete [42C110,42CDB7), void*(game*,player*,int32 x,int32 y,room*). Fifth pointer read RBP+750; caller spans42A678..42A69E and42E23D..42E263 confirm widths. Return from RSP+58, zeroed42C5BB then set from corpse allocator490410 at42C65B; reaches RAX at42CC40 or42CC52->42CD91. Native captures cursor/equipment and plans displaced upper-belt potions against backpack using copies42C38B/42C3A6. Count comparison42C3E8..42C3F7 precedes move471E90 and detach472590. Remaining upper items take ground fallback/delete42CB32; original cursor/equipment count goes to corpse at42C827. Stack Manager1.2.22 hooks aligned21-byte entry, preserves five args/pointer return and scopes these two copies to retain occupied rows before collection. Native settings/failure fallback unchanged; client replay, corpse recovery and gameplay remain unqualified."
+    },
+    {
+      "rva": "0x53E4E9",
+      "name": "D2GAME_PurchaseNewItemPlacementCall",
+      "kind": "callsite",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md#new-item-purchases-planning-and-payment-boundary--2026-09-30",
+      "notes": "In full53D850..53EEE7, bool471500(player,State16*,GUID*,1,0) places duplicated permanent stock or detached finite stock. False53E4F0->53ECEB deletes duplicate53ED25 or restores finite stock53ED74->389270, then native completion. Gold debit5416D0 at53E702 is after successful placement/publication, not before. Initial/repeated planners53E0E8/53E767->46DED0 traverse current whole-item belt selector46DF77 and ordinary inventory fallback. Partial distribution followed by false is unsafe because caller deletes/restocks remainder. Stack Manager1.2.23 redirects this CALL for complete restricted-scroll backpack batches; staged copies plus original quantity1 pass native471500 together, failure restores source quantity before this caller handles stock cleanup. Generic partial placement remains forbidden. Gameplay qualification is separate."
+    },
+    {
+      "rva": "0x42C38B",
+      "name": "D2GAME_Death_CopyOldBeltLayout",
+      "kind": "callsite",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md#death-preservation-implementation--2026-09-30",
+      "notes": "Five-byte CALL3C8400 inside42C110..42CDB7. Four-argument native0x120-byte copy to RBP-20; count RBP-1C. Stack Manager1.2.22 uses the existing occupied-mask relay, preserving all other bytes. Paired default layout42C3A6; count scan42C3E8..42C511 precedes move/detachment. Native settings/failure remain native; no gameplay qualification."
+    },
+    {
+      "rva": "0x42C3A6",
+      "name": "D2GAME_Death_CopyDefaultBeltLayout",
+      "kind": "callsite",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md#death-preservation-implementation--2026-09-30",
+      "notes": "Five-byte CALL3C8400 inside42C110..42CDB7, bank CL/type2 EDX/variant0 R8D/output RBP+100 R9. Count RBP+104 begins upper-item scan; Stack Manager1.2.22 temporarily retains occupied rows through native-first copy adapter. Preserved items never enter the displacement lists; no original equipment/corpse logic is replaced. Client replay and persistence remain unqualified."
+    },
+    {
+      "rva": "0x5269C0",
+      "name": "D2GAME_CreateCubeOutputs",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/ManualScrollTransferNativeResearch.md; plugin-dev/stack-manager/notes/balance-native-evidence.json",
+      "notes": "Full logical body [5269C0,5281A6), Windows x64 item*(game,player,recipeRow,matchedInputs). Caller412AD0 consumes returned item pointer at412AE9/412AFE; ordinary recipe caller4F27BD ignores it. Detaches inputs526B2F->472590, builds up to three outputs plus released socket items, then deletes committed original inputs527D0A->43EC10 before placement. Output placement527E1B->471500 false deletes527E3D; no free cell deletes527F8A. Released socket output placement5280A7 false/no cell deletes52810A. Native zero-success branch527C7B restores saved State16/GUID inputs at528165 but does not prove rollback for already generated successful outputs. Cube Quick Move owns free-grid CALLs527DC2/528053. Research only: a generic refusing/partial distribution adapter here could lose outputs after input consumption; no Stack Manager output hook is admitted."
+    },
+    {
+      "rva": "0x53DE78",
+      "name": "D2GAME_ShopBulkMergeSelectionCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md",
+      "notes": "Vendor bulk branch [53DE37,53E0D9), in complete purchase producer [53D850,53EEE7). Calls386840 at53DE78 and386E00 at53DEA5 with (inventory,source,previous), pointer result. Max reads3719E0 at53DF9B/53DFCC/53DFEB validate room and min(room,affordable units). Source temporarily quantity1 for unit price at53DEF9, restored53DF5F; payment5416D0 at53E017, credit2F34F0 at53E040, quantity publication47A190 at53E078, result480750 at53E0C5. Stack Manager1.2.16 redirects only five selection/maximum CALLs through exact owned relays and scopes existing selector policy to purchasing player/source. Equipment limits and payment/status remain native. Offline proof/tests; actual purchase/gold/pending behavior remains gameplay qualification."
+    },
+    {
+      "rva": "0x2C7290",
+      "name": "UI_SendHeldItemToCube",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/ManualScrollTransferNativeResearch.md",
+      "notes": "Complete body [2C7290,2C73CB), Windows x64 void(widget,inventory,source,cube). Resolves Cube grid3, refuses trade panel, calls free-grid3865B0 at2C7306, sends opcode2A at2C737A, then marks source pending through1C6AC0 at2C7382. Native grid caller2C81D0 performs pending/eligibility checks first. Stack Manager1.2.15 preserves that caller, hooks this entry with aligned35-byte expected prefix and admits full prefix/suffix around Cube Quick Move-owned CALL2C7306. Private singleton distribution validates cursor and owned loaded-code box target before each unit; final unit keeps its identity. Server native counterpart4C2050..4C230E supports flag4000 clear and action1/flags2 publication. Offline evidence/tests only; UI, provider placement order and multiplayer await gameplay."
+    },
+    {
+      "rva": "0x2BDAA3",
+      "name": "UI_BeltDescriptionSlotCountCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Five-byte int32(bank:uint8,beltType:int32) CALL to3C8250. Description branch [2BDA7D,2BDB1F) checks primary item type19, validates belt type0..6, computes count(actualType)-count(type2), and omits the native bonus line when zero. Stack Manager1.2.14 redirects only this first CALL; configured suppression returns the same type2 baseline as the untouched second CALL. Storage getters and quantities remain native. Full argument/result guards exclude the SDK-owned CALL, whose relay bytes/target are independently validated. Copied SDK class/code and loaded Items+12E/+80/+140 supply the added description; no opaque-handle cast or client hash-lookup dependency. Offline proof/tests only; visible tooltip placement remains a gameplay check."
+    },
+    {
+      "rva": "0x471C31",
+      "name": "D2GAME_PickupGroundBeltSelectionCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Five-byte call to 3862D0 with (playerInventory, sourceItem, int32SlotOut, false). Eligibility and arguments [471BDF,471C31), result [471C36,471C4C). Success builds belt state through 382D00; refusal enters native inventory fallback at 471C4C. No inventory space redrops the original item at 471CD4; placement refusal redrops at 471DE9. Complete containing flow [471950,471E82) is already reproduced in the research manifest. Stack Manager 1.2.12 redirects this CALL through an SDK-owned relay for whole-source admission at the exact native/provider-selected slot, without owning the selector entry or changing the Auto Pickup v1 contract. Offline native evidence and adapter/lifecycle tests; gameplay remains open."
+    },
+    {
+      "rva": "0x4C70B0",
+      "name": "D2GAME_TransferStoredItemToBelt",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SharedStashTransferNativeResearch.md",
+      "notes": "Actual complete logical body [4C70B0,4C7687), int32(game,player,packet,length). Requires21bytes: sourceGUID+1,optional source-ownerGUID+5,source page+9,sourceXY+13,beltXY+17. Ordinary proxy withdrawal validation4F6130(...,sourcePage,0); requires empty cursor, recomputes3862D0 slot and matches submitted destination. Removes source through472590 at4C74E5, places under player471500 at4C752F, restores original owner/state at4C7550 on failure. Success publishes old-owner removal with action20/flags4 at4C75D6 then player belt insertion with action0/flags400 at4C7619; dirties both. Selector rejection calls diagnostic4E2C00, whose body returns1 and supplies no source pending-clear packet. Do not infer safe native rejection/recovery. Product consumer: Stack Manager final-unit ordinary shared-stash-to-belt transfer, using pre-pending private requests. Not the adjacent purchase handler4C6C90 or indexed unwind fragment. Canonical/analysis proof; gameplay unqualified."
+    },
+    {
+      "rva": "0x36A8D0",
+      "name": "ITEMS_MatchBeltColumnType",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Complete canonical/analysis-equal body [36A8D0,36A9FC), Windows x64 int32(itemA,itemB), full EAX result. Resolves both native item types through372C90; normally compares types, with additional ItemData+4E subtype equality for book/scroll types12/16. Ordinary selector3862D0 calls at3864E0 for occupied bottom cells before scanning that column upward. Indexed consumers also227381,387600,38A210. Stack Manager invokes the admitted predicate, retaining native and loaded-mod semantics; this is not full item-stack compatibility. Offline proof only."
+    },
+    {
+      "rva": "0x386FF0",
+      "name": "INVENTORY_PlanBeltRefillBatch",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Complete logical range [386FF0,3873D6). Windows x64 int32(player,GUIDsOut:uint32*,oldPositionsOut:uint32*,beltSlotsOut:uint8*,countOut:int32*). Enumerates eligible ordinary inventory items, calls excluded-slot selector3873E0, appends each returned16bit slot to a local pointer/count/capacity vector, and writes parallel output arrays without moving items. UI caller228637..22869B sends only a positive returned count. Stack Manager wraps the synchronous planner to account for whole quantities already reserved in the same batch. Offline native proof; no gameplay qualification."
+    },
+    {
+      "rva": "0x4AC160",
+      "name": "D2GAME_ValidateAndMoveBeltRefillBatch",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Complete logical range [4AC160,4ACE19), Windows x64 int32(game,player,packet,length). Requires98bytes, count byte1 in1..16, six-byte entries with GUID+0,oldXY+4,newBeltSlot+5. Resolves and validates stored beltable items, recomputes each destination through3873E0 with a local16bit excluded-slot vector, then invokes471E90 for the complete old/new-state batch at4AC747. Stack Manager scopes reservation-aware admission around this handler and leaves native validation, commit, publication and return transport intact. Packet dispatch registration is not promoted by this body proof."
+    },
+    {
+      "rva": "0x15EEC0",
+      "name": "STACKMANAGER_SelectedGridTransferOwner",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SharedStashTransferNativeResearch.md",
+      "notes": "Complete body [15EEC0,15EF6C), Windows x64 Unit*(bool checkDepositBlocked). Calls optional selected-GUID resolver [15EDB0,15EEC0), resolves the GUID through09A5D0(id,0), or returns local player when absent. True additionally checks deposit blocking; false is appropriate for withdrawing. Native caller2C73D0..2C74C5 passes destination player to15F8B0 for shared-to-inventory/Cube movement, so its owner argument cannot identify source. Stack Manager1.2.8 invokes this getter for sourcePage4, validates selected ordinary proxy and actual source parent, and rechecks ownership/availability server-side. Full bodies are strict read-only product witnesses; no new hook. Canonical/analysis equality and caller ranges are retained in balance-native-evidence.json. Offline qualification only."
+    },
+    {
+      "rva": "0x15F8DD",
+      "name": "STACKMANAGER_GridTransferQuickIntent",
+      "kind": "instruction-range",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SharedStashTransferNativeResearch.md",
+      "notes": "Native planner15F8B0 has six arguments: item, destinationOwner, uint8 destinationPage, uint8 sourcePage, uint8 quickMove, OptionalCell*. [15F8DD,15F8F6) captures register arguments;15FA3C..15FA69 selects stored movement. Local quick branch16008B..16011E emits opcode54; shared branch15FDD8..15FE6D emits55 using selected GUID and sourcePage4 direction. Both later mark pending at16017A. Stack Manager1.2.8 intercepts supported scroll distribution before pending, preserving native fallback and optional-cell consumption. Client source selection15FB66..15FB90 and real quick caller2C73D0..2C74C5 are retained as canonical research; read-only product spans do not include Remote Stash-owned caller CALLs."
+    },
+    {
+      "rva": "0x38BA30",
+      "name": "STACKMANAGER_PhysicalItemDetach",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md",
+      "notes": "Complete logical body [38BA30,38BBD7), int32(item*). Removes the item from its actual parent grid/list/cursor and returns success; the caller must capture owner and belt state before mutation. Stack Manager 1.2.6 observes successful belt removals here, including replacement followed by removal between pulses. Only the matching first pre-effect final-use detach is deferred. Exact bytes and canonical/analysis equality are retained in balance-native-evidence.json and pd2_witnesses.hpp; controlled adapter tests are not live qualification."
+    },
+    {
+      "rva": "0x48FAA0",
+      "name": "STACKMANAGER_EraseUnit",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md",
+      "notes": "Complete logical body [48FAA0,48FCF9), void(game*,unit*). Native item staging already borrows this deletion primitive. Stack Manager 1.2.6 observes player type0 before forwarding exactly once, forgetting session-local refill assignments without dereferencing the unit afterwards. The exact 16-byte hook prefix is part of the existing 32-byte Erase witness; complete body retained by extract-balance-research.py. This does not assert a runtime hook-owner or persistence result."
+    },
+    {
+      "rva": "0x44D535",
+      "name": "STACKMANAGER_NormalKillObserverCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md",
+      "notes": "CALL to44D570, int32(game,eventId,source,target,damage), selected after event9 setup at44D522. Stack Manager 1.2.6 queues kill credit before forwarding the five native arguments and result. This CALL is distinct from current Cast Triggers-owned44D5F2 inside the wrapper. DOT uses448F36 to5881E0 with a sixth event-context argument. Independent unique contextual witnesses are retained by extract-balance-research.py; runtime target admission requires native bytes or the specifically known SDK/Core provider contract."
+    },
+    {
+      "rva": "0x15A4A0",
+      "name": "STACKMANAGER_Socket_ClientCanSocket",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x15A4A0,0x15A680) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. ClientCanSocket contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x4F2A80",
+      "name": "STACKMANAGER_Socket_Classify",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x4F2A80,0x4F2CB6) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Classify contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x46EB00",
+      "name": "STACKMANAGER_Socket_Insert",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x46EB00,0x46EF29) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Insert contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x36C750",
+      "name": "STACKMANAGER_Socket_SocketCount",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x36C750,0x36C7A7) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. SocketCount contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x389330",
+      "name": "STACKMANAGER_Socket_ChildCount",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x389330,0x38938E) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. ChildCount contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x470CA0",
+      "name": "STACKMANAGER_Socket_Refresh",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x470CA0,0x471297) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Refresh contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x4809D0",
+      "name": "STACKMANAGER_Socket_Complete",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x4809D0,0x480ACD) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Complete contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3856E0",
+      "name": "STACKMANAGER_Socket_InsertInventory",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3856E0,0x38585A) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. InsertInventory contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x374120",
+      "name": "STACKMANAGER_Socket_SocketableType",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x374120,0x37412A) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. SocketableType contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x4FA4E2",
+      "name": "STACKMANAGER_Socket_NativeSocketCompletion",
+      "kind": "instruction-sequence",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x4FA4E2,0x4FA59D) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. NativeSocketCompletion contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x2C85E8",
+      "name": "STACKMANAGER_Socket_ClientSocketSend",
+      "kind": "instruction-sequence",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x2C85E8,0x2C8671) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. ClientSocketSend contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x4F9F40",
+      "name": "STACKMANAGER_Socket_NativeSocketHandler",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x4F9F40,0x4FA788) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. NativeSocketHandler contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Audit evidence only; the complete body is not a runtime admission or hook dependency. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x2CA060",
+      "name": "STACKMANAGER_Socket_EquipmentItem",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x2CA060,0x2CA0A3) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. EquipmentItem contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x2CACF0",
+      "name": "STACKMANAGER_Socket_EquipmentClick",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x2CACF0,0x2CB222) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. EquipmentClick contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Audit evidence only; the complete body is not a runtime admission or hook dependency. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x2CAD10",
+      "name": "STACKMANAGER_Socket_EquipmentSocketBranch",
+      "kind": "instruction-sequence",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x2CAD10,0x2CAE30) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. EquipmentSocketBranch contract supports one-unit socket staging, native attachment, publication or input routing; exact ABI and ownership conditions are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x313CE0",
+      "name": "STACKMANAGER_Socket_GemsRecord",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x313CE0,0x313D4D) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. GemsRecord contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3730D0",
+      "name": "STACKMANAGER_Socket_ItemFormat",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3730D0,0x373149) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. ItemFormat contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3143B0",
+      "name": "STACKMANAGER_Socket_RunesDescriptor",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3143B0,0x3143C4) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. RunesDescriptor contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x2D9730",
+      "name": "STACKMANAGER_Socket_ItemStatCostRecord",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x2D9730,0x2D97D9) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. ItemStatCostRecord contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D3210",
+      "name": "STACKMANAGER_Socket_PropertiesRecord",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D3210,0x3D32CF) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. PropertiesRecord contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x38AAB0",
+      "name": "STACKMANAGER_Socket_InventoryItem",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x38AAB0,0x38AB15) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. InventoryItem contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D5310",
+      "name": "STACKMANAGER_Socket_GemProperty",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D5310,0x3D53A3) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. GemProperty contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x475140",
+      "name": "STACKMANAGER_Socket_SocketApplyProperties",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x475140,0x4754B3) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. SocketApplyProperties contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D3670",
+      "name": "STACKMANAGER_Socket_GemPropertyDispatchWithTables",
+      "kind": "instruction-sequence",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D3670,0x3D3B64) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. GemPropertyDispatchWithTables contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D5060",
+      "name": "STACKMANAGER_Socket_ItemPropertyDispatch",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D5060,0x3D5229) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. ItemPropertyDispatch contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D4620",
+      "name": "STACKMANAGER_Socket_PropertyDispatch",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D4620,0x3D481B) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. PropertyDispatch contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x38B2A0",
+      "name": "STACKMANAGER_Socket_InventoryAppend",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x38B2A0,0x38B3A4) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. InventoryAppend contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x37CA20",
+      "name": "STACKMANAGER_Socket_CompactSerializer",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x37CA20,0x37D132) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. CompactSerializer contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CBF90",
+      "name": "STACKMANAGER_Socket_Property3CBF90",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CBF90,0x3CC1C9) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CC1D0",
+      "name": "STACKMANAGER_Socket_Property3CC1D0",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CC1D0,0x3CC342) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CC350",
+      "name": "STACKMANAGER_Socket_Property3CC350",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CC350,0x3CC44C) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect StatMinDamage. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CC450",
+      "name": "STACKMANAGER_Socket_Property3CC450",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CC450,0x3CC54C) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect StatMaxDamage. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CC550",
+      "name": "STACKMANAGER_Socket_Property3CC550",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CC550,0x3CC65B) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect StatMaxDamage. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CC660",
+      "name": "STACKMANAGER_Socket_Property3CC660",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CC660,0x3CC7B7) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Fixed152. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CC7C0",
+      "name": "STACKMANAGER_Socket_Property3CC7C0",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CC7C0,0x3CC893) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CC8A0",
+      "name": "STACKMANAGER_Socket_Property3CC8A0",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CC8A0,0x3CC973) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CC980",
+      "name": "STACKMANAGER_Socket_Property3CC980",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CC980,0x3CCA4F) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CCA50",
+      "name": "STACKMANAGER_Socket_Property3CCA50",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CCA50,0x3CCB1E) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CCB20",
+      "name": "STACKMANAGER_Socket_Property3CCB20",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CCB20,0x3CCC59) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect StatAndDurability. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CF960",
+      "name": "STACKMANAGER_Socket_Property3CF960",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CF960,0x3CFA58) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CFA60",
+      "name": "STACKMANAGER_Socket_Property3CFA60",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CFA60,0x3CFB54) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect StatWithReset. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CFB60",
+      "name": "STACKMANAGER_Socket_Property3CFB60",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CFB60,0x3CFC63) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CFC70",
+      "name": "STACKMANAGER_Socket_Property3CFC70",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CFC70,0x3CFD6F) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect StatWithReset. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3CFD70",
+      "name": "STACKMANAGER_Socket_Property3CFD70",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3CFD70,0x3D0242) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect MinDamage. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D0250",
+      "name": "STACKMANAGER_Socket_Property3D0250",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D0250,0x3D0719) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect MaxDamage. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D0720",
+      "name": "STACKMANAGER_Socket_Property3D0720",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D0720,0x3D0EB7) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect EnhancedDamage. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D0EC0",
+      "name": "STACKMANAGER_Socket_Property3D0EC0",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D0EC0,0x3D0F98) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D0FA0",
+      "name": "STACKMANAGER_Socket_Property3D0FA0",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D0FA0,0x3D109D) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D10A0",
+      "name": "STACKMANAGER_Socket_Property3D10A0",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D10A0,0x3D1179) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D1180",
+      "name": "STACKMANAGER_Socket_Property3D1180",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D1180,0x3D12A3) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D12B0",
+      "name": "STACKMANAGER_Socket_Property3D12B0",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D12B0,0x3D14D6) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Modern property callback; socket transport upper-bound effect Stat. See note for all coupled and conditional writes. Admitted by exact live callback identity and complete bytes, never executed speculatively. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D5230",
+      "name": "STACKMANAGER_Socket_Property3D5230",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D5230,0x3D5301) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Property3D5230 contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D5940",
+      "name": "STACKMANAGER_Socket_Property3D5940",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D5940,0x3D5AB6) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Property3D5940 contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D5AC0",
+      "name": "STACKMANAGER_Socket_Property3D5AC0",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D5AC0,0x3D5C5B) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Property3D5AC0 contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x3D5C5C",
+      "name": "STACKMANAGER_Socket_Property3D5C5C",
+      "kind": "data-table",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SocketStackNativeResearch.md",
+      "notes": "Continuous [0x3D5C5C,0x3D5C9C) retained by extract-socket-witnesses.py; exact bounds and SHA-256 in socket_witnesses.hpp. Canonical92777 and analysis93847 bytes equal and range unique in canonical. Property3D5C5C contract supports read-only pre-debit socket publication-size admission; loaded record layouts, serializer details and helper semantics are documented in the source note. Budget set is admitted per request; core Native set at activation. Static/offline evidence, not gameplay or persistence qualification."
+    },
+    {
+      "rva": "0x5391A0",
+      "name": "D2GAME_QueuePositionProcNotification",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/cast-triggers/notes/TELEPORT-NOTIFICATION-1112.md",
+      "notes": "void(unit,int skill,int level,u16 targetX,u16 targetY,int flag). Native589909 caller. Adds opcode9A node to unit+168/+170, no origin snapshot. Serializer53A780 reads current caster coordinates later; live Teleport trace confirms destination-origin collapse. Candidate1.1.12 intercepts caller only during pre-move proc dispatch."
+    },
+    {
+      "rva": "0x47FC60",
+      "name": "D2GAME_SendPositionSkillNotification",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/cast-triggers/notes/TELEPORT-NOTIFICATION-1112.md",
+      "notes": "void(client,u8 type,u32 id,u16 targetX,u16 targetY,int skill,u16 originX,u16 originY,u16 flag,u8 level,int proc). proc selects9A versus4D. 21 bytes, target+B/+D,origin+F/+11,flag+13. Client12BD00 relocates caster from origin before executing skill. Proven continuous47FC60..47FDC2 and serializer53A8F5..53A9ED."
+    },
+    {
+      "rva": "0x2EFB20",
+      "name": "D2COMMON_GetRoomClientObservers",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/cast-triggers/notes/TELEPORT-NOTIFICATION-1112.md",
+      "notes": "void(room,void*** clients,size_t* count), room+68 pointer and room+70 64-bit count. Native room visibility consumer48F66A..48F74C iterates client pointers. Not a D2MOO32 layout transposition."
+    },
+    {
+      "rva": "0x4C7690",
+      "name": "D2GAME_SHAREDSTASH_GridTransferHandler",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SharedStashTransferNativeResearch.md",
+      "notes": "Continuous [4C7690,4C7D4A), int32(game,player,packet,int32 bytes), expects29 bytes: itemGUID+1,proxyGUID+5,sourcePage+9,sourceXY+13,destinationPage+17,destinationXY+21,direction+25. Direction0 is player-to-proxy; opposite direction reverses owners. Proved inventory/Cube0/3 versus shared4 domain; equal pages refused. Remove-only472590 at4C798A uses source owner;471500 at4C79D3 uses destination, and rollback4C79F2 restores source. Paired publication535F60 source action20/flags4 then destination1/2; dirty both owners. Failed rollback reports without demonstrated repair. Client opcode55 field schema agrees; no new dispatch registration proof."
+    },
+    {
+      "rva": "0x4F6130",
+      "name": "D2GAME_SHAREDSTASH_ValidateProxyAccess",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SharedStashTransferNativeResearch.md",
+      "notes": "Continuous [4F6130,4F6232), int32(game,player,proxy,uint32 proxyPage,uint8 checkDepositBlocked); game is unused in body but present in callers. Checks proxy stateBA and inventory ownerGUID, then player's auxiliary record. Returns0 admissible,1 invalid proxy/state/owner,2 deposit blocked,3 page not4,4 unavailable. Native body assumes auxiliary record exists; custom caller must retain explicit non-null ownership validation. Ordinary shared proxy, not Advanced Stash D1 counter owner."
+    },
+    {
+      "rva": "0x36DEA0",
+      "name": "ITEMS_SetPublicationPage",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/SharedStashTransferNativeResearch.md",
+      "notes": "Continuous [36DEA0,36DF1F), writes supplied page byte to ItemData+5C. Grid transfer4C7690 writes old page before source removal publication and resets to0 before destination publication. This transient publication field does not move the authoritative inventory parent."
+    },
+    {
+      "rva": "0x159820",
+      "name": "CLIENT_SendManualScrollToTome",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/ManualScrollTransferNativeResearch.md",
+      "notes": "Continuous [159820,159995), void(source,target). Validates scroll type16/tome12 and matching36CDE0 value. Sends opcode29 viaEC820 at159950:21 bytes,sourceGUID+1,targetGUID+5,targetPage+9,separate targetX+13,targetY+17. Calls1C6AC0(source) at159958. No source quantity mutation, deletion or cursor detach in sender. Shape matches4C1780; table registration not newly proved."
+    },
+    {
+      "rva": "0x159CB0",
+      "name": "CLIENT_IsCompatibleScrollAndTome",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/ManualScrollTransferNativeResearch.md",
+      "notes": "Continuous [159CB0,159D15), bool(source,target) inAL. Requires source item type16,target12,matching36CDE0(item,0). Does not check available tome capacity or authoritative ownership. Widget calls at2C8679 before159820 sender at2C8698."
+    },
+    {
+      "rva": "0x4C1780",
+      "name": "D2GAME_HandleManualScrollToTome21Bytes",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/ManualScrollTransferNativeResearch.md",
+      "notes": "Continuous [4C1780,4C1936), int32(game,player,packet,int32 size), expects21 bytes. Cursor source382E30,target stored state382E10,classification4F2A80 must return1.472590 at4C1894 validates/keeps target/removes source.4786C0 at4C18D2 acknowledges PLAYER;43EC10 at4C18F0 deletes whole source;46F090 at4C1918 credits exactly1 to tome. Multi-scroll and partial retention require explicit accounting and surviving-source pending recovery. Reject wrong size before native assertion/copy pattern in any replacement."
+    },
+    {
+      "rva": "0x475900",
+      "name": "D2GAME_AddBookSkillChargeDelta",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/ManualScrollTransferNativeResearch.md",
+      "notes": "Continuous [475900,4759DB), void(player,item,int32 delta). Adds full signed delta to bound skill charges at47597E; publication at4759B5 uses low8 charge bits. Called by46F090 for existing book skills. This is not a reason to exceed Loader effective stack/charge limits."
+    },
+    {
+      "rva": "0x131710",
+      "name": "CLIENT_DispatchPacketSpan",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md",
+      "notes": "Continuous [131710,1318E2), void(span*) with begin+0/end+8. Opcodes belowAF index24-byte descriptors from base+22BBC40 derived at1317A9/1317B0; callback+0,length+8,auxiliary unit callback+10. Direct callback invoked13189B. Descriptors are in canonical.data virtual tail beyond raw backing. Live2026-10-01 matching dispatcher proves42->12CA80 cursor cleanup and7C->12DD20 pending clear, both length6/null auxiliary. Earlier42->12DD20 hypothesis is disproved; see PendingRecoveryLive-20261001.md. Derive later observations from actual admitted instructions, never guessed relocation."
+    },
+    {
+      "rva": "0x4F2FA0",
+      "name": "D2GAME_DispatchClientRequest",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md",
+      "notes": "Continuous [4F2FA0,4F30DE), dispatches(game,player,packet,int32 size) to opcode-indexed8-byte callback from nativebase+1D2A790 at4F30BB, returns EAX unchanged. Predispatch refusal4F30BF returns0. Proves status transport, not missing per-opcode callback table contents."
+    },
+    {
+      "rva": "0x51A0E0",
+      "name": "D2GAME_ConsumeClientRequestStatus",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md",
+      "notes": "Continuous [51A0E0,51A2DE). Calls generic request dispatcher4F2FA0 at51A1C3,retains status inR14D,re-resolves server client,compares status to4 at51A1E8. Non4 reaches4859E0 at51A2B7;4 enters retry callback/store path including4859F0 at51A243. Returning0 from a valid pre-mutation denial prevents retry bookkeeping but does not clear client item state36 or prove successful consumption."
+    },
+    {
+      "rva": "0x4859E0",
+      "name": "D2GAME_ClearClientRetryMarker",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md",
+      "notes": "Complete [4859E0,4859E8), void(serverClient*), writes0 to Client+974. Server retry bookkeeping only; distinct from client item pending state36 and its1C6A40 clear helper."
+    },
+    {
+      "rva": "0x4859F0",
+      "name": "D2GAME_StoreClientRetryRequest",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md",
+      "notes": "Continuous [4859F0,485AAB), stores request bytes at server Client+764,length+96C,frame+970,marker19 at+974,then invokes bookkeeping helper. Reached from status4 branch at51A243; no item-pending clear contract."
+    },
+    {
+      "rva": "0x4F23E0",
+      "name": "D2GAME_RunDelayedItemUse",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/PotionDenialNativeResearch.md",
+      "notes": "Continuous [4F23E0,4F2427), resolves stored player and invokes4F40C0 at4F2417 with retry flag R9B=1. Does not branch on returned status. Guarding only network wrapper4C13B0 misses this direct use entry."
+    },
+    {
+      "rva": "0x4C1940",
+      "name": "D2GAME_HandleManualStackMerge21Bytes",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md",
+      "notes": "Continuous [4C1940,4C2043), int32(game,player,packet,int32 bytes), expects21-byte packet. SourceGUID+1,targetGUID+5,completePredictionDWORD+9,targetPage+13,targetXY+17. Classifier4F2A80 must return2. After quantity/overflow checks,4C1C5F..4C1C69 requires client complete prediction to match source+target<=targetMaximum before472590 transaction at4C1E1E. Partial destination publication action8,full action0,flags100 at4C1FB8. Client opcode21 shapes agree; dispatcher registration is not newly proved by this entry. Ghidra overlapping4C1851 fragment rejected as ABI evidence. Static research only. 2026-11-01 correction: complete target-state branches construct only mode0 grid via382E10 or mode1 equipment via382DF0, never mode2 belt. Opcode0x21 is independently witnessed at15E67B; decimal21 is also the packet length. This is not the cursor-to-belt refusal acknowledgement contract. See plugin-dev/stack-manager/notes/belt-refusal-implementation-20261101.md."
+    },
+    {
+      "rva": "0x4C1C12",
+      "name": "D2GAME_ManualMergeDestinationMaximumCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md",
+      "notes": "Five-byte call3719E0 with destination inRCX; return feeds min(source+target,max)-target and complete-consumption prediction. Server-only ceiling changes can disagree with client prediction and refuse before mutation. Below-old-target maxima allow reverse arithmetic, so preserve existing overflow using a ceiling at least current target quantity. Distinct from automatic pickup47558E."
+    },
+    {
+      "rva": "0x15E62D",
+      "name": "CLIENT_LegacyMergePredictionMaximumCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md",
+      "notes": "Call3719E0 for targetR13. Bounded witness15E5FD..15E6A6 reads both quantities, computes sum<=max, sends opcode21 viaEC820 at15E67D with predictionR9D, then marks sourceR12 pending via1C6AC0 at15E685. Requires matching server transfer rules and pending recovery; not all input producers newly qualified."
+    },
+    {
+      "rva": "0x2C83FA",
+      "name": "CLIENT_GridMergePredictionMaximumCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md",
+      "notes": "Call3719E0 for target[rsp+50]. Witness2C83B8..2C844A computes full-consumption bitR15B and selects opcode21. Common tail2C882F..2C8858 sends viaEC820 then marks sourceR14 pending through1C6AC0. Different opcode29 scroll-to-tome route must remain independent."
+    },
+    {
+      "rva": "0x386840",
+      "name": "INVENTORY_FindEquippedStackFromCandidate",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md",
+      "notes": "Continuous[386840,3869FA), item*(inventory,source,resumeCandidate). Occupancy grid0; on matchingR8 at3868C3 it jumps386940 and rechecks SAME candidate. Compares native-compatible targetquantity below3719E0 result at386963 before returning. R8 is not an exclusive-next pointer. Lower scoped transfer ceiling must also constrain selector acceptance to prevent automatic no-progress re-selection."
+    },
+    {
+      "rva": "0x386963",
+      "name": "INVENTORY_EquippedStackSelectionMaximumCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md",
+      "notes": "Call3719E0(candidate), followed by signed comparison currentQuantity<maximum. Within4754C0 automatic-merge scope this selection ceiling must agree with transfer call47558E; otherwise resume-from search can reoffer a target at the configured limit indefinitely. Outside such a scope preserve native behavior."
+    },
+    {
+      "rva": "0x386F63",
+      "name": "INVENTORY_BackpackStackSelectionMaximumCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md",
+      "notes": "Call3719E0(candidate), accepted only when currentQuantity<maximum at386F68..386F6A. Resume equality at386ED3 jumps386F40 and rechecks the same candidate. A transfer-only lowered ceiling at47558E is insufficient; selector and transfer must agree, or iteration must explicitly advance. Static control-flow finding, not reproduced runtime hang."
+    },
+    {
+      "rva": "0x554CCE",
+      "name": "CASTTRIGGERS_TeleportRelocationCall",
+      "kind": "layout-witness",
+      "confidence": "high",
+      "source": "plugin-dev/compatibility-check/experiments/cast-nonoverlap-20260921/evidence-1.1.11/README.md",
+      "notes": "Validated Teleport handler calls 0x491CA0 with game, unit, room, x, y, collision mode and movement mode. Enables only the pending eligible manual cast relocation scope."
+    },
+    {
+      "rva": "0x491E56",
+      "name": "CASTTRIGGERS_TeleportPathMoveCall",
+      "kind": "layout-witness",
+      "confidence": "high",
+      "source": "plugin-dev/compatibility-check/experiments/cast-nonoverlap-20260921/evidence-1.1.11/README.md",
+      "notes": "After destination room and collision validation, calls 0x381890(path, unit, room, x, y), which invokes 0x382AA0 and returns success. Pre-movement source-proc dispatch point when scoped to Teleport caller 0x554CCE. Ordinary relocations remain forwarding-only."
+    },
+    {
+      "rva": "0x471E90",
+      "name": "ITEMS_MoveExistingStateBatch",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Continuous body [471E90,472581), bool(owner,previousStates16,proposedStates16,uint32Ids,uint64Count,uint8Flag). Full canonical body and relocations execute in Stack Manager placement oracle; precommit snapshot, staging, validation and identity refusals retain attached source. Caller4C2219..4C22D6 proves six arguments and action1/flags2 publication. Both states resolve in the supplied owner's snapshot through474220/46E2B0. Auxiliary enumeration does not give a grid state another inventory owner; this ABI is not a cross-owner shared-stash transfer. Static/extracted-native tests only."
+    },
+    {
+      "rva": "0x41A624",
+      "name": "ITEMS_RestoreLegacyBeltPlacementCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Five-byte call to471500; argument witness [41A5F5,41A624) supplies owner,16-byte belt state,ID pointer,count1,flag0 during legacy saved-item restoration. Stack Manager's preservation relay bypasses only its additional final-plan admission; original native validation remains. Entry hook and exact owned relay bytes are separately admitted. No save/reload runtime qualification."
+    },
+    {
+      "rva": "0x41A910",
+      "name": "ITEMS_RestoreCurrentBeltPlacementCall",
+      "kind": "call-site",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Five-byte call to471500; argument witness [41A8E7,41A910) supplies owner,16-byte belt state,ID pointer,count1,flag0 during current saved-item restoration. Same preservation scope as41A624. Witness starts are actual instruction boundaries; overlapping index fragments are not used as ABI evidence. Native validation is retained; no save/reload runtime qualification."
+    },
+    {
+      "rva": "0x2CF990",
+      "name": "UI_AdvancedStashSlot_UpdateQuantityChild",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/ScrollAndDisplayNativeResearch.md",
+      "notes": "Logical range[2CF990,2CFAEC), void(slotWidget*). Resolves class counter and stores+608, sets childTextWidget+618 visibility throughvirtual+50 at2CFA56, formatsquantity and calls86DD50 at2CFA83. Postoriginal displayonlyhook can hide child viaF02A0 while preserving counterlogic and tome overlays. Wholebody staticbytes include provider-owned count callsites; runtime admission must preserve activeLoader ownership."
+    },
+    {
+      "rva": "0xF02A0",
+      "name": "UI_Widget_SetVisibleByte",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/ScrollAndDisplayNativeResearch.md",
+      "notes": "Complete unique4byte leaf885151C3 at[F02A0,F02A4), void(widget*,uint8 visible). WritesWidget+51; TextWidget86D410 drawtests samebyte at86D44B and skipsrender onzero. AST embeddedchild+618 independentlyproven byconstructor2CE47A..2CE49E. Direct admittedsetter avoidsassuming canonicalzero vtable values."
+    },
+    {
+      "rva": "0x4C13B0",
+      "name": "D2GAME_PACKETCALLBACK_UseItem36",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/StackNativeResearch.md",
+      "notes": "Logical range [4C13B0,4C1585). Receives game/player/packet/size; requires 36 bytes, copies packet and calls4F40C0 at4C1447 with R9B=0. CMP EAX,4 selects delayed retry queue Game+5808; queued retry returns0. Source GUID is request+0A. No client recovery call on other return paths. Preserve status and native retry behavior; static proof is not a denied-use round trip."
+    },
+    {
+      "rva": "0x1C6AC0",
+      "name": "CLIENTITEMS_MarkActionPending",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/StackNativeResearch.md",
+      "notes": "Logical range [1C6AC0,1C6B5B), void(Unit*). Finds state36 list via2F5940, allocates via2F7300 if needed, sets state36, installs1C9400 callback and attaches through2F2CB0. Called after the use packet send by ordinary16240A and belt2296AC. Suppressing the sender alone leaves this marker installed."
+    },
+    {
+      "rva": "0x1C6A40",
+      "name": "CLIENTITEMS_ClearActionPending",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/StackNativeResearch.md",
+      "notes": "Logical range [1C6A40,1C6ABA), void(Unit*). Resolves context, looks up state36, toggles it off through3354C0, removes2F7920 and frees2F4180 the list. Final350B40 character refresh bypasses item type4. 24 indexed direct/tail references. Item movement/deletion is not the clear contract. Exact bytes in balance-native-evidence.json; server opcode registration remains separate proof."
+    },
+    {
+      "rva": "0x1C6A10",
+      "name": "CLIENTITEMS_ReceiveUnitPendingClear",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/StackNativeResearch.md",
+      "notes": "Logical range [1C6A10,1C6A36), void(packet*). Reads type byte+1 and GUID DWORD+2; resolves client unit via9A5D0(GUID,type), then tail-calls1C6A40 if present. Wrapper12DD20 copies exactly6 bytes. Live2026-10-01 registers opcode7C here through12DD20; earlier42 pairing disproved. Downstream9F270 is Loader-patched, and correct server transport/provider admission/denied-use gameplay remain open; see PendingRecoveryLive-20261001.md."
+    },
+    {
+      "rva": "0x4786C0",
+      "name": "D2GAME_SendPacket42UnitIdentity",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/StackNativeResearch.md",
+      "notes": "Logical range [4786C0,4787E9), void(client*,unit*). Builds opcode42,type+1,GUID+2 using34B9D0/34A330, sends exactly6 bytes with native sequence synchronization. 16 indexed callers;4F5A03 passes the player, not consumed item. Live2026-10-01 registration disproves retained-item recovery:42 reaches12CA80/1C3060 cursor cleanup;7C reaches12DD20 pending clear. Do not reuse this sender for denied-item acknowledgement. See PendingRecoveryLive-20261001.md."
+    },
+    {
+      "rva": "0x36CCF0",
+      "name": "ITEMS_GetExistingItemLevel",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Logical range [36CCF0,36CD4C), int32(item*). Requires type4, obtains ItemData via34A500 and reads signed DWORD+38. Null/nonitem returns1. Values below1 are normalized by WRITE at36CD43. Read-only policy should read the admitted field and clamp locally, not mutate through this getter. Full hash943A4FD44A4E834509D19964CA8149C2AE84B3D54EDAEC29C9F255E2FA98C778."
+    },
+    {
+      "rva": "0x3C8400",
+      "name": "DATATBLS_CopyBeltLayout",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Logical range [3C8400,3C84E9), void(uint8 context,int32 beltType,int32 variant,void* out). DataTables+1558 is vector records+0/count+8; copies0x120 bytes indexed by beltType+7*variant. No player argument. Shared callers include UI, shrink planning and final admission; do not globally shrink this layout for per-player display policy. Atlas promotion remains separate."
+    },
+    {
+      "rva": "0x3C8250",
+      "name": "DATATBLS_GetBeltSlotCount",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Logical range [3C8250,3C82B2), int32(uint8 context,int32 beltType). Uses same DataTables+1558 vector and0x120 stride as3C8400; reads unsigned byte record+4. Result is physical SLOT count, not row count. Requires validated table index; native assertion is not a safe config validator."
+    },
+    {
+      "rva": "0x15F140",
+      "name": "CLIENT_GetOwnerBeltSlotCount",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Logical range [15F140,15F216), int32(player*). Reads equipped body slot8 and native belt type; fallback type2; forwards context/type to3C8250. Modern belt tick228E4D stores returned count widget+6A4, used by row/input routes; other indexed caller15024A3 selects UI flags from count>4. Stack Manager1.2.18 admits the full body and hooks an18-byte instruction-aligned prefix. Original getter runs first, physical occupancy snapshot preserves complete rows through highest occupied slot, and malformed policy results cannot hide known occupied rows. No slot renumbering, item mutation or ingress grant. Logical layout/shrink gates remain; actual rendering/input, alternate UI and persistence are not qualified."
+    },
+    {
+      "rva": "0x388390",
+      "name": "INVENTORY_GetPhysicalBeltSlotItem",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Logical range [388390,38842B), item*(inventory*,int32 slot). Bounds unsigned slot<=15, resolves grid1 with38B070 and accesses pointer array grid+18. Does not check equipped belt capacity. Required for recovering existing upper-row items; physical identity stays stride4."
+    },
+    {
+      "rva": "0x389090",
+      "name": "INVENTORY_InsertPhysicalBeltItem",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Logical range [389090,3891D1), int32(inventory*,item*,uint32 slot). Validates beltable1x1 item and physicalslot<=15 but does not enforce equipped belt row count. Keep physical insertion available for governed replay/restoration; apply configured new-ingress rules at owner-aware planning/transaction boundaries."
+    },
+    {
+      "rva": "0x46E050",
+      "name": "INVENTORY_ValidateFinalPlacementPlan",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Logical range [46E050,46E2AB), bool AL(proposedPlan*,previousPlan*,uint8 flag). Plan owner+0,equippedbelt+1BD0,beltpointers[1BE8,1C68). Rejects physical slots beyond native belt count; no quantity/sharedlimit accounting. Three precommit callers471787/4721AA/47293E; snapshot473417 passes SAME pointer twice, so new restrictions must preserve unchanged overfilled snapshots and removals. ExtendedMerc471787 diagnostic is dormant in current focused installer; entry hook differs from replacing that call."
+    },
+    {
+      "rva": "0x15AB10",
+      "name": "CLIENT_PlanBeltShrinkRelocations",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Logical range [15AB10,15AEB9), bool AL(relocationVector*,oldBelt*,replacementBelt*,uint32* oldBeltInventoryXY). Simulates inventory placement for oldbelt and every upper item displaced by native slot-count reduction. Relocation record16 bytes:destXY+0,oldXY+4,destinationFound+8,GUID+12. Server4F6490 checks submitted relocation accounting. Partial/no-space outcome requires its own handling; no hidden upper-slot loss allowed."
+    },
+    {
+      "rva": "0x3873E0",
+      "name": "INVENTORY_FindFreeBeltSlotWithExclusions",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md",
+      "notes": "Logical range [3873E0,38768A), int32(inventory*,item*,int32* slotOut,excludedSlotsVector*). Exclusions are pointer/count view of16bit physicalslot IDs. This batch selector and3862D0 both need configured admission; narrowing onlyone leaves bypasses."
+    },
+    {
+      "rva": "0x31E35E",
+      "name": "DATATBLS_ItemStatCostScalarMetadataDescriptors",
+      "kind": "layout-witness",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md",
+      "notes": "Complete byte-exact descriptor span [31E35E,31E55C), 510 bytes. Descriptor stores establish SendParamBits byte+09, ValShift byte+14, SaveParamBits dword+20, Encode byte+2C, corroborated by ISC12 semantic reader. Selected bonus stats must have all zero before layer-zero whole-integer reads. Does not admit compiler CALL mutations or a full record layout; generated rule_name_witnesses.hpp checks the span."
+    },
+    {
+      "rva": "0x31E77E",
+      "name": "DATATBLS_ItemStatCostCsvParamDescriptor",
+      "kind": "layout-witness",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md",
+      "notes": "Complete byte-exact descriptor span [31E77E,31E7B8), 58 bytes. Type4 and offset0B identify the CsvParamBits byte corroborated by ISC12 semantic reader. Selected scalar bonus stats reject nonzero values. Reproduced from both pinned images by extract-rule-name-witnesses.py."
+    },
+    {
+      "rva": "0x30759A",
+      "name": "STATES_CompilerNameLinkerSlotWitness",
+      "kind": "layout-witness",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md",
+      "notes": "LEA RBX,[RDI+2A8] in States compiler; RDI is context DataTables. Descriptor outputoffset0,type11 links to slot at307620. AllocationA11FA0 at30836C publishes throughRBX at308371. Triangulated with independent consumer320390 and destructor3006B7; records+290,count+298,stride44 already governed. Compilercall hooks remain separate occupied surfaces."
+    },
+    {
+      "rva": "0x320390",
+      "name": "STATES_LoadedNameLookupWitness",
+      "kind": "layout-witness",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md",
+      "notes": "Independent context DataTables consumer loads linker+2A8, callsA121F0 at3203A2 with reportMissing0 and tests nonnegative result. Combined compiler/destructor proof identifies States name linker. Unknown configured names must be rejected, not converted by native fallback semantics."
+    },
+    {
+      "rva": "0x3006B7",
+      "name": "STATES_NameLinkerTeardownWitness",
+      "kind": "layout-witness",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md",
+      "notes": "Teardown resolves context DataTables then loads[RDI+2A8]; tailjump3006CE entersA12000 linker destruction. Names/linker pointers may not outlive active table generation. Together with30759A/320390 closes lifetime/identity proof; use owned copied-name snapshots."
+    },
+    {
+      "rva": "0x42E600",
+      "name": "D2GAME_PlayerRegenerationEvent",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md",
+      "notes": "Logical range [42E600,42E7BF),447 bytes, SHA2561630625B67E4F16CAE65CDAB70756F0254147C870E41EE57F4297D749CD1DC98. Consumes game RCX,player RDX,args R8D/R9D; dispatcher forwards fifth position, unused here. Schedules event3 for Game+170+1 via48B720 at42E634 then livingplayerregen/sync. Preserve all forwarded positions and originalonce. Postoriginal authoritativepulse candidate downstream of BurnDamageFix-owned42CE30; no runtime owner/qualification claim."
+    },
     {
       "rva": "0x80CF0",
       "name": "STRING_AssignPointerLength",
@@ -318,7 +1881,7 @@
           "Individual compiled field names are not promoted in the DataTables atlas."
         ],
         "scope": {
-          "target": "D2R 3.3.93847 using the governed common 92777/93847 corpus",
+          "target": "captured D2RLoader-hosted game image; documented upstream game target 3.1.1.4",
           "canonicalSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715"
         },
         "evidence": [
@@ -389,7 +1952,7 @@
           "The separate start-mana gate is outside this function; this contract does not cover all affordability."
         ],
         "scope": {
-          "target": "D2R 3.3.93847 using the governed common 92777/93847 corpus",
+          "target": "captured D2RLoader-hosted game image; documented upstream game target 3.1.1.4",
           "canonicalSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715"
         },
         "evidence": [
@@ -1822,7 +3385,7 @@
       "kind": "function",
       "confidence": "high",
       "source": "plugin-dev/extended-act-level-ids/mission.md; reverse-engineering/d2r-3.2.92777/findings.md; D2MOO@19019806df7f3e877fa105b05395d1e3597e2316:source/D2Game/src/SKILLS/Skills.cpp:3076-3149",
-      "notes": "Central portal-object constructor with a strict unique 32-byte entry in the governed common 92777/93847 corpus. It has fourteen direct callers spanning skill, object, missile and quest paths and calls D2GAME_CreateLinkPortal at 0x432F22. The Town Portal callsite at 0x46FD7C passes dynamic portal class 0x3B, keeps the full destination Level ID and records the created source portal GUID in PlayerData after success. A future Extended Act Level IDs hook must scope class 59 instead of altering all portal classes or patching fourteen callers."
+      "notes": "Central portal-object constructor with a strict unique 32-byte entry in the captured D2RLoader-hosted game image. It has fourteen direct callers spanning skill, object, missile and quest paths and calls D2GAME_CreateLinkPortal at 0x432F22. The Town Portal callsite at 0x46FD7C passes dynamic portal class 0x3B, keeps the full destination Level ID and records the created source portal GUID in PlayerData after success. A future Extended Act Level IDs hook must scope class 59 instead of altering all portal classes or patching fourteen callers."
     },
     {
       "rva": "0x435DD0",
@@ -2747,7 +4310,7 @@
           "Active hook ownership is not established by this reconstruction."
         ],
         "scope": {
-          "target": "D2R 3.3.93847 using the governed common 92777/93847 corpus",
+          "target": "captured D2RLoader-hosted game image; documented upstream game target 3.1.1.4",
           "canonicalSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715"
         },
         "evidence": [
@@ -2980,7 +4543,7 @@
       "kind": "function",
       "confidence": "high",
       "source": "Mission/memory-patches-portage-3.2.json",
-      "notes": "Central routine reached by the Book path; updates STAT_QUANTITY and the bound scroll/book skill."
+      "notes": "Central routine reached by the Book path; updates STAT_QUANTITY and the bound scroll/book skill. Further static proof in plugin-dev/stack-manager/notes/ManualScrollTransferNativeResearch.md: complete[46F090,46F215),void(game,player,item,int32 delta). Applies signed delta through2F34F0,publishes47A190,then475900 adds the full delta to an existing bound skill or475E00 establishes the skill where applicable. Raw quantity write followed by delta0 would omit charge and empty-to-nonempty transitions."
     },
     {
       "rva": "0x46F220",
@@ -3052,7 +4615,7 @@
       "kind": "function",
       "confidence": "high",
       "source": "plugin-dev/extended-item-stats/mission.md",
-      "notes": "Queues a server packet with ABI (client RCX, packetBytes RDX, size_t packetLength R8) -> void. The item producers zero-extend their one-byte length into R8 before the calls at 0x479E10/0x47A001. Thirty-eight indexed references and the exact unique 22-byte entry signature 40 55 56 57 48 83 EC 40 49 8B E8 48 8B F2 48 8B F9 48 85 C9 75 1F prove this shared queue; the interior witness at 0x4818B6 proves synchronous consumption of [packet, packet+length]. G9-A leaves this entry untouched and calls it directly, in captured order, only after a root transaction succeeds. The void return cannot support rollback after a partial flush. For historical provenance only, the RuffnecKk ExtendedItemStats prototype is not upstream eezstreet or an ISC12 dependency."
+      "notes": "Queues a server packet with ABI (client RCX, packetBytes RDX, size_t packetLength R8) -> void. The item producers zero-extend their one-byte length into R8 before the calls at 0x479E10/0x47A001. Thirty-eight indexed references and the exact unique 22-byte entry signature 40 55 56 57 48 83 EC 40 49 8B E8 48 8B F2 48 8B F9 48 85 C9 75 1F prove this shared queue; the interior witness at 0x4818B6 proves an indirect invocation with [packet, packet+length], not the downstream sink lifetime. Integrated opcode7C constructors separately copy the original bytes; final descriptor-consumer lifetime remains a separate proof. G9-A leaves this entry untouched and calls it directly, in captured order, only after a root transaction succeeds. The void return cannot support rollback after a partial flush. For historical provenance only, the RuffnecKk ExtendedItemStats prototype is not upstream eezstreet or an ISC12 dependency."
     },
     {
       "rva": "0x486AE0",
@@ -5068,7 +6631,7 @@
       "kind": "function",
       "confidence": "high",
       "source": "plugin-dev/mass-identify/mission.md",
-      "notes": "Native item action with observed ABI (item, owner, page, flag, state) -> void and three direct callers. UI_InventorySlotWidget_HandleClick calls it at 0x2C7D54 only after the mouse-state right branch and native VK_SHIFT test. The MassID 0.1.4 witness proved that this modern-panel action is not reached by the player's active legacy inventory panel, so 0.1.5 leaves it intact. Its strict 32-byte entry signature is unique in build 92777. Stack Manager 1.1.0 adds a held-stack belt adapter, with optional slot DWORD plus engaged byte +4, preserving native passthrough. This helper does not independently prove all legacy-panel input coverage; see plugin-dev/stack-manager/pd2-stack-controls-investigation.md."
+      "notes": "Native item action with observed ABI (item, owner, page, flag, state) -> void and three direct callers. UI_InventorySlotWidget_HandleClick calls it at 0x2C7D54 only after the mouse-state right branch and native VK_SHIFT test. The MassID 0.1.4 witness proved that this modern-panel action is not reached by the player's active legacy inventory panel, so 0.1.5 leaves it intact. Its strict 32-byte entry signature is unique in build 92777. Stack Manager 1.1.0 adds a held-stack belt adapter, with optional slot DWORD plus engaged byte +4, preserving native passthrough. This helper does not independently prove all legacy-panel input coverage; see plugin-dev/stack-manager/pd2-stack-controls-investigation.md. 2026-11-01 complete-body proof [15F660,15F8AC): automatic opcode53 at15F780/782, occupied manual25 at15F829/82B, empty manual23 at15F865/867; pending setter1C6AC0 called only afterward at15F86F. Stack Manager now privately intercepts managed intent before pending; unmanaged passthrough remains. Read-only saved Ghidra project and exact captured-image witnesses in plugin-dev/stack-manager/notes/belt-refusal-implementation-20261101.md; runtime receiver and legacy coverage remain separately qualified."
     },
     {
       "rva": "0x2AA9F0",
@@ -5180,7 +6743,7 @@
       "kind": "function",
       "confidence": "high",
       "source": "plugin-dev/mass-identify/mission.md",
-      "notes": "Native shared-stash deposit handler. It resolves an auxiliary UNIT_PLAYER from the packet GUID, requires state 0xBA through STATES_CheckState, validates that auxiliary inventory's owner GUID against the requesting player, and confirms the proxy in the player's corpse registry. RemoteStash owns the inline hook; MassID does not hook this function."
+      "notes": "Native shared-stash deposit handler. It resolves an auxiliary UNIT_PLAYER from the packet GUID, requires stateBA,validates inventory ownerGUID and auxiliary record. RemoteStash owns the inline hook;MassID does not. Further static proof in plugin-dev/stack-manager/notes/SharedStashTransferNativeResearch.md: continuous[4C5570,4C5E9E),int32(game,player,packet,int32 bytes),13-byte itemGUID+1,proxyGUID+5,packedXY+9.472590 at4C56F9 detaches player cursor;471500 at4C584F places proxy grid;4C5872 restores player cursor on refusal.4786C0(client,PLAYER) acknowledgement precedes proxy publication action1/flags2."
     },
     {
       "rva": "0x4C6480",
@@ -5188,7 +6751,7 @@
       "kind": "function",
       "confidence": "high",
       "source": "plugin-dev/mass-identify/mission.md",
-      "notes": "Native shared-stash withdrawal handler with the same auxiliary UNIT_PLAYER, state 0xBA, inventory-owner and corpse-registry validation chain as the deposit path. Its ITEMS_PlaceItemForPlayer call uses the auxiliary unit as the shared inventory holder. RemoteStash owns the inline hook; MassID only reuses the proven accessors."
+      "notes": "Native shared-stash withdrawal handler with the same auxiliary UNIT_PLAYER,stateBA,inventory-owner and auxiliary-record validation as deposit. RemoteStash owns the inline hook;MassID only reuses accessors. Further static proof in plugin-dev/stack-manager/notes/SharedStashTransferNativeResearch.md: continuous[4C6480,4C6C87),int32(game,player,packet,int32 bytes),13-byte itemGUID+1,proxyGUID+5,packedXY+9.472590 at4C65F6 detaches PROXY grid;471500 at4C674C places PLAYER cursor;4C676F restores PROXY grid on refusal. Source removal20/4 precedes destination action0/flags100000. These owner roles refine the earlier ambiguous placement note."
     },
     {
       "rva": "0x4C6C90",
@@ -5956,7 +7519,7 @@
       "kind": "function",
       "confidence": "high",
       "source": "plugin-dev/bkvcombat/notes/NATIVE-CONTRACT.md; plugin-dev/burn-damage-fix/mission.md; addons/BurnDamageFix/src/plugin.cpp",
-      "notes": "Confirmed-static unit-to-game accessor with logical bounds 0x48FF00..0x48FF3A, validated 32-byte entry signature and ABI Game* (Unit*). For a valid unit it returns the pointer at unit+0xD8; BKVCombat uses it transiently while creating server-owned Open Wounds stat lists. Burn Damage Fix fingerprints the same entry and obtains the authoritative game from the attacker, or the defender when no attacker exists, before native Fire resolution."
+      "notes": "Confirmed-static unit-to-game accessor with logical bounds 0x48FF00..0x48FF3A inclusive, validated32-byte entry signature and ABI Game*(Unit*). For a valid unit returns unit+D8; BKVCombat uses it transiently for server-owned Open Wounds lists. Burn Damage Fix fingerprints the same entry and gets authoritative game from attacker or defender before Fire resolution. Further static proof in plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md retains complete[48FF00,48FF3B) bytes. No item/player type restriction; null path asserts then still reads, so reject null. Can compose with388BA0 inventory ownerGUID,48FE80 player lookup and34A360 inventory equality for route-advisor ownership; composition still needs adapter qualification."
     },
     {
       "rva": "0x2F5940",
@@ -7732,7 +9295,7 @@
       "kind": "layout-witness",
       "confidence": "high",
       "source": "reverse-engineering/d2r-3.2.92777/findings.md",
-      "notes": "Exact unique 39-byte interior sequence builds packet+length and synchronously dispatches the [packet, packet+length] span through the client sink. This proves each G9-A relay must copy producer stack packets before returning. Runtime qualification proves ordered three-packet flush, overflow zero-callback and flush reentry containment. Because the queue ABI returns void, failure after the first real call cannot be rolled back and is terminal rather than transactionally recoverable."
+      "notes": "Exact unique 39-byte interior sequence builds packet+length and invokes the virtual client sink with [packet, packet+length]. The sink call alone does not prove payload retention or descriptor lifetime. This proves each G9-A relay must copy producer stack packets before returning. Runtime qualification proves ordered three-packet flush, overflow zero-callback and flush reentry containment. Because the queue ABI returns void, failure after the first real call cannot be rolled back and is terminal rather than transactionally recoverable."
     },
     {
       "rva": "0x481BAD",
@@ -7988,7 +9551,7 @@
       "kind": "function",
       "confidence": "high",
       "source": "Mission/ruffneckk-suite-next-release.md; reverse-engineering/d2r-3.2.92777/findings.md",
-      "notes": "Observed Windows x64 ABI (inventory, item, excludedItem) -> item pointer. Searches the backpack grid for an exact native stack-compatible item whose STAT_QUANTITY is below ITEMS_GetTotalMaxStack. Potion Auto Pickup redirects only its scoped pickup to a chosen belt stack or suppresses backpack merging until an empty belt row is tried."
+      "notes": "Observed Windows x64 ABI (inventory, item, resumeCandidate) -> item pointer. Searches backpack grid2 for a native-compatible item whose STAT_QUANTITY is below ITEMS_GetTotalMaxStack. Complete[386E00,386FE9). Correction: third argument resumes FROM candidate, not after/excluding it;386ED3 equality jumps386F40 and rechecks same item. Selector ceiling386F63 must match any lowered automatic-transfer limit to avoid zero-progress re-selection. Potion Auto Pickup redirects only its scoped pickup to a chosen belt stack or suppresses backpack merging until an empty belt row is tried. See plugin-dev/stack-manager/notes/MergeCapacityNativeResearch.md."
     },
     {
       "rva": "0x4754C0",
@@ -8044,7 +9607,7 @@
       "kind": "function",
       "confidence": "high",
       "source": "Mission/ruffneckk-suite-next-release.md; reverse-engineering/d2r-3.2.92777/findings.md",
-      "notes": "Observed Windows x64 ABI (game, player, item) -> bool. Handles book and ammunition families first, then gates the generic path through ITEMS_CheckIfStackable and ITEMS_GetAutoStack before calling D2GAME_StackItemIntoInventory. The pickup caller removes the ground unit only when this routine reports complete handling."
+      "notes": "Observed Windows x64 ABI (game, player, item) -> bool. Handles book and ammunition families first, then gates the generic path through ITEMS_CheckIfStackable and ITEMS_GetAutoStack before calling D2GAME_StackItemIntoInventory. The pickup caller removes the ground unit only when this routine reports complete handling. Further canonical proof: logical range[4759E0,475C8D). Scrolltype16 precedes generic stacking;475A43..475A56 credits tome stat70 by exactly1, and caller471B97 deletes the entire source on true. Multi-quantity inputs need explicit accounting before this singleton path. See plugin-dev/stack-manager/notes/ScrollAndDisplayNativeResearch.md; this is a static loss-risk deduction, not a reproduced runtime failure."
     },
     {
       "rva": "0x581680",
@@ -8557,6 +10120,94 @@
       "confidence": "high",
       "source": "plugin-dev/compatibility-check/notes/stack-manager-pd2-20260920.md; plugin-dev/stack-manager/prototype/src/pd2_witnesses.hpp",
       "notes": "Native placement-policy body [0x474700,0x474819), bool(transaction,State16*,bool bypassStashProximity), called by placement validation. RemoteStash owns its strict 32-byte entry hook and forwards the same ABI after applying scoped proximity policy. Stack Manager 1.1.1 admits either the complete native body or one Loader-tracked InlineHook owner ruffneckk-remote-stash at the first 32 bytes with the entire suffix [0x474720,0x474819) unchanged. It calls the live validator; it does not replace or bypass RemoteStash policy. Production admission/lifecycle fixtures cover both registration orders and reject unknown/ambiguous ownership or body drift. No actual DLL load-order or gameplay qualification."
+    },
+    {
+      "rva": "0x3864A2",
+      "name": "INVENTORY_FreeBeltSlot_CopyLocalLayout",
+      "kind": "callsite",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md#configured-rows-in-automatic-selection--2026-09-30",
+      "notes": "Ordinary selector3862D0..3865A6 uses owner bank; count consumed3864E9. Five-byte CALL to3C8400, void(bank CL,type EDX,variant0 R8D,local output R9). Copies0x120 bytes; count+4 bounds column+4 search. Stack Manager1.2.20 changes only this temporary count during admitted selection, preserving entry providers, eligibility, native refusal and matching-column order. Unscoped invocations stay native. Occupied old upper rows do not enlarge logical ingress. Full surrounding bodies remain fingerprinted; no runtime qualification."
+    },
+    {
+      "rva": "0x38758D",
+      "name": "INVENTORY_FreeBeltSlotExcluded_CopyLocalLayout",
+      "kind": "callsite",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md#configured-rows-in-automatic-selection--2026-09-30",
+      "notes": "Excluded selector3873E0..38768A uses item bank; count consumed387620. Five-byte CALL to3C8400, void(bank CL,type EDX,variant0 R8D,local output R9). Copies0x120 bytes; count+4 bounds column+4 search. Stack Manager1.2.20 changes only this temporary count during admitted selection, preserving entry providers, eligibility, native refusal and matching-column order. Unscoped invocations stay native. Occupied old upper rows do not enlarge logical ingress. Full surrounding bodies remain fingerprinted; no runtime qualification."
+    },
+    {
+      "rva": "0x4F6490",
+      "name": "SERVER_DispatchBeltAndContainerRelocation",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md#manual-shrink-scope-contract--2026-09-30",
+      "notes": "Full logical body [4F6490,4F886F). Ten-argument x64 ABI: int32(game*,player*,int32 itemA,int32 itemB,uint8 count,const void* packedEntries,uint32 operation,void* auxiliaryOwner,const void* stateA,const void* stateB). Register saves and stack reads establish widths; caller4AB923 tests EAX. Calls4AAF78/4AB91E forward the ABI. Layout-copy calls4F726C/4F729A use local count+4;4F746F..4F7542 validates supplied relocation counts against actual occupied slots[newCount,16). Displaced-item no-space delete4F842C is distinct from explicit main-item ground fallback4F881B. Stack Manager1.2.21 interposes the15-byte complete-instruction entry with exact forwarding and a synchronous occupied-mask scope; paired local copies retain coherent-snapshot old rows. Missing/stale snapshots do not establish preservation or recovery. No gameplay qualification."
+    },
+    {
+      "rva": "0x15AD00",
+      "name": "CLIENT_BeltShrink_CopyOldLayout",
+      "kind": "callsite",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md#manual-shrink-preservation--2026-09-30",
+      "notes": "Five-byte CALL3C8400 inside15AB10..15AEB9; void(uint8 bank,int32 type,int32 variant,void* output). Native copy0x120/count+4. Paired replacement copy15AD28; counts consumed15AD66..15AD75. Stack Manager1.2.21 scopes occupied-row preservation to the native client call and changes only the copied count byte. Unsupported/missing snapshots retain native behavior; recovery is unproved. Full caller and exact relay admission; no gameplay qualification."
+    },
+    {
+      "rva": "0x15AD28",
+      "name": "CLIENT_BeltShrink_CopyReplacementLayout",
+      "kind": "callsite",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md#manual-shrink-preservation--2026-09-30",
+      "notes": "Five-byte CALL3C8400 inside15AB10..15AEB9, same four-argument copy ABI as15AD00. New count must cover captured occupied slots on preservation path. Stack Manager1.2.21 retains native record copy and changes only byte+4 within a synchronous scope. No item mutation; stale client/server snapshot recovery remains gated."
+    },
+    {
+      "rva": "0x4F726C",
+      "name": "SERVER_BeltShrink_CopyNoBeltLayout",
+      "kind": "callsite",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md#manual-shrink-preservation--2026-09-30",
+      "notes": "Five-byte CALL3C8400 inside4F6490..4F886F; void(uint8 bank,int32 type,int32 variant,void* output). Local0x120-byte output RBP+120/count RBP+124. Counterpart4F729A covers replacement belt. Actual occupied slots[newCount,16) checked4F746F..4F7542. Stack Manager1.2.21 scopes copied count to current occupied mask, preserving all other bytes/native result. Broad activation and live recovery unqualified."
+    },
+    {
+      "rva": "0x4F729A",
+      "name": "SERVER_BeltShrink_CopyReplacementLayout",
+      "kind": "callsite",
+      "confidence": "high",
+      "source": "plugin-dev/stack-manager/notes/BeltNativeResearch.md#manual-shrink-preservation--2026-09-30",
+      "notes": "Five-byte CALL3C8400 inside4F6490..4F886F; same local copy ABI/count consumer as4F726C. Stack Manager1.2.21 changes only byte+4 when a validated scope count covers current occupied slots. Native fallback remains for unsupported cases and is not a new preservation guarantee. No runtime qualification."
+    },
+    {
+      "rva": "0x4925B0",
+      "name": "SUNIT_SelectServerUnitHashBucket",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/vendor-stock-refresh/notes/native-purchase-participant-20261005.md",
+      "notes": "Complete logical 112-byte leaf body 4925B0..492620, paired canonical/analysis SHA256 9cdc70270199706c846fdb6df82459805b024eb08d19f18e0e897419c04815f0. Caller-compatible Win64 ABI (uint32 unitType,Game*,uint32 GUID)->address of Game bucket-head slot. Types0..4 use GUID&7F and QWORD bases Game+2230,+2630,+2A30,+3230,+2E30 respectively; other types return null. SUNIT_GetServerUnit48FE80 calls it at48FEC5 then traverses Unit+158 and compares DWORD GUID+8. This helper performs only arithmetic, no memory dereference/call/pump/lock or lifetime retention. Nonnull Game/type0/1 route closes the purchase scalar callout tree only; current native admission and Game/unit lifetime/exclusion remain caller obligations."
+    },
+    {
+      "rva": "0x486D50",
+      "name": "CLIENTS_EncodeCharacterSummary",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/vendor-stock-refresh/notes/native-purchase-participant-20261005.md",
+      "notes": "Complete logical body 486D50..487006; paired SHA256 77a30c191423da2684476bdbc5e8763ea8784144fb6832100d2171b08fe82cf2. Observed x64 RCX=client, RDX=writable summary output; successful path writes through +0x22, caller485BC5 supplies client+0x16C. Encodes cached/resolved player level,class,appearance,mode and client scalar fields; validation may clear first output byte. No meaningful return established. Immediate calls are all direct, with no body-level lock, queue or message pump; not a save executor. Descendant/current callable admission and actual client/player lifetime remain separate; no custody inferred."
+    },
+    {
+      "rva": "0x2C47B0",
+      "name": "UI_InventoryGridWidget_GetItemScreenRect",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/compatibility-check/experiments/reimagined-map-material-spacing-20261105/README.md",
+      "notes": "Captured Loader image, complete body [2C47B0,2C49E3). Win64 int32[4]*(widget RCX,out RDX,packed cell R8). Calls vt31 at 2C48AC with packed 1x1 size in R8 and cell in R9; copies four output integers. Page Host vt16 already translates page cells before this call, so a composing vt31 wrapper must account for nested local coordinates. Static geometry proof; gameplay remains unqualified."
+    },
+    {
+      "rva": "0x2C4B80",
+      "name": "UI_InventoryGridWidget_GetCellScreenRect",
+      "kind": "function",
+      "confidence": "high",
+      "source": "plugin-dev/compatibility-check/experiments/reimagined-map-material-spacing-20261105/README.md",
+      "notes": "Captured Loader image, complete body [2C4B80,2C4CAB). Win64 int32[4]*(widget RCX,out RDX,packed size R8,packed cell R9). Computes scaled cell offsets from widget+5B8/+5BC and scale+80, adds accumulated origin from8562F0, stores screen x,y,width,height at output+0/+4/+8/+C. Calls at2C3B31/83/DF corroborate vt31 slot and four-argument ABI. Maps material spacing fingerprints this body; no retail-version equivalence or gameplay proof claimed."
     }
   ]
 }

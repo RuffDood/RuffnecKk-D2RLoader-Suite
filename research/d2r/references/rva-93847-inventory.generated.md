@@ -2,7 +2,7 @@
 
 Address matches only; neither names nor argument contracts are validated by an overlap.
 
-226 reference rows; 36 overlap existing addresses; 190 are absent from the registry.
+226 reference rows; 41 overlap existing addresses; 185 are absent from the registry.
 
 Every imported row remains **unverified**. Source ABI labels below are claims, not workbench qualification.
 
@@ -26,10 +26,10 @@ Every imported row remains **unverified**. Source ABI labels below are claims, n
 | 0x2F7C00 | `SetStatListStatRva` | Callable function entry | Exact | STATLIST_SetStatListStat | [54](D2R_RVA_reference_build_93847_with_arguments.md#L54) |
 | 0x4341E0 | `SkillCurseHelperRva` | Unknown / investigate | Unknown | Candidate addition | [55](D2R_RVA_reference_build_93847_with_arguments.md#L55) |
 | 0x434260 | `SkillCurseHelperCallRva` | Instruction / callsite / witness | N/A or partial | Candidate addition | [56](D2R_RVA_reference_build_93847_with_arguments.md#L56) |
-| 0x2F5810 | `FindStatListByFlagsRva` | Callable function entry | Exact | Candidate addition | [57](D2R_RVA_reference_build_93847_with_arguments.md#L57) |
+| 0x2F5810 | `FindStatListByFlagsRva` | Callable function entry | Exact | STATLIST_GetListFromUnitAndFlag_AdditionalCursesDispatch | [57](D2R_RVA_reference_build_93847_with_arguments.md#L57) |
 | 0x2F5940 | `GetStatListFromUnitAndStateRva` | Callable function entry | Exact | STATLIST_GetStatListFromUnitAndState | [58](D2R_RVA_reference_build_93847_with_arguments.md#L58) |
 | 0x433FE9 | `GenericCurseFlagLookupBlockRva` | Instruction / callsite / witness | N/A or partial | Candidate addition | [59](D2R_RVA_reference_build_93847_with_arguments.md#L59) |
-| 0x433FF2 | `GenericCurseFlagLookupCallRva` | Callsite / return witness | Inherited callee ABI | Candidate addition | [60](D2R_RVA_reference_build_93847_with_arguments.md#L60) |
+| 0x433FF2 | `GenericCurseFlagLookupCallRva` | Callsite / return witness | Inherited callee ABI | D2GAME_ApplyCurseStateStatList_SelectCurseCall | [60](D2R_RVA_reference_build_93847_with_arguments.md#L60) |
 | 0x433FF9 | `GenericCurseStateLookupBlockRva` | Instruction / callsite / witness | N/A or partial | Candidate addition | [61](D2R_RVA_reference_build_93847_with_arguments.md#L61) |
 | 0x433FFC | `GenericCurseStateLookupCallRva` | Callsite / return witness | Inherited callee ABI | Candidate addition | [62](D2R_RVA_reference_build_93847_with_arguments.md#L62) |
 | 0x43418D | `GenericCursePrimaryStatCallRva` | Callsite / return witness | Inherited callee ABI | Candidate addition | [63](D2R_RVA_reference_build_93847_with_arguments.md#L63) |
@@ -162,14 +162,14 @@ Every imported row remains **unverified**. Source ABI labels below are claims, n
 | 0x8D0480 | `ChatRender` | Unknown / investigate | Unknown | Candidate addition | [250](D2R_RVA_reference_build_93847_with_arguments.md#L250) |
 | 0x861A4B | `ChatProducerAReturn` | Instruction / callsite / witness | N/A or partial | Candidate addition | [251](D2R_RVA_reference_build_93847_with_arguments.md#L251) |
 | 0x861FD2 | `ChatProducerBReturn` | Instruction / callsite / witness | N/A or partial | Candidate addition | [252](D2R_RVA_reference_build_93847_with_arguments.md#L252) |
-| 0x38BA30 | `RemoveItem` | Callable function entry | Exact | Candidate addition | [258](D2R_RVA_reference_build_93847_with_arguments.md#L258) |
+| 0x38BA30 | `RemoveItem` | Callable function entry | Exact | STACKMANAGER_PhysicalItemDetach | [258](D2R_RVA_reference_build_93847_with_arguments.md#L258) |
 | 0x31518B | `PickupCallerReturn` | Instruction / callsite / witness | N/A or partial | Candidate addition | [259](D2R_RVA_reference_build_93847_with_arguments.md#L259) |
 | 0x38BFF6 | `ContainerClearWitness` | Instruction / callsite / witness | N/A or partial | Candidate addition | [260](D2R_RVA_reference_build_93847_with_arguments.md#L260) |
 | 0x424C20 | `LinkedPortalCloseHelper` | Unknown / investigate | Unknown | Candidate addition | [266](D2R_RVA_reference_build_93847_with_arguments.md#L266) |
 | 0x5A671E | `LegacyPSpell02Candidate` | Unknown / investigate | Unknown | Candidate addition | [267](D2R_RVA_reference_build_93847_with_arguments.md#L267) |
 | 0x2386AB0 | `PropertyFunctionTable` | Data / pointer / descriptor | N/A | Candidate addition | [273](D2R_RVA_reference_build_93847_with_arguments.md#L273) |
-| 0x3CF960 | `PropertyNativeFunc1` | Callable function entry | Exact raw callback ABI | Candidate addition | [274](D2R_RVA_reference_build_93847_with_arguments.md#L274) |
-| 0x3CFB60 | `PropertyNativeFunc3` | Callable function entry | Exact raw callback ABI | Candidate addition | [275](D2R_RVA_reference_build_93847_with_arguments.md#L275) |
+| 0x3CF960 | `PropertyNativeFunc1` | Callable function entry | Exact raw callback ABI | STACKMANAGER_Socket_Property3CF960 | [274](D2R_RVA_reference_build_93847_with_arguments.md#L274) |
+| 0x3CFB60 | `PropertyNativeFunc3` | Callable function entry | Exact raw callback ABI | STACKMANAGER_Socket_Property3CFB60 | [275](D2R_RVA_reference_build_93847_with_arguments.md#L275) |
 | 0x14FCA70 | `ChatProbe_14FCA70` | Callable function entry | Exact | Candidate addition | [281](D2R_RVA_reference_build_93847_with_arguments.md#L281) |
 | 0x855C90 | `ChatProbe_855C90` | Callable function entry | Exact | Candidate addition | [282](D2R_RVA_reference_build_93847_with_arguments.md#L282) |
 | 0x1FE53C0 | `ChatProbe_1FE53C0` | Data / pointer / descriptor | N/A | Candidate addition | [283](D2R_RVA_reference_build_93847_with_arguments.md#L283) |

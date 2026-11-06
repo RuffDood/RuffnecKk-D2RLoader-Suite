@@ -1,4 +1,11 @@
-# Findings persistants — D2R 3.2.92777
+# Persistent findings — captured D2RLoader game image
+
+> Provenance correction, 2026-10-16: [native corpus identity](../NATIVE-CORPUS.md)
+> governs this collection. Code was captured from running `D2RLoader.exe`, not
+> independently from a retail 3.2/3.3 executable. Earlier dated build labels
+> and retail-equivalence wording below are historical claims, not established
+> retail identity. Preserve their evidence; use captured-image hashes and
+> current Loader/Core surface proofs for new conclusions.
 
 Ce document conserve uniquement les conclusions utiles aux prochaines sessions.
 Les sorties volumineuses demeurent sous `analysis-cache/corpus/`.

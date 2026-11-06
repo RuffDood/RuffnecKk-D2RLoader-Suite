@@ -1,10 +1,12 @@
 # D2R research snapshot
 
 This directory publishes maintained research from the RuffnecKk Diablo laboratory.
-The 28 September 2026 snapshot includes the source working copy, including its
-uncommitted research. It is documentation and reference material, not a release
-qualification or a portable copy of the laboratory tools.
+The snapshot manifest records the laboratory source commit, working-copy state,
+and file hashes. Some entries retain their original snapshot and provenance.
+The published files document findings and their evidence limits. Runtime
+qualification and laboratory tools are tracked separately.
 
+- [Native corpus identity](NATIVE-CORPUS.md).
 - [Native research](d2r/README.md): known addresses, findings and the DataTables atlas.
 - [Argument contracts](d2r/argument-contracts.md) and [generated catalogue](d2r/argument-contracts.generated.md).
 - [Skill-cost reconstruction](d2r/modules/README.md).
@@ -14,9 +16,8 @@ qualification or a portable copy of the laboratory tools.
 - [Source paths and SHA-256 hashes](source-snapshot.json).
 
 Original notes, attribution, historical build identifiers and uncertainty labels
-are preserved. The argument catalogue was regenerated from the copied registry
-because the laboratory's generated view was stale; its source and published
-hashes are recorded separately in the snapshot manifest.
+are preserved. The argument catalogue and imported-reference overlap inventory were regenerated
+from the published registry. The snapshot manifest records the transformations.
 
 Laboratory commands and paths in [LABORATORY.md](LABORATORY.md),
 [WORKBENCH.md](d2r/WORKBENCH.md), and copied documents retain their original

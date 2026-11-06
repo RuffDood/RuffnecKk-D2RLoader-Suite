@@ -1,9 +1,9 @@
-# D2R reconstruction modules
+# D2RLoader game-image reconstruction modules
 
-These modules organize native behaviors by topic for research and future
-plugins. The target runtime is D2R 3.3.93847; the historical 92777 directory
-keeps the shared governed native corpus. Its name does not guarantee
-compatibility with any other executable.
+These modules organize native behaviors by topic for research and plugins.
+The native reference is the [captured D2RLoader-hosted game image](../../NATIVE-CORPUS.md).
+Retail version numbers in historical records describe installation/data context;
+they do not establish the captured code's retail ancestry or compatibility.
 
 ## Consult
 

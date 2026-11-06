@@ -2,7 +2,9 @@
 
 Generated from `known-rvas.json`. Do not edit this view by hand.
 
-3 structured contracts / 1046 registry entries. Remaining 1043 entries have undocumented structured contracts; their existing notes are preserved.
+Native identity: [captured D2RLoader game image](../NATIVE-CORPUS.md). Historical scope version labels do not prove retail ancestry or cross-build equivalence; canonical hashes identify the evidence.
+
+3 structured contracts / 1252 registry entries. Remaining 1249 entries have undocumented structured contracts; their existing notes are preserved.
 
 See [format and authoring rules](argument-contracts.md). Imported claims remain in the separate [reference intake](references/rva-93847-intake.md).
 
@@ -22,7 +24,7 @@ Prototype: **unresolved / not expressed**.
 
 Return: EAX — int32_t — Calculated resource cost.
 
-Scope: D2R 3.3.93847 using the governed common 92777/93847 corpus; canonical SHA-256 `CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715`.
+Scope: captured D2RLoader-hosted game image; documented upstream game target 3.1.1.4; canonical SHA-256 `CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715`.
 
 Runtime: **not-tested** — Existing static reconstruction only; normalization into structured fields adds no runtime evidence.
 
@@ -61,7 +63,7 @@ Prototype: **unresolved / not expressed**.
 
 Return: EAX — boolean result; exact C++ return type unresolved — Whether the examined affordability path succeeds.
 
-Scope: D2R 3.3.93847 using the governed common 92777/93847 corpus; canonical SHA-256 `CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715`.
+Scope: captured D2RLoader-hosted game image; documented upstream game target 3.1.1.4; canonical SHA-256 `CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715`.
 
 Runtime: **not-tested** — Existing static reconstruction only; normalization into structured fields adds no runtime evidence.
 
@@ -102,7 +104,7 @@ Prototype: **unresolved / not expressed**.
 
 Return: EAX — int32_t — Branch-dependent consumption result; nonpositive normal cost returns zero.
 
-Scope: D2R 3.3.93847 using the governed common 92777/93847 corpus; canonical SHA-256 `CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715`.
+Scope: captured D2RLoader-hosted game image; documented upstream game target 3.1.1.4; canonical SHA-256 `CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715`.
 
 Runtime: **not-tested** — Existing static reconstruction only; normalization into structured fields adds no runtime evidence.
 

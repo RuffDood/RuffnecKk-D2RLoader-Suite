@@ -1,9 +1,9 @@
-# Skill resource costs — D2R 3.3.93847
+# Skill resource costs — captured D2RLoader game image
 
-Status: partial static reconstruction. No runtime testing was performed for
-this module. The target is D2R 3.3.93847, using the governed common native
-corpus whose historical directory retains the 92777 provenance. Function names
-below are reconstruction names, not official exported symbols.
+Status: partial static reconstruction; no runtime testing for this module.
+The [native target](../../NATIVE-CORPUS.md) is the captured D2RLoader-hosted
+game image. Retail 3.3 table references below identify data sources, not the
+executing code's ancestry. Function names are reconstruction names, not exports.
 
 ## Can another state duplicate Blood Mana independently?
 
