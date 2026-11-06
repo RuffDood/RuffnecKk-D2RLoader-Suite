@@ -1,3 +1,4 @@
+#include "maps0127_r17_reference.hpp"
 #include "maps0125_r16_reference.hpp"
 #include "maps0125_r15_reference.hpp"
 #include <algorithm>
@@ -44,8 +45,9 @@ int wmain(int argc, wchar_t** argv) {
         && std::wcscmp(argv[2], L"0.12.5") != 0
         && std::wcscmp(argv[2], L"0.12.5-revision2") != 0
         && std::wcscmp(argv[2], L"0.12.5-r15") != 0
-        && std::wcscmp(argv[2], L"0.12.5-r16") != 0) return 2;
-    const auto& profile = std::wcscmp(argv[2], L"0.12.5-r16") == 0 ? Maps0125R16Profile : std::wcscmp(argv[2], L"0.12.5-r15") == 0 ? Maps0125R15Profile : std::wcscmp(argv[2], L"0.12.5-revision2") == 0 ? Maps0125Revision2Profile : std::wcscmp(argv[2], L"0.12.1") == 0
+        && std::wcscmp(argv[2], L"0.12.5-r16") != 0
+        && std::wcscmp(argv[2], L"0.12.7-r17") != 0) return 2;
+    const auto& profile = std::wcscmp(argv[2], L"0.12.7-r17") == 0 ? Maps0127R17Profile : std::wcscmp(argv[2], L"0.12.5-r16") == 0 ? Maps0125R16Profile : std::wcscmp(argv[2], L"0.12.5-r15") == 0 ? Maps0125R15Profile : std::wcscmp(argv[2], L"0.12.5-revision2") == 0 ? Maps0125Revision2Profile : std::wcscmp(argv[2], L"0.12.1") == 0
         ? MapsStatProfiles[0] : (std::wcscmp(argv[2], L"0.12.4") == 0
             ? MapsStatProfiles[1] : Maps0125StatProfile);
     // Reference DLL is mapped without imports, DllMain or plugin initialization.
@@ -155,7 +157,7 @@ int wmain(int argc, wchar_t** argv) {
             ChangeCode(image + profile.readerRva + i, profile.readerWitness[i]);
         CHECK(validate());
     }
-    if (profile.readerRva == 0x17E50) {
+    if ((profile.readerRva == 0x17E50 || profile.readerRva == 0x17BF0)) {
         const auto callByteRva = profile.readerRva + 0xEB;
         const auto originalCallByte = profile.readerWitness[0xEB];
         ChangeCode(image + callByteRva, originalCallByte ^ 0x01U); CHECK(!validate());

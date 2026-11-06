@@ -1,4 +1,5 @@
 #include "reveal_engine.hpp"
+#include "local_provider_windows.hpp"
 
 #include "external_label_provider.hpp"
 #include "gps_collision_foreign_neighbour_policy.hpp"
@@ -56,7 +57,7 @@ constexpr std::uintptr_t InsertAutomapCellRva = 0x0D1460;
 constexpr std::uintptr_t FindAutomapCellRva = 0x0D4B70;
 constexpr std::uintptr_t AutomapSerializerLimitWitnessRva = 0x0D7E3F;
 constexpr std::uintptr_t ClientDrlgDifficultyWitnessRva = 0x32766A;
-constexpr std::uintptr_t DrlgSeedInitializationWitnessRva = 0x326E89;
+[[maybe_unused]] constexpr std::uintptr_t DrlgSeedInitializationWitnessRva = 0x326E89;
 
 constexpr std::size_t UnitTypeOffset = 0x00;
 constexpr std::size_t UnitDynamicPathOffset = 0x38;
@@ -1360,7 +1361,7 @@ auto ValidateRuntime() noexcept -> bool {
         0x08, 0x00, 0x00};
     // DRLG allocation initializes {seed, 0x29A}, advances the native LCG once,
     // stores the original seed at +0x840 and its low result at +0x860.
-    constexpr std::array<std::uint8_t, 129> seedInitializationExpected{
+    [[maybe_unused]] constexpr std::array<std::uint8_t, 129> seedInitializationExpected{
         0x8B, 0xD3, 0x48, 0x89, 0x87, 0x58, 0x08, 0x00,
         0x00, 0x44, 0x88, 0xAF, 0x70, 0x08, 0x00, 0x00,
         0xE8, 0x72, 0x02, 0x04, 0x00, 0x8B, 0x07, 0x4C,
@@ -1427,9 +1428,7 @@ auto ValidateRuntime() noexcept -> bool {
         && check(
             ClientDrlgDifficultyWitnessRva,
             clientDifficultyExpected)
-        && check(
-            DrlgSeedInitializationWitnessRva,
-            seedInitializationExpected);
+        && LocalProviderCompat::SeedSelector(Context->exeBase);
 }
 
 } // namespace

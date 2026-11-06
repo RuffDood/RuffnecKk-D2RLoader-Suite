@@ -1,3 +1,4 @@
+#include "maps0127_r17_reference.hpp"
 #include "maps0125_r16_reference.hpp"
 #include "maps0125_r15_reference.hpp"
 #include <algorithm>
@@ -57,6 +58,7 @@ int wmain(int argc, wchar_t** argv) {
     if (std::wcscmp(argv[2], L"0.12.5") == 0) selected = &Maps0125Profile;
     if (std::wcscmp(argv[2], L"0.12.5-revision2") == 0) selected = &Maps0125Revision2Profile;
     if (std::wcscmp(argv[2], L"0.12.5-r15") == 0) selected = &Maps0125R15Profile;
+    if (std::wcscmp(argv[2], L"0.12.7-r17") == 0) selected = &Maps0127R17Profile;
     if (std::wcscmp(argv[2], L"0.12.5-r16") == 0) selected = &Maps0125R16Profile;
     if (!selected) return 2;
     const auto& profile = *selected;

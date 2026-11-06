@@ -1,3 +1,4 @@
+#include "maps0127_r17_reference.hpp"
 #include "maps0125_r16_reference.hpp"
 #include "maps0125_r15_reference.hpp"
 #include "maps0125_revision2_reference.hpp"
@@ -220,7 +221,7 @@ inline constexpr std::array<std::uint8_t, 80> Maps0125StatOwnerWitness{
 inline constexpr MapsStatProfile Maps0125StatProfile{
     "0.12.5", 0x17E50, 0xF7A0, 0x10F750, 0x111D40, 0x111D48, 0x121EB8,
     0x10F971, 0x10F978, Maps0125StatReaderWitness, Maps0125StatOwnerWitness};
-inline constexpr std::array<MapsStatProfile, 6> MapsStatProfiles{{
+inline constexpr std::array<MapsStatProfile, 7> MapsStatProfiles{{
     {"0.12.1", MapsStatReaderRva, MapsStatOwnerRva, MapsOriginalStatSlotRva,
         MapsRedirectSlotAddressRva, MapsRedirectPreviousValueRva, MapsContextSlotRva,
         MapsStatHookActiveRva, MapsNativeStatRvaSlotRva,
@@ -230,6 +231,7 @@ inline constexpr std::array<MapsStatProfile, 6> MapsStatProfiles{{
     Maps0125StatProfile,
     Maps0125Revision2Profile,
     Maps0125R15Profile,
-    Maps0125R16Profile
+    Maps0125R16Profile,
+    Maps0127R17Profile
 }};
 }
