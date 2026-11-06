@@ -1,3 +1,4 @@
+#include "process_lifetime_worker.hpp"
 #include "overlay_window.hpp"
 
 #include "automap_visibility.hpp"
@@ -60,7 +61,7 @@ using WglGetPixelFormatAttribivArb = BOOL(WINAPI*)(
 using WglSwapIntervalExt = BOOL(WINAPI*)(int);
 
 std::mutex LifecycleLock;
-std::thread OverlayThread;
+Detail::ProcessLifetimeWorker OverlayThread;
 std::atomic_bool StopRequested{};
 std::atomic_bool ThreadRunning{};
 std::atomic_bool AttachedToGame{};
@@ -1615,7 +1616,7 @@ auto StartOverlayWindow(
         std::memory_order_release);
     PresentedFrames.store(0, std::memory_order_release);
     try {
-        OverlayThread = std::thread([
+        OverlayThread.Start([
             config,
             saveCallback,
             infoCallback,

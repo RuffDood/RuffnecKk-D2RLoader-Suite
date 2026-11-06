@@ -1,3 +1,4 @@
+#include "process_lifetime_worker.hpp"
 #include "gps_route_provider.hpp"
 #include "navigation_engine.hpp"
 
@@ -43,7 +44,7 @@ const D2RL::PluginContext* Context{};
 std::atomic_bool Active{};
 std::mutex StateMutex;
 std::condition_variable StateCondition;
-std::thread Worker;
+Detail::ProcessLifetimeWorker Worker;
 bool StopRequested{};
 GpsRouteSessionGate SessionGate{};
 std::uint64_t LatestRequestEpoch{};
@@ -550,7 +551,7 @@ auto InitializeGpsRouteProvider(
         Failed.clear();
         Published.clear();
         ActiveChildProcess = nullptr;
-        Worker = std::thread(WorkerMain);
+        Worker.Start(WorkerMain);
         Active.store(true, std::memory_order_release);
     } catch (...) {
         Context = nullptr;

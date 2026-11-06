@@ -1,3 +1,4 @@
+#include "process_lifetime_worker.hpp"
 #include "external_label_provider.hpp"
 #include "helper_failure_diagnostics.hpp"
 
@@ -192,7 +193,7 @@ std::atomic_bool Active{};
 std::atomic_bool Diagnostics{};
 std::mutex StateMutex;
 std::condition_variable StateCondition;
-std::thread Worker;
+Detail::ProcessLifetimeWorker Worker;
 bool StopRequested{};
 std::optional<Request> PendingRequest;
 std::optional<RequestKey> InFlightRequest;
@@ -1698,7 +1699,7 @@ auto InitializeExternalLabelProvider(
             std::memory_order_release);
         ActiveOperationSeed.store(0U, std::memory_order_release);
         ActiveOperationAct.store(-1, std::memory_order_release);
-        Worker = std::thread(WorkerMain);
+        Worker.Start(WorkerMain);
         Active.store(true, std::memory_order_release);
     } catch (...) {
         Context = nullptr;
