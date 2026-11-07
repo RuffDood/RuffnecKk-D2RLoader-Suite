@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdio>
 #include <cstring>
+#include <cwchar>
 #include <cstdlib>
 
 using namespace RuffnecKk::MapSense::Detail;
@@ -71,7 +72,18 @@ void Write(void* address, const void* bytes, std::size_t size) {
 }
 
 int wmain(int argc, wchar_t** argv) {
-    if (argc != 2) return 2;
+    if (argc != 2 && argc != 3) return 2;
+    const bool revision182 = argc == 3 && std::wcscmp(argv[2], L"1.8.2") == 0;
+    if (argc == 3 && !revision182) return 2;
+    const auto callbackRva = revision182 ? 0x32850U : CelestialAutomapCallbackRva;
+    const auto slotRva = revision182 ? 0xD4180U : CelestialAutomapOriginalSlotRva;
+    const auto recordRva = revision182 ? 0x40760U : 0x3A900U;
+    const auto drawRva = revision182 ? 0x2E740U : 0x29650U;
+    const auto readyRva = revision182 ? 0xD4132U : 0xC903AU;
+    const auto itemDetailRva = revision182 ? 0xD4136U : 0xC903DU;
+    const auto playerReferenceRva = revision182 ? 0xD41E8U : 0xC90F0U;
+    const auto playerMarkerRva = revision182 ? 0xD41F0U : 0xC90F8U;
+    const auto previousMarkerRva = revision182 ? 0xD24E8U : 0xC75D0U;
     // No DllMain, imports, game process or plugin initialization is run.
     // Only the isolated automap callback is executed, with its ready flag false.
     const auto module = LoadLibraryExW(argv[1], nullptr, DONT_RESOLVE_DLL_REFERENCES);
@@ -82,7 +94,7 @@ int wmain(int argc, wchar_t** argv) {
     CHECK(fixture != nullptr); if (!fixture) return 2;
     auto* entry = fixture + AutomapEntryRva;
     auto* trampoline = fixture + 0x1000;
-    auto** slot = reinterpret_cast<void**>(image + CelestialAutomapOriginalSlotRva);
+    auto** slot = reinterpret_cast<void**>(image + slotRva);
     const auto savedSlot = *slot;
     D2RL::PluginApi api{.apiSize = D2RL::PluginApiSize,
         .logInfo = Log, .installInlineHook = Install, .queryService = Service};
@@ -104,16 +116,22 @@ int wmain(int argc, wchar_t** argv) {
         0x48,0x8B,0x6C,0x24,0x58,0x48,0x83,0xC4,0x40,0x5F,0xC3};
     std::memcpy(entry + 33, epilogue.data(), epilogue.size());
     AbsoluteJump(entry + 0x210, reinterpret_cast<void*>(&Native));
-    AbsoluteJump(entry, image + CelestialAutomapCallbackRva);
+    AbsoluteJump(entry, image + callbackRva);
     std::memset(entry + 14, 0x90, 4);
     *slot = trampoline;
-    CHECK(QualifyAutomapHookRoute(&context, Expected, route));
+    const bool qualified = QualifyAutomapHookRoute(&context, Expected, route);
+    CHECK(qualified);
+    if (!qualified) {
+        VirtualFree(fixture, 0, MEM_RELEASE);
+        FreeLibrary(module);
+        return EXIT_FAILURE;
+    }
     CHECK(route.slot == slot && route.original == trampoline);
     CHECK(InstallAutomapHookRoute(&context, Expected, route, Observe, Original, ObserveOnly));
     CHECK(NativeHookInstalls == 1); // existing canonical hook is never replaced
     CHECK(*slot != trampoline && *slot != reinterpret_cast<void*>(&Observe));
 
-    auto callback = reinterpret_cast<ReturningAutomapPass>(image + CelestialAutomapCallbackRva);
+    auto callback = reinterpret_cast<ReturningAutomapPass>(image + callbackRva);
     CHECK(callback(reinterpret_cast<void*>(0x1230), reinterpret_cast<void*>(0x4560)) == Sentinel);
     CHECK(NativeUnit == reinterpret_cast<void*>(0x1230));
     CHECK(NativeCalls == 1 && ObserverCalls == 1);
@@ -129,7 +147,7 @@ int wmain(int argc, wchar_t** argv) {
     entry[0] = 0xE9;
     const auto relative = static_cast<std::int32_t>((fixture + 0x800) - (entry + 5));
     std::memcpy(entry + 1, &relative, sizeof(relative));
-    AbsoluteJump(fixture + 0x800, image + CelestialAutomapCallbackRva);
+    AbsoluteJump(fixture + 0x800, image + callbackRva);
     std::memcpy(trampoline, Expected.data(), 5);
     AbsoluteJump(trampoline + 5, entry + 5);
     CHECK(QualifyAutomapHookRoute(&context, Expected, route));
@@ -147,16 +165,16 @@ int wmain(int argc, wchar_t** argv) {
     CHECK(QualifyAutomapHookRoute(&context, Expected, route));
     CHECK(InstallAutomapHookRoute(&context, Expected, route, Observe, Original, ObserveOnly));
     std::array<std::uint8_t, 14> savedRecord{}, savedDraw{}, recordStub{}, drawStub{};
-    std::memcpy(savedRecord.data(), image + 0x3A900, savedRecord.size());
-    std::memcpy(savedDraw.data(), image + 0x29650, savedDraw.size());
+    std::memcpy(savedRecord.data(), image + recordRva, savedRecord.size());
+    std::memcpy(savedDraw.data(), image + drawRva, savedDraw.size());
     AbsoluteJump(recordStub.data(), reinterpret_cast<void*>(&RecordIconStub));
     AbsoluteJump(drawStub.data(), reinterpret_cast<void*>(&DrawIconsStub));
-    Write(image + 0x3A900, recordStub.data(), recordStub.size());
-    Write(image + 0x29650, drawStub.data(), drawStub.size());
-    image[0xC903A] = 1; image[0xC903D] = 0;
-    *reinterpret_cast<std::uint64_t*>(image + 0xC90F0) = 1;
-    *reinterpret_cast<std::uint64_t*>(image + 0xC90F8) = 1;
-    *reinterpret_cast<std::uint64_t*>(image + 0xC75D0) = 0;
+    Write(image + recordRva, recordStub.data(), recordStub.size());
+    Write(image + drawRva, drawStub.data(), drawStub.size());
+    image[readyRva] = 1; image[itemDetailRva] = 0;
+    *reinterpret_cast<std::uint64_t*>(image + playerReferenceRva) = 1;
+    *reinterpret_cast<std::uint64_t*>(image + playerMarkerRva) = 1;
+    *reinterpret_cast<std::uint64_t*>(image + previousMarkerRva) = 0;
     std::array<std::uint32_t, 8> item{}; item[0] = 4;
     NativeCalls = 0; ObserverCalls = 0;
     CHECK(callback(item.data(), reinterpret_cast<void*>(0x4560)) == Sentinel);
@@ -165,9 +183,9 @@ int wmain(int argc, wchar_t** argv) {
     CHECK(callback(item.data(), reinterpret_cast<void*>(0x4560)) == Sentinel);
     CHECK(NativeCalls == 2 && ObserverCalls == 2 && IconCalls == 2 && DrawCalls == 1);
     RestoreAutomapHookRoute();
-    image[0xC903A] = 0;
-    Write(image + 0x3A900, savedRecord.data(), savedRecord.size());
-    Write(image + 0x29650, savedDraw.data(), savedDraw.size());
+    image[readyRva] = 0;
+    Write(image + recordRva, savedRecord.data(), savedRecord.size());
+    Write(image + drawRva, savedDraw.data(), savedDraw.size());
 
     // Competing owners, modifications and unavailable diagnostics are rejected.
     Owner = "other-plugin"; CHECK(!QualifyAutomapHookRoute(&context, Expected, route));
@@ -181,11 +199,11 @@ int wmain(int argc, wchar_t** argv) {
     CHECK(!QualifyAutomapHookRoute(&context, Expected, route)); DiagnosticsAvailable = true;
     entry[25] ^= 1; CHECK(!QualifyAutomapHookRoute(&context, Expected, route)); entry[25] ^= 1;
     trampoline[0] ^= 1; CHECK(!QualifyAutomapHookRoute(&context, Expected, route)); trampoline[0] ^= 1;
-    const auto savedCallbackByte = image[CelestialAutomapCallbackRva + 397];
+    const auto savedCallbackByte = image[callbackRva + 397];
     const auto badCallbackByte = static_cast<std::uint8_t>(savedCallbackByte ^ 1);
-    Write(image + CelestialAutomapCallbackRva + 397, &badCallbackByte, 1);
+    Write(image + callbackRva + 397, &badCallbackByte, 1);
     CHECK(!QualifyAutomapHookRoute(&context, Expected, route));
-    Write(image + CelestialAutomapCallbackRva + 397, &savedCallbackByte, 1);
+    Write(image + callbackRva + 397, &savedCallbackByte, 1);
     CHECK(QualifyAutomapHookRoute(&context, Expected, route));
     *slot = reinterpret_cast<void*>(&Native);
     CHECK(!InstallAutomapHookRoute(&context, Expected, route, Observe, Original, ObserveOnly));
@@ -199,6 +217,7 @@ int wmain(int argc, wchar_t** argv) {
     *slot = savedSlot;
 
     VirtualFree(fixture, 0, MEM_RELEASE); FreeLibrary(module);
-    std::printf("Celestial 1.5.3 automap bridge: %s\n", Failures ? "FAILED" : "PASS");
+    std::printf("Celestial %s automap bridge: %s\n", revision182 ? "1.8.2" : "1.5.3",
+        Failures ? "FAILED" : "PASS");
     return Failures ? EXIT_FAILURE : EXIT_SUCCESS;
 }

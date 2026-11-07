@@ -3,6 +3,7 @@
 #include "pyre_r5_automap_witness.hpp"
 #include "pyre_r6_automap_witness.hpp"
 #include "celestial_automap_witness.hpp"
+#include "celestial_182_automap_witness.hpp"
 #include <atomic>
 
 #include <algorithm>
@@ -11,6 +12,24 @@
 
 namespace RuffnecKk::MapSense::Detail {
 namespace {
+
+struct AutomapHookProfile {
+    AutomapOwner owner;
+    std::uintptr_t callbackRva;
+    std::uintptr_t slotRva;
+    std::span<const std::uint8_t> witness;
+};
+
+constexpr std::array AutomapHookProfiles{
+    AutomapHookProfile{AutomapOwner::Pyre, PyreAutomapCallbackRva, PyreAutomapOriginalSlotRva,
+        PyreCallbackWitness},
+    AutomapHookProfile{AutomapOwner::Pyre, 0x84C0, 0x19F900, PyreR5CallbackWitness},
+    AutomapHookProfile{AutomapOwner::Pyre, 0x1AF90, 0x170240, PyreR6CallbackWitness},
+    AutomapHookProfile{AutomapOwner::Celestial, CelestialAutomapCallbackRva,
+        CelestialAutomapOriginalSlotRva, CelestialCallbackWitness},
+    AutomapHookProfile{AutomapOwner::Celestial, Celestial182AutomapCallbackRva,
+        Celestial182AutomapOriginalSlotRva, Celestial182CallbackWitness},
+};
 
 AutomapHookRoute Attached{};
 void* AttachedCallback{};
@@ -131,40 +150,32 @@ auto QualifyAutomapHookRoute(const D2RL::PluginContext* context,
     const bool celestial = std::memcmp(status.ownerPluginId,
         "celestialrayone.loot-filter\0", sizeof("celestialrayone.loot-filter")) == 0;
     if (!pyre && !celestial) return reject("MapSense: automap owner is not supported.");
-    auto callbackRva = pyre ? PyreAutomapCallbackRva : CelestialAutomapCallbackRva;
-    auto slotRva = pyre ? PyreAutomapOriginalSlotRva : CelestialAutomapOriginalSlotRva;
-    std::span<const std::uint8_t> witness = pyre
-        ? std::span<const std::uint8_t>(PyreCallbackWitness)
-        : std::span<const std::uint8_t>(CelestialCallbackWitness);
+    const auto owner = pyre ? AutomapOwner::Pyre : AutomapOwner::Celestial;
     std::uintptr_t target{};
     if (!JumpDestination(entry, target)) return reject("MapSense ESRDIAG1: automap-route stage=entry-jump-unrecognized.");
     HMODULE module{};
-    auto resolveModule = [&]() noexcept {
+    const auto resolveModule = [&]() noexcept {
         return GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
             | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
             reinterpret_cast<LPCWSTR>(target), &module) != FALSE;
     };
-    if (!resolveModule()
-        || (target != reinterpret_cast<std::uintptr_t>(module) + callbackRva
-            && !(pyre && (target == reinterpret_cast<std::uintptr_t>(module) + 0x84C0
-                || target == reinterpret_cast<std::uintptr_t>(module) + 0x1AF90)))) {
-        if (!JumpDestination(target, target) || !resolveModule()) return reject("MapSense ESRDIAG1: automap-route stage=relay-or-module-unresolved.");
+    const auto findProfile = [&]() noexcept -> const AutomapHookProfile* {
+        const auto rva = target - reinterpret_cast<std::uintptr_t>(module);
+        for (const auto& profile : AutomapHookProfiles) {
+            if (profile.owner == owner && profile.callbackRva == rva) return &profile;
+        }
+        return nullptr;
+    };
+    const auto* profile = resolveModule() ? findProfile() : nullptr;
+    if (profile == nullptr) {
+        if (!JumpDestination(target, target) || !resolveModule())
+            return reject("MapSense ESRDIAG1: automap-route stage=relay-or-module-unresolved.");
+        profile = findProfile();
     }
-    const auto base = reinterpret_cast<std::uintptr_t>(module);
-    // The revision 5 profile is exclusive to the admitted Pyre owner.
-    if (pyre && target == base + 0x84C0) {
-        callbackRva = 0x84C0;
-        slotRva = 0x19F900;
-        witness = PyreR5CallbackWitness;
-    } else if (pyre && target == base + 0x1AF90) {
-        callbackRva = 0x1AF90;
-        slotRva = 0x170240;
-        witness = PyreR6CallbackWitness;
-    }
-    if (target != base + callbackRva
-        || !Region(target, witness.size(), true)
-        || !Matches(target, witness)) return reject("MapSense ESRDIAG1: automap-route stage=callback-bytes-or-location-not-admitted.");
-    const auto slot = base + slotRva;
+    if (profile == nullptr || !Region(target, profile->witness.size(), true)
+        || !Matches(target, profile->witness))
+        return reject("MapSense ESRDIAG1: automap-route stage=callback-bytes-or-location-not-admitted.");
+    const auto slot = reinterpret_cast<std::uintptr_t>(module) + profile->slotRva;
     MEMORY_BASIC_INFORMATION slotInfo{};
     void* original{};
     if (VirtualQuery(reinterpret_cast<void*>(slot), &slotInfo, sizeof(slotInfo)) != sizeof(slotInfo)
@@ -173,8 +184,7 @@ auto QualifyAutomapHookRoute(const D2RL::PluginContext* context,
         || !Read(slot, &original, sizeof(original))
         || !NativeTrampoline(reinterpret_cast<std::uintptr_t>(original), entry, expected))
         return reject("MapSense ESRDIAG1: automap-route stage=original-slot-or-trampoline-not-admitted.");
-    route = {reinterpret_cast<void**>(slot), original, module,
-        pyre ? AutomapOwner::Pyre : AutomapOwner::Celestial};
+    route = {reinterpret_cast<void**>(slot), original, module, owner};
     return true;
 }
 
@@ -209,7 +219,7 @@ auto InstallAutomapHookRoute(const D2RL::PluginContext* context,
     Attached = route;
     AttachedCallback = replacement;
     context->LogInfo(route.owner == AutomapOwner::Celestial
-        ? "MapSense: validated CelestialRayOne Loot Filter 1.5.3 automap bridge attached; loot filter retains the native hook."
+        ? "MapSense: validated CelestialRayOne Loot Filter automap bridge attached; loot filter retains the native hook."
         : "MapSense: validated Pyre automap original-call bridge attached; Pyre retains the native hook.");
     return true;
 }
