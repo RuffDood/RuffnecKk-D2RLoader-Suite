@@ -274,69 +274,6 @@
       "sourceCommit": "f42c6d8a995806e5e7b93bd60a6f1039507444de"
     },
     {
-      "source": "reverse-engineering/d2r-3.2.92777/sdk-contribution/README.md",
-      "destination": "research/d2r/sdk-contribution/README.md",
-      "sourceSha256": "F4C9ABBDAE4DA5BEBE566F7E1AC6BB20DE546ECCFCAFF37E65F02E1A06F9A815",
-      "bytes": 2313,
-      "publishedSha256": "F4C9ABBDAE4DA5BEBE566F7E1AC6BB20DE546ECCFCAFF37E65F02E1A06F9A815",
-      "capturedAt": "2026-09-28T19:43:45.4350234-04:00",
-      "sourceCommit": "f42c6d8a995806e5e7b93bd60a6f1039507444de"
-    },
-    {
-      "source": "reverse-engineering/d2r-3.2.92777/sdk-contribution/Services-requests.md",
-      "destination": "research/d2r/sdk-contribution/Services-requests.md",
-      "sourceSha256": "20CD300232D1BF9107FD34FA11EF718A58C402EC0178D8533EC72110348BD900",
-      "bytes": 26595,
-      "publishedSha256": "20CD300232D1BF9107FD34FA11EF718A58C402EC0178D8533EC72110348BD900",
-      "capturedAt": "2026-09-28T19:43:45.4350234-04:00",
-      "sourceCommit": "f42c6d8a995806e5e7b93bd60a6f1039507444de"
-    },
-    {
-      "source": "reverse-engineering/d2r-3.2.92777/sdk-contribution/discord-message.md",
-      "destination": "research/d2r/sdk-contribution/discord-message.md",
-      "sourceSha256": "8AC5895CF01E7D53FF770AF2544382961137B540BD06C7BAE2E638A5E33FD9EA",
-      "bytes": 1802,
-      "publishedSha256": "8AC5895CF01E7D53FF770AF2544382961137B540BD06C7BAE2E638A5E33FD9EA",
-      "capturedAt": "2026-09-28T19:43:45.4350234-04:00",
-      "sourceCommit": "f42c6d8a995806e5e7b93bd60a6f1039507444de"
-    },
-    {
-      "source": "reverse-engineering/d2r-3.2.92777/sdk-contribution/mynotes.md",
-      "destination": "research/d2r/sdk-contribution/mynotes.md",
-      "sourceSha256": "250EC3C79D2D8760D7082CCBC73E1220FAD5646A7A688D02CB67E06D3F109222",
-      "bytes": 1382,
-      "publishedSha256": "250EC3C79D2D8760D7082CCBC73E1220FAD5646A7A688D02CB67E06D3F109222",
-      "capturedAt": "2026-09-28T19:43:45.4350234-04:00",
-      "sourceCommit": "f42c6d8a995806e5e7b93bd60a6f1039507444de"
-    },
-    {
-      "source": "reverse-engineering/d2r-3.2.92777/sdk-contribution/sdk-candidates.json",
-      "destination": "research/d2r/sdk-contribution/sdk-candidates.json",
-      "sourceSha256": "79B97D9A7DA7F11BC1EC5A44FD29C2193C60251B56E40277CF7B9647433597F4",
-      "bytes": 9140,
-      "publishedSha256": "79B97D9A7DA7F11BC1EC5A44FD29C2193C60251B56E40277CF7B9647433597F4",
-      "capturedAt": "2026-09-28T19:43:45.4350234-04:00",
-      "sourceCommit": "f42c6d8a995806e5e7b93bd60a6f1039507444de"
-    },
-    {
-      "source": "reverse-engineering/d2r-3.2.92777/sdk-contribution/upstream-proposal.md",
-      "destination": "research/d2r/sdk-contribution/upstream-proposal.md",
-      "sourceSha256": "FECD3B61A2AFE11E130253A3ED00450D975F39197B7447C1B6E8EA6CC863BB70",
-      "bytes": 1562,
-      "publishedSha256": "FECD3B61A2AFE11E130253A3ED00450D975F39197B7447C1B6E8EA6CC863BB70",
-      "capturedAt": "2026-09-28T19:43:45.4350234-04:00",
-      "sourceCommit": "f42c6d8a995806e5e7b93bd60a6f1039507444de"
-    },
-    {
-      "source": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
-      "destination": "research/d2r/sdk-contribution/verified-layouts.hpp",
-      "sourceSha256": "8A4AE91F928D0361FF832707728F7133F69E3676F61C505F60B8318DD6D34DD5",
-      "bytes": 3416,
-      "publishedSha256": "8A4AE91F928D0361FF832707728F7133F69E3676F61C505F60B8318DD6D34DD5",
-      "capturedAt": "2026-09-28T19:43:45.4350234-04:00",
-      "sourceCommit": "f42c6d8a995806e5e7b93bd60a6f1039507444de"
-    },
-    {
       "source": "reverse-engineering/d2r-3.2.92777/workbench.json",
       "destination": "research/d2r/workbench.json",
       "sourceSha256": "010721C46852A9F73AE878502EF7411A4484768A2AAE7F52CBCEF63FA2781A72",
