@@ -1,6 +1,7 @@
 #include "automap_hook_bridge.hpp"
 #include "pyre_automap_witness.hpp"
 #include "pyre_r5_automap_witness.hpp"
+#include "pyre_r6_automap_witness.hpp"
 #include "celestial_automap_witness.hpp"
 #include <atomic>
 
@@ -145,7 +146,8 @@ auto QualifyAutomapHookRoute(const D2RL::PluginContext* context,
     };
     if (!resolveModule()
         || (target != reinterpret_cast<std::uintptr_t>(module) + callbackRva
-            && !(pyre && target == reinterpret_cast<std::uintptr_t>(module) + 0x84C0))) {
+            && !(pyre && (target == reinterpret_cast<std::uintptr_t>(module) + 0x84C0
+                || target == reinterpret_cast<std::uintptr_t>(module) + 0x1AF90)))) {
         if (!JumpDestination(target, target) || !resolveModule()) return reject("MapSense ESRDIAG1: automap-route stage=relay-or-module-unresolved.");
     }
     const auto base = reinterpret_cast<std::uintptr_t>(module);
@@ -154,6 +156,10 @@ auto QualifyAutomapHookRoute(const D2RL::PluginContext* context,
         callbackRva = 0x84C0;
         slotRva = 0x19F900;
         witness = PyreR5CallbackWitness;
+    } else if (pyre && target == base + 0x1AF90) {
+        callbackRva = 0x1AF90;
+        slotRva = 0x170240;
+        witness = PyreR6CallbackWitness;
     }
     if (target != base + callbackRva
         || !Region(target, witness.size(), true)

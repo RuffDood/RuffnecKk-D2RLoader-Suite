@@ -451,3 +451,8 @@ set(RUFFNECKK_MAPSENSE_PYRE_R5_TEST_DLL "" CACHE FILEPATH "Exact Pyre Loot Filte
 if(BUILD_TESTING AND RUFFNECKK_MAPSENSE_PYRE_R5_TEST_DLL)
     add_test(NAME mapsense.pyre-r5 COMMAND ruffneckk_mapsense_automap_bridge_tests "${RUFFNECKK_MAPSENSE_PYRE_R5_TEST_DLL}" r5)
 endif()
+
+set(RUFFNECKK_MAPSENSE_PYRE_R6_TEST_DLL "" CACHE FILEPATH "Exact Pyre Loot Filter revision 6 reference")
+if(BUILD_TESTING AND RUFFNECKK_MAPSENSE_PYRE_R6_TEST_DLL)
+    add_test(NAME mapsense.pyre-r6 COMMAND ruffneckk_mapsense_automap_bridge_tests "${RUFFNECKK_MAPSENSE_PYRE_R6_TEST_DLL}" r6)
+endif()

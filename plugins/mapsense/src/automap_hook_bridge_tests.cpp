@@ -1,3 +1,4 @@
+#include <string_view>
 #include "automap_hook_bridge.hpp"
 #include <array>
 #include <cstdio>
@@ -61,11 +62,12 @@ void Write(void* address, const void* bytes, std::size_t size) {
 
 int wmain(int argc, wchar_t** argv) {
     if (argc != 2 && argc != 3) return 2;
-    const bool revision5 = argc == 3;
-    const std::uintptr_t fixtureCallbackRva = revision5 ? 0x84C0 : 0x4BA0;
-    const std::uintptr_t fixtureOriginalSlotRva = revision5 ? 0x19F900 : 0x1755A8;
-    const std::uintptr_t dispatchSlotRva = revision5 ? 0xC43A8 : 0x9D398;
-    const std::uintptr_t callbackTail = revision5 ? 604 : 572;
+    const bool revision6 = argc == 3 && std::wstring_view(argv[2]) == L"r6";
+    const bool revision5 = argc == 3 && !revision6;
+    const std::uintptr_t fixtureCallbackRva = revision6 ? 0x1AF90 : revision5 ? 0x84C0 : 0x4BA0;
+    const std::uintptr_t fixtureOriginalSlotRva = revision6 ? 0x170240 : revision5 ? 0x19F900 : 0x1755A8;
+    const std::uintptr_t dispatchSlotRva = revision6 ? 0x923A8 : revision5 ? 0xC43A8 : 0x9D398;
+    const std::uintptr_t callbackTail = revision6 ? 918 : revision5 ? 604 : 572;
     // No DllMain, imports, game process or plugin initialization is run.
     // Only the isolated automap callback is executed, with its ready flag false.
     const auto module = LoadLibraryExW(argv[1], nullptr, DONT_RESOLVE_DLL_REFERENCES);
