@@ -1874,3 +1874,28 @@ index 9983c50..6af6634 100644
 @@ -445 +510 @@ test "Levels.txt Teleport parses to the rule the engine applies" {
 -    const rules = try parseTeleportColumn(alloc);
 +    const rules = try parseTeleportColumn(alloc, d2data.file("Levels"), false);
+diff --git a/packages/drlg/src/drlg/maze/Act2.zig b/packages/drlg/src/drlg/maze/Act2.zig
+index c748c20..ce9cc41 100644
+--- a/packages/drlg/src/drlg/maze/Act2.zig
++++ b/packages/drlg/src/drlg/maze/Act2.zig
+@@ -7,0 +8 @@ const rng = @import("../rng.zig");
++const tables = @import("../tables.zig");
+@@ -29,0 +31,10 @@ const D2DrlgReplaceRoomStrc_006f00e8 = s.D2DrlgReplaceRoomStrc{ .nSourceLevelPre
++fn usesSandsweptTombWarpOrder(pLevel: [*c]s.D2DrlgLevelStrc) bool {
++    const level = pLevel.*.eD2LevelId;
++    if (@intFromEnum(level) != 166) return false;
++    const outer: *const tables.D2LevelDefsTxt = tables.levelDefsGetLine(level) orelse return false;
++    const sanctum: *const tables.D2LevelDefsTxt = tables.levelDefsGetLine(@enumFromInt(167)) orelse return false;
++    return outer.Vis[0] == level and @intFromEnum(outer.Vis[1]) == 167
++        and outer.Warp[0] == 48 and outer.Warp[1] == 49
++        and sanctum.Vis[2] == level and sanctum.Warp[2] == 83;
++}
++
+@@ -33,0 +45,7 @@ pub fn Lair(pLevel: [*c]s.D2DrlgLevelStrc) void {
++    // The Reimagined Tier 1 self-link is in the first lair warp room.
++    // Use the native preset order so both labels and tiles match the game.
++    if (usesSandsweptTombWarpOrder(pLevel)) {
++        rr(pLevel, &gaDrlgLairReplacements_B, &nRoll);
++        rr(pLevel, &gaDrlgLairReplacements_A, &nRoll);
++        return;
++    }
