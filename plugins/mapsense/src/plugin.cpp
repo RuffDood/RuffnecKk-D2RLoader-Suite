@@ -5501,19 +5501,19 @@ void DrawAutomapPoiSnapshots(
     if (!Settings.monsters.superUniqueBoss.showNames) {
         return nullptr;
     }
+    if (marker.classId < 0) return nullptr;
+    const auto* const monStats = dataCatalog.FindMonStats(
+        static_cast<std::uint32_t>(marker.classId));
+    if (monStats == nullptr) return nullptr;
     if (marker.superUniqueIndex >= 0) {
-        const auto* const superUnique = dataCatalog.FindSuperUnique(
-            static_cast<std::uint32_t>(marker.superUniqueIndex));
+        const auto* const superUnique = dataCatalog.ResolveLiveSuperUnique(
+            static_cast<std::uint32_t>(marker.superUniqueIndex), monStats->id);
         if (superUnique != nullptr && superUnique->name.localized
             && !superUnique->name.utf8.empty()) {
             return &superUnique->name;
         }
     }
-    if (marker.classId < 0) return nullptr;
-    const auto* const monStats = dataCatalog.FindMonStats(
-        static_cast<std::uint32_t>(marker.classId));
-    if (monStats == nullptr
-        || !HasNamedBossDisplayIdentity(
+    if (!HasNamedBossDisplayIdentity(
             marker.rank,
             marker.superUniqueIndex,
             monStats->primeEvil)

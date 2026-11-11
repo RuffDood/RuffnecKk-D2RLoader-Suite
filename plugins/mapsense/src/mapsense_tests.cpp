@@ -616,6 +616,11 @@ void CheckMapSenseDataCatalogContract() {
             CHECK(!StaticQuestPresetTargetFor(49, 1U, 4).has_value());
             CHECK(!result.catalog->ResolveSuperUniquePresetClassId("Radament", "zombie1").has_value());
             CHECK(!result.catalog->ResolveSuperUniquePresetClassId("Missing", "radament").has_value());
+            CHECK(result.catalog->ResolveLiveSuperUnique(59U, "radament")
+                == result.catalog->FindSuperUnique(10U));
+            CHECK(result.catalog->ResolveLiveSuperUnique(59U, "zombie1")
+                == result.catalog->FindSuperUnique(59U));
+            CHECK(result.catalog->ResolveLiveSuperUnique(59U, "modmonster") == nullptr);
             // Extending MonStats changes the encoded preset without a vanilla constant.
             WriteCatalogFixture(excel / "monstats.txt",
                 "Id\tNameStr\tprimeevil\r\n"
@@ -625,10 +630,16 @@ void CheckMapSenseDataCatalogContract() {
             CHECK(extended.catalog->ResolveSuperUniquePresetClassId("Radament", "radament") == 5);
             WriteCatalogFixture(excel / "superuniques.txt",
                 "Superunique\tName\tClass\thcIdx\r\n"
-                "Radament\tRadament\tradament\t10\r\n"
+                "Radament\tRadament\tradament\t1\r\n"
+                "Expansion\t\t\t\r\n"
                 "Radament\tRadament\tradament\t99\r\n");
             const auto ambiguous = MapSenseDataCatalog::Load(&context);
             CHECK(!ambiguous.catalog->ResolveSuperUniquePresetClassId("Radament", "radament").has_value());
+            CHECK(ambiguous.catalog->ResolveLiveSuperUnique(59U, "radament") == nullptr);
+            CHECK(ambiguous.catalog->ResolveLiveSuperUnique(1U, "radament")
+                == ambiguous.catalog->FindSuperUnique(99U));
+            CHECK(ambiguous.catalog->ResolveLiveSuperUnique(99U, "radament")
+                == ambiguous.catalog->FindSuperUnique(99U));
         }
         {
             ScopedCatalogTestDirectory directory("frozenstein-quest-preset");

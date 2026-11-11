@@ -2214,6 +2214,30 @@ auto MapSenseDataCatalog::FindSuperUnique(std::uint32_t hcIdx) const noexcept
         ? nullptr : &impl_->superUniques[found->second];
 }
 
+auto MapSenseDataCatalog::ResolveLiveSuperUnique(
+        std::uint32_t runtimeIndex, std::string_view monsterClass) const noexcept
+        -> const DataCatalogSuperUnique* {
+    if (!impl_ || monsterClass.empty()) return nullptr;
+    // The compiled index counts records after the Expansion separator is removed.
+    if (runtimeIndex < impl_->superUniques.size()) {
+        const auto& compiled = impl_->superUniques[runtimeIndex];
+        if (compiled.classId == monsterClass) return &compiled;
+    }
+
+    const auto* indexed = FindSuperUnique(runtimeIndex);
+    if (indexed != nullptr && indexed->classId == monsterClass) return indexed;
+
+    // Modded runtime indices can differ from the TXT hcIdx values.
+    // A class shared by multiple SuperUniques cannot disambiguate the name.
+    const DataCatalogSuperUnique* match = nullptr;
+    for (const auto& record : impl_->superUniques) {
+        if (record.classId != monsterClass) continue;
+        if (match != nullptr) return nullptr;
+        match = &record;
+    }
+    return match;
+}
+
 auto MapSenseDataCatalog::ResolveSuperUniquePresetClassId(
         std::string_view id, std::string_view expectedClass) const noexcept
         -> std::optional<std::int32_t> {

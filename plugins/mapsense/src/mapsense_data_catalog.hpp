@@ -292,6 +292,9 @@ public:
         -> std::span<const std::uint32_t>;
     [[nodiscard]] auto FindSuperUnique(std::uint32_t hcIdx) const noexcept
         -> const DataCatalogSuperUnique*;
+    [[nodiscard]] auto ResolveLiveSuperUnique(
+        std::uint32_t runtimeIndex, std::string_view monsterClass) const noexcept
+        -> const DataCatalogSuperUnique*;
     // Generated SuperUnique presets encode MonStats row count + physical
     // SuperUniques row ordinal, not hcIdx. Requires both accepted TXT families.
     [[nodiscard]] auto ResolveSuperUniquePresetClassId(
