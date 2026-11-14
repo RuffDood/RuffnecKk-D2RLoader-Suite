@@ -307,6 +307,14 @@ foreach ($entry in $entries) {
     if ($actualHash -ne $expectedHash) {
         throw "SHA-256 mismatch for '$source': expected $expectedHash, found $actualHash."
     }
+    if ($kind -eq 'plugin-dll' -and $componentId -eq 'ruffneckk-mapsense') {
+        $binaryText = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($absoluteSource))
+        $publicName = 'RuffnecKk MapSense' + [char]0
+        if ($binaryText.IndexOf($publicName, [StringComparison]::Ordinal) -lt 0 -or
+            $binaryText.IndexOf('RuffnecKk MapSense (Reimagined Local)', [StringComparison]::Ordinal) -ge 0) {
+            throw "The Suite release requires the public MapSense DLL: '$source'."
+        }
+    }
     if ($kind -eq 'plugin-companion-exe' -and
         $componentId -eq 'ruffneckk-mapsense') {
         $portableCpuValidator = Join-Path $repositoryRoot `

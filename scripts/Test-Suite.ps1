@@ -382,11 +382,14 @@ foreach ($entry in $pluginEntries) {
         if (-not $approvedMapsStatOwnershipLookup) {
             $errors.Add("mapsense must validate the exact Reimagined Maps stat-reader ownership export.")
         }
-        if ($getProcAddressMatches.Count -ne 6 -or -not $approvedD3D12Lookup -or
+        $approvedSeedArtworkLookup = $sourceText -match
+            'constexpr\s+std::uint16_t\s+FileOpenOrdinal\s*=\s*160;' -and
+            $sourceText -match 'GetProcAddress\(core,\s*MAKEINTRESOURCEA\(FileOpenOrdinal\)\)'
+        if ($getProcAddressMatches.Count -ne 7 -or -not $approvedD3D12Lookup -or
             -not $approvedD3D12DebugLookup -or
             -not $approvedIsInGameLookup -or -not $approvedCommandLookup -or
-            -not $approvedFloatingDamageLookup) {
-            $errors.Add('mapsense may resolve only D3D12CreateDevice, its compile-gated debug interface, two governed D2RCore exports and the versioned Floating Damage handoff.')
+            -not $approvedFloatingDamageLookup -or -not $approvedSeedArtworkLookup) {
+            $errors.Add('mapsense may resolve only its approved D3D12, D2RCore, Maps ownership, Floating Damage and seed artwork exports.')
         }
         $rendererStorageOwnsSwapChainRegistry = $sourceText -match
             '(?s)struct\s+RendererStorage\s*\{\s*std::vector<SwapChainQueueBinding>\s+swapChainQueueBindings\s*;'

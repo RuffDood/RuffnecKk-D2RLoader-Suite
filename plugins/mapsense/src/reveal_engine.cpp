@@ -1,3 +1,4 @@
+#include "seed_selector/map_seed_selector.hpp"
 #include "reveal_engine.hpp"
 #include "local_provider_windows.hpp"
 
@@ -1428,7 +1429,8 @@ auto ValidateRuntime() noexcept -> bool {
         && check(
             ClientDrlgDifficultyWitnessRva,
             clientDifficultyExpected)
-        && LocalProviderCompat::SeedSelector(Context->exeBase);
+        && (MapSeedSelector::OwnsSeedInitializer(Context->exeBase)
+            || LocalProviderCompat::SeedSelector(Context->exeBase));
 }
 
 } // namespace
