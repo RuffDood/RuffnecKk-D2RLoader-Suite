@@ -1,12 +1,18 @@
 {
   "schemaVersion": 1,
+  "id": "d2rloader-game-image",
+  "displayName": "Captured D2RLoader-hosted game image",
+  "pathMigration": {
+    "date": "2026-11-19",
+    "reference": "reverse-engineering/WORKBENCH-MIGRATION.md"
+  },
   "target": {
     "product": "D2RLoader-hosted D2R game image",
     "version": "3.2",
     "build": 92777,
     "architecture": "x86-64",
     "imageBase": "0x140000000",
-    "labelRole": "version/build are historical installation metadata, not retail native identity"
+    "labelRole": "version/build are compatibility metadata for historical installation records; corpusId and hashes identify the native image"
   },
   "provenance": {
     "kind": "d2rloader-hosted-game-image",

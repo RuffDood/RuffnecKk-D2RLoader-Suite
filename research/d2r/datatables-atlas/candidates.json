@@ -10,7 +10,7 @@
     "architecture": "x86-64"
   },
   "corpus": {
-    "workbenchPath": "reverse-engineering/d2r-3.2.92777",
+    "workbenchPath": "reverse-engineering/d2rloader-game-image",
     "provenanceBuild": 92777,
     "kind": "d2rloader-hosted-game-image",
     "corpusId": "d2rloader-game-image-20260717",
@@ -19,7 +19,7 @@
     "canonicalImageSha256": "CC59119DC2A6C7D43D088098FC162EAFA4AE1299B2079126AEF43C1ACA914715",
     "analysisImageSha256": "673E8C0B2E89563E75525B24D137098EFD07B2DB4ED42ADEC56AA1ADDF0E63AB",
     "indexImageSha256": "673E8C0B2E89563E75525B24D137098EFD07B2DB4ED42ADEC56AA1ADDF0E63AB",
-    "catalogSha256": "3219983BB62BCC5751BB74E50DA4A3EF03D2FC7B139679DF7E8D6A827B331264"
+    "catalogSha256": "93A761A663DD7CE235334C5018C35F36D0B759F6C55A720273DEEE5A051E4776"
   },
   "compiler": {
     "name": "DATATBLS_CompileTxt",

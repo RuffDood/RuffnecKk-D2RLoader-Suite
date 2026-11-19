@@ -1,14 +1,15 @@
 # Captured D2RLoader game-image workbench
 
-This historical directory stores the native code captured from running
+This workbench stores the native code captured from running
 `D2RLoader.exe`, with D2RCore active. [Native corpus identity](../NATIVE-CORPUS.md)
 is authoritative for provenance and the meaning of version labels.
 
-`92777`, `93847`, the filenames and `re:d2r32` / `re:d2r33` aliases are
-historical installation/tooling labels. This is not proof of independently
-captured retail 3.2/3.3 code or equivalence between those retail executables.
-Reuse this image when its required native surfaces match; inspect current
-Loader/Core implementations and hooks separately.
+Use `npm run re:native -- status` as the primary entry point. The older
+`re:d2r32` and `re:d2r33` commands remain compatibility aliases. Historical
+artifact filenames, `92777` and `93847` describe retained evidence, not retail
+native identity or cross-build equivalence. Inspect current Loader/Core
+implementations and hooks separately. See the [path migration](../WORKBENCH-MIGRATION.md)
+when following an older receipt or source path.
 
 ## Understand a behavior
 
@@ -16,10 +17,10 @@ The [reconstruction modules](modules/README.md) connect a gameplay question to
 explanations, documentary pseudocode, and native evidence.
 
 ```powershell
-npm run re:d2r33 -- status
-npm run re:d2r33 -- topic blood_mana
-npm run re:d2r33 -- topic "coût en vie"
-npm run re:d2r33 -- known blood_mana
+npm run re:native -- status
+npm run re:native -- topic blood_mana
+npm run re:native -- topic "coût en vie"
+npm run re:native -- known blood_mana
 ```
 
 The first topic is [skill payment](modules/skill-costs.md). Results state their
@@ -31,6 +32,10 @@ does not constitute in-game qualification.
 - [Argument contract format and authoring rules](argument-contracts.md): record arguments, return values, evidence and unresolved limits separately from identification confidence.
 - [Generated contract catalogue](argument-contracts.generated.md): structured views of contracts in `known-rvas.json`.
 - [Build 93847 reference intake](references/rva-93847-intake.md): preserved user-supplied catalogue, provenance, conflicts and address-overlap inventory.
+- [CelestialRayOne native research intake](references/celestialrayone-intake.md): pinned source research, coverage, byte comparisons and integration boundaries.
+- [CelestialRayOne topic and address index](references/celestialrayone-native-inventory.md): searchable functions/helpers, claimed contracts, hook sites, layouts, DataTables and Core/provider leads; no automatic native promotion.
+- [PD2 Resurrected native research intake](references/pd2-resurrected-intake.md): source contracts, typed fields, dispatch/research tables, owned hooks and the missing pinned-toolkit boundary.
+- [PD2 topic, location and contract index](references/pd2-resurrected-native-inventory.md): source citations, legacy-PD2/D2R table context and unresolved Engine symbols; no automatic native promotion.
 
 Use `node scripts/reverse-engineering/argument-contracts.mjs --query 0x33AA00`
 from the repository root to inspect current structured contracts without rebuilding
@@ -42,16 +47,16 @@ authoring rules; legacy entries are backfilled only from established evidence.
 Depuis la racine du depot :
 
 ```powershell
-npm run re:d2r32 -- status
-npm run re:d2r32 -- self-test
-npm run re:d2r32 -- known tome
-npm run re:d2r32 -- function 0x5817BD
-npm run re:d2r32 -- xrefs 0x46F090
-npm run re:d2r32 -- bytes "41 B9 ?? ?? ?? ??"
-npm run re:d2r32 -- reference d2moo durability
-npm run re:d2r32 -- reference d2moo ITEMS_UpdateDurability --symbol
-npm run re:d2r32 -- reference d2rlplugins sgptDataTables
-npm run re:d2r32 -- reference d2rlplugins D2UnitStrc --symbol
+npm run re:native -- status
+npm run re:native -- self-test
+npm run re:native -- known tome
+npm run re:native -- function 0x5817BD
+npm run re:native -- xrefs 0x46F090
+npm run re:native -- bytes "41 B9 ?? ?? ?? ??"
+npm run re:native -- reference d2moo durability
+npm run re:native -- reference d2moo ITEMS_UpdateDurability --symbol
+npm run re:native -- reference d2rlplugins sgptDataTables
+npm run re:native -- reference d2rlplugins D2UnitStrc --symbol
 ```
 
 `function` desassemble uniquement la fonction concernee a partir de la table
@@ -62,8 +67,8 @@ RVA gouvernes, les patches D2RLoader et les missions existantes.
 Pour une decompilation plus riche :
 
 ```powershell
-npm run re:d2r32:ghidra -- status
-npm run re:d2r32:ghidra -- function 0x441B10 180
+npm run re:native:ghidra -- status
+npm run re:native:ghidra -- function 0x441B10 180
 ```
 
 Le projet Ghidra importe une seule fois le `.text` brut a sa vraie base. Chaque
@@ -75,8 +80,8 @@ analysees paresseusement.
 ## Initialisation ou nouveau poste
 
 ```powershell
-npm run re:d2r32:init -- -ImagePath "C:\chemin\D2R-3.2.92777-decrypted.exe"
-npm run re:d2r32:ghidra-import
+npm run re:native:init -- -ImagePath "C:\chemin\D2R-3.2.92777-decrypted.exe"
+npm run re:native:ghidra-import
 ```
 
 L'initialiseur refuse toute image dont la taille ou le SHA-256 differe du

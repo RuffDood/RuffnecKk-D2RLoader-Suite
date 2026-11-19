@@ -8,7 +8,7 @@
     "architecture": "x86-64"
   },
   "corpus": {
-    "workbenchPath": "reverse-engineering/d2r-3.2.92777",
+    "workbenchPath": "reverse-engineering/d2rloader-game-image",
     "provenanceBuild": 92777,
     "kind": "d2rloader-hosted-game-image",
     "corpusId": "d2rloader-game-image-20260717",
@@ -45,7 +45,7 @@
     {
       "id": "workbench-manifest",
       "kind": "json-pointer",
-      "path": "reverse-engineering/d2r-3.2.92777/workbench.json",
+      "path": "reverse-engineering/d2rloader-game-image/workbench.json",
       "pointer": "/provenance",
       "expected": {
         "kind": "d2rloader-hosted-game-image",
@@ -57,7 +57,7 @@
     {
       "id": "get-datatables-for-context",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "GetDataTablesForContext",
       "rva": "0x300A90",
       "supports": ["datatables:accessor", "datatables:contexts", "datatables:entry-stride"],
@@ -70,7 +70,7 @@
     {
       "id": "states-stride",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "DATATBLS_CompileStatesTxt_RecordStrideWitness",
       "rva": "0x3083D7",
       "supports": ["states:record-size"],
@@ -79,7 +79,7 @@
     {
       "id": "states-records",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "DATATBLS_CompileStatesTxt_VectorLayoutWitness",
       "rva": "0x30843C",
       "supports": ["states:records"],
@@ -88,7 +88,7 @@
     {
       "id": "states-count",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "STATES_ToggleState_DataTablesLayoutWitness",
       "rva": "0x3354E0",
       "supports": ["states:count"],
@@ -97,7 +97,7 @@
     {
       "id": "states-overlay1",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "DATATBLS_CompileStatesTxt_OverlayFieldWitness",
       "rva": "0x307EB3",
       "supports": ["states:field:overlay1"],
@@ -108,7 +108,7 @@
     {
       "id": "states-name-linker",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "STATES_CompilerNameLinkerSlotWitness",
       "rva": "0x30759A",
       "supports": ["states:linker", "states:field:state-id", "states:post-processing"],
@@ -121,7 +121,7 @@
     {
       "id": "states-name-consumer",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "STATES_LoadedNameLookupWitness",
       "rva": "0x320390",
       "supports": ["states:linker"],
@@ -130,7 +130,7 @@
     {
       "id": "states-name-lifetime",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "STATES_NameLinkerTeardownWitness",
       "rva": "0x3006B7",
       "supports": ["states:post-processing"],
@@ -139,7 +139,7 @@
     {
       "id": "skills-layout",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "DATATBLS_GetSkillsTxtRecordForContext",
       "rva": "0x97790",
       "supports": [
@@ -162,7 +162,7 @@
     {
       "id": "skills-item-effect",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "SKILLITEM_HandleItemEffectSkill",
       "rva": "0x589930",
       "supports": ["skills:field:item-effect"],
@@ -173,7 +173,7 @@
     {
       "id": "item-stat-cost-compile",
       "kind": "native-site",
-      "path": "reverse-engineering/d2r-3.2.92777/isc12/native-sites.json",
+      "path": "reverse-engineering/d2rloader-game-image/isc12/native-sites.json",
       "siteId": "loader-generic-compile-call",
       "rva": "0x31EC7B",
       "supports": ["item-stat-cost:record-size"],
@@ -182,7 +182,7 @@
     {
       "id": "item-stat-cost-count",
       "kind": "native-site",
-      "path": "reverse-engineering/d2r-3.2.92777/isc12/native-sites.json",
+      "path": "reverse-engineering/d2rloader-game-image/isc12/native-sites.json",
       "siteId": "loader-count-cap",
       "rva": "0x31ED31",
       "supports": ["item-stat-cost:count"],
@@ -191,7 +191,7 @@
     {
       "id": "item-stat-cost-linker",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "DATATBLS_ItemStatCostStatLinkerDescriptor",
       "rva": "0x31E35E",
       "supports": [
@@ -208,7 +208,7 @@
     {
       "id": "item-stat-cost-scalar-fields",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "DATATBLS_ItemStatCostScalarMetadataDescriptors",
       "rva": "0x31E35E",
       "supports": ["item-stat-cost:field:send-param-bits", "item-stat-cost:field:value-shift", "item-stat-cost:field:save-param-bits", "item-stat-cost:field:encode"],
@@ -222,7 +222,7 @@
     {
       "id": "item-stat-cost-csv-param",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "DATATBLS_ItemStatCostCsvParamDescriptor",
       "rva": "0x31E77E",
       "supports": ["item-stat-cost:field:csv-param-bits"],
@@ -231,7 +231,7 @@
     {
       "id": "item-stat-cost-fields",
       "kind": "native-site",
-      "path": "reverse-engineering/d2r-3.2.92777/isc12/native-sites.json",
+      "path": "reverse-engineering/d2rloader-game-image/isc12/native-sites.json",
       "siteId": "loader-descfunc-record-layout",
       "rva": "0x31F0F1",
       "supports": ["item-stat-cost:field:desc-priority", "item-stat-cost:field:desc-func"],
@@ -243,7 +243,7 @@
     {
       "id": "item-stat-cost-lifecycle",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "DATATBLS_ItemStatCostStatLinkerTeardown",
       "rva": "0x313ACE",
       "supports": ["item-stat-cost:records", "item-stat-cost:post-processing"],
@@ -255,7 +255,7 @@
     {
       "id": "item-types-layout",
       "kind": "json-pointer",
-      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/sdk-candidates.json",
+      "path": "reverse-engineering/d2rloader-game-image/sdk-contribution/sdk-candidates.json",
       "pointer": "/compiledTables/1",
       "expected": {
         "name": "itemtypes",
@@ -275,7 +275,7 @@
     {
       "id": "item-types-code",
       "kind": "text-witness",
-      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "path": "reverse-engineering/d2rloader-game-image/sdk-contribution/verified-layouts.hpp",
       "needle": "std::uint32_t code;              // +0x00",
       "supports": ["item-types:field:code"],
       "claims": {
@@ -285,7 +285,7 @@
     {
       "id": "item-types-equiv1",
       "kind": "text-witness",
-      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "path": "reverse-engineering/d2rloader-game-image/sdk-contribution/verified-layouts.hpp",
       "needle": "std::uint16_t equivalentTypeOne; // +0x04",
       "supports": ["item-types:field:equivalent-type-one"],
       "claims": {
@@ -295,7 +295,7 @@
     {
       "id": "item-types-equiv2",
       "kind": "text-witness",
-      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "path": "reverse-engineering/d2rloader-game-image/sdk-contribution/verified-layouts.hpp",
       "needle": "std::uint16_t equivalentTypeTwo; // +0x06",
       "supports": ["item-types:field:equivalent-type-two"],
       "claims": {
@@ -305,7 +305,7 @@
     {
       "id": "item-types-repair",
       "kind": "text-witness",
-      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "path": "reverse-engineering/d2rloader-game-image/sdk-contribution/verified-layouts.hpp",
       "needle": "std::uint8_t repair;             // +0x08",
       "supports": ["item-types:field:repair"],
       "claims": {
@@ -315,7 +315,7 @@
     {
       "id": "objects-layout",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "DATATBLS_GetObjectsTxtRecord",
       "rva": "0x38FD00",
       "supports": [
@@ -340,7 +340,7 @@
     {
       "id": "objects-parm0",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "OBJECTS_InitFunction01_Shrine",
       "rva": "0x50E450",
       "supports": ["objects:field:parm0"],
@@ -351,7 +351,7 @@
     {
       "id": "items-layout",
       "kind": "json-pointer",
-      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/sdk-candidates.json",
+      "path": "reverse-engineering/d2rloader-game-image/sdk-contribution/sdk-candidates.json",
       "pointer": "/compiledTables/2",
       "expected": {
         "name": "items",
@@ -371,7 +371,7 @@
     {
       "id": "items-compile",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "DATATBLS_CompileItemsTxt",
       "rva": "0x315FD0",
       "supports": ["items:post-processing"],
@@ -380,7 +380,7 @@
     {
       "id": "items-durability",
       "kind": "text-witness",
-      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "path": "reverse-engineering/d2rloader-game-image/sdk-contribution/verified-layouts.hpp",
       "needle": "std::uint8_t durability;       // +0x121",
       "supports": ["items:field:durability"],
       "claims": {
@@ -390,7 +390,7 @@
     {
       "id": "items-no-durability",
       "kind": "text-witness",
-      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "path": "reverse-engineering/d2rloader-game-image/sdk-contribution/verified-layouts.hpp",
       "needle": "std::uint8_t noDurability;     // +0x122",
       "supports": ["items:field:no-durability"],
       "claims": {
@@ -400,7 +400,7 @@
     {
       "id": "items-primary-type",
       "kind": "text-witness",
-      "path": "reverse-engineering/d2r-3.2.92777/sdk-contribution/verified-layouts.hpp",
+      "path": "reverse-engineering/d2rloader-game-image/sdk-contribution/verified-layouts.hpp",
       "needle": "std::uint16_t primaryType;     // +0x12E",
       "supports": ["items:field:primary-type"],
       "claims": {
@@ -410,7 +410,7 @@
     {
       "id": "shrines-layout",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "DATATBLS_GetShrinesTxtRecord",
       "rva": "0x38FE40",
       "supports": ["shrines:records", "shrines:count", "shrines:record-size"],
@@ -423,7 +423,7 @@
     {
       "id": "shrines-level-min",
       "kind": "known-rva",
-      "path": "reverse-engineering/d2r-3.2.92777/known-rvas.json",
+      "path": "reverse-engineering/d2rloader-game-image/known-rvas.json",
       "name": "OBJECTS_InitFunction01_ShrineSelectionLoop",
       "rva": "0x50E510",
       "supports": ["shrines:field:level-min"],

@@ -6,9 +6,9 @@ build. The documented base game target is **3.1.1.4**. Code was captured from ru
 `D2RLoader.exe`, with D2RCore active;
 installed retail/data version labels do not identify its native ancestry.
 
-Run `npm run re:d2r33 -- status` to verify the existing
-[workbench](d2r/WORKBENCH.md). Historical paths and command aliases remain
-for continuity. They establish neither independently captured retail 3.2/3.3
+Run `npm run re:native -- status` to verify the existing
+[workbench](d2r/WORKBENCH.md). The [migration record](WORKBENCH-MIGRATION.md)
+maps older paths and compatibility commands. Historical labels establish neither independently captured retail 3.2/3.3
 images nor retail byte-equivalence. Reuse the verified base-image corpus and
 check the Loader/Core providers and hook ownership actually consumed.
 
@@ -17,7 +17,7 @@ ignored `analysis-cache/`; only compact provenance, findings and contracts are
 versioned. The [reconstruction modules](d2r/modules/README.md) let you
 query a behavior before starting from an address.
 
-The first topic is skill payment: `npm run re:d2r33 -- topic blood_mana`.
+The first topic is skill payment: `npm run re:native -- topic blood_mana`.
 
 ## Aide-mémoire de test en jeu
 
@@ -27,6 +27,19 @@ de BKVince. Il s'agit d'une référence pratique importée dont la provenance
 runtime reste à confirmer, pas d'une preuve native promue pour un build D2R.
 
 ## Références externes épinglées
+
+The [CelestialRayOne native research intake](d2r/references/celestialrayone-intake.md)
+adds an attributed [topic/address index](d2r/references/celestialrayone-native-inventory.md)
+and structured catalogue of game functions, claimed contracts, hook witnesses,
+layouts, DataTables fields and Core/provider research from the pinned upstream
+repository. Imported claims remain separate from governed native contracts.
+Search with `python scripts/reverse-engineering/celestial-native-intake.py --query <term>`.
+
+The [PD2 Resurrected native research intake](d2r/references/pd2-resurrected-intake.md)
+adds [topic, location and Engine-contract indexes](d2r/references/pd2-resurrected-native-inventory.md)
+from the pinned PD2 port, retaining legacy-PD2 versus D2R table context and the
+unavailable pinned toolkit dependency as an explicit provenance gap. Search with
+`python -B scripts/reverse-engineering/pd2-native-intake.py --query <term>`.
 
 Le registre [references.json](references.json) gouverne les clones de sources
 externes conservés sous `analysis-cache/references/`. Il fixe leur dépôt amont,

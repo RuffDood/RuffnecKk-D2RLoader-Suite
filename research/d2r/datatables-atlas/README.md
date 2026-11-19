@@ -1,5 +1,21 @@
 # Captured D2RLoader game-image DataTables atlas
 
+External layout and table-access leads from CelestialRayOne are retained in the
+[native research intake](../references/celestialrayone-intake.md) and its
+[structured inventory](../references/celestialrayone-native-inventory.json).
+Search `DataTables`, `SkillPetMaxField` or a table name with
+`python scripts/reverse-engineering/celestial-native-intake.py --query <term>`.
+Those are attributed upstream claims, including SDK service definitions;
+they do not modify this atlas's admitted layouts or its static extraction
+candidates. Existing proof and consumer gates still govern any promotion.
+
+The [PD2 Resurrected intake](../references/pd2-resurrected-intake.md) additionally
+indexes source DataTables consumers, typed field accesses and documented
+skill/missile dispatch tables. Its exact shared-toolkit revision could not be
+retrieved; symbolic offsets remain unresolved. Search with
+`python -B scripts/reverse-engineering/pd2-native-intake.py --query Tables --kind typed-field-access`.
+Neither documented dispatch slots nor source casts establish admitted atlas layouts.
+
 Cet atlas évite de redécouvrir les mêmes pointeurs, comptes, strides et fragments
 de records à chaque chantier de reverse engineering. Il ne prétend pas que les
 headers des fichiers `.txt` correspondent directement à une structure C++ : le
@@ -68,7 +84,7 @@ name consumer and both table-linker destructors establish their provenance and
 lifetime. The plugin retains owned names/resolved IDs bound to the table revision.
 Other States postprocessing remains unclassified. Reproducible byte ranges and
 the read-only consumer boundary are recorded in
-[the component research](../../../plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md#loaded-name-and-live-bonus-checkpoint--2026-09-29).
+[the component research](https://github.com/BRODIABLO/Diablo/blob/66fbc2d175191c52757914cbe07e0bfcaba9fa7a/plugin-dev/stack-manager/notes/RefillAndNamesNativeResearch.md#loaded-name-and-live-bonus-checkpoint--2026-09-29).
 
 ## Inventaire candidat A3
 

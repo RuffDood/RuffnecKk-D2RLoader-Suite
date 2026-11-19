@@ -2,6 +2,55 @@
   "schemaVersion": 1,
   "references": [
     {
+      "id": "pd2resurrected",
+      "name": "synpoox PD2 Resurrected native research",
+      "repository": "https://github.com/synpoox/pd2-resurrected.git",
+      "webUrl": "https://github.com/synpoox/pd2-resurrected",
+      "branch": "main",
+      "commit": "8303651998382477fdac695d7dbb2cf11ce311df",
+      "pinnedAt": "2026-11-19",
+      "localPath": "analysis-cache/references/PD2-Resurrected",
+      "license": "MIT (original authored work only; see NOTICE.md)",
+      "licensePath": "LICENSE",
+      "upstreamTarget": "PD2 x86 semantic research and D2RLoader-hosted x64 port; source build labels remain claims",
+      "role": "native-research-reference-only",
+      "citationFormat": "PD2-Resurrected@{commit}:{path}:{line}",
+      "policy": [
+        "Use authored research, source pointer casts, layouts, dispatch tables and hooks as attributed leads; no automatic native or DataTables atlas promotion.",
+        "Distinguish legacy PD2 x86 addresses from D2R x64, D2RCore providers, SDK interfaces and plugin-local helpers.",
+        "Keep the source checkout clean and ignored. Extract research, not gameplay TSV tables, binaries or assets.",
+        "The exact toolkit.version pin is 14a5433dfe82d98a1966c247f9f123e62cc3230c. Its declared synpoox/d2rAI-toolkit repository returned 404 at intake; do not substitute a different revision for unresolved shared addresses or layouts.",
+        "Preserve upstream uncertainty, test scope, deviations, SDK boundaries, original attribution and NOTICE.md license exclusions.",
+        "Numeric overlap with the workspace or Celestial catalogue and matching captured bytes do not prove semantic identity, ABI, runtime behavior or independent corroboration.",
+        "Advance the pin explicitly, review dependency availability and regenerate the PD2 inventory. Do not silently refresh other donor or toolkit pins."
+      ]
+    },
+    {
+      "id": "celestialrayone",
+      "name": "CelestialRayOne D2RLoader plugins",
+      "repository": "https://github.com/CelestialRayOne/d2rloader_plugins.git",
+      "webUrl": "https://github.com/CelestialRayOne/d2rloader_plugins",
+      "branch": "main",
+      "commit": "924072545985e0d1bef58c3362c1c1572531aa2e",
+      "pinnedAt": "2026-11-18",
+      "localPath": "analysis-cache/references/CelestialRayOne-d2rloader_plugins",
+      "license": "MIT",
+      "licensePath": "LICENSE",
+      "upstreamTarget": "D2RLoader-hosted game image and version-sensitive D2RCore providers; source version labels retained as claims",
+      "role": "native-research-reference-only",
+      "citationFormat": "CelestialRayOne@{commit}:{path}:{line}",
+      "policy": [
+        "Use the pinned native inventory and source explanations as attributed research leads, not admitted native contracts.",
+        "Keep the reference checkout clean and ignored; version extracted research rather than plugin implementations or release assets.",
+        "Distinguish game-image functions, data, interior sites, Core providers, SDK services and plugin-local helpers.",
+        "A numeric RVA overlap or captured-image byte match does not prove semantic identity, ABI, callable entry, runtime behavior or current hook ownership.",
+        "Preserve contradictory declarations, expected bytes, unknown module identity and provider-specific addresses.",
+        "Promote only independently supported findings through known-rvas.json argument contracts or the existing DataTables atlas gates.",
+        "Preserve Bogdan Bulai / CelestialRayOne MIT attribution, D2RLoader SDK credits and upstream acknowledgement of D2MOO and the RuffnecKk Suite.",
+        "Advance the pin explicitly and regenerate the inventory; updating the source reference alone leaves generated research stale."
+      ]
+    },
+    {
       "id": "d2moo",
       "name": "D2MOO",
       "repository": "https://github.com/ThePhrozenKeep/D2MOO.git",

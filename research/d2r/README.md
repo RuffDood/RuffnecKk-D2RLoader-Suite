@@ -5,7 +5,7 @@ This is a documentation snapshot maintained from my own laboratory.
 
 ## Start here
 
-- [Known RVAs](known-rvas.json): 1,252 registry entries with native addresses, identified roles, confidence levels, provenance and limits. See the [snapshot record](../source-snapshot.json) for source identity and hashes.
+- [Known RVAs](known-rvas.json): 1,254 registry entries with native addresses, identified roles, confidence levels, provenance and limits. See the [snapshot record](../source-snapshot.json) for source identity and hashes.
 - [Findings](findings.md): detailed research conclusions, rejected hypotheses, ABI pitfalls and follow-up questions. The original French notes are preserved.
 - [DataTables atlas](datatables-atlas/README.md): seven documented compiled-table layouts, evidence records and partial C++/Ghidra headers. Read the laboratory-reference notes below before using its commands.
 
@@ -13,10 +13,16 @@ Within the atlas, [catalog.json](datatables-atlas/catalog.json) records admitted
 
 ## Coverage and interpretation
 
-The [native corpus identity](../NATIVE-CORPUS.md) describes the captured D2RLoader-hosted game image and its documented upstream game target, 3.1.1.4. The historical source directory and installation labels retain their original identifiers. Consult the atlas corpus ID and artifact hashes when applying its layout claims. Retail cross-build equivalence remains unestablished.
+The [native corpus identity](../NATIVE-CORPUS.md) describes the captured D2RLoader-hosted game image and its documented upstream game target, 3.1.1.4. The laboratory workbench now uses `reverse-engineering/d2rloader-game-image/`; the public snapshot keeps its neutral `research/d2r/` layout. Historical installation labels remain evidence metadata. Consult the atlas corpus ID and artifact hashes when applying its layout claims. Retail cross-build equivalence remains unestablished.
 
 A `high` confidence entry proves the specific statement in its notes. It does not automatically prove a complete function ABI, structure, safe hook location or multiplayer behavior. `candidate`, `medium` and unknown fields retain their stated limits. Before using native addresses, validate the actual bytes, layouts, ABI and ranges your code depends on; a build number alone is not a compatibility check.
 
 ## Credits
 
 Research and documentation: **RuffnecKk**. Original third-party citations and credits remain in the notes. **D2MOO** provided semantic references for Diablo II 1.10f; its 32-bit addresses, structures and ABI must not be transplanted into D2R. References to D2RLoader, PluginSDK and other contributors retain their individual provenance. See the Suite [license](../../LICENSE) and [third-party notices](../../THIRD_PARTY_NOTICES.md).
+
+## Imported research and migration
+
+- [CelestialRayOne native research](references/celestialrayone-intake.md) and [topic/address catalogue](references/celestialrayone-native-inventory.md).
+- [PD2 Resurrected research](references/pd2-resurrected-intake.md) and [location/contract catalogue](references/pd2-resurrected-native-inventory.md), including the unavailable exact toolkit dependency.
+- [Workbench migration](../WORKBENCH-MIGRATION.md): current laboratory paths, compatibility commands, preserved evidence and validation limits.

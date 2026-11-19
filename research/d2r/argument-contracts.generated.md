@@ -4,7 +4,7 @@ Generated from `known-rvas.json`. Do not edit this view by hand.
 
 Native identity: [captured D2RLoader game image](../NATIVE-CORPUS.md). Historical scope version labels do not prove retail ancestry or cross-build equivalence; canonical hashes identify the evidence.
 
-3 structured contracts / 1252 registry entries. Remaining 1249 entries have undocumented structured contracts; their existing notes are preserved.
+3 structured contracts / 1254 registry entries. Remaining 1251 entries have undocumented structured contracts; their existing notes are preserved.
 
 See [format and authoring rules](argument-contracts.md). Imported claims remain in the separate [reference intake](references/rva-93847-intake.md).
 
@@ -43,8 +43,8 @@ Unknowns / limits:
 
 Evidence:
 
-- reverse-engineering/d2r-3.2.92777/modules/skill-costs.md — Payment cost calculator — Body [0x33AA00,0x33AA6A); SHA256 317EA4C72D6B9D325977F6615E762819DEA0B30C48063C9DC7CA5B763ECDCC7F; callers 0x218937 and 0x4369FB.
-- reverse-engineering/d2r-3.2.92777/known-rvas.json — D2Common_SKILLMANA_GetManaCost existing notes — Register mapping and return observation preserved from the pre-intake registry; no new native qualification.
+- reverse-engineering/d2rloader-game-image/modules/skill-costs.md — Payment cost calculator — Body [0x33AA00,0x33AA6A); SHA256 317EA4C72D6B9D325977F6615E762819DEA0B30C48063C9DC7CA5B763ECDCC7F; callers 0x218937 and 0x4369FB.
+- reverse-engineering/d2rloader-game-image/known-rvas.json — D2Common_SKILLMANA_GetManaCost existing notes — Register mapping and return observation preserved from the pre-intake registry; no new native qualification.
 
 Existing notes: Static logical body 0x33AA00..0x33AA6A exclusive, 106 bytes, SHA256 317EA4C72D6B9D325977F6615E762819DEA0B30C48063C9DC7CA5B763ECDCC7F. Context ECX, skillId EDX, level R8D; int32 cost EAX. Record lookup 0x97790. Missing record or both s16+0x22A and s16+0x22C zero returns zero; otherwise computes level-scaled signed cost shifted by u8+0x228 and applies floor s16+0x226 <<8. Direct calls 0x218937 and 0x4369FB. Unlike affordability body 0x340900, this calculator applies the floor. Individual compiled field names are not promoted in the atlas. Static only.
 
@@ -82,8 +82,8 @@ Unknowns / limits:
 
 Evidence:
 
-- reverse-engineering/d2r-3.2.92777/modules/skill-costs.md — Affordability is a separate decision — Body [0x340900,0x340A78); SHA256 6AFF612D41E94ED98BACC45CCCEE5F53787B2FCBE4831399E3F14B6BE037D87F; caller 0x33F489.
-- reverse-engineering/d2r-3.2.92777/known-rvas.json — D2Common_SKILLMANA_CheckStat existing notes — Register mapping and return observation preserved from the pre-intake registry; no new native qualification.
+- reverse-engineering/d2rloader-game-image/modules/skill-costs.md — Affordability is a separate decision — Body [0x340900,0x340A78); SHA256 6AFF612D41E94ED98BACC45CCCEE5F53787B2FCBE4831399E3F14B6BE037D87F; caller 0x33F489.
+- reverse-engineering/d2rloader-game-image/known-rvas.json — D2Common_SKILLMANA_CheckStat existing notes — Register mapping and return observation preserved from the pre-intake registry; no new native qualification.
 
 Existing notes: Static logical body 0x340900..0x340A78 exclusive, 376 bytes, SHA256 6AFF612D41E94ED98BACC45CCCEE5F53787B2FCBE4831399E3F14B6BE037D87F. Unit RCX, skill RDX, boolean EAX. Reads mana stat8 and HP stat6. Charged owner at skill+0x4C != -1 selects charge count skill+0x50 >0. Normal cost uses skill record s16+0x22A and s16+0x22C with u8+0x228 shift and bounded level index; no minimum clamp in this body. State114 check at 0x340A2C selects HP>=cost, otherwise compares mana, with the record+0x4E==116/0x336090 exception. Direct caller 0x33F489. That caller also has a separate start-mana gate; do not infer this function alone governs all affordability. No runtime or complete skill structure qualification.
 
@@ -124,7 +124,7 @@ Unknowns / limits:
 
 Evidence:
 
-- reverse-engineering/d2r-3.2.92777/modules/skill-costs.md — Ordinary consumption — Body [0x436830,0x436A7E); SHA256 BB46A2F8878B6C9BCBC77243228F36CE08B4305E408D3B00D8B3CD00874B4F71; callers 0x43B135 and 0x43B5B4.
-- reverse-engineering/d2r-3.2.92777/known-rvas.json — D2GAME_SKILLMANA_Consume existing notes — Register mapping and return observation preserved from the pre-intake registry; no new native qualification.
+- reverse-engineering/d2rloader-game-image/modules/skill-costs.md — Ordinary consumption — Body [0x436830,0x436A7E); SHA256 BB46A2F8878B6C9BCBC77243228F36CE08B4305E408D3B00D8B3CD00874B4F71; callers 0x43B135 and 0x43B5B4.
+- reverse-engineering/d2rloader-game-image/known-rvas.json — D2GAME_SKILLMANA_Consume existing notes — Register mapping and return observation preserved from the pre-intake registry; no new native qualification.
 
 Existing notes: Native mana and charged-item consumption path used by the official plugin pack. Static logical body 0x436830..0x436A7E exclusive, 590 bytes, SHA256 BB46A2F8878B6C9BCBC77243228F36CE08B4305E408D3B00D8B3CD00874B4F71. Observed arguments game RCX, unit RDX, skillId R8D, level R9D; int32 result. Normal branch calculates cost via 0x33AA00, returns 0 for nonpositive cost, checks player state 0x72 at 0x436A1C and calls 0x584E80 at 0x436A2A; otherwise checks stat 8 then subtracts cost unless unidentified global byte 0x2AA6A69 is set. Charged-item branch handles stat 0xCC independently. Direct calls at 0x43B135 and 0x43B5B4. Pdata fragments do not bound the complete logical function. No active-stack ownership or runtime qualification by this reconstruction.

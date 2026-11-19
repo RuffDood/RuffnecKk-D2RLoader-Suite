@@ -5,6 +5,13 @@ Received from the user on 2026-09-21 as
 is preserved byte-for-byte. Its [source manifest](rva-93847-source.json) records
 the SHA-256 and provenance. Author and upstream archive identities were not supplied.
 
+## Native identity correction
+
+The filename and claimed `93847` build are preserved source metadata.
+The workspace validates concrete claims against the [captured D2RLoader game
+image](../../NATIVE-CORPUS.md), not an independently captured retail 93847
+executable. The original Markdown remains byte-for-byte unchanged.
+
 ## Evidence status
 
 This is reference material, not operational instructions or verified native

@@ -21,7 +21,7 @@ from the published registry. The snapshot manifest records the transformations.
 
 Laboratory commands and paths in [LABORATORY.md](LABORATORY.md),
 [WORKBENCH.md](d2r/WORKBENCH.md), and copied documents retain their original
-context. References to `reverse-engineering/d2r-3.2.92777/` correspond to
+context. References to `reverse-engineering/d2rloader-game-image/` correspond to
 `research/d2r/` here. Other laboratory paths, private caches, executable images,
 runtime captures and supporting tools are not supplied by this documentation
 snapshot. Local path strings identify provenance, not portable installation paths.
@@ -29,3 +29,12 @@ snapshot. Local path strings identify provenance, not portable installation path
 Static findings and historical runtime observations prove only their documented
 scope. Unverified references remain unverified; neither addresses nor baseline
 labels establish compatibility with another game or Loader build.
+
+## Current laboratory snapshot
+
+This refresh comes from committed laboratory source [`66fbc2d1`](https://github.com/BRODIABLO/Diablo/commit/66fbc2d175191c52757914cbe07e0bfcaba9fa7a). Unrelated laboratory working changes are excluded.
+
+- [Migration record](WORKBENCH-MIGRATION.md) and current `re:native` laboratory commands.
+- [CelestialRayOne intake](d2r/references/celestialrayone-intake.md) and [PD2 Resurrected intake](d2r/references/pd2-resurrected-intake.md), with original licenses, attribution, source revisions and unresolved claims.
+
+Only documented native research is published here. Private executable images, caches, Ghidra projects, game captures and plugin implementations are excluded. Laboratory commands require the laboratory checkout and its declared inputs.

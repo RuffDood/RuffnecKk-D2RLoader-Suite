@@ -39,11 +39,14 @@ The installed environment reported `3.2.92777` during capture. Later records use
 `3.3.93847` and Steam `3.3.93787`. Treat those as installation, data or historical
 test labels unless a separate native comparison establishes more.
 
-The directory `d2r-3.2.92777`, artifact filenames, `re:d2r32` / `re:d2r33` command
-aliases, old registry `build` fields and imported `93847` documents retain their
-historical identifiers. They do not establish retail native identity or retail
-cross-build equivalence. Read dated findings and generated contract scope labels
-under this correction. Preserve original imported documents and recorded tests.
+The active workbench is [d2rloader-game-image](d2r/WORKBENCH.md),
+queried with `npm run re:native -- status`. Its folder is named for the captured
+native image rather than an installation version. The former directory,
+artifact filenames, `re:d2r32` / `re:d2r33` compatibility commands, old registry
+`build` fields and imported `93847` documents are historical identifiers.
+They do not establish retail native identity or retail cross-build equivalence.
+The [migration record](WORKBENCH-MIGRATION.md) maps older paths to the current
+workbench. Preserve original imported documents and recorded tests.
 
 The [official release notes](https://d2rloader.net/changelog.html), checked on
 2026-10-16, explicitly describe a 3.2 Herald backport and changes to native
@@ -64,7 +67,7 @@ remain separate from the base-image RVA map.
 
 ## Applying the reference
 
-1. Run `npm run re:d2r33 -- status` to verify the existing corpus. Both legacy
+1. Run `npm run re:native -- status` to verify the existing corpus. Both legacy
    command aliases query the same captured image by default.
 2. Describe a location as `captured D2RLoader game image + RVA`. Older `D2R+RVA`
    notation refers to that image in this workspace; it does not identify the
@@ -86,11 +89,11 @@ remain separate from the base-image RVA map.
   line 1596 contains the launch/Core/environment log; line 1600 identifies the
   process, PID and image base; lines 1642 and 1650 record reconstruction hashes
   and captured sections. These records were re-read on 2026-10-16.
-- Capture implementation (`scripts/migrate-bkvince/dump-d2r-process-image.py` in the laboratory):
+- [Capture implementation](https://github.com/BRODIABLO/Diablo/blob/66fbc2d175191c52757914cbe07e0bfcaba9fa7a/scripts/migrate-bkvince/dump-d2r-process-image.py):
   PE template, read-only process access and section replacement.
 - [Workbench manifest](d2r/workbench.json): artifact/section hashes and
   separate capture provenance.
-- Hydration implementation (`scripts/reverse-engineering/d2r32.py` in the laboratory):
+- [Hydration implementation](https://github.com/BRODIABLO/Diablo/blob/66fbc2d175191c52757914cbe07e0bfcaba9fa7a/scripts/reverse-engineering/d2r32.py):
   `command_hydrate` preserves captured code while supplying non-code metadata.
 
 This correction supersedes earlier assertions that this corpus proves native
