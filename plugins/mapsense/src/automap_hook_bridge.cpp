@@ -2,6 +2,7 @@
 #include "pyre_automap_witness.hpp"
 #include "pyre_r5_automap_witness.hpp"
 #include "pyre_r6_automap_witness.hpp"
+#include "pyre_r27_automap_witness.hpp"
 #include "celestial_automap_witness.hpp"
 #include "celestial_182_automap_witness.hpp"
 #include <atomic>
@@ -25,6 +26,8 @@ constexpr std::array AutomapHookProfiles{
         PyreCallbackWitness},
     AutomapHookProfile{AutomapOwner::Pyre, 0x84C0, 0x19F900, PyreR5CallbackWitness},
     AutomapHookProfile{AutomapOwner::Pyre, 0x1AF90, 0x170240, PyreR6CallbackWitness},
+    AutomapHookProfile{AutomapOwner::Pyre, PyreR27CallbackRva, PyreR27OriginalSlotRva,
+        PyreR27CallbackWitness},
     AutomapHookProfile{AutomapOwner::Celestial, CelestialAutomapCallbackRva,
         CelestialAutomapOriginalSlotRva, CelestialCallbackWitness},
     AutomapHookProfile{AutomapOwner::Celestial, Celestial182AutomapCallbackRva,

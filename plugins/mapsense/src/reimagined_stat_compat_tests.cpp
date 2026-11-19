@@ -11,7 +11,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
-#include <cwchar>
+#include <string_view>
 
 using namespace RuffnecKk::MapSense::Detail;
 namespace Stat = RuffnecKk::NativeStatCompat;
@@ -41,15 +41,13 @@ void ChangeCode(void* at, std::uint8_t value) {
 
 int wmain(int argc, wchar_t** argv) {
     if (argc != 3) return 2;
-    if (std::wcscmp(argv[2], L"0.12.1") != 0 && std::wcscmp(argv[2], L"0.12.4") != 0
-        && std::wcscmp(argv[2], L"0.12.5") != 0
-        && std::wcscmp(argv[2], L"0.12.5-revision2") != 0
-        && std::wcscmp(argv[2], L"0.12.5-r15") != 0
-        && std::wcscmp(argv[2], L"0.12.5-r16") != 0
-        && std::wcscmp(argv[2], L"0.12.7-r17") != 0) return 2;
-    const auto& profile = std::wcscmp(argv[2], L"0.12.7-r17") == 0 ? Maps0127R17Profile : std::wcscmp(argv[2], L"0.12.5-r16") == 0 ? Maps0125R16Profile : std::wcscmp(argv[2], L"0.12.5-r15") == 0 ? Maps0125R15Profile : std::wcscmp(argv[2], L"0.12.5-revision2") == 0 ? Maps0125Revision2Profile : std::wcscmp(argv[2], L"0.12.1") == 0
-        ? MapsStatProfiles[0] : (std::wcscmp(argv[2], L"0.12.4") == 0
-            ? MapsStatProfiles[1] : Maps0125StatProfile);
+    const std::wstring_view revision = argv[2];
+    const auto selected = std::ranges::find_if(MapsStatProfiles,
+        [revision](const MapsStatProfile& candidate) {
+            return std::ranges::equal(revision, std::string_view(candidate.version));
+        });
+    if (selected == MapsStatProfiles.end()) return 2;
+    const auto& profile = *selected;
     // Reference DLL is mapped without imports, DllMain or plugin initialization.
     const auto module = LoadLibraryExW(argv[1], nullptr, DONT_RESOLVE_DLL_REFERENCES);
     CHECK(module != nullptr); if (!module) return 2;

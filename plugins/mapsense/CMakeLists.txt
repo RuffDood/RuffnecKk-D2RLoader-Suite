@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.28)
-    project(RuffnecKkMapSense VERSION 2.2.12 LANGUAGES C CXX RC)
+    project(RuffnecKkMapSense VERSION 2.2.13 LANGUAGES C CXX RC)
     include(CTest)
     option(RUFFNECKK_SUITE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
     add_subdirectory(../../third_party/PluginSDK "${CMAKE_BINARY_DIR}/_deps/PluginSDK")
@@ -9,6 +9,9 @@ else()
     enable_language(C)
     enable_language(RC)
 endif()
+
+enable_language(ASM_MASM)
+include(src/seed_selector/embedded_assets.cmake)
 
 include(FetchContent)
 set(TOMLPLUSPLUS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -62,6 +65,10 @@ if(MSVC)
 endif()
 
 add_library(ruffneckk_mapsense SHARED
+    src/seed_selector/selector_ui.cpp
+    src/seed_selector/map_seed_selector.cpp
+    src/seed_selector/native_dropdown_art.cpp
+    src/seed_selector/seed_selector_hooks.asm
     src/d3d12_imgui_host.cpp
     src/d3d12_gpu_diagnostics.cpp
     src/external_atlas_cache.cpp
@@ -102,7 +109,9 @@ target_compile_definitions(ruffneckk_mapsense PRIVATE
     RUFFNECKK_MAPSENSE_ENABLE_GPS_COLLISION_PROBE=$<BOOL:${RUFFNECKK_MAPSENSE_GPS_COLLISION_DIAGNOSTICS}>
     RUFFNECKK_MAPSENSE_ENABLE_GPS_ROUTE_DIAGNOSTICS=$<BOOL:${RUFFNECKK_MAPSENSE_GPS_ROUTE_DIAGNOSTICS}>
 )
+target_include_directories(ruffneckk_mapsense PRIVATE "${MAP_SEED_SELECTOR_GENERATED_DIR}")
 target_link_libraries(ruffneckk_mapsense PRIVATE
+    user32
     RuffnecKk::Common
     RuffnecKk::NativeStatCompat
     ruffneckk_mapsense_imgui
@@ -137,13 +146,21 @@ endif()
 
 if(MSVC)
     target_compile_options(ruffneckk_mapsense PRIVATE
-        /W4 /permissive- /EHsc /utf-8
-        $<$<BOOL:${RUFFNECKK_SUITE_WARNINGS_AS_ERRORS}>:/WX>
+        $<$<COMPILE_LANGUAGE:CXX>:/W4;/permissive-;/EHsc;/utf-8>
+        $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<BOOL:${RUFFNECKK_SUITE_WARNINGS_AS_ERRORS}>>:/WX>
     )
     target_link_options(ruffneckk_mapsense PRIVATE /Brepro)
 endif()
 
 if(BUILD_TESTING)
+    add_executable(ruffneckk_mapsense_seed_selector_tests
+        tests/seed_selector_tests.cpp
+        src/seed_selector/map_seed_selector.cpp
+        src/seed_selector/seed_selector_hooks.asm)
+    target_include_directories(ruffneckk_mapsense_seed_selector_tests PRIVATE src)
+    target_link_libraries(ruffneckk_mapsense_seed_selector_tests PRIVATE RuffnecKk::Common)
+    add_test(NAME ruffneckk.mapsense.seed-selector COMMAND ruffneckk_mapsense_seed_selector_tests)
+
     add_executable(ruffneckk_mapsense_helper_failure_tests src/helper_failure_diagnostics_tests.cpp)
     target_compile_features(ruffneckk_mapsense_helper_failure_tests PRIVATE cxx_std_20)
     target_compile_options(ruffneckk_mapsense_helper_failure_tests PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
@@ -460,4 +477,15 @@ endif()
 set(RUFFNECKK_MAPSENSE_PYRE_R6_TEST_DLL "" CACHE FILEPATH "Exact Pyre Loot Filter revision 6 reference")
 if(BUILD_TESTING AND RUFFNECKK_MAPSENSE_PYRE_R6_TEST_DLL)
     add_test(NAME mapsense.pyre-r6 COMMAND ruffneckk_mapsense_automap_bridge_tests "${RUFFNECKK_MAPSENSE_PYRE_R6_TEST_DLL}" r6)
+endif()
+
+set(RUFFNECKK_MAPSENSE_REIMAGINED_R27_PLUGINS "" CACHE PATH
+    "Directory containing the unmodified public Reimagined 3.1.1 R27 plugin fixtures")
+if(BUILD_TESTING AND RUFFNECKK_MAPSENSE_REIMAGINED_R27_PLUGINS)
+    add_test(NAME mapsense.reimagined-r27-maps
+        COMMAND ruffneckk_mapsense_reimagined_stat_tests
+            "${RUFFNECKK_MAPSENSE_REIMAGINED_R27_PLUGINS}/d2rl-maps.dll" r27)
+    add_test(NAME mapsense.reimagined-r27-pyre
+        COMMAND ruffneckk_mapsense_automap_bridge_tests
+            "${RUFFNECKK_MAPSENSE_REIMAGINED_R27_PLUGINS}/pyre-lootfilter.dll" r27)
 endif()
