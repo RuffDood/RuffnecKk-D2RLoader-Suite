@@ -48,6 +48,7 @@ constexpr std::array<Translation, UiTextCount> TextCatalog{{
     {{"Automatic", "自動", "Automatisch", "Automático", "Automatique", "Automatico", "자동", "Automatycznie", "自動", "Automático", "Автоматически", "自动"}},
     {{"Map & Reveal", "地圖與揭示", "Karte & Aufdecken", "Mapa y revelado", "Carte et révélation", "Mappa e rivelazione", "지도 및 공개", "Mapa i odkrywanie", "マップと表示", "Mapa e revelação", "Карта и открытие", "地图与揭示"}},
     {{"Reveal Map", "揭示地圖", "Karte aufdecken", "Revelar mapa", "Révéler la carte", "Rivela mappa", "지도 공개", "Odkryj mapę", "マップを表示", "Revelar mapa", "Открыть карту", "揭示地图"}},
+    {{"Reveal only map labels", "僅顯示地圖標籤", "Nur Kartenbeschriftungen aufdecken", "Revelar solo las etiquetas del mapa", "Révéler uniquement les libellés de la carte", "Rivela solo le etichette della mappa", "지도 이름표만 공개", "Odkryj tylko etykiety mapy", "マップのラベルのみ表示", "Revelar apenas os rótulos do mapa", "Показать только подписи карты", "仅显示地图标签"}},
     {{"Additions Opacity", "附加標記透明度", "Deckkraft der Ergänzungen", "Opacidad de elementos añadidos", "Opacité des ajouts", "Opacità degli elementi aggiunti", "추가 요소 불투명도", "Krycie dodatków", "追加表示の不透明度", "Opacidade dos elementos adicionais", "Прозрачность дополнений", "附加标记不透明度"}},
     {{"Monsters", "怪物", "Monster", "Monstruos", "Monstres", "Mostri", "괴물", "Potwory", "モンスター", "Monstros", "Монстры", "怪物"}},
     {{"Show Monsters", "顯示怪物", "Monster anzeigen", "Mostrar monstruos", "Afficher les monstres", "Mostra mostri", "괴물 표시", "Pokaż potwory", "モンスターを表示", "Mostrar monstros", "Показывать монстров", "显示怪物"}},

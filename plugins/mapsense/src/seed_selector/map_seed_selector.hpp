@@ -19,6 +19,8 @@ void SetWidgetService(const MapSeedSelector::ExtendedWidgetService* service,
     bool nativeDropdownAvailable) noexcept;
 void SetPanelGeneration(std::uint32_t generation) noexcept;
 void SetOfflineFlowActive(bool active) noexcept;
+void SetPickerPreference(bool enabled) noexcept;
+auto IsPickerEnabled() noexcept -> bool;
 [[nodiscard]] auto BuildLayoutChildren() -> std::string;
 [[nodiscard]] auto BuildOptionsLayoutChildren() -> std::string;
 void GetPanelPosition(std::int32_t& x, std::int32_t& y) noexcept;

@@ -806,6 +806,11 @@ auto DisableRevealAll() noexcept -> RevealOutcome;
 // inserts only levels whose authoritative Levels.Layer equals that owner. It
 // never creates, switches, retains or restores an automap owner. No ActiveRoom,
 // Unit or monster table is touched.
+// Publish coordinate-space metadata for labels without starting terrain work.
+[[nodiscard]] auto PublishNativeAutomapLabelLayers(
+        const ExternalAtlasGeometrySnapshot& snapshot,
+        const ClientLevelView& current,
+        std::int32_t resolvedAct) noexcept -> bool;
 [[nodiscard]] auto BeginNativeAutomapAtlasPublication(
     std::uint64_t sessionGeneration,
     std::shared_ptr<const ExternalAtlasGeometrySnapshot> snapshot,

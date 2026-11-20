@@ -898,6 +898,7 @@ auto DrawImGuiSettingsPanel(
         bool& expanded,
         std::uint64_t sessionGeneration,
         bool revealMapEnabled,
+        bool revealOnlyMapLabelsEnabled,
         float menuScale,
         const ImGuiSettingsActionCallback actionCallback
 #if defined(RUFFNECKK_MAPSENSE_ENABLE_GPS_ROUTE_DIAGNOSTICS) \
@@ -1055,6 +1056,12 @@ auto DrawImGuiSettingsPanel(
                         actionCallback,
                         ImGuiSettingsAction::ToggleRevealMap);
                 }
+                auto revealOnlyMapLabels = revealOnlyMapLabelsEnabled;
+                if (ImGui::Checkbox(
+                        UiText(UiTextId::RevealOnlyMapLabels),
+                        &revealOnlyMapLabels)) {
+                    Invoke(actionCallback, ImGuiSettingsAction::ToggleRevealOnlyMapLabels);
+                }
                 ImGui::EndDisabled();
 
                 saveRequested |= ImGui::SliderFloat(
@@ -1064,6 +1071,10 @@ auto DrawImGuiSettingsPanel(
                     1.0F,
                     "%.2f",
                     ImGuiSliderFlags_AlwaysClamp);
+                ImGui::BeginDisabled(!config.enabled);
+                saveRequested |= ImGui::Checkbox(
+                    "Ground Item Tooltips", &config.groundItemTooltips);
+                ImGui::EndDisabled();
             }
 
             if (section(UiTextId::Monsters)) {

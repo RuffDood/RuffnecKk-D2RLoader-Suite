@@ -1,5 +1,8 @@
+#include "seed_selector/map_seed_selector.hpp"
 #include "seed_selector/selector_ui.hpp"
 #include <D2RLPlugin/api.h>
+#include <RuffnecKk/iht/i_hate_tomls_client.h>
+#include <RuffnecKk/live_settings.hpp>
 
 #include <Windows.h>
 #include <shellapi.h>
@@ -51,6 +54,8 @@
 
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
+#include "ground_item_tooltip.hpp"
+
 namespace RuffnecKk::MapSense {
 namespace {
 
@@ -75,6 +80,7 @@ enum class Action {
     ArmRevealAll,
     ToggleRevealAll,
     DisableRevealAll,
+    ToggleRevealOnlyMapLabels,
     ToggleMenu,
     ToggleMenuVisibility,
 };
@@ -91,7 +97,9 @@ const D2RL::InputServiceV1* InputService{};
 const D2RL::LifecycleServiceV1* LifecycleService{};
 const D2RL::ThreadServiceV1* ThreadService{};
 Config Settings{};
-std::atomic_bool RevealMapPreference{};
+enum class RevealMode { Off, Map, LabelsOnly };
+std::atomic<RevealMode> RevealPreference{RevealMode::Off};
+PluginMenu::Connection LiveSettingsMenu;
 std::atomic_bool MenuVisibilityPreference{true};
 std::atomic_bool Operational{};
 std::atomic_bool FeaturesEnabled{true};
@@ -752,11 +760,15 @@ void WriteOutcome(
             kind = D2RL::ConsoleMessageKind::Output;
             break;
         case RevealOutcome::Armed:
-            message = "MapSense: Reveal Map enabled; this preference applies to future games.";
+            message = action == Action::ToggleRevealOnlyMapLabels
+                ? "MapSense: Reveal only map labels enabled."
+                : "MapSense: Reveal Map enabled; this preference applies to future games.";
             kind = D2RL::ConsoleMessageKind::Output;
             break;
         case RevealOutcome::Disarmed:
-            message = "MapSense: Reveal Map disabled; D2R keeps any native cells already revealed.";
+            message = action == Action::ToggleRevealOnlyMapLabels
+                ? "MapSense: Reveal only map labels disabled."
+                : "MapSense: Reveal Map disabled; D2R keeps any native cells already revealed.";
             kind = D2RL::ConsoleMessageKind::Output;
             break;
         case RevealOutcome::Unavailable:
@@ -777,6 +789,7 @@ auto ExecuteAction(Action action) noexcept -> RevealOutcome {
         case Action::ArmRevealAll: return ArmRevealAll();
         case Action::ToggleRevealAll: return ToggleRevealAll();
         case Action::DisableRevealAll: return DisableRevealAll();
+        case Action::ToggleRevealOnlyMapLabels:
         case Action::ToggleMenu:
         case Action::ToggleMenuVisibility: return RevealOutcome::Unavailable;
     }
@@ -797,6 +810,7 @@ auto ExecuteAction(Action action) noexcept -> RevealOutcome {
         case Action::ArmRevealAll: return "arm-reveal-all";
         case Action::ToggleRevealAll: return "toggle-reveal-all";
         case Action::DisableRevealAll: return "disable-reveal-all";
+        case Action::ToggleRevealOnlyMapLabels: return "toggle-reveal-only-map-labels";
         case Action::ToggleMenu: return "toggle-menu";
         case Action::ToggleMenuVisibility: return "toggle-menu-visibility";
     }
@@ -1320,7 +1334,8 @@ void OnNativeAutomapLevelObserved(
             ScheduleNativeAtlasPump(1U);
         }
     }
-    if (HasPendingRevealWorkForLevel(currentLevelId)) {
+    if (RevealPreference.load(std::memory_order_acquire) != RevealMode::LabelsOnly
+        && HasPendingRevealWorkForLevel(currentLevelId)) {
         (void)RequestRememberedRevealForCurrentSession(
             currentLevelId,
             0U,
@@ -1637,11 +1652,15 @@ void __cdecl RunNativeAtlasPumpOnUi(
         || !ResolveCurrentClientLevelView(current)) {
         return;
     }
+    const auto act = ResolveActiveLevelAct(current.levelId);
+    if (RevealPreference.load(std::memory_order_acquire) == RevealMode::LabelsOnly) {
+        if (PublishNativeAutomapLabelLayers(*snapshot, current, act) && Context != nullptr) {
+            Context->LogInfo("MapSense: labels-only automap layer catalog published.");
+        }
+        return;
+    }
     const auto begin = BeginNativeAutomapAtlasPublication(
-        sessionGeneration,
-        snapshot,
-        current,
-        ResolveActiveLevelAct(current.levelId));
+        sessionGeneration, snapshot, current, act);
     if (begin == NativeAutomapAtlasPublicationStatus::Unavailable
         || begin == NativeAutomapAtlasPublicationStatus::Stale) {
         return;
@@ -2254,7 +2273,17 @@ void __cdecl RetryRememberedRevealOnUi(
     }
 
     const auto currentAct = ResolveActiveLevelAct(current.levelId);
-    if (RevealMapPreference.load(std::memory_order_acquire)
+    const auto mode = RevealPreference.load(std::memory_order_acquire);
+    if (mode == RevealMode::LabelsOnly) {
+        if (!IsKnownRevealAct(currentAct)
+            || StartProgressiveReveal(attempt.sessionGeneration, current, currentAct)) {
+            CompletePendingRevealReplay(attempt.sessionGeneration);
+        } else if (!RetryPendingRevealReplay(attempt.sessionGeneration) && Context != nullptr) {
+            Context->LogWarn("MapSense: the labels-only atlas request expired.");
+        }
+        return;
+    }
+    if (mode == RevealMode::Map
         && !IsRevealAllArmed()
         && ArmRevealAll() == RevealOutcome::Armed) {
         std::scoped_lock lock(RevealReplayMutex);
@@ -2724,16 +2753,23 @@ void ShutdownRevealReplayTimer() noexcept {
 }
 
 auto ExecuteTrackedRevealAction(Action action) noexcept -> RevealOutcome {
-    if (IsRevealAllArmAction(action) || action == Action::DisableRevealAll) {
+    const auto priorMode = RevealPreference.load(std::memory_order_acquire);
+    auto mode = priorMode;
+    const bool toggleLabels = action == Action::ToggleRevealOnlyMapLabels;
+    if (toggleLabels) {
+        mode = priorMode == RevealMode::LabelsOnly ? RevealMode::Off : RevealMode::LabelsOnly;
+    } else if (IsRevealAllArmAction(action) || action == Action::DisableRevealAll) {
         const bool enabled = action == Action::ToggleRevealAll
-            ? !RevealMapPreference.load(std::memory_order_acquire)
-            : action == Action::ArmRevealAll;
-        RevealMapPreference.store(enabled, std::memory_order_release);
-        QueuePersistentPreferenceSave();
+            ? priorMode != RevealMode::Map : action == Action::ArmRevealAll;
+        mode = enabled ? RevealMode::Map : RevealMode::Off;
         action = enabled ? Action::ArmRevealAll : Action::DisableRevealAll;
     }
-    if (action == Action::DisableRevealAll) {
-        const auto outcome = ExecuteAction(action);
+    if (mode != priorMode) {
+        RevealPreference.store(mode, std::memory_order_release);
+        QueuePersistentPreferenceSave();
+    }
+    if (toggleLabels || action == Action::DisableRevealAll) {
+        const auto outcome = DisableRevealAll();
         ActiveRevealMapSeed.store(0U, std::memory_order_release);
         ActiveRevealMapDifficulty.store(
             UnknownRevealDifficulty, std::memory_order_release);
@@ -2743,12 +2779,18 @@ auto ExecuteTrackedRevealAction(Action action) noexcept -> RevealOutcome {
         }
         CancelPendingRevealReplay();
         CancelProgressiveReveal();
-        ResetExternalLabelProviderSession(
-            CurrentSessionGeneration.load(std::memory_order_acquire));
-        CancelNativeAtlasPublication(
-            CurrentSessionGeneration.load(std::memory_order_acquire));
+        const auto generation = CurrentSessionGeneration.load(std::memory_order_acquire);
+        ResetExternalLabelProviderSession(generation);
+        CancelNativeAtlasPublication(generation);
+        if (priorMode == RevealMode::LabelsOnly && mode == RevealMode::Off) {
+            (void)ReplaceExternalAutomapExitLabels(generation, nullptr, 0);
+            (void)ReplaceExternalAutomapWaypointLabels(generation, nullptr, 0);
+            (void)ReplaceExternalAutomapLevelLabels(generation, nullptr, 0);
+        }
         (void)RequestRememberedRevealForCurrentSession();
-        return outcome;
+        return toggleLabels
+            ? (mode == RevealMode::LabelsOnly ? RevealOutcome::Armed : RevealOutcome::Disarmed)
+            : outcome;
     }
 
     if (!FeaturesEnabled.load(std::memory_order_acquire)) {
@@ -2835,6 +2877,9 @@ auto ExecuteTrackedRevealAction(Action action) noexcept -> RevealOutcome {
 
     if (IsRevealAllArmAction(action)) {
         CancelPendingRevealReplay();
+        if (priorMode == RevealMode::LabelsOnly && outcome == RevealOutcome::Armed) {
+            ScheduleNativeAtlasPump(1U);
+        }
         if (outcome == RevealOutcome::Disarmed) {
             CancelProgressiveReveal();
             ResetExternalLabelProviderSession(
@@ -2919,6 +2964,7 @@ void __cdecl OnGameplayEvent(
         ResetExternalLabelProviderSession(event->sessionGeneration);
         ResetNativeAutomapPoiSession(event->sessionGeneration);
         CancelNativeAtlasPublication(event->sessionGeneration);
+        GroundItemTooltip::SetGameplayActive(false);
         GameplayReady.store(false, std::memory_order_release);
         MenuExpanded.store(false, std::memory_order_release);
         SetD3D12ImGuiMenuOpen(false);
@@ -2939,6 +2985,7 @@ void __cdecl OnGameplayEvent(
         (void)EnsureUiLanguageReady();
         (void)EnsureLocalizedDataCatalogReady(event->sessionGeneration);
         GameplayReady.store(true, std::memory_order_release);
+        GroundItemTooltip::SetGameplayActive(true);
         MenuExpanded.store(false, std::memory_order_release);
         SetD3D12ImGuiMenuOpen(
             MenuVisibilityPreference.load(std::memory_order_acquire));
@@ -2974,6 +3021,7 @@ void __cdecl OnGameplayEvent(
         ResetExternalLabelProviderSession(0U);
         ResetNativeAutomapPoiSession(0U);
         CancelNativeAtlasPublication(0U);
+        GroundItemTooltip::SetGameplayActive(false);
         GameplayReady.store(false, std::memory_order_release);
         CurrentSessionGeneration.store(0U, std::memory_order_release);
         LastDynamicNavigationRefreshTick.store(
@@ -3060,7 +3108,7 @@ void WriteStatus(const D2RL::PluginContext* context) noexcept {
     std::snprintf(
         message,
         sizeof(message),
-            "RuffnecKk MapSense 2.2.13: active=%s; reveal-map-provider=%s; gameplay=%s; reveal-all=%s; markers=%s; immunity-scan=%s; renderer-hooks=%s; renderer=%s; chest-textures=%s; input=%s; menu=%s; presents=%llu; rendered=%llu; level traversals=%llu; rooms=%llu; failures=%llu; traversal limits=%llu; static-poi=candidates/materialized/released/failures:%llu/%llu/%llu/%llu; static-active-room-calls=0; automap-pulses=%llu; table-scans=%llu; buckets=%llu; table-limits=%llu; automap units=%llu; monsters=%llu; enemy-rejects=dead/unit/class/alignment:%llu/%llu/%llu/%llu; filter-faults=%llu; hostiles=%llu; hostile-bands=0-80/81-140/141-220/>220:%llu/%llu/%llu/%llu; projection-rejects=%llu; clip-rejects=%llu; max-hostile-subtiles=%u; max-accepted-subtiles=%u; max-published-subtiles=%u; accepted=%llu; inserted=%llu; refreshed=%llu; fresh=%llu; expired=%llu; marker waits=%llu; storage faults=%llu; marker faults=%llu.",
+            "RuffnecKk MapSense 2.2.14: active=%s; reveal-map-provider=%s; gameplay=%s; reveal-all=%s; markers=%s; immunity-scan=%s; renderer-hooks=%s; renderer=%s; chest-textures=%s; input=%s; menu=%s; presents=%llu; rendered=%llu; level traversals=%llu; rooms=%llu; failures=%llu; traversal limits=%llu; static-poi=candidates/materialized/released/failures:%llu/%llu/%llu/%llu; static-active-room-calls=0; automap-pulses=%llu; table-scans=%llu; buckets=%llu; table-limits=%llu; automap units=%llu; monsters=%llu; enemy-rejects=dead/unit/class/alignment:%llu/%llu/%llu/%llu; filter-faults=%llu; hostiles=%llu; hostile-bands=0-80/81-140/141-220/>220:%llu/%llu/%llu/%llu; projection-rejects=%llu; clip-rejects=%llu; max-hostile-subtiles=%u; max-accepted-subtiles=%u; max-published-subtiles=%u; accepted=%llu; inserted=%llu; refreshed=%llu; fresh=%llu; expired=%llu; marker waits=%llu; storage faults=%llu; marker faults=%llu.",
         IsRevealEngineActive() ? "true" : "false",
         IsExternalLabelProviderActive() ? "ready" : "unavailable",
         GameplayReady.load(std::memory_order_acquire) ? "ready" : "inactive",
@@ -3550,6 +3598,9 @@ void OnImGuiSettingsAction(ImGuiSettingsAction action) noexcept {
         case ImGuiSettingsAction::ToggleRevealMap:
             requested = Action::ToggleRevealAll;
             break;
+        case ImGuiSettingsAction::ToggleRevealOnlyMapLabels:
+            requested = Action::ToggleRevealOnlyMapLabels;
+            break;
     }
     if (!QueueAction(requested) && Context != nullptr) {
         Context->LogWarn(
@@ -3575,8 +3626,8 @@ void __cdecl DrainSettingsSaveOnUi(
             || context == nullptr) {
             continue;
         }
-        const auto result = SaveMenuSettingsDocument(serialized,
-            RevealMapPreference.load(std::memory_order_acquire),
+        const auto mode = RevealPreference.load(std::memory_order_acquire);
+        const auto result = SaveMenuSettingsDocument(serialized, mode == RevealMode::Map,
             [context](std::string& document) {
                 std::array<char, MaximumConfigBytes> current{};
                 if (!context->ReadConfig(current.data(),
@@ -3589,7 +3640,7 @@ void __cdecl DrainSettingsSaveOnUi(
             },
             [context](const std::string& document) {
                 return context->WriteConfig(document.c_str());
-            }, MenuVisibilityPreference.load(std::memory_order_acquire));
+            }, MenuVisibilityPreference.load(std::memory_order_acquire), mode == RevealMode::LabelsOnly);
         if (result == MenuSettingsSaveResult::ReadFailed) {
             context->LogWarn("MapSense: settings were not saved because the current configuration could not be read; manual edits were preserved.");
         } else if (result == MenuSettingsSaveResult::InvalidDocument) {
@@ -3597,6 +3648,57 @@ void __cdecl DrainSettingsSaveOnUi(
         } else if (result == MenuSettingsSaveResult::WriteFailed) {
             context->LogWarn("MapSense: settings could not be written to the active configuration scope.");
         }
+    }
+}
+
+constexpr char SeedSelectorSetting[] = "general.map_seed_selector";
+constexpr char LiveSettingsSchema[] = R"toml(title = "MapSense"
+[[setting]]
+key = "general.map_seed_selector"
+type = "bool"
+label = "Map Seed Selector"
+hint = "Show the seed picker on Offline character select and use the selected seed for new games."
+)toml";
+
+bool __cdecl GetLiveSetting(const char* key, char* out, std::uint32_t size, void*) noexcept {
+    if (!Operational.load(std::memory_order_acquire)
+        || !key || std::string_view(key) != SeedSelectorSetting || !out) return false;
+    const std::string_view value = MapSeedSelector::IsPickerEnabled() ? "true" : "false";
+    if (size <= value.size()) return false;
+    std::memcpy(out, value.data(), value.size());
+    out[value.size()] = '\0';
+    return true;
+}
+
+bool __cdecl SetLiveSetting(const char* key, const char* value, char* error,
+        std::uint32_t errorSize, void*) noexcept {
+    if (!Operational.load(std::memory_order_acquire) || Context == nullptr) return false;
+    try {
+        if (!key || std::string_view(key) != SeedSelectorSetting || !value
+            || (std::string_view(value) != "true" && std::string_view(value) != "false")) {
+            throw std::invalid_argument("Expected a boolean for Map Seed Selector.");
+        }
+        std::array<char, MaximumConfigBytes> buffer{};
+        if (!Context->ReadConfig(buffer.data(), static_cast<std::uint32_t>(buffer.size()), nullptr)) {
+            throw std::runtime_error("MapSense configuration could not be read.");
+        }
+        const auto end = std::find(buffer.begin(), buffer.end(), '\0');
+        if (end == buffer.end()) throw std::runtime_error("MapSense configuration is too large.");
+        const std::string_view document(buffer.data(), static_cast<std::size_t>(end - buffer.begin()));
+        (void)ParseConfig(document);
+        const auto edited = RuffnecKk::LiveSettings::Edit(document, SeedSelectorSetting, value);
+        const auto settings = ParseConfig(edited);
+        if (!Context->WriteConfig(edited.c_str())) {
+            throw std::runtime_error("MapSense configuration could not be saved.");
+        }
+        MapSeedSelector::SetPickerEnabled(settings.mapSeedSelector);
+        return true;
+    } catch (const std::exception& exception) {
+        if (error && errorSize) std::snprintf(error, errorSize, "%s", exception.what());
+        return false;
+    } catch (...) {
+        if (error && errorSize) std::snprintf(error, errorSize, "%s", "Map Seed Selector could not be changed.");
+        return false;
     }
 }
 
@@ -3759,9 +3861,10 @@ auto DrawMapSensePanel(bool* open, float menuScale, void*) noexcept
     const auto featuresBefore = FeaturesEnabled.load(std::memory_order_acquire);
     const auto adaptBefore = Settings.navigation.routing.adaptToModConnections;
     const auto townBefore = Settings.navigation.routing.townShortcuts;
+    const auto mode = RevealPreference.load(std::memory_order_acquire);
     const auto bounds = DrawImGuiSettingsPanel(
         Settings, expanded, CurrentSessionGeneration.load(std::memory_order_acquire),
-        RevealMapPreference.load(std::memory_order_acquire), menuScale, OnImGuiSettingsAction
+        mode == RevealMode::Map, mode == RevealMode::LabelsOnly, menuScale, OnImGuiSettingsAction
 #if defined(RUFFNECKK_MAPSENSE_ENABLE_GPS_ROUTE_DIAGNOSTICS) \
     && RUFFNECKK_MAPSENSE_ENABLE_GPS_ROUTE_DIAGNOSTICS
         , GpsRouteDiagnosticStatusTexts()
@@ -3801,6 +3904,7 @@ auto DrawMapSensePanel(bool* open, float menuScale, void*) noexcept
             && Settings.monsters.enabled && Settings.immunities.enabled);
         ApplyNativeAutomapPoiCollectionSettings();
     }
+    GroundItemTooltip::SetPreference(Settings.enabled && Settings.groundItemTooltips);
     MenuExpanded.store(expanded, std::memory_order_release);
     if (bounds.saveRequested) QueueSettingsSaveFromMenu();
     return {
@@ -5144,8 +5248,20 @@ void DrawAutomapPoiSnapshots(
                     std::max(1.0F, io.DisplaySize.x),
                     0.0F,
                     level->waypointLabelUtf8.c_str());
-                const auto waypointExtent = labelMetrics.IconTopExtentForViewport(
+                auto waypointExtent = labelMetrics.IconTopExtentForViewport(
                     NativeWaypointLabelTopExtent, poi.nativeViewportScale);
+                if (RevealPreference.load(std::memory_order_acquire) == RevealMode::LabelsOnly) {
+                    // Use an overlay marker so the native automap cells remain untouched.
+                    const float radius = labelMetrics.Spacing(5.0F);
+                    const ImVec2 top{center.x, center.y - radius};
+                    const ImVec2 right{center.x + radius, center.y};
+                    const ImVec2 bottom{center.x, center.y + radius};
+                    const ImVec2 left{center.x - radius, center.y};
+                    drawList->AddQuadFilled(top, right, bottom, left,
+                        ToImGuiColor(Settings.objects.waypointLabels.color, opacity));
+                    drawList->AddQuad(top, right, bottom, left, IM_COL32(24, 20, 14, 255));
+                    waypointExtent = radius;
+                }
                 const auto waypointGap = labelMetrics.SpacingForViewport(
                     NativeWaypointLabelGap, poi.nativeViewportScale);
                 const auto textTop = AutomapLabelTopAboveIcon(
@@ -5748,6 +5864,8 @@ void DrawNativeMissileSnapshots(
 }
 
 void DrawMapSenseOwnedOverlay(void*) noexcept {
+    if (GameplayReady.load(std::memory_order_acquire)
+        && FeaturesEnabled.load(std::memory_order_acquire)) GroundItemTooltip::Draw(Context, ThreadService);
     if (!WantsMapSenseOwnedOverlay(nullptr)) return;
 
     RequestNativeUiPanelVisibilityRefresh();
@@ -6161,7 +6279,11 @@ auto StartImGuiHost() noexcept -> bool {
         .drawPanel = DrawMapSensePanel,
         .resolveMenuScale = ResolveMapSensePanelScale,
         .drawOwnedOverlay = DrawMapSenseOwnedOverlay,
-        .wantsOwnedOverlay = WantsMapSenseOwnedOverlay,
+        .wantsOwnedOverlay = [](void* data) noexcept {
+            return WantsMapSenseOwnedOverlay(data)
+                || (GameplayReady.load(std::memory_order_acquire)
+                    && GroundItemTooltip::HasFreshTooltip());
+        },
         .ownedOverlayDismissal = OnOwnedOverlayDismissal,
         .userData = nullptr,
         .queueUiTask = QueueHostUiTask,
@@ -6266,7 +6388,7 @@ constexpr D2RL::PluginInfo PluginInfo{
     .apiVersion = D2RL_PLUGIN_API_VERSION,
     .id = "ruffneckk-mapsense",
     .name = "RuffnecKk MapSense",
-    .version = "2.2.13",
+    .version = "2.2.14",
     .author = "RuffnecKk",
     .description = "Reveals maps, marks monsters, and draws navigation guidance.",
     .flags = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
@@ -6342,7 +6464,10 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         context->LogError("MapSense: navigation routing settings could not be published.");
         return false;
     }
-    RevealMapPreference.store(Settings.revealMap, std::memory_order_release);
+    RevealPreference.store(Settings.revealMap ? RevealMode::Map
+        : Settings.revealOnlyMapLabels ? RevealMode::LabelsOnly : RevealMode::Off,
+        std::memory_order_release);
+    MapSeedSelector::SetPickerEnabled(Settings.mapSeedSelector);
     MenuVisibilityPreference.store(Settings.menu.visible, std::memory_order_release);
     FeaturesEnabled.store(
         Settings.enabled,
@@ -6587,12 +6712,17 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
             "MapSense: console command registration failed; Controls actions remain available.");
     }
 
+    if (GroundItemTooltip::Initialize(context)) {
+        GroundItemTooltip::SetPreference(Settings.enabled && Settings.groundItemTooltips);
+    } else {
+        context->LogWarn("MapSense: ground item tooltips are unavailable because their native checks did not pass.");
+    }
     Operational.store(true, std::memory_order_release);
     char loadedMessage[384]{};
     std::snprintf(
         loadedMessage,
         sizeof(loadedMessage),
-        "RuffnecKk MapSense 2.2.13 loaded; labels/objects=%s; native-seed-atlas=%s; monster-markers=%s; Direct-navigation=%s; Reveal-Map=%s; settings=active; native-panel-occlusion=%s.",
+        "RuffnecKk MapSense 2.2.14 loaded; labels/objects=%s; native-seed-atlas=%s; monster-markers=%s; Direct-navigation=%s; Reveal-Map=%s; settings=active; native-panel-occlusion=%s.",
         poiRuntimeAvailable ? "pending-localization" : "unavailable",
         externalLabelsAvailable ? "active" : "unavailable",
         markerAvailable ? "active" : "unavailable",
@@ -6601,12 +6731,16 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(
         nativeUiTelemetryAvailable ? "active" : "fail-closed");
     context->LogInfo(loadedMessage);
     (void)MapSeedSelector::StartPicker(context);
+    (void)LiveSettingsMenu.Start(context, LiveSettingsSchema,
+        GetLiveSetting, SetLiveSetting, nullptr);
     return true;
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
-    MapSeedSelector::StopPicker();
     using namespace RuffnecKk::MapSense;
+    LiveSettingsMenu.Stop();
+    MapSeedSelector::StopPicker();
+    GroundItemTooltip::SetGameplayActive(false);
     Operational.store(false, std::memory_order_release);
     FeaturesEnabled.store(false, std::memory_order_release);
     HostApiAvailable.store(false, std::memory_order_release);

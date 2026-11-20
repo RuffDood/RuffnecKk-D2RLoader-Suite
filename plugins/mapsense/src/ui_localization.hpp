@@ -40,6 +40,7 @@ enum class UiTextId : std::uint16_t {
     Automatic,
     MapAndReveal,
     RevealMap,
+    RevealOnlyMapLabels,
     AdditionsOpacity,
     Monsters,
     ShowMonsters,

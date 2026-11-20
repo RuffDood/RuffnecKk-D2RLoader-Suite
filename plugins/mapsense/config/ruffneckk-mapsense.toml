@@ -9,7 +9,13 @@ schema_version = 21
 enabled = true
 # Saved across games and difficulties; independent of GPS.
 # Turning off stops revealing but does not hide cells already revealed.
-reveal_map = false
+reveal_map = true
+# Generate distant map labels while leaving terrain discovery to the game.
+# If both reveal options are true, Reveal Map takes precedence.
+reveal_only_map_labels = false
+ground_item_tooltips = false
+# Show the Offline map seed picker and allow its selected seed to be used.
+map_seed_selector = true
 
 [overlay]
 # Legacy diagnostic-scene switch retained for schema 2 compatibility. Keep disabled.

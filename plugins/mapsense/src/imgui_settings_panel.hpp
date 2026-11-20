@@ -13,6 +13,7 @@ namespace RuffnecKk::MapSense {
 
 enum class ImGuiSettingsAction : std::uint8_t {
     ToggleRevealMap,
+    ToggleRevealOnlyMapLabels,
 };
 
 using ImGuiSettingsActionCallback = void (*)(ImGuiSettingsAction) noexcept;
@@ -46,6 +47,7 @@ struct ImGuiSettingsBounds {
     bool& expanded,
     std::uint64_t sessionGeneration,
     bool revealMapEnabled,
+    bool revealOnlyMapLabelsEnabled,
     float menuScale,
     ImGuiSettingsActionCallback actionCallback
 #if defined(RUFFNECKK_MAPSENSE_ENABLE_GPS_ROUTE_DIAGNOSTICS) \

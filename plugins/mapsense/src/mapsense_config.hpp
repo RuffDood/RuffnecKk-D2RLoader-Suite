@@ -467,7 +467,10 @@ struct MenuOptions {
 
 struct Config {
     bool enabled{true};
-    bool revealMap{};
+    bool revealMap{true};
+    bool groundItemTooltips{};
+    bool revealOnlyMapLabels{};
+    bool mapSeedSelector{true};
     bool diagnostics{};
     OverlayOptions overlay{};
     MonsterOptions monsters{};
@@ -1319,6 +1322,8 @@ inline auto ParseConfig(const toml::table& root) -> Config {
     }
 
     Config config{};
+    // Preserve the reveal preference of configurations saved before this default.
+    config.revealMap = false;
     auto legacyFeaturesEnabled = true;
     auto legacyOverlayEnabled = true;
     if (*schemaVersion < 4) {
@@ -1332,18 +1337,22 @@ inline auto ParseConfig(const toml::table& root) -> Config {
     }
     if (const auto* general = ReadOptionalTable(root, "general")) {
         if (*schemaVersion >= 19) {
-            RejectUnknownKeys(*general, {"enabled", "reveal_map"}, "general");
+            RejectUnknownKeys(*general, {"enabled", "reveal_map", "reveal_only_map_labels", "map_seed_selector", "ground_item_tooltips"}, "general");
             config.revealMap = ReadOptional(*general, "reveal_map", false);
+            config.groundItemTooltips = ReadOptional(*general, "ground_item_tooltips", false);
         } else if (*schemaVersion >= 16) {
-            RejectUnknownKeys(*general, {"enabled"}, "general");
+            RejectUnknownKeys(*general, {"enabled", "reveal_only_map_labels", "map_seed_selector"}, "general");
         } else if (*schemaVersion >= 12) {
             RejectUnknownKeys(
                 *general,
-                {"enabled", "features_enabled"},
+                {"enabled", "features_enabled", "reveal_only_map_labels", "map_seed_selector"},
                 "general");
         } else {
-            RejectUnknownKeys(*general, {"enabled"}, "general");
+            RejectUnknownKeys(*general, {"enabled", "reveal_only_map_labels", "map_seed_selector"}, "general");
         }
+        const auto labelsOnly = ReadOptional(*general, "reveal_only_map_labels", false);
+        config.revealOnlyMapLabels = labelsOnly && !config.revealMap;
+        config.mapSeedSelector = ReadOptional(*general, "map_seed_selector", true);
         config.enabled = ReadOptional(*general, "enabled", config.enabled);
         if (*schemaVersion >= 12 && *schemaVersion < 16) {
             legacyFeaturesEnabled = ReadOptional(
@@ -1778,7 +1787,10 @@ inline auto SerializeConfig(const Config& config) -> std::string {
         << "schema_version = " << CurrentConfigSchemaVersion << "\n\n"
         << "[general]\n"
         << "enabled = " << config.enabled << "\n"
-        << "reveal_map = " << config.revealMap << "\n\n"
+        << "map_seed_selector = " << config.mapSeedSelector << "\n"
+        << "reveal_only_map_labels = " << (config.revealOnlyMapLabels && !config.revealMap) << "\n"
+        << "reveal_map = " << config.revealMap << "\n"
+        << "ground_item_tooltips = " << config.groundItemTooltips << "\n\n"
         << "[overlay]\n"
         << "diagnostic_preview = " << config.overlay.diagnosticPreview << "\n"
         << "follow_native_automap = " << config.overlay.followNativeAutomap << "\n"
@@ -1996,7 +2008,8 @@ inline auto SerializeConfig(const Config& config) -> std::string {
 inline auto SerializeMenuSettingsForSave(
         std::string_view snapshot, std::string_view latestDocument,
         std::optional<bool> revealPreference = std::nullopt,
-        std::optional<bool> menuVisibility = std::nullopt) -> std::string {
+        std::optional<bool> menuVisibility = std::nullopt,
+        std::optional<bool> revealLabelsPreference = std::nullopt) -> std::string {
     auto settings = ParseConfig(snapshot);
     auto latest = ParseConfig(latestDocument);
     // This list is deliberately owned by the text editor. Empty means the
@@ -2004,7 +2017,9 @@ inline auto SerializeMenuSettingsForSave(
     settings.navigation.customLevels.targets =
         std::move(latest.navigation.customLevels.targets);
     settings.navigation.routing.overrides = std::move(latest.navigation.routing.overrides);
+    settings.mapSeedSelector = latest.mapSeedSelector;
     if (revealPreference.has_value()) settings.revealMap = *revealPreference;
+    if (revealLabelsPreference.has_value()) settings.revealOnlyMapLabels = *revealLabelsPreference;
     if (menuVisibility.has_value()) settings.menu.visible = *menuVisibility;
     return SerializeConfig(settings);
 }
@@ -2016,13 +2031,14 @@ enum class MenuSettingsSaveResult { Saved, ReadFailed, InvalidDocument, WriteFai
 template <typename ReadDocument, typename WriteDocument>
 inline auto SaveMenuSettingsDocument(std::string_view snapshot, bool revealPreference,
         ReadDocument&& read, WriteDocument&& write,
-        std::optional<bool> menuVisibility = std::nullopt) noexcept -> MenuSettingsSaveResult {
+        std::optional<bool> menuVisibility = std::nullopt,
+        std::optional<bool> revealLabelsPreference = std::nullopt) noexcept -> MenuSettingsSaveResult {
     try {
         std::string latest;
         if (!read(latest)) return MenuSettingsSaveResult::ReadFailed;
         const auto merged = SerializeMenuSettingsForSave(
             snapshot.empty() ? std::string_view(latest) : snapshot,
-            latest, revealPreference, menuVisibility);
+            latest, revealPreference, menuVisibility, revealLabelsPreference);
         return write(merged) ? MenuSettingsSaveResult::Saved
                             : MenuSettingsSaveResult::WriteFailed;
     } catch (...) {

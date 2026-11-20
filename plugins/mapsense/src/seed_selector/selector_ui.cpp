@@ -320,6 +320,11 @@ MapSeedSelector::NativeDropdownArt::SpriteBundle CompositeSprites{};
 bool NativeDropdownAvailable{};
 std::atomic_bool Operational{};
 std::atomic_bool DesiredPanelOpen{};
+
+auto ShouldShowPickerPanel() noexcept -> bool {
+    return MapSeedSelector::IsPickerEnabled()
+        && DesiredPanelOpen.load(std::memory_order_acquire);
+}
 std::atomic_bool OnlineFlowActive{};
 std::atomic_bool PanelSyncPending{};
 std::atomic_bool DropdownSyncPending{};
@@ -609,7 +614,8 @@ void TrimClosedSelectorPanels(
 void __cdecl ApplyDropdownChanged(const D2RL::PluginContext* context,
         void*) noexcept {
     if (context == nullptr || context != Context
-            || !Operational.load(std::memory_order_acquire)) {
+            || !Operational.load(std::memory_order_acquire)
+            || !ShouldShowPickerPanel()) {
         DropdownSyncPending.store(false, std::memory_order_release);
         return;
     }
@@ -645,7 +651,8 @@ void __cdecl ApplyPickerAction(const D2RL::PluginContext* context,
     const int action = PendingPickerAction.exchange(-1,
         std::memory_order_acq_rel);
     if (context == nullptr || context != Context
-            || !Operational.load(std::memory_order_acquire)) {
+            || !Operational.load(std::memory_order_acquire)
+            || !ShouldShowPickerPanel()) {
         PickerActionPending.store(false, std::memory_order_release);
         return;
     }
@@ -1235,7 +1242,7 @@ void CloseDeleteSeedDialog(const D2RL::PluginContext* context) noexcept {
 void OpenDeleteSeedDialog(const D2RL::PluginContext* context,
         std::size_t seedIndex) noexcept {
     if (context == nullptr || context != Context
-            || !DesiredPanelOpen.load(std::memory_order_acquire)
+            || !ShouldShowPickerPanel()
             || AddSeedDialogOpen.load(std::memory_order_acquire)
             || CurrentSeedPanelOpen.load(std::memory_order_acquire)
             || DeleteSeedDialogPanelHandle
@@ -1418,7 +1425,7 @@ LRESULT CALLBACK AddSeedMouseProc(int code, WPARAM message,
         LPARAM parameter) {
     if (code < 0 || parameter == 0 || !Operational.load(
             std::memory_order_acquire)
-            || !DesiredPanelOpen.load(std::memory_order_acquire)
+            || !ShouldShowPickerPanel()
             || !AddSeedGameIsForeground()) {
         return CallNextHookEx(AddSeedMouseHook, code, message, parameter);
     }
@@ -1920,15 +1927,12 @@ void __cdecl AddSeedActionOnUi(const D2RL::PluginContext* context,
     const int action = PendingAddSeedAction.exchange(-1,
         std::memory_order_acq_rel);
     if (context == nullptr || context != Context
-            || !Operational.load(std::memory_order_acquire)) {
+            || !Operational.load(std::memory_order_acquire)
+            || !ShouldShowPickerPanel()) {
         AddSeedActionPending.store(false, std::memory_order_release);
         return;
     }
     if (action == 0) {
-        if (!DesiredPanelOpen.load(std::memory_order_acquire)) {
-            AddSeedActionPending.store(false, std::memory_order_release);
-            return;
-        }
         {
             std::lock_guard lock(AddSeedInputMutex);
             AddSeedNameWide.clear();
@@ -2061,7 +2065,7 @@ void __cdecl ApplyPanelState(const D2RL::PluginContext* context,
         return;
     }
 
-    const bool shouldOpen = DesiredPanelOpen.load(std::memory_order_acquire);
+    const bool shouldOpen = ShouldShowPickerPanel();
     if (shouldOpen && !NativeDropdownAvailable
             && !FallbackArtworkReady.load(std::memory_order_acquire)) {
         return;
@@ -2295,7 +2299,8 @@ auto __cdecl OnUiMessage(const D2RL::PluginContext* context,
             event->text != nullptr ? event->text : "");
     }
 
-    if (target == "MapSeedSelector" && command == "SeedChanged") {
+    if (target == "MapSeedSelector" && command == "SeedChanged"
+            && ShouldShowPickerPanel()) {
         // Dropdown selection payloads are binary; read the selected state from
         // WidgetService on the UI thread instead of parsing event->text.
         ScheduleDropdownChanged();
@@ -2330,7 +2335,8 @@ auto __cdecl OnUiMessage(const D2RL::PluginContext* context,
         SchedulePanelSync();
     } else if (target == "PanelManager" && command == "ClosePanel"
             && (message == "CharacterSelectPanel"
-                || message == std::string_view(QualifiedPanelName))) {
+                || (MapSeedSelector::IsPickerEnabled()
+                    && message == std::string_view(QualifiedPanelName)))) {
         DesiredPanelOpen.store(false, std::memory_order_release);
         AddSeedDialogOpen.store(false, std::memory_order_release);
         AddSeedTypingEnabled.store(false, std::memory_order_release);
@@ -2864,7 +2870,7 @@ auto RefreshSelectorLayouts(const D2RL::PluginContext* context) noexcept
         return true;
     };
     const auto reopenMain = [context]() {
-        if (!DesiredPanelOpen.load(std::memory_order_acquire)
+        if (!ShouldShowPickerPanel()
                 || PanelHandle == D2RL::Panels::InvalidHandle) {
             return;
         }
@@ -2950,7 +2956,7 @@ auto RefreshSelectorLayouts(const D2RL::PluginContext* context) noexcept
     SelectorLayoutHandles[nextSlot] = LayoutHandle;
     SelectorOptionsLayoutHandles[nextSlot] = OptionsLayoutHandle;
     SetActivePanelSlot(nextSlot);
-    if (DesiredPanelOpen.load(std::memory_order_acquire)) {
+    if (ShouldShowPickerPanel()) {
         const auto openResult = PanelService->openPanel(context, PanelHandle);
         if (openResult != D2RL::Panels::Result::Success) {
             D2RL::LogWarnF(context,
@@ -3487,7 +3493,7 @@ void __cdecl RegisterDeferredSprites(const D2RL::PluginContext* context,
     }
     FallbackArtworkReady.store(true, std::memory_order_release);
     context->LogInfo("MapSeedSelector: composed D2R dropdown artwork registered; panel is ready.");
-    if (DesiredPanelOpen.load(std::memory_order_acquire)) {
+    if (ShouldShowPickerPanel()) {
         SchedulePanelSync();
     }
 }
@@ -3596,6 +3602,11 @@ auto MapSeedSelector::StartPicker(
 
     context->LogInfo("MapSeedSelector: waiting for game data before composing the fallback dropdown artwork.");
     return true;
+}
+
+void MapSeedSelector::SetPickerEnabled(bool enabled) noexcept {
+    SetPickerPreference(enabled);
+    SchedulePanelSync();
 }
 
 void MapSeedSelector::StopPicker() noexcept {

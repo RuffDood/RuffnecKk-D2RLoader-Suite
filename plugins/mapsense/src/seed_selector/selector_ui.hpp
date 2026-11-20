@@ -4,5 +4,6 @@
 
 namespace MapSeedSelector {
 auto StartPicker(const D2RL::PluginContext* context) noexcept -> bool;
+void SetPickerEnabled(bool enabled) noexcept;
 void StopPicker() noexcept;
 }

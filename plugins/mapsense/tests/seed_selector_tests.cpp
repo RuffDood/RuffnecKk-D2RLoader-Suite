@@ -106,6 +106,16 @@ bool Run(const std::filesystem::path& config) {
     MapSeedSelector::SetOfflineFlowActive(true);
     if (!Check(gMapSeedOverrideActive == 1 && gSelectedMapSeed == 123456789,
             "The Offline route must use the saved selection.")) return false;
+    const auto savedSeeds = Settings::ReadFile(legacy);
+    MapSeedSelector::SetPickerPreference(false);
+    if (!Check(gMapSeedOverrideActive == 0, "Disabling the picker must clear the override immediately.")) return false;
+    MapSeedSelector::SetOfflineFlowActive(false);
+    MapSeedSelector::SetOfflineFlowActive(true);
+    if (!Check(gMapSeedOverrideActive == 0, "Entering Offline with the picker disabled must leave the override inactive.")) return false;
+    MapSeedSelector::SetPickerPreference(true);
+    if (!Check(gMapSeedOverrideActive == 1 && gSelectedMapSeed == 123456789
+            && Settings::ReadFile(legacy) == savedSeeds,
+            "Re-enabling the picker must restore the saved choice without editing the seed list.")) return false;
     std::string message;
     if (!Check(MapSeedSelector::AddSeedEntry("New", "0xffffffff", message)
             && gMapSeedOverrideActive == 1

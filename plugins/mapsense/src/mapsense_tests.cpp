@@ -1951,6 +1951,23 @@ void CheckNativeAutomapAtlasPolicy() {
     CHECK(NativeAutomapLevelsShareReadyLayer(catalog, 75, 83));
     CHECK(!NativeAutomapLevelsShareReadyLayer(catalog, 75, 84));
     CHECK(!NativeAutomapLevelsShareReadyLayer(catalog, 84, 84));
+    // Worldstone Keep levels have distinct native layers. The waypoint's
+    // label is eligible on Level 2 while the terrain readiness set is empty.
+    const NativeAutomapLayerCatalog worldstoneLabels{
+        .act = 4U,
+        .levels = {
+            {.levelId = 128, .layer = 95},
+            {.levelId = 129, .layer = 96},
+            {.levelId = 130, .layer = 97},
+        },
+    };
+    CHECK(Detail::AllowsWaypointLabelForLevel(129));
+    CHECK(NativeAutomapLevelsShareLayer(worldstoneLabels, 129, 129));
+    CHECK(!NativeAutomapLevelsShareLayer(worldstoneLabels, 128, 129));
+    CHECK(!NativeAutomapLevelsShareLayer(worldstoneLabels, 130, 129));
+    CHECK(worldstoneLabels.readyLayers.empty());
+    CHECK(!NativeAutomapLevelsShareReadyLayer(worldstoneLabels, 129, 129));
+
     catalog.readyLayers.push_back(58);
     CHECK(NativeAutomapLevelsShareReadyLayer(catalog, 84, 84));
 
@@ -7003,7 +7020,23 @@ enabled = true
     CHECK(Throws([&] { (void)SerializeMenuSettingsForSave(serialized, "schema_version = 19\n[navigation.custom_levels]\ntargets = [{level_id=12},{level_id=12}]"); }));
     CHECK(Throws([] { (void)ParseConfig("schema_version=19\n[general]\nreveal_map=1"); }));
     CHECK(!ParseConfig("schema_version=18\n[general]\nenabled=true").revealMap);
-    CHECK(!ParseConfig(SerializeConfig(Config{})).revealMap);
+    CHECK(ParseConfig(SerializeConfig(Config{})).revealMap);
+    CHECK(!ParseConfig(SerializeConfig(Config{})).groundItemTooltips);
+    CHECK(ParseConfig("schema_version=21\n[general]\nreveal_map=true").mapSeedSelector);
+    CHECK(!ParseConfig("schema_version=18\n[general]\nmap_seed_selector=false").mapSeedSelector);
+    const auto labelsOnly = ParseConfig(
+        "schema_version=21\n[general]\nmap_seed_selector=false\nreveal_only_map_labels=true");
+    const auto labelsRoundTrip = ParseConfig(SerializeConfig(labelsOnly));
+    CHECK(!labelsRoundTrip.revealMap);
+    CHECK(labelsRoundTrip.revealOnlyMapLabels);
+    CHECK(!labelsRoundTrip.mapSeedSelector);
+    CHECK(!ParseConfig(
+        "schema_version=21\n[general]\nreveal_map=true\nreveal_only_map_labels=true")
+        .revealOnlyMapLabels);
+    const auto latestSeedEdit = ParseConfig(SerializeMenuSettingsForSave(
+        SerializeConfig(Config{}), SerializeConfig(labelsOnly), false, std::nullopt, true));
+    CHECK(!latestSeedEdit.mapSeedSelector);
+    CHECK(latestSeedEdit.revealOnlyMapLabels);
     for (const bool preference : {false, true}) {
         auto savedPreference = configured;
         savedPreference.revealMap = preference;

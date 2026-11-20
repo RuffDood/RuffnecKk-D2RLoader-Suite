@@ -773,6 +773,8 @@ auto SelectedSeedName() noexcept -> std::string_view {
         : std::string_view(Seeds[SelectedChoice - 1].selectionKey);
 }
 
+std::atomic_bool PickerEnabled{true};
+
 void ApplySelectedChoice() noexcept {
     // Re-evaluate whether this entry already has the selected seed whenever
     // the player changes the choice or enters/leaves Offline character select.
@@ -780,7 +782,7 @@ void ApplySelectedChoice() noexcept {
     // Off leaves the hooks installed but sends every seed copy through the
     // game's original trampoline, so map creation behaves as if this plugin
     // were absent while the character-selection panel remains visible.
-    if (SelectedChoice == 0
+    if (!PickerEnabled.load(std::memory_order_acquire) || SelectedChoice == 0
             || !OfflineFlowActive.load(std::memory_order_acquire)) {
         InterlockedExchange(&gMapSeedOverrideActive, 0);
         return;
@@ -1134,6 +1136,16 @@ void SetPanelGeneration(std::uint32_t generation) noexcept {
 void SetOfflineFlowActive(bool active) noexcept {
     OfflineFlowActive.store(active, std::memory_order_release);
     ApplySelectedChoice();
+}
+
+void SetPickerPreference(bool enabled) noexcept {
+    if (PickerEnabled.exchange(enabled, std::memory_order_acq_rel) != enabled) {
+        ApplySelectedChoice();
+    }
+}
+
+auto IsPickerEnabled() noexcept -> bool {
+    return PickerEnabled.load(std::memory_order_acquire);
 }
 
 void GetPanelPosition(std::int32_t& x, std::int32_t& y) noexcept {

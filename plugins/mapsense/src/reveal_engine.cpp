@@ -318,6 +318,49 @@ auto At(std::uintptr_t rva) noexcept -> Function {
     }
 }
 
+[[nodiscard]] auto BuildNativeLabelLayers(
+        const ExternalAtlasGeometrySnapshot& snapshot,
+        const ClientLevelView& current,
+        std::vector<NativeAutomapLevelLayer>& levels) -> bool {
+    levels.reserve(
+        snapshot.visibleLevelIds.size());
+    for (const auto levelId : snapshot.visibleLevelIds) {
+        std::int32_t nativeLayer{};
+        if (levelId <= 0 || !ResolveNativeAutomapLayer(
+                current.dataContext, levelId, nativeLayer)) {
+            const bool required = levelId == current.levelId
+                || std::find_if(
+                    snapshot.geometry->levels.begin(),
+                    snapshot.geometry->levels.end(),
+                    [levelId](
+                            const ExternalAtlasGeometryLevel& level)
+                            noexcept {
+                        return level.levelId == levelId;
+                    }) != snapshot.geometry->levels.end();
+            if (!required) continue;
+            return false;
+        }
+        levels.push_back({
+            .levelId = levelId,
+            .layer = nativeLayer,
+        });
+    }
+    std::sort(
+        levels.begin(),
+        levels.end(),
+        [](const NativeAutomapLevelLayer& left,
+                const NativeAutomapLevelLayer& right) noexcept {
+            return left.levelId < right.levelId;
+        });
+    return std::adjacent_find(
+            levels.begin(),
+            levels.end(),
+            [](const NativeAutomapLevelLayer& left,
+                    const NativeAutomapLevelLayer& right) noexcept {
+                return left.levelId == right.levelId;
+            }) == levels.end();
+}
+
 [[nodiscard]] auto RemainingNativeAtlasCellsLocked() noexcept
         -> std::uint64_t {
     if (NativeAtlasPublication.snapshot == nullptr
@@ -1617,6 +1660,38 @@ auto ResolveClientLevelById(
     return ResolveClientLevelByIdUnchecked(current, levelId, outputLevel);
 }
 
+auto PublishNativeAutomapLabelLayers(
+        const ExternalAtlasGeometrySnapshot& snapshot,
+        const ClientLevelView& current,
+        std::int32_t resolvedAct) noexcept -> bool {
+    if (!Active.load(std::memory_order_acquire)
+        || snapshot.sessionGeneration == 0U || snapshot.geometry == nullptr
+        || snapshot.seed != current.mapSeed || snapshot.difficulty != current.difficulty
+        || snapshot.act != resolvedAct || snapshot.currentLevelId != current.levelId
+        || snapshot.visibleLevelIds.empty()) {
+        return false;
+    }
+    try {
+        auto catalog = std::make_shared<NativeAutomapLayerCatalog>();
+        catalog->sessionGeneration = snapshot.sessionGeneration;
+        catalog->seed = snapshot.seed;
+        catalog->difficulty = snapshot.difficulty;
+        catalog->act = snapshot.act;
+        catalog->geometryScopeLevelId = snapshot.geometry->scopeLevelId;
+        catalog->geometryDigest = snapshot.geometry->digest;
+        std::int32_t currentLayer{};
+        if (!BuildNativeLabelLayers(snapshot, current, catalog->levels)
+            || !FindNativeAutomapLayer(*catalog, current.levelId, currentLayer)) {
+            return false;
+        }
+        PublishedNativeLayerCatalog.store(std::move(catalog), std::memory_order_release);
+        NativeLayerCatalogsPublished.fetch_add(1U, std::memory_order_relaxed);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
 auto BeginNativeAutomapAtlasPublication(
         std::uint64_t sessionGeneration,
         std::shared_ptr<const ExternalAtlasGeometrySnapshot> snapshot,
@@ -1712,45 +1787,7 @@ auto BeginNativeAutomapAtlasPublication(
     };
 
     try {
-        candidate.catalogLevels.reserve(
-            candidate.snapshot->visibleLevelIds.size());
-        for (const auto levelId : candidate.snapshot->visibleLevelIds) {
-            std::int32_t nativeLayer{};
-            if (levelId <= 0 || !ResolveNativeAutomapLayer(
-                    current.dataContext, levelId, nativeLayer)) {
-                const bool required = levelId == current.levelId
-                    || std::find_if(
-                        candidate.snapshot->geometry->levels.begin(),
-                        candidate.snapshot->geometry->levels.end(),
-                        [levelId](
-                                const ExternalAtlasGeometryLevel& level)
-                                noexcept {
-                            return level.levelId == levelId;
-                        }) != candidate.snapshot->geometry->levels.end();
-                if (!required) continue;
-                NativeAtlasFailures.fetch_add(
-                    1U, std::memory_order_relaxed);
-                return NativeAutomapAtlasPublicationStatus::Failed;
-            }
-            candidate.catalogLevels.push_back({
-                .levelId = levelId,
-                .layer = nativeLayer,
-            });
-        }
-        std::sort(
-            candidate.catalogLevels.begin(),
-            candidate.catalogLevels.end(),
-            [](const NativeAutomapLevelLayer& left,
-                    const NativeAutomapLevelLayer& right) noexcept {
-                return left.levelId < right.levelId;
-            });
-        if (std::adjacent_find(
-                candidate.catalogLevels.begin(),
-                candidate.catalogLevels.end(),
-                [](const NativeAutomapLevelLayer& left,
-                        const NativeAutomapLevelLayer& right) noexcept {
-                    return left.levelId == right.levelId;
-                }) != candidate.catalogLevels.end()) {
+        if (!BuildNativeLabelLayers(*candidate.snapshot, current, candidate.catalogLevels)) {
             NativeAtlasFailures.fetch_add(1U, std::memory_order_relaxed);
             return NativeAutomapAtlasPublicationStatus::Failed;
         }

@@ -29,7 +29,7 @@ auto Panel() -> ImGuiWindow* {
 auto Frame(Config& config, bool& expanded, std::uint64_t session = 1U)
         -> ImGuiSettingsBounds {
     ImGui::NewFrame();
-    const auto result = DrawImGuiSettingsPanel(config, expanded, session, false, 1.0F, nullptr);
+    const auto result = DrawImGuiSettingsPanel(config, expanded, session, false, false, 1.0F, nullptr);
     ImGui::Render();
     return result;
 }
@@ -100,11 +100,11 @@ int main() {
     Panel()->StateStorage.SetInt(Panel()->GetID(UiText(UiTextId::MapAndReveal)), 1);
     (void)Frame(config, expanded, 2U);
     const auto opacityBefore = config.overlay.opacity;
-    io.AddMousePosEvent(start.x + 60.0F, start.y + rowHeight * 5.0F + 8.0F);
+    io.AddMousePosEvent(start.x + 60.0F, start.y + rowHeight * 6.0F + 8.0F);
     (void)Frame(config, expanded, 2U);
     io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
     CHECK(!Frame(config, expanded, 2U).saveRequested);
-    io.AddMousePosEvent(start.x + 220.0F, start.y + rowHeight * 5.0F + 8.0F);
+    io.AddMousePosEvent(start.x + 220.0F, start.y + rowHeight * 6.0F + 8.0F);
     CHECK(!Frame(config, expanded, 2U).saveRequested);
     CHECK(config.overlay.opacity != opacityBefore);
     expanded = false;
