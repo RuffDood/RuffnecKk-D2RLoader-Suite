@@ -19,7 +19,6 @@ constexpr std::uintptr_t UpdateUnitStatRva = 0x2F9DB0;
 constexpr std::uintptr_t GetUnitTypeRva = 0x34B9D0;
 constexpr std::uintptr_t CheckItemTypeRva = 0x373890;
 constexpr std::size_t MaximumConfigBytes = 65'536;
-constexpr std::uint64_t MaximumDiagnosticLogs = 8;
 
 constexpr std::size_t StatListUnitOffset = 0x00;
 constexpr std::size_t StatListOwnerTypeOffset = 0x08;
@@ -159,20 +158,13 @@ void LogCorrection(
     std::int32_t retainedValue,
     std::int32_t evaluatedValue
 ) noexcept {
-    if (!Context || !Settings.diagnosticsEnabled
-        || DiagnosticLogs.fetch_add(1, std::memory_order_relaxed)
-            >= MaximumDiagnosticLogs) {
+    if (!Context
+        || !ShouldLogCorrection(Settings.diagnosticsEnabled, DiagnosticLogs)) {
         return;
     }
     char message[320]{};
-    std::snprintf(
-        message,
-        sizeof(message),
-        "Enhanced Damage Min/Max Fix 1.2.4 restored an off-weapon update "
-        "(stat=%u, retained=%d, evaluated=%d).",
-        static_cast<unsigned>(static_cast<std::uint32_t>(packedStat) >> 16U),
-        retainedValue,
-        evaluatedValue);
+    FormatCorrectionLog(
+        message, sizeof(message), packedStat, retainedValue, evaluatedValue);
     Context->LogInfo(message);
 }
 

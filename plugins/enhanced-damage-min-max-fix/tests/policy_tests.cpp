@@ -1,5 +1,7 @@
 #include "policy.hpp"
 
+#include <atomic>
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <iterator>
@@ -89,5 +91,36 @@ int main(int argc, char** argv) {
         false,
         510,
         0));
+
+    // The diagnostic line is a check contract: pin its exact text and fields.
+    char line[320]{};
+    CHECK(FormatCorrectionLog(
+        line, sizeof(line), PackStat(ItemMaxDamagePercentStat), 0, 35) > 0);
+    CHECK(std::string(line)
+        == "Enhanced Damage Min/Max Fix 1.2.4 restored an off-weapon update "
+           "(stat=17, retained=0, evaluated=35).");
+    CHECK(FormatCorrectionLog(
+        line, sizeof(line), PackStat(ItemMinDamagePercentStat), -5, 505) > 0);
+    CHECK(std::string(line).find(
+        std::string(CorrectionLogPhrase)
+        + " (stat=18, retained=-5, evaluated=505).") != std::string::npos);
+    CHECK(std::string(CorrectionLogFormat).find(
+        std::string(CorrectionLogPhrase)
+        + " (stat=%u, retained=%d, evaluated=%d).") != std::string::npos);
+
+    // With diagnostics off, no line is written and the cap is not consumed.
+    std::atomic<std::uint64_t> logged{};
+    for (int attempt = 0; attempt < 20; ++attempt) {
+        CHECK(!ShouldLogCorrection(false, logged));
+    }
+    CHECK(logged.load() == 0);
+
+    // With diagnostics on, only the first MaximumDiagnosticLogs lines are written.
+    static_assert(MaximumDiagnosticLogs == 8);
+    int written{};
+    for (int attempt = 0; attempt < 20; ++attempt) {
+        written += ShouldLogCorrection(true, logged) ? 1 : 0;
+    }
+    CHECK(written == static_cast<int>(MaximumDiagnosticLogs));
     return EXIT_SUCCESS;
 }
