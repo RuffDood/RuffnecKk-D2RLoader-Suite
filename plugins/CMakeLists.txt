@@ -1,6 +1,5 @@
 set(RUFFNECKK_SUITE_PLUGIN_DIRECTORIES
     item-durability
-    enhanced-damage-min-max-fix
     ethereal-item-rules
     repair-costs-cap
     vendor-stock-refresh
